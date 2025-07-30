@@ -1,6 +1,7 @@
-# Thesis - PWA Vaccine Management System
+# Thesis - PWA Task Management App (Kent)
 
-A Progressive Web Application (PWA) built with Vue 3 and Vite for vaccine management.
+A Progressive Web Application (PWA) built with Vue 3 and Vite for a Task Management app.
+Tasked by our thesis advisor to learn the concepts and to familiarize the workarounds of Progressive Web Applications
 
 ## Technologies Used
 
