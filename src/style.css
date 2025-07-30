@@ -1,11 +1,13 @@
+/* FORCED LIGHT MODE STYLES */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Light mode colors are now the default */
+  color-scheme: light;
+  color: #213547;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,15 +21,11 @@ a {
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: #747bff; /* Light mode hover color */
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {
@@ -42,9 +40,9 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #f9f9f9; /* Light mode button color */
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.25s, background-color 0.25s;
 }
 button:hover {
   border-color: #646cff;
@@ -54,26 +52,274 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-.card {
-  padding: 2em;
-}
-
-#app {
+/* CUSTOM STYLES FOR THE APP (LIGHT MODE) */
+#app-container {
+  width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+header {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+header p {
+    color: #555; /* Darker text for light background */
+}
+
+/* --- NEW: Online/Offline Status Indicator --- */
+.online-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-top: 1rem;
+}
+.online-status .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}
+.online-status.is-online {
+    background-color: #e6f4ea;
+    color: #137333;
+}
+.online-status.is-online .status-dot {
+    background-color: #34a853; /* Green dot for online */
+}
+.online-status.is-offline {
+    background-color: #f1f3f4;
+    color: #5f6368;
+}
+.online-status.is-offline .status-dot {
+    background-color: #9aa0a6; /* Gray dot for offline */
+}
+
+
+.card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0; /* Lighter border for light mode */
+  border-radius: 12px;
+  padding: 2em;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+}
+
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Make the Add Task button green */
+.controls-header > button {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+    font-weight: bold;
+}
+.controls-header > button:hover {
+    background-color: #c8e6c9;
+    border-color: #a5d6a7;
+}
+
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+input, select {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  color: #213547;
+  padding: 0.5em;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9em;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.task-table th, .task-table td {
+  padding: 1em;
+  border-bottom: 1px solid #eee; /* Lighter border */
+}
+
+.task-table th {
+  font-weight: bold;
+  background-color: #f9f9f9;
+}
+
+.task-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable-header:hover {
+  color: #646cff;
+}
+
+.actions-cell {
+  text-align: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.action-button {
+    font-size: 0.8em;
+    padding: 0.5em 1em;
+    background-color: #e9e9e9;
+    border: 1px solid #ddd;
+}
+.action-button:hover {
+    border-color: #bbb;
+}
+
+/* Edit button color (Yellow) */
+.action-button--edit {
+    background-color: #fffde7;
+    color: #f57f17;
+    border-color: #fff9c4;
+}
+.action-button--edit:hover {
+    background-color: #fff9c4;
+    border-color: #fff59d;
+}
+
+/* Delete button color (Red) */
+.action-button--danger {
+    background-color: #fbe9e7;
+    color: #c62828;
+    border-color: #ffcdd2;
+}
+.action-button--danger:hover {
+    background-color: #ffcdd2;
+    border-color: #ef9a9a;
+}
+
+/* Save button color (Green) */
+.action-button--success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+.action-button--success:hover {
+    background-color: #c8e6c9;
+    border-color: #a5d6a7;
+}
+
+.empty-state {
+    padding: 2rem;
+    color: #888;
+}
+
+/* --- Status Badge Styles --- */
+.status-badge {
+    padding: 0.25em 0.6em;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    border: 1px solid;
+}
+.status--not-started {
+    color: #5f6368;
+    background-color: #f1f3f4;
+    border-color: #e0e0e0;
+}
+.status--in-progress {
+    color: #b26a00;
+    background-color: #feefc3;
+    border-color: #fce293;
+}
+.status--completed {
+    color: #137333;
+    background-color: #e6f4ea;
+    border-color: #ceead6;
+}
+
+
+/* Custom Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Slightly lighter overlay */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 500px;
+  text-align: left;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.form-group input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.modal-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+/* PWA Checklist Styles */
+.pwa-checklist ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+.pwa-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.pwa-checklist .status {
+  font-size: 1.2rem;
+}
+.pwa-checklist li.checked .text {
+  text-decoration: line-through;
+  color: #aaa;
 }
