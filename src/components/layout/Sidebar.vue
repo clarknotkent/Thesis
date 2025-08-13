@@ -31,9 +31,11 @@ const menuItems = computed(() => {
   const menus = {
     admin: [
       { name: 'dashboard', path: '/admin/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
-      { name: 'patients', path: '/admin/patients', label: 'Patient Management', icon: 'bi bi-people' },
+      { name: 'patients', path: '/admin/patients', label: 'Patient Records', icon: 'bi bi-people' },
       { name: 'vaccines', path: '/admin/vaccines', label: 'Vaccine Inventory', icon: 'bi bi-box-seam' },
-      { name: 'users', path: '/admin/users', label: 'User Management', icon: 'bi bi-person-gear' }
+      { name: 'sms', path: '/admin/sms', label: 'SMS Logs', icon: 'bi bi-chat-dots' },
+      { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
+      { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' }
     ],
     'health-worker': [
       { name: 'dashboard', path: '/health-worker/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },

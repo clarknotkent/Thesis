@@ -130,6 +130,87 @@
   padding: 0.35rem 0.65rem;
 }
 
+/* Header Action Buttons */
+.header-actions .btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-actions .badge {
+  transform: translate(-30%, -30%);
+}
+
+/* Wireframe Bar Chart */
+.wire-chart {
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+
+.wire-chart .chart-grid {
+  position: absolute;
+  inset: 0 0 24px 0; /* leave room for x-labels */
+  background: repeating-linear-gradient(
+    to top,
+    rgba(0,0,0,0.05) 0px,
+    rgba(0,0,0,0.05) 1px,
+    transparent 1px,
+    transparent 40px
+  );
+  border: 1px solid var(--sidebar-border);
+  border-radius: 8px;
+}
+
+.wire-chart .bars {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: end;
+  gap: 16px;
+  padding: 12px 16px;
+  height: calc(100% - 24px);
+}
+
+.wire-chart .bar {
+  position: relative;
+  border-radius: 6px 6px 0 0;
+  min-height: 10%;
+  transition: transform 0.2s ease;
+}
+
+.wire-chart .bar:hover {
+  transform: translateY(-4px);
+}
+
+.wire-chart .bar .bar-value {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.wire-chart .labels {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 /* Responsive Dashboard */
 @media (max-width: 1199.98px) {
   .dashboard-container {

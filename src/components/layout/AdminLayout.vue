@@ -12,7 +12,7 @@
     />
 
     <main class="main-content">
-      <slot />
+      <slot></slot>
     </main>
   </div>
 </template>
