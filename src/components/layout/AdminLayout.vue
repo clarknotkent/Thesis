@@ -12,8 +12,10 @@
     />
 
     <main class="main-content">
-      <slot></slot>
+      <slot />
     </main>
+
+  <!-- RightSidebar and toggle button removed for UX improvement -->
   </div>
 </template>
 
@@ -21,7 +23,6 @@
 import { ref } from 'vue'
 import Navbar from './Navbar.vue'
 import Sidebar from './Sidebar.vue'
-
 const sidebarOpen = ref(true)
 
 const toggleSidebar = () => {
