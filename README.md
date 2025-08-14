@@ -34,38 +34,38 @@ This application comes packed with features designed to demonstrate both modern 
 - Node.js: Make sure you have Node.js installed. You can download it from nodejs.org.
 
 ### Steps
-Clone the repository (or download the source code):
+1. Clone the repository (or download the source code):
 
 git clone <your-repository-url>
 cd <your-project-directory>
 
-Install dependencies:
+2. Install dependencies:
 This command will install all the necessary packages, including Vue, Vite, and the PWA plugin.
 
 npm install
 
-Run the development server:
+3. Run the development server:
 This will start the application in development mode with hot-reloading.
 
 npm run dev
 
-Open in your browser:
+4. Open in your browser:
 Navigate to the local URL provided in the terminal (usually http://localhost:5173).
 
 🛠️ Build and Deploy as a PWA
 To build the application for production and test its PWA features, follow these instructions.
 
-Build the application:
+1. Build the application:
 This command bundles the app and generates the service worker and manifest file. The output will be in a dist folder.
 
 npm run build
 
-Serve the production build:
+2. Serve the production build:
 To test the PWA features, you must serve the contents of the dist folder. The easiest way is with the serve package.
 
 npx serve -s dist
 
-Test and Install:
+3. Test and Install:
 Open the local URL provided by serve (e.g., http://localhost:3000).
 
 In your browser's developer tools, go to the Application tab to inspect the service worker and manifest.
