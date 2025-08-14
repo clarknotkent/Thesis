@@ -71,6 +71,7 @@ Open the local URL provided by serve (e.g., http://localhost:3000).
 In your browser's developer tools, go to the Application tab to inspect the service worker and manifest.
 
 Look for the install icon in the address bar to install the app on your device.
+
 --
 
 ## 💻 Technologies Used
