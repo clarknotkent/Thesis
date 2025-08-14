@@ -27,12 +27,11 @@ This application comes packed with features designed to demonstrate both modern 
 - PWA Learning Checklist: An in-app checklist that dynamically updates to help you learn and verify the core concepts of a PWA.
 
 ## 🚀 Installation and Setup
-To get this project running on your local machine, follow these simple steps.
 
-Prerequisites
-Node.js: Make sure you have Node.js installed. You can download it from nodejs.org.
+### Prerequisites
+- Node.js: Make sure you have Node.js installed. You can download it from nodejs.org.
 
-Steps
+### Steps
 Clone the repository (or download the source code):
 
 git clone <your-repository-url>
@@ -71,11 +70,11 @@ In your browser's developer tools, go to the Application tab to inspect the serv
 
 Look for the install icon in the address bar to install the app on your device.
 
-💻 Technologies Used
-Vue.js 3: A progressive JavaScript framework for building user interfaces.
+## 💻 Technologies Used
+- Vue.js 3: A progressive JavaScript framework for building user interfaces.
 
-Vite: A next-generation frontend tooling that provides an extremely fast development experience.
+- Vite: A next-generation frontend tooling that provides an extremely fast development experience.
 
-vite-plugin-pwa: A Vite plugin that generates the necessary service worker and manifest for a PWA.
+- vite-plugin-pwa: A Vite plugin that generates the necessary service worker and manifest for a PWA.
 
-Custom CSS: A custom-built, responsive stylesheet for a unique light-mode theme.
+- Custom CSS: A custom-built, responsive stylesheet for a unique light-mode theme.
