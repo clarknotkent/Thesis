@@ -78,6 +78,7 @@ Open the local URL provided by serve (e.g., http://localhost:3000).
 
 - Vite: A next-generation frontend tooling that provides an extremely fast development experience.
 
+- Bootstrap 5: A popular CSS framework for building responsive, mobile-first sites.
+
 - vite-plugin-pwa: A Vite plugin that generates the necessary service worker and manifest for a PWA.
 
-- Custom CSS: A custom-built, responsive stylesheet for a unique light-mode theme.
