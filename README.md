@@ -35,10 +35,10 @@ This application comes packed with features designed to demonstrate both modern 
 
 ### Steps
 1. Clone the repository (or download the source code):
-
-git clone <your-repository-url>
+```
+git clone https://github.com/clarknotkent/Thesis.git
 cd <your-project-directory>
-
+```
 2. Install dependencies:
 This command will install all the necessary packages, including Vue, Vite, and the PWA plugin
 ```
