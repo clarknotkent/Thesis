@@ -73,7 +73,6 @@ In your browser's developer tools, go to the Application tab to inspect the serv
 Look for the install icon in the address bar to install the app on your device.
 
 --
-
 ## 💻 Technologies Used
 - Vue.js 3: A progressive JavaScript framework for building user interfaces.
 
