@@ -1,6 +1,6 @@
 #  Vue Task Tracker PWA
 A simple, modern, and offline-first task management application built with Vue.js and Vite. This project serves as a practical guide to understanding Progressive Web App (PWA) concepts, including service workers, offline capabilities, and installability, all while providing a functional task tracker with full CRUD operations.
-
+--
 ## ✨ Features 
 This application comes packed with features designed to demonstrate both modern web development practices and PWA functionality:
 
