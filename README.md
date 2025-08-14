@@ -68,11 +68,12 @@ npx serve -s dist
 3. Test and Install:
 Open the local URL provided by serve (e.g., http://localhost:3000).
 
-In your browser's developer tools, go to the Application tab to inspect the service worker and manifest.
+- In your browser's developer tools, go to the Application tab to inspect the service worker and manifest.
 
-Look for the install icon in the address bar to install the app on your device.
-
+- Look for the install icon in the address bar to install the app on your device.
 --
+
+
 ## 💻 Technologies Used
 - Vue.js 3: A progressive JavaScript framework for building user interfaces.
 
