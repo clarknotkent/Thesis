@@ -139,12 +139,10 @@ const handleLogin = async () => {
         router.push('/admin/dashboard')
         break
       case 'health-worker':
-        // Will implement later
-        alert('Health Worker dashboard coming soon!')
+        router.push('/healthworker/dashboard')
         break
       case 'parent':
-        // Will implement later
-        alert('Parent dashboard coming soon!')
+        router.push('/parent/dashboard')
         break
       default:
         throw new Error('Invalid role selected')

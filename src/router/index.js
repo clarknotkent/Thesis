@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 // Auth Views
 import Login from '@/views/auth/Login.vue'
+import LandingPage from '@/views/LandingPage.vue'
 
 // Admin Views
 import AdminDashboard from '@/views/admin/Dashboard.vue'
@@ -11,10 +12,26 @@ import SMSLogs from '@/views/admin/SMSLogs.vue'
 import Reports from '@/views/admin/Reports.vue'
 import UserAccounts from '@/views/admin/UserAccounts.vue'
 
+// Health Worker Views
+import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
+import HealthWorkerPatients from '@/views/healthworker/PatientRecords.vue'
+import VaccineAdministration from '@/views/healthworker/VaccineAdministration.vue'
+import VaccineInventoryReadOnly from '@/views/healthworker/VaccineInventoryReadOnly.vue'
+
+// Parent Views
+import ParentDashboard from '@/views/parent/ParentDashboard.vue'
+import ChildInfo from '@/views/parent/ChildInfo.vue'
+import VaccinationSchedule from '@/views/parent/VaccinationSchedule.vue'
+
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    name: 'LandingPage',
+    component: LandingPage,
+    meta: {
+      title: 'Vaccine App - Landing',
+      requiresAuth: false
+    }
   },
   {
     path: '/login',
@@ -83,6 +100,78 @@ const routes = [
       title: 'User Accounts - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
+    }
+  },
+  // Health Worker Routes
+  {
+    path: '/healthworker/dashboard',
+    name: 'HealthWorkerDashboard',
+    component: HealthWorkerDashboard,
+    meta: {
+      title: 'Health Worker Dashboard - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/patients',
+    name: 'HealthWorkerPatients',
+    component: HealthWorkerPatients,
+    meta: {
+      title: 'Patient Records - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/administer',
+    name: 'VaccineAdministration',
+    component: VaccineAdministration,
+    meta: {
+      title: 'Vaccine Administration - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/inventory',
+    name: 'VaccineInventoryReadOnly',
+    component: VaccineInventoryReadOnly,
+    meta: {
+      title: 'Vaccine Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  // Parent Routes
+  {
+    path: '/parent/dashboard',
+    name: 'ParentDashboard',
+    component: ParentDashboard,
+    meta: {
+      title: 'Parent Dashboard - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/child-info',
+    name: 'ChildInfo',
+    component: ChildInfo,
+    meta: {
+      title: 'My Child Info - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/vaccination-schedule',
+    name: 'VaccinationSchedule',
+    component: VaccinationSchedule,
+    meta: {
+      title: 'Vaccination Schedule - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
     }
   },
   // Catch-all route for 404
