@@ -37,11 +37,11 @@ const menuItems = computed(() => {
       { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
       { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' }
     ],
-    'health-worker': [
-      { name: 'dashboard', path: '/health-worker/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
-      { name: 'patients', path: '/health-worker/patients', label: 'Patient Lookup', icon: 'bi bi-qr-code-scan' },
-      { name: 'appointments', path: '/health-worker/appointments', label: 'Appointments', icon: 'bi bi-calendar-event' },
-      { name: 'vaccinations', path: '/health-worker/vaccinations', label: 'Vaccine Administration', icon: 'bi bi-shield-check' }
+    healthworker: [
+      { name: 'dashboard', path: '/healthworker/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
+      { name: 'patients', path: '/healthworker/patients', label: 'Patient Records', icon: 'bi bi-people' },
+      { name: 'administer', path: '/healthworker/administer', label: 'Administer Vaccine', icon: 'bi bi-syringe' },
+      { name: 'inventory', path: '/healthworker/inventory', label: 'Vaccine Stock', icon: 'bi bi-box-seam' }
     ],
     parent: [
       { name: 'dashboard', path: '/parent/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },

@@ -185,49 +185,7 @@
         </div>
       </div>
 
-      <!-- Order History -->
-      <div class="card shadow">
-        <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Vaccine</th>
-                  <th>Quantity</th>
-                  <th>By</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>T-001</td>
-                  <td>Aug 10, 2025</td>
-                  <td><span class="badge bg-success">Received</span></td>
-                  <td>Influenza</td>
-                  <td>+100</td>
-                  <td>Admin User</td>
-                  <td>Weekly shipment</td>
-                </tr>
-                <tr>
-                  <td>T-002</td>
-                  <td>Aug 10, 2025</td>
-                  <td><span class="badge bg-info">Used</span></td>
-                  <td>COVID-19</td>
-                  <td>-15</td>
-                  <td>Dr. Wilson</td>
-                  <td>Vaccination drive</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <!-- ...existing code... -->
     </div>
   </AdminLayout>
 </template>
