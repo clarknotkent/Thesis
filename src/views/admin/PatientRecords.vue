@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppCard from '@/components/common/AppCard.vue'
@@ -88,6 +88,7 @@ import AppSearchFilter from '@/components/common/AppSearchFilter.vue'
 import AppTable from '@/components/common/AppTable.vue'
 import AppFormModal from '@/components/common/AppFormModal.vue'
 import AppModal from '@/components/common/AppModal.vue'
+import usePagination from '@/composables/usePagination'
 
 const patients = ref([
   { id: 'P-0001', name: 'John Doe Jr.', parent: 'John Doe Sr.', age: '2 years', gender: 'Male', contact: '+63 912 345 6789', lastVisit: '2025-08-08', nextVaccination: '2025-10-11' },
@@ -98,24 +99,15 @@ const patients = ref([
   { id: 'P-0006', name: 'Miguel Cruz', parent: 'Marco Cruz', age: '6 years', gender: 'Male', contact: '+63 944 888 9999', lastVisit: '2025-07-15', nextVaccination: '2025-09-15' }
 ])
 
-const currentPage = ref(1)
-const pageSize = 5
+// Use composable for pagination; keep admin pageSize = 5 to preserve original behavior
+const { currentPage, pageSize, totalPages, paginatedItems, setPage, paginationData } = usePagination(patients, 5)
+
+const paginatedPatients = paginatedItems
+
 const searchQuery = ref('')
 
-const totalPages = computed(() => Math.ceil(patients.value.length / pageSize))
-const paginatedPatients = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return patients.value.slice(start, start + pageSize)
-})
-
-const paginationData = computed(() => ({
-  currentPage: currentPage.value,
-  totalPages: totalPages.value
-}))
-
 function changePage(page) {
-  if (page < 1 || page > totalPages.value) return
-  currentPage.value = page
+  setPage(page)
 }
 
 const showAddModal = ref(false)
@@ -225,7 +217,7 @@ function addPatient(formData) {
   const newId = `P-${(patients.value.length + 1).toString().padStart(4, '0')}`
   patients.value.push({ id: newId, ...formData })
   showAddModal.value = false
-  currentPage.value = totalPages.value
+  setPage(totalPages.value)
 }
 
 function updatePatient(formData) {
@@ -237,8 +229,8 @@ function updatePatient(formData) {
 function deletePatient(id) {
   if (confirm('Are you sure you want to delete this patient?')) {
     patients.value = patients.value.filter(p => p.id !== id)
-    if ((currentPage.value - 1) * pageSize >= patients.value.length) {
-      currentPage.value = Math.max(1, currentPage.value - 1)
+    if ((currentPage.value - 1) * pageSize.value >= patients.value.length) {
+      setPage(Math.max(1, currentPage.value - 1))
     }
   }
 }

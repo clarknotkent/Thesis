@@ -18,26 +18,26 @@
 
     <!-- Search Section -->
     <AppCard class="hw-search-section mb-4">
-      <div class="d-flex align-items-center gap-2">
-        <AppSearchFilter
-          v-model="searchQuery"
-          :filters="filters"
-          placeholder="Search by child name, ID, or parent details..."
-          @search="handleSearch"
-        />
-        <AppButton
-          variant="info"
-          icon="bi bi-qr-code-scan"
-          @click="openQrScanner"
-        >
-          Scan QR
-        </AppButton>
-      </div>
+      <AppSearchFilter
+        v-model="searchQuery"
+        :filters="filters"
+        @search="handleSearch"
+      >
+        <template #actions>
+          <AppButton
+            variant="info"
+            icon="bi bi-qr-code-scan"
+            @click="openQrScanner"
+          >
+            Scan QR
+          </AppButton>
+        </template>
+      </AppSearchFilter>
     </AppCard>
 
     <!-- Patient List -->
     <div class="row g-3">
-      <div class="col-lg-6" v-for="patient in filteredPatients" :key="patient.id">
+      <div class="col-lg-6" v-for="patient in paginatedPatients" :key="patient.id">
         <AppCard class="hw-patient-card h-100">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
@@ -91,7 +91,7 @@
             <AppButton
               variant="success"
               :to="`/healthworker/administer?patient=${patient.id}`"
-              icon="bi bi-syringe"
+              icon="bi bi-file-medical"
               class="flex-fill btn-hw-primary"
             >
               Administer
@@ -99,6 +99,15 @@
           </div>
         </AppCard>
       </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="mt-4 d-flex justify-content-center">
+      <AppPagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        @page-change="changePage"
+      />
     </div>
 
     <!-- Empty State -->
@@ -126,6 +135,8 @@ import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AppSearchFilter from '@/components/common/AppSearchFilter.vue'
+import AppPagination from '@/components/common/AppPagination.vue'
+import usePagination from '@/composables/usePagination'
 
 const searchQuery = ref('')
 const filterStatus = ref('')
@@ -225,6 +236,15 @@ const filteredPatients = computed(() => {
   return filtered
 })
 
+// Pagination using composable (pageSize = 6)
+const { currentPage, pageSize, totalPages, paginatedItems, setPage } = usePagination(filteredPatients, 6)
+
+const paginatedPatients = paginatedItems
+
+function changePage(page) {
+  setPage(page)
+}
+
 const getStatusBadgeClass = (status) => {
   const classes = {
     active: 'hw-status-available',
@@ -237,5 +257,7 @@ const getStatusBadgeClass = (status) => {
 const handleSearch = (query, filters) => {
   searchQuery.value = query
   filterStatus.value = filters.status || ''
+  // Reset to first page when search or filters change
+  setPage(1)
 }
 </script>
