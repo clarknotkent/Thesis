@@ -37,9 +37,11 @@
 }
 
 .hw-stat-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.9;
+  display: block;
+  margin: 0 auto 1rem;
+  font-size: 2.5rem; /* slightly reduced for better balance */
+  line-height: 1;
+  opacity: 0.95;
 }
 
 .hw-action-card {
@@ -172,6 +174,79 @@
 .hw-search-input:focus {
   border-color: #28a745;
   box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Utility to prevent overflow in flex containers */
+.min-w-0 {
+  min-width: 0;
+}
+
+.hw-search-section .form-control {
+  width: 100%;
+}
+
+/* Keep search icon and input on one line and vertically centered */
+.hw-search-section .input-group {
+  display: flex;
+  align-items: center;
+}
+
+.hw-search-section .input-group .input-group-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .hw-search-section > .d-flex {
+    flex-wrap: nowrap !important;
+  }
+
+  .hw-search-section select.form-select {
+    max-width: 220px;
+  }
+}
+
+/* Layout helpers for search row */
+.search-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.search-row .input-wrap {
+  flex: 1 1 60%; /* allow the search input to take most of the horizontal space */
+  min-width: 0;
+}
+
+.search-row .filters {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.search-row .filter-item select.form-select {
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.search-row .actions {
+  flex: 0 0 auto;
+  margin-left: 1rem;
+}
+
+@media (min-width: 768px) {
+  /* enforce single-line layout on medium+ screens */
+  .search-row {
+    flex-wrap: nowrap !important;
+  }
+
+  .search-row .input-wrap {
+    flex-basis: 60%;
+  }
 }
 
 /* Status Badges */

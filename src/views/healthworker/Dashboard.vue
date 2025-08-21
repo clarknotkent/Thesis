@@ -20,7 +20,7 @@
       <div class="col-md-4">
         <AppCard class="hw-stat-card bg-success text-white h-100">
           <div class="text-center">
-            <i class="bi bi-syringe hw-stat-icon"></i>
+              <i class="bi bi-file-medical hw-stat-icon"></i>
             <h5>Administered</h5>
             <h2 class="fw-bold">18</h2>
           </div>
@@ -75,7 +75,7 @@
           <template #header>
             <div class="bg-success text-white">
               <h5 class="mb-0">
-                <i class="bi bi-syringe me-2"></i>
+                <i class="bi bi-file-medical me-2"></i>
                 Vaccine Administration
               </h5>
             </div>
@@ -88,7 +88,7 @@
               icon="bi bi-plus-circle"
               class="btn-hw-primary"
             >
-              Administer Vaccine
+                Administer Vaccine
             </AppButton>
             <AppButton
               variant="outline-success"
@@ -96,7 +96,7 @@
               :to="'/healthworker/inventory'"
               icon="bi bi-box-seam"
             >
-              Check Vaccine Stock
+                Check Vaccine Stock
             </AppButton>
           </div>
         </AppCard>

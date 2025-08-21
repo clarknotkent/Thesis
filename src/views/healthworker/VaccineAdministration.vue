@@ -73,7 +73,7 @@
           <template #header>
             <div class="bg-success text-white">
               <h5 class="mb-0">
-                <i class="bi bi-syringe me-2"></i>
+                <i class="bi bi-file-medical me-2"></i>
                 Administration Details
               </h5>
             </div>
