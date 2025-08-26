@@ -339,6 +339,8 @@ const vaccineStock = [
 const users = [
   {
     id: "1",
+    firstName: "Admin",
+    lastName: "User",
     name: "Admin User",
     email: "admin@immunizeme.com",
     role: "admin",
@@ -350,6 +352,8 @@ const users = [
   },
   {
     id: "2", 
+    firstName: "Jane",
+    lastName: "Smith",
     name: "Dr. Jane Smith",
     email: "jane.smith@immunizeme.com",
     role: "health_worker",
@@ -357,10 +361,13 @@ const users = [
     lastLogin: "2025-08-26T08:30:00Z",
     createdAt: "2025-02-01T10:00:00Z",
     phone: "+63 918 234 5678",
+    licenseNumber: "HW-12345",
     avatar: null
   },
   {
     id: "3",
+    firstName: "Mark",
+    lastName: "Rodriguez",
     name: "Dr. Mark Rodriguez",
     email: "mark.rodriguez@immunizeme.com",
     role: "health_worker", 
@@ -368,10 +375,13 @@ const users = [
     lastLogin: "2025-08-25T14:20:00Z",
     createdAt: "2025-02-15T09:30:00Z",
     phone: "+63 919 345 6789",
+    licenseNumber: "HW-67890",
     avatar: null
   },
   {
     id: "4",
+    firstName: "Ana Maria",
+    lastName: "Santos",
     name: "Ana Maria Santos",
     email: "ana.santos@example.com",
     role: "parent",
@@ -383,6 +393,8 @@ const users = [
   },
   {
     id: "5",
+    firstName: "Roberto",
+    lastName: "Santos", 
     name: "Roberto C. Santos", 
     email: "roberto.santos@example.com",
     role: "parent",
@@ -394,6 +406,8 @@ const users = [
   },
   {
     id: "6",
+    firstName: "Carmen",
+    lastName: "Reyes",
     name: "Carmen L. Reyes",
     email: "carmen.reyes@example.com", 
     role: "parent",
@@ -405,6 +419,8 @@ const users = [
   },
   {
     id: "7",
+    firstName: "Sarah",
+    lastName: "Lopez",
     name: "Dr. Sarah Lopez",
     email: "sarah.lopez@immunizeme.com",
     role: "health_worker",
@@ -412,10 +428,13 @@ const users = [
     lastLogin: "2025-08-26T07:30:00Z",
     createdAt: "2025-03-01T08:45:00Z",
     phone: "+63 920 111 2222",
+    licenseNumber: "HW-11111",
     avatar: null
   },
   {
     id: "8",
+    firstName: "Lisa",
+    lastName: "Fernandez",
     name: "Nurse Lisa Fernandez",
     email: "lisa.fernandez@immunizeme.com",
     role: "health_worker",
@@ -423,10 +442,13 @@ const users = [
     lastLogin: "2025-08-25T16:00:00Z",
     createdAt: "2025-03-15T14:20:00Z",
     phone: "+63 921 222 3333",
+    licenseNumber: "HW-22222",
     avatar: null
   },
   {
     id: "9",
+    firstName: "Miguel",
+    lastName: "Reyes",
     name: "Miguel A. Reyes",
     email: "miguel.reyes@example.com",
     role: "parent",

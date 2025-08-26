@@ -287,7 +287,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import api from '@/services/api'
-import usePagination from '@/composables/usePagination'
+import { usePagination } from '@/composables/usePagination'
 
 // Reactive data
 const loading = ref(true)

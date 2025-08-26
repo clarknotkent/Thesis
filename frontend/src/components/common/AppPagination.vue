@@ -95,7 +95,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['page-change'])
+const emit = defineEmits(['page-changed'])
 
 const startItem = computed(() => {
   return (props.currentPage - 1) * props.itemsPerPage + 1
@@ -136,7 +136,7 @@ const showLastEllipsis = computed(() => {
 
 const changePage = (page) => {
   if (page >= 1 && page <= props.totalPages && page !== props.currentPage) {
-    emit('page-change', page)
+    emit('page-changed', page)
   }
 }
 </script>

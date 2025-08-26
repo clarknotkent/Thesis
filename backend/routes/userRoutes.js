@@ -5,6 +5,7 @@ const {
   getUserById,
   createUser,
   updateUser,
+  updateUserPassword,
   deleteUser,
   getUserStats,
   getUserActivityLogs
@@ -27,6 +28,9 @@ router.post('/', createUser);
 
 // PUT /api/users/:id - Update user
 router.put('/:id', updateUser);
+
+// PUT /api/users/:id/password - Update user password
+router.put('/:id/password', updateUserPassword);
 
 // DELETE /api/users/:id - Delete user
 router.delete('/:id', deleteUser);

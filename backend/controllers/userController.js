@@ -238,6 +238,54 @@ const updateUser = (req, res) => {
   }
 };
 
+// PUT /api/users/:id/password - Update user password
+const updateUserPassword = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    // Validation
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+    
+    // Find user index
+    const userIndex = users.findIndex(u => u.id === id);
+    
+    if (userIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: `User with ID ${id} not found`
+      });
+    }
+    
+    // In a real app, you would hash the password here
+    users[userIndex].password = password;
+    
+    res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating password',
+      error: error.message
+    });
+  }
+};
+
 // DELETE /api/users/:id - Delete user
 const deleteUser = (req, res) => {
   try {
@@ -358,6 +406,7 @@ module.exports = {
   getUserById,
   createUser,
   updateUser,
+  updateUserPassword,
   deleteUser,
   getUserStats,
   getUserActivityLogs
