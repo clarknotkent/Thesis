@@ -1,0 +1,129 @@
+PROGRESS REPORT CODE SNIPPETS
+==============================
+
+1. DATABASE SCHEMA
+==================
+
+CREATE TABLE users (
+    user_id BIGSERIAL PRIMARY KEY,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'HealthWorker', 'Nurse', 'Nutritionist', 'Guardian')),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    date_registered TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE user_mapping (
+    uuid UUID PRIMARY KEY,       -- Supabase auth.uid()
+    user_id BIGINT UNIQUE        -- Your BIGINT user_id
+);
+
+2. ROW-LEVEL SECURITY (RLS) POLICIES
+====================================
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can access all users" ON users
+FOR SELECT USING (auth.role() = 'admin');
+
+CREATE POLICY "HealthWorkers can access their own data" ON users
+FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM user_mapping
+        WHERE user_mapping.uuid = auth.uid() AND user_mapping.user_id = user_id
+    ) AND auth.role() = 'healthworker'
+);
+
+3. BACKEND API ENDPOINTS
+========================
+
+// Route to fetch dashboard stats
+router.get('/dashboard', authMiddleware, dashboardController.getStats);
+
+// Controller method
+exports.getStats = async (req, res) => {
+    const stats = await dashboardModel.getDashboardStats();
+    res.json(stats);
+};
+
+4. SUPABASE INTEGRATION
+=======================
+
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient('https://bdygoaisbsbniomzreut.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkeWdvYWlzYnNibmlvbXpyZXV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNDQ4MTcsImV4cCI6MjA3MjcyMDgxN30.Oq-3mA2K_OA3PaQNGhY5o2KzQl74ioqJ8CbDBj744mE');
+
+// Sign up a new user
+async function signUpUser(email, password, role) {
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { role } },
+    });
+    if (error) throw error;
+    return data;
+}
+
+5. KEY SQL QUERIES
+==================
+
+-- Fetch dashboard statistics
+SELECT 
+    (SELECT COUNT(*) FROM patients WHERE is_deleted = FALSE) AS total_patients,
+    (SELECT COUNT(*) FROM users WHERE role = 'HealthWorker' AND is_deleted = FALSE) AS active_health_workers,
+    (SELECT SUM(current_stock_level) FROM inventory WHERE is_deleted = FALSE) AS total_vaccine_stock;
+
+6. TRIGGERS AND FUNCTIONS
+=========================
+
+CREATE OR REPLACE FUNCTION update_patient_age_fields()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.age_months := EXTRACT(YEAR FROM age(NEW.date_of_birth)) * 12 + EXTRACT(MONTH FROM age(NEW.date_of_birth));
+    NEW.age_days := EXTRACT(DAY FROM age(NEW.date_of_birth));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_patient_age_fields
+BEFORE INSERT OR UPDATE ON patients
+FOR EACH ROW
+EXECUTE FUNCTION update_patient_age_fields();
+
+7. FRONTEND INTEGRATION
+=======================
+
+// Fetch dashboard stats from the backend
+async function fetchDashboardStats() {
+    const response = await fetch('/api/dashboard');
+    const data = await response.json();
+    console.log(data);
+}
+
+8. ERROR HANDLING
+=================
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+});
+
+9. SEED DATA
+============
+
+-- Insert Admin User
+INSERT INTO users (role, username, password_hash, email)
+VALUES ('Admin', 'admin', crypt('adminpassword', gen_salt('bf')), 'admin@example.com');
+
+-- Insert Mapping for Admin
+INSERT INTO user_mapping (uuid, user_id)
+VALUES ('550e8400-e29b-41d4-a716-446655440000', 1);
+
+10. TESTING
+===========
+
+test('GET /dashboard should return stats', async () => {
+    const response = await request(app).get('/api/dashboard');
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('total_patients');
+});

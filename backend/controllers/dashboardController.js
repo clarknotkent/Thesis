@@ -1,39 +1,13 @@
-const { dashboardStats, recentVaccinations, patientDetails, vaccineStock } = require('../models/mockData');
+const dashboardModel = require('../models/dashboardModel');
 
 // GET /api/dashboard/stats - Get dashboard statistics
-const getDashboardStats = (req, res) => {
+const getDashboardStats = async (req, res) => {
   try {
-    // Calculate real-time statistics
-    const stats = {
-      ...dashboardStats,
-      // Update with current data
-      totalPatients: patientDetails.length,
-      vaccineTypes: vaccineStock.length,
-      totalDoses: vaccineStock.reduce((sum, vaccine) => sum + vaccine.quantity, 0),
-      lowStockItems: vaccineStock.filter(vaccine => {
-        if (vaccine.quantity === 0) return false;
-        return vaccine.quantity <= 50;
-      }).length,
-      outOfStock: vaccineStock.filter(vaccine => vaccine.quantity === 0).length,
-      expiringSoon: vaccineStock.filter(vaccine => {
-        const currentDate = new Date();
-        const expiryDate = new Date(vaccine.expiryDate);
-        const daysDifference = Math.ceil((expiryDate - currentDate) / (1000 * 60 * 60 * 24));
-        return daysDifference <= 30 && daysDifference > 0;
-      }).length
-    };
-
-    res.json({
-      success: true,
-      data: stats
-    });
+    const stats = await dashboardModel.getStats();
+    res.json(stats);
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching dashboard statistics',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
   }
 };
 
@@ -91,40 +65,31 @@ const getVaccineChartData = (req, res) => {
 };
 
 // GET /api/dashboard/overview - Get complete dashboard overview
-const getDashboardOverview = (req, res) => {
+const getDashboardOverview = async (req, res) => {
   try {
-    const stats = {
-      ...dashboardStats,
-      totalPatients: patientDetails.length,
-      vaccineTypes: vaccineStock.length,
-      totalDoses: vaccineStock.reduce((sum, vaccine) => sum + vaccine.quantity, 0)
-    };
+    // Fetch dashboard statistics from the model
+    const dashboardStats = await dashboardModel.getDashboardStats();
 
+    // Fetch recent vaccinations (mocked for now, replace with actual query if needed)
     const recentVaccs = recentVaccinations
       .sort((a, b) => new Date(b.dateAdministered) - new Date(a.dateAdministered))
       .slice(0, 5);
 
-    const chartData = [
-      { label: 'BCG', value: 35 },
-      { label: 'Hepatitis B', value: 28 },
-      { label: 'Pentavalent', value: 42 },
-      { label: 'OPV', value: 38 }
-    ];
+    const stats = {
+      ...dashboardStats,
+      recentVaccinations: recentVaccs,
+    };
 
     res.json({
       success: true,
-      data: {
-        stats,
-        recentVaccinations: recentVaccs,
-        chartData
-      }
+      data: stats,
     });
   } catch (error) {
     console.error('Error fetching dashboard overview:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching dashboard overview',
-      error: error.message
+      error: error.message,
     });
   }
 };

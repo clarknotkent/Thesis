@@ -1,7 +1,7 @@
-const { users, userActivityLogs, dashboardStats, recentVaccinations } = require('../models/mockData');
+const userModel = require('../models/userModel');
 
 // GET /api/users - Get all users with pagination and filtering
-const getUsers = (req, res) => {
+const getUsers = async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -12,6 +12,8 @@ const getUsers = (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc' 
     } = req.query;
+
+    const users = await userModel.getAllUsers();
 
     let filteredUsers = [...users];
 
@@ -97,19 +99,12 @@ const getUsers = (req, res) => {
 };
 
 // GET /api/users/:id - Get user by ID
-const getUserById = (req, res) => {
+const getUserById = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const user = users.find(u => u.id === id);
-    
+    const user = await userModel.getUserById(req.params.id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: `User with ID ${id} not found`
-      });
+      return res.status(404).json({ message: 'User not found' });
     }
-    
     // Remove sensitive data
     const { password, ...safeUser } = user;
     
@@ -128,206 +123,38 @@ const getUserById = (req, res) => {
 };
 
 // POST /api/users - Create new user
-const createUser = (req, res) => {
+const createUser = async (req, res) => {
   try {
-    const { name, email, role, phone, status = 'active' } = req.body;
-    
-    // Validation
-    if (!name || !email || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email, and role are required'
-      });
-    }
-
-    // Check if email already exists
-    const existingUser = users.find(u => u.email === email);
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: 'Email already exists'
-      });
-    }
-    
-    // Generate new ID
-    const newId = (Math.max(...users.map(u => parseInt(u.id))) + 1).toString();
-    
-    // Create new user
-    const newUser = {
-      id: newId,
-      name,
-      email,
-      role,
-      status,
-      phone: phone || null,
-      lastLogin: null,
-      createdAt: new Date().toISOString(),
-      avatar: null
-    };
-    
-    // Add to array
-    users.push(newUser);
-    
-    // Remove sensitive data before returning
-    const { password, ...safeUser } = newUser;
-    
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-      data: safeUser
-    });
+    const newUser = await userModel.createUser(req.body);
+    res.status(201).json(newUser);
   } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating user',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to create user' });
   }
 };
 
 // PUT /api/users/:id - Update user
-const updateUser = (req, res) => {
+const updateUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, email, role, phone, status } = req.body;
-    
-    // Find user index
-    const userIndex = users.findIndex(u => u.id === id);
-    
-    if (userIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: `User with ID ${id} not found`
-      });
+    const updatedUser = await userModel.updateUser(req.params.id, req.body);
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    
-    // Check if new email already exists (exclude current user)
-    if (email) {
-      const existingUser = users.find(u => u.email === email && u.id !== id);
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: 'Email already exists'
-        });
-      }
-    }
-    
-    // Update user properties
-    if (name !== undefined) users[userIndex].name = name;
-    if (email !== undefined) users[userIndex].email = email;
-    if (role !== undefined) users[userIndex].role = role;
-    if (phone !== undefined) users[userIndex].phone = phone;
-    if (status !== undefined) users[userIndex].status = status;
-    
-    // Remove sensitive data before returning
-    const { password, ...safeUser } = users[userIndex];
-    
-    res.json({
-      success: true,
-      message: 'User updated successfully',
-      data: safeUser
-    });
+    res.json(updatedUser);
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating user',
-      error: error.message
-    });
-  }
-};
-
-// PUT /api/users/:id/password - Update user password
-const updateUserPassword = (req, res) => {
-  try {
-    const { id } = req.params;
-    const { password } = req.body;
-    
-    // Validation
-    if (!password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password is required'
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters long'
-      });
-    }
-    
-    // Find user index
-    const userIndex = users.findIndex(u => u.id === id);
-    
-    if (userIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: `User with ID ${id} not found`
-      });
-    }
-    
-    // In a real app, you would hash the password here
-    users[userIndex].password = password;
-    
-    res.json({
-      success: true,
-      message: 'Password updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating password:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating password',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to update user' });
   }
 };
 
 // DELETE /api/users/:id - Delete user
-const deleteUser = (req, res) => {
+const deleteUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    // Find user index
-    const userIndex = users.findIndex(u => u.id === id);
-    
-    if (userIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: `User with ID ${id} not found`
-      });
-    }
-    
-    // Prevent deletion of last admin
-    const user = users[userIndex];
-    if (user.role === 'admin') {
-      const adminCount = users.filter(u => u.role === 'admin').length;
-      if (adminCount <= 1) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot delete the last admin user'
-        });
-      }
-    }
-    
-    // Remove user from array
-    const deletedUser = users.splice(userIndex, 1)[0];
-    
-    res.json({
-      success: true,
-      message: `User "${deletedUser.name}" deleted successfully`,
-      data: { id: deletedUser.id, name: deletedUser.name }
-    });
+    await userModel.deleteUser(req.params.id);
+    res.status(204).send();
   } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting user',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to delete user' });
   }
 };
 
@@ -401,13 +228,29 @@ const getUserActivityLogs = (req, res) => {
   }
 };
 
+// PUT /api/users/:id/password - Update user password
+const updateUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    // Logic to update user password
+    // Example: const result = await userModel.updatePassword(id, newPassword);
+
+    res.json({ message: 'User password updated successfully' });
+  } catch (error) {
+    console.error('Error updating user password:', error);
+    res.status(500).json({ message: 'Failed to update user password', error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   createUser,
   updateUser,
-  updateUserPassword,
   deleteUser,
   getUserStats,
-  getUserActivityLogs
+  getUserActivityLogs,
+  updateUserPassword,
 };

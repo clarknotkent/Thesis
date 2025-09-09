@@ -1,4 +1,4 @@
-const { vaccineStock } = require('../models/mockData');
+const vaccineModel = require('../models/vaccineModel');
 
 // Helper function to determine vaccine status
 const getVaccineStatus = (vaccine) => {
@@ -18,16 +18,15 @@ const getVaccineStatus = (vaccine) => {
 };
 
 // GET /api/vaccines/stock - Get all vaccine stock with status
-const getVaccineStock = (req, res) => {
+const getVaccineStock = async (req, res) => {
   try {
+    const vaccines = await vaccineModel.getAllVaccines();
+    
     // Add status property to each vaccine
-    const stockWithStatus = vaccineStock.map(vaccine => ({
+    const stockWithStatus = vaccines.map(vaccine => ({
       ...vaccine,
       status: getVaccineStatus(vaccine)
     }));
-    
-    // We'll handle pagination on the frontend to minimize API calls
-    // but we could implement it here if needed
     
     res.json({
       success: true,
@@ -45,7 +44,7 @@ const getVaccineStock = (req, res) => {
 };
 
 // POST /api/vaccines/stock - Add new vaccine stock
-const addVaccineStock = (req, res) => {
+const addVaccineStock = async (req, res) => {
   try {
     const { vaccineName, manufacturer, batchNo, expiryDate, quantity } = req.body;
     
@@ -57,12 +56,8 @@ const addVaccineStock = (req, res) => {
       });
     }
     
-    // Generate new ID
-    const newId = (Math.max(...vaccineStock.map(v => parseInt(v.id))) + 1).toString();
-    
     // Create new vaccine object
     const newVaccine = {
-      id: newId,
       vaccineName,
       manufacturer,
       batchNo,
@@ -70,13 +65,13 @@ const addVaccineStock = (req, res) => {
       quantity: parseInt(quantity)
     };
     
-    // Add to array
-    vaccineStock.push(newVaccine);
+    // Add to database
+    const createdVaccine = await vaccineModel.createVaccine(newVaccine);
     
     // Add status before returning
     const vaccineWithStatus = {
-      ...newVaccine,
-      status: getVaccineStatus(newVaccine)
+      ...createdVaccine,
+      status: getVaccineStatus(createdVaccine)
     };
     
     res.status(201).json({
@@ -95,38 +90,37 @@ const addVaccineStock = (req, res) => {
 };
 
 // PUT /api/vaccines/stock/:id - Update vaccine stock
-const updateVaccineStock = (req, res) => {
+const updateVaccineStock = async (req, res) => {
   try {
     const { id } = req.params;
     const { vaccineName, manufacturer, batchNo, expiryDate, quantity } = req.body;
     
-    // Find vaccine index
-    const vaccineIndex = vaccineStock.findIndex(v => v.id === id);
+    // Find and update vaccine
+    const updatedVaccine = await vaccineModel.updateVaccine(id, {
+      vaccineName,
+      manufacturer,
+      batchNo,
+      expiryDate,
+      quantity: parseInt(quantity)
+    });
     
-    if (vaccineIndex === -1) {
+    if (!updatedVaccine) {
       return res.status(404).json({
         success: false,
         message: `Vaccine with ID ${id} not found`
       });
     }
     
-    // Update vaccine properties
-    if (vaccineName !== undefined) vaccineStock[vaccineIndex].vaccineName = vaccineName;
-    if (manufacturer !== undefined) vaccineStock[vaccineIndex].manufacturer = manufacturer;
-    if (batchNo !== undefined) vaccineStock[vaccineIndex].batchNo = batchNo;
-    if (expiryDate !== undefined) vaccineStock[vaccineIndex].expiryDate = expiryDate;
-    if (quantity !== undefined) vaccineStock[vaccineIndex].quantity = parseInt(quantity);
-    
     // Get updated vaccine with status
-    const updatedVaccine = {
-      ...vaccineStock[vaccineIndex],
-      status: getVaccineStatus(vaccineStock[vaccineIndex])
+    const vaccineWithStatus = {
+      ...updatedVaccine,
+      status: getVaccineStatus(updatedVaccine)
     };
     
     res.json({
       success: true,
       message: 'Vaccine stock updated successfully',
-      data: updatedVaccine
+      data: vaccineWithStatus
     });
   } catch (error) {
     console.error('Error updating vaccine stock:', error);
@@ -139,28 +133,14 @@ const updateVaccineStock = (req, res) => {
 };
 
 // DELETE /api/vaccines/stock/:id - Delete vaccine stock
-const deleteVaccineStock = (req, res) => {
+const deleteVaccineStock = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Find vaccine index
-    const vaccineIndex = vaccineStock.findIndex(v => v.id === id);
+    // Delete vaccine from database
+    await vaccineModel.deleteVaccine(id);
     
-    if (vaccineIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: `Vaccine with ID ${id} not found`
-      });
-    }
-    
-    // Remove vaccine from array
-    const deletedVaccine = vaccineStock.splice(vaccineIndex, 1)[0];
-    
-    res.json({
-      success: true,
-      message: `Vaccine stock "${deletedVaccine.vaccineName}" deleted successfully`,
-      data: deletedVaccine
-    });
+    res.status(204).send();
   } catch (error) {
     console.error('Error deleting vaccine stock:', error);
     res.status(500).json({
@@ -172,9 +152,11 @@ const deleteVaccineStock = (req, res) => {
 };
 
 // GET /api/vaccines/stock/stats - Get vaccine stock statistics
-const getVaccineStats = (req, res) => {
+const getVaccineStats = async (req, res) => {
   try {
-    const stockWithStatus = vaccineStock.map(vaccine => ({
+    const vaccines = await vaccineModel.getAllVaccines();
+    
+    const stockWithStatus = vaccines.map(vaccine => ({
       ...vaccine,
       status: getVaccineStatus(vaccine)
     }));
