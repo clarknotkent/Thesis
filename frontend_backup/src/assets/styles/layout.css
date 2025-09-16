@@ -1,0 +1,126 @@
+/* Layout Component Styles */
+
+/* Admin Layout */
+.admin-layout {
+  min-height: 100vh;
+}
+
+/* Navbar Styles */
+.navbar-custom {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  min-height: var(--navbar-height);
+}
+
+.navbar-custom .navbar-brand {
+  color: white !important;
+  font-weight: 700;
+}
+
+.navbar-custom .nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-custom .nav-link:hover {
+  color: white !important;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--navbar-height));
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  padding: 1rem 0;
+  overflow-y: auto;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-content {
+  padding: 0 1rem;
+}
+
+.sidebar .nav-link {
+  color: #495057;
+  border-radius: 8px;
+  margin-bottom: 0.25rem;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sidebar .nav-link:hover {
+  color: var(--primary-color);
+  background-color: #e3f2fd;
+}
+
+.sidebar .nav-link.router-link-active {
+  color: var(--text-light);
+  background-color: var(--primary-color);
+}
+
+/* Main Content Styles */
+
+.main-content {
+  margin-left: var(--sidebar-width);
+  padding-top: var(--navbar-height);
+  min-height: calc(100vh - var(--navbar-height));
+  background: var(--light-color);
+  transition: margin-left 0.3s ease;
+}
+
+
+
+/* Right Sidebar Styles */
+
+
+
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive Design */
+@media (max-width: 991.98px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .sidebar.show {
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Mobile Sidebar Toggle */
+.sidebar-toggle {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-toggle {
+    display: inline-block;
+  }
+}

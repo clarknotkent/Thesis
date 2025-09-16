@@ -1,102 +1,60 @@
 const dashboardModel = require('../models/dashboardModel');
 
-// GET /api/dashboard/stats - Get dashboard statistics
-const getDashboardStats = async (req, res) => {
+// Get dashboard metrics
+const getDashboardMetrics = async (req, res) => {
   try {
-    const stats = await dashboardModel.getStats();
-    res.json(stats);
+    const metrics = await dashboardModel.getSummaryStats();
+    res.json(metrics);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
+    res.status(500).json({ message: 'Failed to fetch dashboard metrics' });
   }
 };
 
-// GET /api/dashboard/recent-vaccinations - Get recent vaccinations
-const getRecentVaccinations = (req, res) => {
+// Get health worker progress
+const getWorkerProgress = async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
-    
-    // Sort by date and limit results
-    const sortedVaccinations = recentVaccinations
-      .sort((a, b) => new Date(b.dateAdministered) - new Date(a.dateAdministered))
-      .slice(0, parseInt(limit));
-
-    res.json({
-      success: true,
-      data: sortedVaccinations,
-      count: sortedVaccinations.length
-    });
+    const progress = await dashboardModel.getWorkerProgress();
+    res.json(progress);
   } catch (error) {
-    console.error('Error fetching recent vaccinations:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching recent vaccinations',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch worker progress' });
   }
 };
 
-// GET /api/dashboard/vaccine-chart-data - Get vaccine chart data
-const getVaccineChartData = (req, res) => {
+// Get vaccine report
+const getVaccineReport = async (req, res) => {
   try {
-    // Generate chart data based on vaccine stock and recent vaccinations
-    const chartData = [
-      { label: 'BCG', value: 35, color: '#0d6efd' },
-      { label: 'Hepatitis B', value: 28, color: '#198754' },
-      { label: 'Pentavalent', value: 42, color: '#0dcaf0' },
-      { label: 'OPV', value: 38, color: '#ffc107' },
-      { label: 'PCV', value: 24, color: '#dc3545' },
-      { label: 'MMR', value: 18, color: '#6f42c1' },
-      { label: 'Others', value: 15, color: '#fd7e14' }
-    ];
-
-    res.json({
-      success: true,
-      data: chartData
-    });
+    const report = await dashboardModel.getVaccineReport();
+    res.json(report);
   } catch (error) {
-    console.error('Error fetching vaccine chart data:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching vaccine chart data',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch vaccine report' });
   }
 };
 
-// GET /api/dashboard/overview - Get complete dashboard overview
+// Get complete dashboard overview
 const getDashboardOverview = async (req, res) => {
   try {
-    // Fetch dashboard statistics from the model
-    const dashboardStats = await dashboardModel.getDashboardStats();
-
-    // Fetch recent vaccinations (mocked for now, replace with actual query if needed)
-    const recentVaccs = recentVaccinations
-      .sort((a, b) => new Date(b.dateAdministered) - new Date(a.dateAdministered))
-      .slice(0, 5);
-
-    const stats = {
-      ...dashboardStats,
-      recentVaccinations: recentVaccs,
-    };
-
+    const dashboardStats = await dashboardModel.fetchDashboardMetrics();
+    
     res.json({
       success: true,
-      data: stats,
+      data: dashboardStats
     });
   } catch (error) {
     console.error('Error fetching dashboard overview:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching dashboard overview',
-      error: error.message,
+      error: error.message
     });
   }
 };
 
 module.exports = {
-  getDashboardStats,
-  getRecentVaccinations,
-  getVaccineChartData,
+  getDashboardMetrics,
+  getWorkerProgress,
+  getVaccineReport,
   getDashboardOverview
 };

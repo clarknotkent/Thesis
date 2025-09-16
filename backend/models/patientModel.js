@@ -1,76 +1,309 @@
 const supabase = require('../db');
 
-// Fetch all patients with optional filters
-const getAllPatients = async (filters) => {
-  const { search, gender, status } = filters;
-  let query = supabase.from('patients').select('*').eq('is_deleted', false);
+const patientModel = {
+  // Fetch all patients with optional filters and pagination
+  getAllPatients: async (filters = {}, page = 1, limit = 10) => {
+    try {
+      let query = supabase
+        .from('patients')
+        .select('*', { count: 'exact' });
 
-  if (search) {
-    query = query.ilike('surname', `%${search}%`).ilike('firstname', `%${search}%`);
+      // Apply filters
+      if (filters.search) {
+        query = query.or(`firstname.ilike.%${filters.search}%,surname.ilike.%${filters.search}%`);
+      }
+
+      if (filters.sex) {
+        query = query.eq('sex', filters.sex);
+      }
+
+      if (filters.barangay) {
+        query = query.eq('barangay', filters.barangay);
+      }
+
+      if (filters.age_group) {
+        const today = new Date();
+        let startDate, endDate;
+
+        switch (filters.age_group) {
+          case 'newborn':
+            startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
+            endDate = today;
+            break;
+          case 'infant':
+            startDate = new Date(today.getFullYear(), today.getMonth() - 12, today.getDate());
+            endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
+            break;
+          case 'toddler':
+            startDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+            endDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+            break;
+        }
+
+        if (startDate && endDate) {
+          query = query
+            .gte('date_of_birth', startDate.toISOString())
+            .lte('date_of_birth', endDate.toISOString());
+        }
+      }
+
+      // Apply pagination
+      const offset = (page - 1) * limit;
+      const { data, error, count } = await query
+        .range(offset, offset + limit - 1)
+        .order('firstname', { ascending: true });
+
+      if (error) throw error;
+
+      return {
+        patients: data || [],
+        totalCount: count || 0,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil((count || 0) / limit)
+      };
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      throw error;
+    }
+  },
+
+  // Get patient by ID
+  getPatientById: async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select(`
+          *,
+          guardian:guardian_id (
+            guardian_id,
+            firstname,
+            surname,
+            contact_number,
+            address
+          )
+        `)
+        .eq('patient_id', id)
+        .eq('is_deleted', false)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error fetching patient by ID:', error);
+      throw error;
+    }
+  },
+
+  // Create a new patient
+  createPatient: async (patientData) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          firstname: patientData.firstname,
+          surname: patientData.surname,
+          middlename: patientData.middlename,
+          date_of_birth: patientData.date_of_birth,
+          sex: patientData.sex,
+          address: patientData.address,
+          barangay: patientData.barangay,
+          health_center: patientData.health_center,
+          guardian_id: patientData.guardian_id,
+          mother_name: patientData.mother_name,
+          father_name: patientData.father_name
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      throw error;
+    }
+  },
+
+  // Update a patient
+  updatePatient: async (id, patientData) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .update({
+          ...patientData
+        })
+        .eq('patient_id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      throw error;
+    }
+  },
+
+  // Soft delete a patient
+  deletePatient: async (id, deletedBy) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .update({ 
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: deletedBy 
+        })
+        .eq('patient_id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      throw error;
+    }
+  },
+
+  // Get patient vaccination schedule
+  getPatientVaccinationSchedule: async (patientId) => {
+    try {
+      const { data, error } = await supabase
+        .from('patientschedule')
+        .select(`
+          *,
+          vaccine:vaccine_id (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            dosage
+          )
+        `)
+        .eq('patient_id', patientId)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching patient schedule:', error);
+      throw error;
+    }
+  },
+
+  // Update patient tag
+  updatePatientTag: async (patientId, tag) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .update({ 
+          tag,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', patientId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating patient tag:', error);
+      throw error;
+    }
+  },
+
+  // Get patient birth history
+  getPatientBirthHistory: async (patientId) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('birth_weight, birth_height, birth_place, birthdate')
+        .eq('id', patientId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching birth history:', error);
+      throw error;
+    }
+  },
+
+  // Update patient birth history
+  updatePatientBirthHistory: async (patientId, birthData) => {
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .update({
+          birth_weight: birthData.birth_weight,
+          birth_height: birthData.birth_height,
+          birth_place: birthData.birth_place,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', patientId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating birth history:', error);
+      throw error;
+    }
+  },
+
+  // Get patient vitals (latest)
+  getPatientVitals: async (patientId) => {
+    try {
+      const { data, error } = await supabase
+        .from('vitalsigns')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('recorded_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching patient vitals:', error);
+      throw error;
+    }
+  },
+
+  // Add new patient vitals record
+  updatePatientVitals: async (patientId, vitalsData) => {
+    try {
+      const { data, error } = await supabase
+        .from('vitalsigns')
+        .insert({
+          patient_id: patientId,
+          weight: vitalsData.weight,
+          height: vitalsData.height,
+          temperature: vitalsData.temperature,
+          notes: vitalsData.notes,
+          recorded_by: vitalsData.recorded_by,
+          recorded_date: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating patient vitals:', error);
+      throw error;
+    }
+  },
+
+  // Alias functions for test compatibility
+  getAllChildren: async (filters = {}, page = 1, limit = 10) => {
+    return patientModel.getAllPatients(filters, page, limit);
+  },
+
+  getChildById: async (id) => {
+    return patientModel.getPatientById(id);
   }
-
-  if (gender) {
-    query = query.eq('sex', gender);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
 };
 
-// Fetch a patient by ID
-const getPatientById = async (id) => {
-  const { data, error } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('patient_id', id)
-    .eq('is_deleted', false)
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-// Create a new patient
-const createPatient = async (patientData) => {
-  const { data, error } = await supabase
-    .from('patients')
-    .insert([{ ...patientData, date_registered: new Date() }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-// Update a patient
-const updatePatient = async (id, patientData) => {
-  const { data, error } = await supabase
-    .from('patients')
-    .update(patientData)
-    .eq('patient_id', id)
-    .eq('is_deleted', false)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-// Soft delete a patient
-const deletePatient = async (id, deletedBy) => {
-  const { error } = await supabase
-    .from('patients')
-    .update({ is_deleted: true, deleted_at: new Date(), deleted_by: deletedBy })
-    .eq('patient_id', id);
-
-  if (error) throw error;
-};
-
-module.exports = {
-  getAllPatients,
-  getPatientById,
-  createPatient,
-  updatePatient,
-  deletePatient,
-};
+module.exports = patientModel;

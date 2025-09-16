@@ -368,147 +368,9 @@ import AppSpinner from '@/components/common/AppSpinner.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import api from '@/services/api'
+import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser } from '@/services/users'
 
-// Mock data to simulate backend
-const allMockUsers = [
-  {
-    id: "1",
-    firstName: "Admin",
-    lastName: "User",
-    name: "Admin User",
-    email: "admin@immunizeme.com",
-    role: "admin",
-    status: "active",
-    lastLogin: "2025-01-26T09:45:00Z",
-    phone: "+63 917 123 4567"
-  },
-  {
-    id: "2", 
-    firstName: "Jane",
-    lastName: "Smith",
-    name: "Dr. Jane Smith",
-    email: "jane.smith@immunizeme.com",
-    role: "health_worker",
-    status: "active",
-    lastLogin: "2025-01-26T08:30:00Z",
-    phone: "+63 918 234 5678",
-    licenseNumber: "HW-12345"
-  },
-  {
-    id: "3",
-    firstName: "Mark",
-    lastName: "Rodriguez",
-    name: "Dr. Mark Rodriguez",
-    email: "mark.rodriguez@immunizeme.com",
-    role: "health_worker", 
-    status: "active",
-    lastLogin: "2025-01-25T14:20:00Z",
-    phone: "+63 919 345 6789",
-    licenseNumber: "HW-67890"
-  },
-  {
-    id: "4",
-    firstName: "Ana Maria",
-    lastName: "Santos",
-    name: "Ana Maria Santos",
-    email: "ana.santos@example.com",
-    role: "parent",
-    status: "active",
-    lastLogin: "2025-01-24T16:15:00Z",
-    phone: "+63 917 123 4567"
-  },
-  {
-    id: "5",
-    firstName: "Roberto",
-    lastName: "Santos", 
-    name: "Roberto C. Santos", 
-    email: "roberto.santos@example.com",
-    role: "parent",
-    status: "active",
-    lastLogin: "2025-01-23T12:45:00Z",
-    phone: "+63 919 876 5432"
-  },
-  {
-    id: "6",
-    firstName: "Carmen",
-    lastName: "Reyes",
-    name: "Carmen L. Reyes",
-    email: "carmen.reyes@example.com", 
-    role: "parent",
-    status: "inactive",
-    lastLogin: "2025-01-05T15:15:00Z",
-    phone: "+63 916 555 7777"
-  },
-  {
-    id: "7",
-    firstName: "Sarah",
-    lastName: "Lopez",
-    name: "Dr. Sarah Lopez",
-    email: "sarah.lopez@immunizeme.com",
-    role: "health_worker",
-    status: "active",
-    lastLogin: "2025-01-26T07:30:00Z",
-    phone: "+63 920 111 2222",
-    licenseNumber: "HW-11111"
-  },
-  {
-    id: "8",
-    firstName: "Lisa",
-    lastName: "Fernandez",
-    name: "Nurse Lisa Fernandez",
-    email: "lisa.fernandez@immunizeme.com",
-    role: "health_worker",
-    status: "active",
-    lastLogin: "2025-01-25T16:00:00Z",
-    phone: "+63 921 222 3333",
-    licenseNumber: "HW-22222"
-  },
-  {
-    id: "9",
-    firstName: "Miguel",
-    lastName: "Reyes",
-    name: "Miguel A. Reyes",
-    email: "miguel.reyes@example.com",
-    role: "parent",
-    status: "active", 
-    lastLogin: "2025-01-22T10:30:00Z",
-    phone: "+63 918 222 1111"
-  },
-  {
-    id: "10",
-    firstName: "Elena",
-    lastName: "Cruz",
-    name: "Elena Cruz",
-    email: "elena.cruz@example.com",
-    role: "parent",
-    status: "active",
-    lastLogin: "2025-01-21T14:20:00Z",
-    phone: "+63 917 333 4444"
-  },
-  {
-    id: "11",
-    firstName: "Carlos",
-    lastName: "Mendoza",
-    name: "Dr. Carlos Mendoza",
-    email: "carlos.mendoza@immunizeme.com",
-    role: "health_worker",
-    status: "active",
-    lastLogin: "2025-01-26T06:45:00Z",
-    phone: "+63 922 444 5555",
-    licenseNumber: "HW-33333"
-  },
-  {
-    id: "12",
-    firstName: "Maria",
-    lastName: "Garcia",
-    name: "Maria Garcia",
-    email: "maria.garcia@example.com",
-    role: "parent",
-    status: "inactive",
-    lastLogin: "2025-01-10T11:30:00Z",
-    phone: "+63 919 666 7777"
-  }
-]
+// Backend-driven; remove mock data
 
 // Reactive data
 const users = ref([])
@@ -550,56 +412,34 @@ const userForm = ref({
 })
 
 // Computed properties
-const userStats = computed(() => {
-  return {
-    total: totalItems.value,
-    admins: allMockUsers.filter(u => u.role === 'admin').length,
-    healthWorkers: allMockUsers.filter(u => u.role === 'health_worker').length,
-    parents: allMockUsers.filter(u => u.role === 'parent').length
-  }
-})
+const userStats = computed(() => ({
+  total: totalItems.value,
+  admins: users.value.filter(u => u.role === 'admin').length,
+  healthWorkers: users.value.filter(u => u.role === 'health_worker').length,
+  parents: users.value.filter(u => u.role === 'parent').length
+}))
 
 // Methods
 const fetchUsers = async () => {
   loading.value = true
   try {
-    // Simulate API call with mock data
-    await new Promise(resolve => setTimeout(resolve, 300)) // Simulate network delay
-    
-    let filteredUsers = [...allMockUsers]
-    
-    // Apply role filter
-    if (activeFilter.value !== 'all') {
-      filteredUsers = filteredUsers.filter(user => user.role === activeFilter.value)
-    }
-
-    // Apply search filter
-    if (searchQuery.value.trim()) {
-      const query = searchQuery.value.toLowerCase()
-      filteredUsers = filteredUsers.filter(user =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.id.toLowerCase().includes(query)
-      )
-    }
-
-    // Calculate pagination
-    totalItems.value = filteredUsers.length
-    totalPages.value = Math.ceil(totalItems.value / itemsPerPage)
-    
-    // Ensure current page is valid
-    if (currentPage.value > totalPages.value && totalPages.value > 0) {
-      currentPage.value = totalPages.value
-    }
-    if (currentPage.value < 1) {
-      currentPage.value = 1
-    }
-    
-    // Get current page items
-    const startIndex = (currentPage.value - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    users.value = filteredUsers.slice(startIndex, endIndex)
-    
+    const role = activeFilter.value !== 'all' ? activeFilter.value : ''
+    const { users: rows, pagination } = await apiListUsers({
+      page: currentPage.value,
+      limit: itemsPerPage,
+      search: searchQuery.value,
+      role
+    })
+    users.value = rows.map(u => ({
+      id: u.id,
+      name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
+      email: u.email,
+      role: u.role,
+      status: u.status || 'active',
+      lastLogin: u.lastLogin || u.last_login || null
+    }))
+    totalItems.value = pagination?.totalItems || rows.length
+    totalPages.value = pagination?.totalPages || Math.ceil(totalItems.value / itemsPerPage)
   } catch (error) {
     console.error('Error fetching users:', error)
     users.value = []
@@ -708,35 +548,23 @@ const closeUserModal = () => {
 const saveUser = async () => {
   saving.value = true
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    const userData = {
-      id: isEditing.value ? userForm.value.id : String(allMockUsers.length + 1),
-      firstName: userForm.value.firstName,
-      lastName: userForm.value.lastName,
-      name: `${userForm.value.firstName} ${userForm.value.lastName}`,
+    const payload = {
+      username: (userForm.value.email || '').split('@')[0],
       email: userForm.value.email,
       role: userForm.value.role,
-      status: userForm.value.status,
-      lastLogin: new Date().toISOString(),
-      phone: userForm.value.phoneNumber,
-      licenseNumber: userForm.value.licenseNumber
+      firstname: userForm.value.firstName,
+      surname: userForm.value.lastName,
+      password: userForm.value.password,
+      contact_number: userForm.value.phoneNumber || null,
+      status: userForm.value.status
     }
-
     if (isEditing.value) {
-      // Update existing user in mock data
-      const index = allMockUsers.findIndex(u => u.id === userForm.value.id)
-      if (index !== -1) {
-        allMockUsers[index] = { ...allMockUsers[index], ...userData }
-      }
+      await apiUpdateUser(userForm.value.id, payload)
     } else {
-      // Add new user to mock data
-      allMockUsers.push(userData)
+      await apiCreateUser(payload)
     }
-    
     closeUserModal()
-    await fetchUsers() // Refresh the current page
+    await fetchUsers()
     alert(isEditing.value ? 'User updated successfully!' : 'User created successfully!')
   } catch (error) {
     console.error('Error saving user:', error)
@@ -765,17 +593,9 @@ const deleteUser = async () => {
   
   deleting.value = true
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    // Remove from mock data
-    const index = allMockUsers.findIndex(u => u.id === userToDelete.value.id)
-    if (index !== -1) {
-      allMockUsers.splice(index, 1)
-    }
-    
+    await apiDeleteUser(userToDelete.value.id)
     closeDeleteModal()
-    await fetchUsers() // Refresh the current page
+    await fetchUsers()
     alert('User deleted successfully!')
   } catch (error) {
     console.error('Error deleting user:', error)

@@ -475,20 +475,33 @@ const fetchPatients = async () => {
     if (selectedGender.value) params.gender = selectedGender.value
 
     const response = await api.get('/patients', { params })
-    patients.value = response.data.data.map(patient => ({
-      ...patient,
-      lastVaccination: patient.vaccinationHistory?.length > 0 
-        ? patient.vaccinationHistory[patient.vaccinationHistory.length - 1].dateAdministered 
-        : null
+    const payload = response.data?.data || {}
+    const list = payload.patients || payload.items || payload || []
+
+    patients.value = list.map(p => ({
+      id: p.patient_id || p.id,
+      childInfo: {
+        name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim(),
+        sex: p.sex || p.gender || '',
+        birthDate: p.date_of_birth || p.birth_date || '',
+        phoneNumber: p.contact_number || '',
+        address: {
+          street: p.address || '',
+          barangay: p.barangay || '',
+          municipality: p.municipality || '',
+          province: p.province || '',
+          zipCode: p.zip_code || ''
+        }
+      },
+      motherInfo: {
+        name: p.mother_name || '',
+      },
+      lastVaccination: p.last_vaccination_date || null
     }))
 
-    if (response.data.pagination) {
-      totalItems.value = response.data.pagination.totalItems
-      totalPages.value = response.data.pagination.totalPages
-    } else {
-      totalItems.value = patients.value.length
-      totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
-    }
+    const totalCount = payload.totalCount || response.data?.total || patients.value.length
+    totalItems.value = totalCount
+    totalPages.value = Math.ceil(totalCount / itemsPerPage.value)
 
   } catch (error) {
     console.error('Error fetching patients:', error)
@@ -562,51 +575,45 @@ const editVaccinations = (patient) => {
 
 const editPatient = async (patient) => {
   try {
-    // First fetch complete patient details to ensure we have all data
-    const response = await api.get(`/patients/${patient.id}/details`);
-    const fullPatientData = response.data.data;
+    // Fetch patient details from backend
+    const response = await api.get(`/patients/${patient.id}`)
+    const p = response.data?.data || {}
     
     // Deep copy the complete patient data to the form
     form.value = {
-      id: fullPatientData.id,
+      id: p.patient_id || p.id,
       childInfo: {
-        name: fullPatientData.childInfo.name || '',
-        sex: fullPatientData.childInfo.sex || '',
-        birthDate: fullPatientData.childInfo.birthDate || '',
-        phoneNumber: fullPatientData.childInfo.phoneNumber || '',
-        birthWeightKg: fullPatientData.childInfo.birthWeightKg || '',
-        birthLengthCm: fullPatientData.childInfo.birthLengthCm || '',
-        placeOfBirth: fullPatientData.childInfo.placeOfBirth || '',
+        name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim(),
+        sex: p.sex || p.gender || '',
+        birthDate: p.date_of_birth || p.birth_date || '',
+        phoneNumber: p.contact_number || '',
+        birthWeightKg: p.birth_weight || '',
+        birthLengthCm: p.birth_height || '',
+        placeOfBirth: p.birth_place || '',
         address: {
-          street: fullPatientData.childInfo.address?.street || '',
-          barangay: fullPatientData.childInfo.address?.barangay || '',
-          municipality: fullPatientData.childInfo.address?.municipality || '',
-          province: fullPatientData.childInfo.address?.province || '',
-          zipCode: fullPatientData.childInfo.address?.zipCode || ''
+          street: p.address || '',
+          barangay: p.barangay || '',
+          municipality: p.municipality || '',
+          province: p.province || '',
+          zipCode: p.zip_code || ''
         }
       },
       motherInfo: {
-        name: fullPatientData.motherInfo?.name || '',
-        age: fullPatientData.motherInfo?.age || null,
-        educationLevel: fullPatientData.motherInfo?.educationLevel || '',
-        occupation: fullPatientData.motherInfo?.occupation || '',
-        phoneNumber: fullPatientData.motherInfo?.phoneNumber || ''
+        name: p.mother_name || '',
+        phoneNumber: p.mother_phone || ''
       },
       fatherInfo: {
-        name: fullPatientData.fatherInfo?.name || '',
-        age: fullPatientData.fatherInfo?.age || null,
-        educationLevel: fullPatientData.fatherInfo?.educationLevel || '',
-        occupation: fullPatientData.fatherInfo?.occupation || '',
-        phoneNumber: fullPatientData.fatherInfo?.phoneNumber || ''
+        name: p.father_name || '',
+        phoneNumber: p.father_phone || ''
       },
       medicalHistory: {
-        birthComplications: fullPatientData.medicalHistory?.birthComplications || '',
-        allergies: fullPatientData.medicalHistory?.allergies || '',
-        chronicConditions: fullPatientData.medicalHistory?.chronicConditions || '',
-        nutritionalStatus: fullPatientData.medicalHistory?.nutritionalStatus || ''
+        birthComplications: p.birth_complications || '',
+        allergies: (p.allergies || []).join(', '),
+        chronicConditions: (p.chronic_conditions || []).join(', '),
+        nutritionalStatus: p.nutritional_status || ''
       },
-      vaccinationHistory: fullPatientData.vaccinationHistory || [],
-      nextScheduledVaccinations: fullPatientData.nextScheduledVaccinations || []
+      vaccinationHistory: p.vaccinations || [],
+      nextScheduledVaccinations: p.next_scheduled || []
     }
     showEditModal.value = true;
   } catch (error) {

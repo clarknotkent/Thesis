@@ -1,20 +1,55 @@
 const supabase = require('../db');
 
-// Get summary statistics
-const getSummaryStats = async () => {
-  const { data, error } = await supabase.rpc('get_summary_stats');
+// Fetch dashboard metrics from dashboard_view
+const fetchDashboardMetrics = async () => {
+  const { data, error } = await supabase
+    .from('dashboard_view')
+    .select('*')
+    .single();
   if (error) throw error;
   return data;
 };
 
+// Get summary statistics (alias for fetchDashboardMetrics)
+const getSummaryStats = async () => {
+  return await fetchDashboardMetrics();
+};
+
+// Fetch worker progress from worker_progress_view
+const fetchWorkerProgress = async () => {
+  const { data, error } = await supabase
+    .from('worker_progress_view')
+    .select('*');
+  if (error) throw error;
+  return data;
+};
+
+// Get worker progress (alias for fetchWorkerProgress)
+const getWorkerProgress = async () => {
+  return await fetchWorkerProgress();
+};
+
+// Fetch vaccine report from vaccine_report_view
+const fetchVaccineReport = async () => {
+  const { data, error } = await supabase
+    .from('vaccine_report_view')
+    .select('*');
+  if (error) throw error;
+  return data;
+};
+
+// Get vaccine report (alias for fetchVaccineReport)
+const getVaccineReport = async () => {
+  return await fetchVaccineReport();
+};
+
 // Get recent activities
-const getRecentActivities = async () => {
+const getRecentActivities = async (limit = 10) => {
   const { data, error } = await supabase
     .from('activitylogs_view')
     .select('*')
     .order('timestamp', { ascending: false })
-    .limit(10);
-
+    .limit(limit);
   if (error) throw error;
   return data;
 };
@@ -24,7 +59,6 @@ const getDefaulters = async () => {
   const { data, error } = await supabase
     .from('defaulters_view')
     .select('*');
-
   if (error) throw error;
   return data;
 };
@@ -34,7 +68,6 @@ const getDueSoon = async () => {
   const { data, error } = await supabase
     .from('duesoon_view')
     .select('*');
-
   if (error) throw error;
   return data;
 };
@@ -44,7 +77,6 @@ const getInventoryLowStock = async () => {
   const { data, error } = await supabase
     .from('inventorylowstock_view')
     .select('*');
-
   if (error) throw error;
   return data;
 };
@@ -55,74 +87,25 @@ const getMonthlyReports = async (month) => {
     .from('monthlyreports_view')
     .select('*')
     .eq('report_month', month);
-
   if (error) throw error;
   return data;
 };
 
-// Fetch dashboard statistics from the database
-const getDashboardStats = async () => {
-  try {
-    // Fetch total patients
-    const { data: patients, error: patientsError } = await supabase
-      .from('patients')
-      .select('*');
-    if (patientsError) throw patientsError;
-
-    // Fetch active health workers
-    const { data: healthWorkers, error: healthWorkersError } = await supabase
-      .from('health_workers')
-      .select('*')
-      .eq('status', 'active');
-    if (healthWorkersError) throw healthWorkersError;
-
-    // Fetch pending appointments
-    const { data: appointments, error: appointmentsError } = await supabase
-      .from('appointments')
-      .select('*')
-      .eq('status', 'pending');
-    if (appointmentsError) throw appointmentsError;
-
-    // Fetch vaccine stock
-    const { data: vaccines, error: vaccinesError } = await supabase
-      .from('vaccine_inventory')
-      .select('*');
-    if (vaccinesError) throw vaccinesError;
-
-    // Calculate statistics
-    const totalPatients = patients.length;
-    const activeHealthWorkers = healthWorkers.length;
-    const pendingAppointments = appointments.length;
-    const vaccineTypes = vaccines.length;
-    const totalDoses = vaccines.reduce((sum, vaccine) => sum + vaccine.quantity, 0);
-    const lowStockItems = vaccines.filter(vaccine => vaccine.quantity < 10).length;
-    const expiringSoon = vaccines.filter(vaccine => {
-      const expiryDate = new Date(vaccine.expiry_date);
-      const today = new Date();
-      return (expiryDate - today) / (1000 * 60 * 60 * 24) <= 30;
-    }).length;
-
-    return {
-      totalPatients,
-      activeHealthWorkers,
-      pendingAppointments,
-      vaccineTypes,
-      totalDoses,
-      lowStockItems,
-      expiringSoon,
-    };
-  } catch (error) {
-    console.error('Error fetching dashboard statistics:', error);
-    throw error;
-  }
-};
-
 module.exports = {
+  fetchDashboardMetrics,
   getSummaryStats,
+  fetchWorkerProgress,
+  getWorkerProgress,
+  fetchVaccineReport,
+  getVaccineReport,
   getRecentActivities,
   getDefaulters,
   getDueSoon,
   getInventoryLowStock,
   getMonthlyReports,
-  getDashboardStats,
+  
+  // Alias function for test compatibility
+  getDashboardStats: async () => {
+    return await fetchDashboardMetrics();
+  }
 };

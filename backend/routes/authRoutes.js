@@ -1,14 +1,35 @@
 const express = require('express');
 const router = express.Router();
-const { login, register, verifyToken } = require('../controllers/authController');
-
-// POST /api/auth/login - User login
-router.post('/login', login);
+const {
+	registerUser,
+	loginUser,
+	logoutUser,
+	resetPassword,
+	linkSupabaseUser,
+	getUserMapping,
+	refreshToken
+} = require('../controllers/authController');
+const { validateToken } = require('../middlewares/authMiddleware');
 
 // POST /api/auth/register - User registration
-router.post('/register', register);
+router.post('/register', registerUser);
 
-// GET /api/auth/verify - Verify authentication token
-router.get('/verify', verifyToken);
+// POST /api/auth/login - User login
+router.post('/login', loginUser);
+
+// POST /api/auth/logout - User logout (validate token so we can log user info)
+router.post('/logout', validateToken, logoutUser);
+
+// POST /api/auth/reset-password - Reset password
+router.post('/reset-password', resetPassword);
+
+// POST /api/auth/link-supabase - Link Supabase user
+router.post('/link-supabase', linkSupabaseUser);
+
+// GET /api/auth/user-mapping - Get user mapping
+router.get('/user-mapping', getUserMapping);
+
+// POST /api/auth/refresh-token - Refresh token
+router.post('/refresh-token', refreshToken);
 
 module.exports = router;

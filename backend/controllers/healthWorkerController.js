@@ -1,9 +1,10 @@
-const healthWorkerModel = require('../models/healthWorkerModel');
+const userModel = require('../models/userModel');
 
-// Get all health workers
-const getHealthWorkers = async (req, res) => {
+// List all health workers
+const listHealthWorkers = async (req, res) => {
   try {
-    const healthWorkers = await healthWorkerModel.getAllHealthWorkers();
+    const filters = { role: 'HealthWorker' };
+    const healthWorkers = await userModel.getAllUsers(filters);
     res.json(healthWorkers);
   } catch (error) {
     console.error(error);
@@ -11,8 +12,8 @@ const getHealthWorkers = async (req, res) => {
   }
 };
 
-// Get a specific health worker by ID
-const getHealthWorkerDetails = async (req, res) => {
+// Get a health worker by ID
+const getHealthWorker = async (req, res) => {
   try {
     const healthWorker = await healthWorkerModel.getHealthWorkerById(req.params.id);
     if (!healthWorker) {
@@ -25,10 +26,11 @@ const getHealthWorkerDetails = async (req, res) => {
   }
 };
 
-// Create a new health worker
+// Create a health worker
 const createHealthWorker = async (req, res) => {
   try {
-    const newHealthWorker = await healthWorkerModel.createHealthWorker(req.body);
+    const healthWorkerData = { ...req.body, role: 'HealthWorker' };
+    const newHealthWorker = await userModel.createUser(healthWorkerData);
     res.status(201).json(newHealthWorker);
   } catch (error) {
     console.error(error);
@@ -39,7 +41,7 @@ const createHealthWorker = async (req, res) => {
 // Update a health worker
 const updateHealthWorker = async (req, res) => {
   try {
-    const updatedHealthWorker = await healthWorkerModel.updateHealthWorker(req.params.id, req.body);
+    const updatedHealthWorker = await userModel.updateUser(req.params.id, req.body);
     if (!updatedHealthWorker) {
       return res.status(404).json({ message: 'Health worker not found' });
     }
@@ -61,10 +63,22 @@ const deleteHealthWorker = async (req, res) => {
   }
 };
 
+// Get health worker progress
+const getHealthWorkerProgress = async (req, res) => {
+  try {
+    const progress = await healthWorkerModel.getHealthWorkerProgress(req.params.id);
+    res.json(progress);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch health worker progress' });
+  }
+};
+
 module.exports = {
-  getHealthWorkers,
-  getHealthWorkerDetails,
   createHealthWorker,
+  getHealthWorker,
   updateHealthWorker,
   deleteHealthWorker,
+  listHealthWorkers,
+  getHealthWorkerProgress,
 };

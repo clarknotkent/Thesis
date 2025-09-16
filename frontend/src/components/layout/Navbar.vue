@@ -58,6 +58,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { logout as doLogout } from '@/services/auth'
 
 const props = defineProps({
   userRole: {
@@ -74,8 +75,7 @@ const emit = defineEmits(['toggle-sidebar'])
 const router = useRouter()
 
 const logout = () => {
-  // Clear any stored authentication data
-  // For now, just redirect to login
+  doLogout()
   router.push('/auth/login')
 }
 

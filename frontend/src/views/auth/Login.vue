@@ -16,13 +16,13 @@
               <div class="card-body p-5">
                 <form @submit.prevent="handleLogin">
                   <div class="mb-3">
-                    <label for="email" class="form-label">Email Address</label>
+                    <label for="identifier" class="form-label">Email / Username / Phone</label>
                     <input
-                      type="email"
+                      type="text"
                       class="form-control form-control-lg"
-                      id="email"
-                      v-model="form.email"
-                      placeholder="Enter your email"
+                      id="identifier"
+                      v-model="form.identifier"
+                      placeholder="Enter email, username, or phone"
                       required
                     />
                   </div>
@@ -101,12 +101,13 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { login as loginApi } from '@/services/auth'
 
 const router = useRouter()
 
 // Form data
 const form = reactive({
-  email: '',
+  identifier: '',
   password: '',
   role: ''
 })
@@ -121,35 +122,28 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Basic validation
-    if (!form.email || !form.password || !form.role) {
+    if (!form.identifier || !form.password || !form.role) {
       throw new Error('Please fill in all fields')
     }
 
-    // For demo purposes, allow any email/password combination
-    // In production, this would be replaced with actual authentication
-    console.log('Login attempt:', form)
+    // Call backend login; identifier can be phone/email/username
+    const { user } = await loginApi({ identifier: form.identifier, password: form.password })
 
-    // Route based on user role
-    switch (form.role) {
-      case 'admin':
-        router.push('/admin/dashboard')
-        break
-      case 'health-worker':
-        router.push('/healthworker/dashboard')
-        break
-      case 'parent':
-        router.push('/parent/dashboard')
-        break
-      default:
-        throw new Error('Invalid role selected')
+    // If role chosen in UI mismatches backend role, reject
+    const backendRole = (user.role || '').toLowerCase()
+    const selectedRole = form.role.toLowerCase()
+    if (backendRole && backendRole !== selectedRole) {
+      throw new Error('Role mismatch. Please select your correct role.')
     }
 
+    // Navigate by role (prefer backend role if present)
+    const role = backendRole || selectedRole
+    if (role === 'admin') router.push('/admin/dashboard')
+    else if (role === 'healthworker' || role === 'health-worker') router.push('/healthworker/dashboard')
+    else if (role === 'parent') router.push('/parent/dashboard')
+    else router.push('/')
   } catch (err) {
-    error.value = err.message || 'Login failed. Please try again.'
+    error.value = err?.response?.data?.message || err.message || 'Login failed. Please try again.'
   } finally {
     loading.value = false
   }

@@ -352,8 +352,18 @@ const {
 const fetchVaccines = async () => {
   try {
     loading.value = true
-    const response = await api.get('/vaccines/stock')
-    vaccines.value = response.data.data
+    // Backend exposes /api/vaccines/inventory for stock list
+    const response = await api.get('/vaccines/inventory')
+    const items = response.data?.data?.items || response.data?.data || response.data || []
+    vaccines.value = items.map(v => ({
+      id: v.inventory_id || v.id,
+      vaccineName: v.vaccine_name || v.antigen_name || v.name || '',
+      manufacturer: v.manufacturer || '',
+      batchNo: v.batch_number || v.batchNo || '',
+      expiryDate: v.expiry_date || v.expiryDate || '',
+      quantity: v.quantity || 0,
+      status: v.status || (v.quantity > 0 ? (v.quantity < 10 ? 'Low' : 'Available') : 'Out')
+    }))
   } catch (error) {
     console.error('Error fetching vaccines:', error)
     alert('Error loading vaccine data')
@@ -364,8 +374,18 @@ const fetchVaccines = async () => {
 
 const fetchStats = async () => {
   try {
-    const response = await api.get('/vaccines/stock/stats')
-    stats.value = response.data.data
+    // Compute stats client-side from current vaccines
+    const totalTypes = new Set(vaccines.value.map(v => v.vaccineName)).size
+    const totalDoses = vaccines.value.reduce((sum, v) => sum + (v.quantity || 0), 0)
+    const lowStock = vaccines.value.filter(v => (v.quantity || 0) > 0 && (v.quantity || 0) < 10).length
+    const expiringSoon = vaccines.value.filter(v => {
+      if (!v.expiryDate) return false
+      const d = new Date(v.expiryDate)
+      const now = new Date()
+      const in30 = new Date(now.getTime() + 30*24*60*60*1000)
+      return d >= now && d <= in30
+    }).length
+    stats.value = { totalTypes, totalDoses, lowStock, expiringSoon }
   } catch (error) {
     console.error('Error fetching stats:', error)
   }
@@ -375,10 +395,18 @@ const saveVaccine = async () => {
   try {
     saving.value = true
     
+    const payload = {
+      vaccine_id: form.value.vaccine_id,
+      batch_number: form.value.batchNo,
+      expiry_date: form.value.expiryDate,
+      quantity: form.value.quantity,
+      manufacturer: form.value.manufacturer,
+      vaccine_name: form.value.vaccineName
+    }
     if (isEditing.value) {
-      await api.put(`/vaccines/stock/${form.value.id}`, form.value)
+      await api.put(`/vaccines/inventory/${form.value.id}`, payload)
     } else {
-      await api.post('/vaccines/stock', form.value)
+      await api.post('/vaccines/inventory', payload)
     }
     
     closeModal()

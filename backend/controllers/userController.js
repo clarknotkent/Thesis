@@ -1,256 +1,187 @@
 const userModel = require('../models/userModel');
 
-// GET /api/users - Get all users with pagination and filtering
-const getUsers = async (req, res) => {
+// Create a new user
+const createUser = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search = '', 
-      role = '', 
-      status = '',
-      sortBy = 'createdAt',
-      sortOrder = 'desc' 
-    } = req.query;
-
-    const users = await userModel.getAllUsers();
-
-    let filteredUsers = [...users];
-
-    // Apply search filter
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredUsers = filteredUsers.filter(user => 
-        user.name.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
+    const userData = req.body;
+    
+    // Validate required fields
+    if (!userData.username || !userData.email || !userData.password || !userData.role) {
+      return res.status(400).json({ message: 'Missing required fields: username, email, password, role' });
     }
 
-    // Apply role filter
-    if (role) {
-      filteredUsers = filteredUsers.filter(user => user.role === role);
-    }
-
-    // Apply status filter
-    if (status) {
-      filteredUsers = filteredUsers.filter(user => user.status === status);
-    }
-
-    // Apply sorting
-    filteredUsers.sort((a, b) => {
-      let valueA = a[sortBy];
-      let valueB = b[sortBy];
-      
-      if (sortBy === 'createdAt' || sortBy === 'lastLogin') {
-        valueA = new Date(valueA);
-        valueB = new Date(valueB);
-      }
-      
-      if (sortOrder === 'desc') {
-        return valueB > valueA ? 1 : valueB < valueA ? -1 : 0;
-      } else {
-        return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
-      }
-    });
-
-    // Calculate pagination
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const startIndex = (pageNum - 1) * limitNum;
-    const endIndex = startIndex + limitNum;
-    const totalItems = filteredUsers.length;
-    const totalPages = Math.ceil(totalItems / limitNum);
-
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-
-    // Remove sensitive data
-    const safeUsers = paginatedUsers.map(user => {
-      const { password, ...safeUser } = user;
-      return safeUser;
-    });
-
-    res.json({
-      success: true,
-      data: safeUsers,
-      pagination: {
-        currentPage: pageNum,
-        totalPages,
-        totalItems,
-        limit: limitNum,
-        hasNext: pageNum < totalPages,
-        hasPrev: pageNum > 1
-      },
-      filters: {
-        search,
-        role, 
-        status,
-        sortBy,
-        sortOrder
-      }
-    });
+    const newUser = await userModel.createUser(userData);
+    
+    // Remove password from response
+    const { password, ...safeUser } = newUser;
+    res.status(201).json({ message: 'User created successfully', user: safeUser });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching users',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to create user', error });
   }
 };
 
-// GET /api/users/:id - Get user by ID
-const getUserById = async (req, res) => {
+// Get a user by ID
+const getUser = async (req, res) => {
   try {
-    const user = await userModel.getUserById(req.params.id);
+    const { id } = req.params;
+    const user = await userModel.getUserById(id);
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    // Remove sensitive data
-    const { password, ...safeUser } = user;
     
-    res.json({
-      success: true,
-      data: safeUser
-    });
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching user',
-      error: error.message
-    });
-  }
-};
-
-// POST /api/users - Create new user
-const createUser = async (req, res) => {
-  try {
-    const newUser = await userModel.createUser(req.body);
-    res.status(201).json(newUser);
+    // Remove password from response
+    const { password, ...safeUser } = user;
+    res.json(safeUser);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to create user' });
+    res.status(500).json({ message: 'Failed to fetch user', error });
   }
 };
 
-// PUT /api/users/:id - Update user
+// Update a user
 const updateUser = async (req, res) => {
   try {
-    const updatedUser = await userModel.updateUser(req.params.id, req.body);
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const updatedUser = await userModel.updateUser(id, updateData);
+    
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(updatedUser);
+    
+    // Remove password from response
+    const { password, ...safeUser } = updatedUser;
+    res.json({ message: 'User updated successfully', user: safeUser });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to update user' });
+    res.status(500).json({ message: 'Failed to update user', error });
   }
 };
 
-// DELETE /api/users/:id - Delete user
+// Delete a user
 const deleteUser = async (req, res) => {
   try {
-    await userModel.deleteUser(req.params.id);
-    res.status(204).send();
+    const { id } = req.params;
+    const success = await userModel.deleteUser(id);
+    
+    if (!success) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to delete user' });
+    res.status(500).json({ message: 'Failed to delete user', error });
   }
 };
 
-// GET /api/users/stats - Get user statistics
-const getUserStats = (req, res) => {
+// List all users with pagination and filtering
+const listUsers = async (req, res) => {
   try {
-    const stats = {
-      totalUsers: users.length,
-      admins: users.filter(u => u.role === 'admin').length,
-      healthWorkers: users.filter(u => u.role === 'health_worker').length,
-      parents: users.filter(u => u.role === 'parent').length,
-      activeUsers: users.filter(u => u.status === 'active').length,
-      inactiveUsers: users.filter(u => u.status === 'inactive').length,
-      recentlyJoined: users.filter(u => {
-        const joinDate = new Date(u.createdAt);
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return joinDate >= thirtyDaysAgo;
-      }).length
-    };
-    
-    res.json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching user statistics',
-      error: error.message
-    });
-  }
-};
-
-// GET /api/users/activity - Get user activity logs
-const getUserActivityLogs = (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const startIndex = (pageNum - 1) * limitNum;
-    const endIndex = startIndex + limitNum;
-    const totalItems = userActivityLogs.length;
-    const totalPages = Math.ceil(totalItems / limitNum);
-
-    // Sort by timestamp desc
-    const sortedLogs = userActivityLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const paginatedLogs = sortedLogs.slice(startIndex, endIndex);
+    const { page = 1, limit = 10, search = '', role = '', status = '' } = req.query;
+    const { users, totalCount, totalPages } = await userModel.getAllUsers(
+      { search, role, status },
+      parseInt(page),
+      parseInt(limit)
+    );
 
     res.json({
-      success: true,
-      data: paginatedLogs,
+      users,
       pagination: {
-        currentPage: pageNum,
+        currentPage: parseInt(page),
         totalPages,
-        totalItems,
-        limit: limitNum,
-        hasNext: pageNum < totalPages,
-        hasPrev: pageNum > 1
+        totalItems: totalCount,
+        limit: parseInt(limit)
       }
     });
   } catch (error) {
-    console.error('Error fetching activity logs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching activity logs',
-      error: error.message
-    });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch users', error });
   }
 };
 
-// PUT /api/users/:id/password - Update user password
-const updateUserPassword = async (req, res) => {
+// Get user profile
+const getUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { newPassword } = req.body;
-
-    // Logic to update user password
-    // Example: const result = await userModel.updatePassword(id, newPassword);
-
-    res.json({ message: 'User password updated successfully' });
+    const profile = await userModel.getUserProfile(id);
+    
+    if (!profile) {
+      return res.status(404).json({ message: 'User profile not found' });
+    }
+    
+    res.json(profile);
   } catch (error) {
-    console.error('Error updating user password:', error);
-    res.status(500).json({ message: 'Failed to update user password', error: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch user profile', error });
+  }
+};
+
+// Update user role
+const updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    if (!role) {
+      return res.status(400).json({ message: 'Role is required' });
+    }
+
+  const updatedUser = await userModel.assignRole(id, role);
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ message: 'User role updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to update user role', error });
+  }
+};
+
+// Deactivate user account
+const deactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+  const success = await userModel.deleteUser(id);
+    
+    if (!success) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ message: 'User account deactivated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to deactivate user account', error });
+  }
+};
+
+// Get user activity logs
+const getUserActivityLogs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+    
+    const logs = [];
+    res.json(logs);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch user activity logs', error });
   }
 };
 
 module.exports = {
-  getUsers,
-  getUserById,
   createUser,
+  getUser,
   updateUser,
   deleteUser,
-  getUserStats,
+  listUsers,
+  getUserProfile,
+  updateUserRole,
+  deactivateUser,
   getUserActivityLogs,
-  updateUserPassword,
 };

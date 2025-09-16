@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isAuthenticated, getRole } from '@/services/auth'
 
 // Auth Views
 import Login from '@/views/auth/Login.vue'
@@ -179,12 +180,25 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for authentication (basic setup)
+// Navigation guard for authentication and role
 router.beforeEach((to, from, next) => {
-  // Set page title
   document.title = to.meta.title || 'ImmunizeMe'
-  
-  // For now, just allow all routes - we'll add proper auth later
+
+  const requiresAuth = to.meta?.requiresAuth
+  if (!requiresAuth) return next()
+
+  if (!isAuthenticated()) {
+    return next({ path: '/auth/login', query: { redirect: to.fullPath } })
+  }
+
+  const role = (getRole() || '').toLowerCase()
+  const requiredRole = (to.meta?.role || '').toLowerCase()
+  if (requiredRole && role && role !== requiredRole) {
+    // Redirect to role-appropriate dashboard
+    if (role === 'admin') return next('/admin/dashboard')
+    if (role === 'healthworker' || role === 'health-worker') return next('/healthworker/dashboard')
+    if (role === 'parent') return next('/parent/dashboard')
+  }
   next()
 })
 

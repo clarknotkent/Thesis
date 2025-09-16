@@ -1,0 +1,31 @@
+/* Design Tokens (loaded BEFORE Bootstrap so variables can theme components) */
+:root {
+  --primary-color: #0d6efd;
+  --primary-dark: #0056b3;
+  --secondary-color: #6c757d;
+  --success-color: #198754;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --info-color: #0dcaf0;
+  --light-color: #f8f9fa;
+  --dark-color: #212529;
+
+  --sidebar-bg: #f8f9fa;
+  --sidebar-border: #dee2e6;
+  --navbar-height: 60px;
+  --sidebar-width: 280px;
+  --right-sidebar-width: 320px;
+
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --text-muted: #6c757d;
+  --text-light: #ffffff;
+
+  /* Semantic (future) */
+  --radius-sm: .25rem;
+  --radius-md: .5rem;
+  --radius-lg: .75rem;
+  --shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
+  --shadow-md: 0 .5rem 1rem rgba(0,0,0,.15);
+  --transition-fast: .15s ease-in-out;
+}

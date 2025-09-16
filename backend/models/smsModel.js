@@ -45,8 +45,30 @@ const logSMS = async (to, message, status) => {
   return data;
 };
 
+// Test functions for compatibility
+const getAllNotifications = async () => {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+const getNotificationById = async (id) => {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('notification_id', id)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+};
+
 module.exports = {
   sendSMS,
   getSMSLogs,
   logSMS,
+  getAllNotifications,
+  getNotificationById,
 };

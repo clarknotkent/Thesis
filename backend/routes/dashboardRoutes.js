@@ -1,22 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getDashboardStats,
-  getRecentVaccinations,
-  getVaccineChartData,
+  getDashboardMetrics,
+  getWorkerProgress,
+  getVaccineReport,
   getDashboardOverview
 } = require('../controllers/dashboardController');
 
-// GET /api/dashboard/stats - Get dashboard statistics
-router.get('/stats', getDashboardStats);
+// GET /api/dashboard/metrics - Get dashboard metrics
+router.get('/metrics', getDashboardMetrics);
 
-// GET /api/dashboard/recent-vaccinations - Get recent vaccinations
-router.get('/recent-vaccinations', getRecentVaccinations);
+// GET /api/dashboard/worker-progress - Get health worker progress
+router.get('/worker-progress', getWorkerProgress);
 
-// GET /api/dashboard/vaccine-chart-data - Get vaccine chart data
-router.get('/vaccine-chart-data', getVaccineChartData);
+// GET /api/dashboard/vaccine-report - Get vaccine report
+router.get('/vaccine-report', getVaccineReport);
 
-// GET /api/dashboard/overview - Get complete dashboard overview
+// GET /api/dashboard/overview - Get dashboard overview
 router.get('/overview', getDashboardOverview);
 
 module.exports = router;
