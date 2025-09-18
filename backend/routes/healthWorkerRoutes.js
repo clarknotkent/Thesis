@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
 const {
   listHealthWorkers,
   getHealthWorker,
@@ -16,13 +17,13 @@ router.get('/', listHealthWorkers);
 router.get('/:id', getHealthWorker);
 
 // POST /api/health-workers - Create health worker
-router.post('/', createHealthWorker);
+router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createHealthWorker);
 
 // PUT /api/health-workers/:id - Update health worker
-router.put('/:id', updateHealthWorker);
+router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateHealthWorker);
 
 // DELETE /api/health-workers/:id - Delete health worker
-router.delete('/:id', deleteHealthWorker);
+router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteHealthWorker);
 
 // GET /api/health-workers/:id/progress - Get health worker progress
 router.get('/:id/progress', getHealthWorkerProgress);

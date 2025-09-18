@@ -3,21 +3,65 @@ const userModel = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const supabase = require('../db');
+const { createClient } = require('@supabase/supabase-js');
 
-// Register a new user
+// Create a fresh Supabase client for per-request auth without persisting session
+const getAuthClient = () => {
+  const url = process.env.SUPABASE_URL;
+  // Prefer service role for server-side operations; fallback to generic key, then anon last
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!process.env.SUPABASE_SERVICE_KEY) {
+    console.warn('[auth] Warning: SUPABASE_SERVICE_KEY is not set; falling back to a non-service key for admin calls.');
+  }
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+};
+
+// Register a new user: create Supabase Auth user (email-only), then app user, then user_mapping
 const registerUser = async (req, res) => {
   try {
-    const { username, password, email, name } = req.body;
+    const { username, password, email, firstname, surname, contact_number, role } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    // Create Supabase Auth user (email is the only enabled provider)
+    // Use per-request admin client as well to avoid shared session side-effects
+    const admin = getAuthClient();
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true
+    });
+    if (createErr) {
+      return res.status(400).json({ message: 'Supabase auth user creation failed', error: createErr.message });
+    }
+
+    // Create application user record
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await authModel.registerUser({ username, password_hash: hashedPassword, email, name });
-    res.status(201).json(newUser);
+    const newUser = await authModel.registerUser({
+      username,
+      password_hash: hashedPassword,
+      email,
+      firstname,
+      surname,
+      contact_number,
+      role: role || 'GUARDIAN'
+    });
+
+    // Map Supabase UUID to local user_id
+    try {
+      await authModel.createUserMapping({ uuid: created.user.id, user_id: newUser.user_id });
+    } catch (e) {
+      console.error('Mapping create failed:', e?.message || e);
+    }
+
+    res.status(201).json({ message: 'User registered', user: newUser });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Registration failed' });
   }
 };
 
-// Login user (accepts username, email, or phone as identifier) using Supabase Auth
+// Login user (accepts username/email/phone). Resolve to email and sign in via email-only Supabase Auth.
 const loginUser = async (req, res) => {
   try {
     const { username, identifier: rawIdentifier, password } = req.body;
@@ -33,22 +77,13 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Decide whether to sign in via email or phone
-    const isEmail = /@/.test(identifier);
-    const isPhoneLike = /^\+?\d[\d\s-]{5,}$/.test(identifier);
-
-    let signInResult;
-    if (isEmail) {
-      signInResult = await supabase.auth.signInWithPassword({ email: identifier, password });
-    } else if (isPhoneLike) {
-      signInResult = await supabase.auth.signInWithPassword({ phone: identifier, password });
-    } else if (appUser.email) {
-      signInResult = await supabase.auth.signInWithPassword({ email: appUser.email, password });
-    } else if (appUser.contact_number) {
-      signInResult = await supabase.auth.signInWithPassword({ phone: appUser.contact_number, password });
-    } else {
-      return res.status(400).json({ message: 'User record missing email/phone for authentication' });
+    // Resolve email; we only use email sign-in
+    const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
+    if (!emailToUse) {
+      return res.status(400).json({ message: 'User record missing email for authentication' });
     }
+  const sb = getAuthClient();
+  const signInResult = await sb.auth.signInWithPassword({ email: emailToUse, password });
 
     const { data: sessionData, error: signInError } = signInResult || {};
     if (signInError || !sessionData?.user) {

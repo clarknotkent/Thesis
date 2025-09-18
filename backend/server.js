@@ -17,12 +17,24 @@ const userRoutes = require('./routes/userRoutes');
 const vaccineRoutes = require('./routes/vaccineRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const smsRoutes = require('./routes/smsRoutes');
+const healthWorkerRoutes = require('./routes/healthWorkerRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const visitRoutes = require('./routes/visitRoutes');
+const conversationRoutes = require('./routes/conversationRoutes');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vaccines', vaccineRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/sms', smsRoutes);
+app.use('/api/health-workers', healthWorkerRoutes);
+app.use('/api/activity-logs', activityRoutes);
+app.use('/api/visits', visitRoutes);
+app.use('/api/conversations', conversationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

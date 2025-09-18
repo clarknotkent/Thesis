@@ -1,13 +1,20 @@
 const supabase = require('../db');
-const bcrypt = require('bcrypt');
+
+const normalizeRole = (role) => {
+  const r = (role || '').toLowerCase();
+  if (r === 'admin') return 'Admin';
+  if (r === 'health_worker' || r === 'health worker') return 'Health Worker';
+  if (r === 'parent' || r === 'guardian') return 'Guardian';
+  return role; // fallback to provided
+};
 
 const userModel = {
   // Get all users with filtering and pagination
   getAllUsers: async (filters = {}, page = 1, limit = 10) => {
     try {
       let query = supabase
-        .from('users')
-        .select('user_id, username, email, role, firstname, surname, last_login, contact_number, is_deleted', { count: 'exact' });
+        .from('users_with_uuid')
+        .select('user_id, username, email, role, firstname, surname, last_login, contact_number, is_deleted, supabase_uuid', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
@@ -29,8 +36,8 @@ const userModel = {
       // Apply pagination
       const offset = (page - 1) * limit;
       const { data, error, count } = await query
-        .range(offset, offset + limit - 1)
-        .order('user_id', { ascending: false });
+  .range(offset, offset + limit - 1)
+  .order('user_id', { ascending: false });
 
       if (error) throw error;
 
@@ -45,7 +52,8 @@ const userModel = {
           status: u.is_deleted ? 'inactive' : 'active',
           lastLogin: u.last_login || null,
           contact_number: u.contact_number || null,
-          name: [u.firstname, u.surname].filter(Boolean).join(' ')
+          name: [u.firstname, u.surname].filter(Boolean).join(' '),
+          supabase_uuid: u.supabase_uuid || null
         })),
         totalCount: count || 0,
         page: parseInt(page),
@@ -62,8 +70,8 @@ const userModel = {
   getUserById: async (id) => {
     try {
       const { data, error } = await supabase
-        .from('users')
-        .select('user_id, username, email, role, firstname, surname')
+        .from('users_with_uuid')
+        .select('user_id, username, email, role, firstname, surname, supabase_uuid')
         .eq('user_id', id)
         .single();
 
@@ -78,24 +86,24 @@ const userModel = {
   // Create new user
   createUser: async (userData) => {
     try {
-      // Hash password
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+      // Do NOT store password locally; Supabase Auth holds credentials
+      const payload = {
+        username: userData.username,
+        email: userData.email,
+        role: normalizeRole(userData.role),
+        firstname: userData.firstname,
+        surname: userData.surname,
+        contact_number: userData.contact_number || null,
+        address: userData.address || null,
+  sex: userData.sex || 'Other',
+        birthdate: userData.birthdate || null,
+        is_deleted: userData.status === 'inactive',
+        professional_license_no: userData.professional_license_no || null
+      };
 
       const { data, error } = await supabase
         .from('users')
-        .insert({
-          username: userData.username,
-          email: userData.email,
-          password_hash: hashedPassword,
-          role: userData.role,
-          firstname: userData.firstname,
-          surname: userData.surname,
-          contact_number: userData.contact_number,
-          address: userData.address,
-          sex: userData.sex,
-          birthdate: userData.birthdate
-        })
+        .insert(payload)
         .select('user_id, username, email, role, firstname, surname, contact_number')
         .single();
 
@@ -110,18 +118,29 @@ const userModel = {
   // Update user
   updateUser: async (id, updates) => {
     try {
-      const updateData = { ...updates };
-      
-      // Hash password if it's being updated
-      if (updates.password) {
-        const saltRounds = 12;
-        updateData.password_hash = await bcrypt.hash(updates.password, saltRounds);
+  const updateData = { ...updates };
+
+      // Password updates should go through Supabase Auth; ignore local password field
+      if (updateData.password) {
         delete updateData.password;
       }
 
+      if (typeof updates.status !== 'undefined') {
+        updateData.is_deleted = updates.status === 'inactive';
+        delete updateData.status;
+      }
+
+      // Whitelist allowed columns to avoid unknown column errors
+      if (typeof updateData.role !== 'undefined') {
+        updateData.role = normalizeRole(updateData.role);
+      }
+
+      const allowed = ['username', 'email', 'role', 'firstname', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no'];
+      const filtered = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.includes(k)));
+
       const { data, error } = await supabase
         .from('users')
-        .update(updateData)
+        .update(filtered)
         .eq('user_id', id)
         .select('user_id, username, email, role, firstname, surname, contact_number')
         .single();
@@ -225,7 +244,7 @@ const userModel = {
   getUserProfile: async (userId) => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('users_with_uuid')
         .select(`
           user_id,
           username,
@@ -236,7 +255,8 @@ const userModel = {
           contact_number,
           address,
           date_registered,
-          last_login
+          last_login,
+          supabase_uuid
         `)
         .eq('user_id', userId)
         .single();

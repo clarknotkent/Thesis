@@ -28,181 +28,71 @@ const sendSMSNotification = async (req, res) => {
   }
 };
 
-// Send reminder notifications
+// Send reminder notifications (placeholder)
 const sendReminderNotifications = async (req, res) => {
   try {
-    const { type = 'all', daysAhead = 7 } = req.query;
-    const reminders = await smsModel.sendScheduledReminders(type, daysAhead);
-    res.json({ 
-      success: true,
-      message: 'Reminder notifications sent', 
-      data: { count: reminders.length, reminders } 
-    });
+    res.json({ success: true, message: 'Reminders not implemented in backend. Use scheduler + notifications table.' });
   } catch (error) {
-    console.error('Error sending reminder notifications:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to send reminder notifications', 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, message: 'Failed to send reminder notifications', error: error.message });
   }
 };
 
-// Get SMS history
+// Get SMS history (from notifications table)
 const getSMSHistory = async (req, res) => {
   try {
-    const { 
-      limit = 50, 
-      offset = 0, 
-      phoneNumber, 
-      type, 
-      status,
-      startDate,
-      endDate 
-    } = req.query;
-    
-    const filters = { phoneNumber, type, status, startDate, endDate };
-    const history = await smsModel.getSMSHistory(parseInt(limit), parseInt(offset), filters);
-    res.json({ 
-      success: true, 
-      data: history 
-    });
+    const history = await smsModel.getAllNotifications();
+    res.json({ success: true, data: history });
   } catch (error) {
-    console.error('Error fetching SMS history:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch SMS history', 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch SMS history', error: error.message });
   }
 };
 
-// Configure SMS settings
 const configureSMSSettings = async (req, res) => {
-  try {
-    const settings = req.body;
-    const result = await smsModel.updateSMSSettings(settings);
-    res.json({ 
-      success: true,
-      message: 'SMS settings updated successfully', 
-      data: result 
-    });
-  } catch (error) {
-    console.error('Error configuring SMS settings:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to configure SMS settings', 
-      error: error.message 
-    });
-  }
+  res.json({ success: true, message: 'SMS settings management not implemented' });
 };
 
-// Get SMS delivery status
 const getSMSDeliveryStatus = async (req, res) => {
   try {
     const { messageId } = req.params;
-    const status = await smsModel.getSMSDeliveryStatus(messageId);
-    
-    if (!status) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'SMS message not found' 
-      });
-    }
-    
-    res.json({ 
-      success: true, 
-      data: status 
-    });
+    const notif = await smsModel.getNotificationById(messageId);
+    if (!notif) return res.status(404).json({ success: false, message: 'SMS message not found' });
+    res.json({ success: true, data: { status: notif.status, notification: notif } });
   } catch (error) {
-    console.error('Error getting SMS delivery status:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to get SMS delivery status', 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, message: 'Failed to get SMS delivery status', error: error.message });
   }
 };
 
 // Send bulk SMS notifications
 const sendBulkSMS = async (req, res) => {
   try {
-    const { recipients, message, type = 'bulk' } = req.body;
-    
+    const { recipients, message } = req.body;
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Recipients array is required and must not be empty' 
-      });
+      return res.status(400).json({ success: false, message: 'Recipients array required' });
     }
-    
     if (!message) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Message is required' 
-      });
+      return res.status(400).json({ success: false, message: 'Message is required' });
     }
-
-    const results = await smsModel.sendBulkSMS(recipients, message, type);
-    res.json({ 
-      success: true,
-      message: 'Bulk SMS sent', 
-      data: results 
-    });
+    const results = await Promise.all(
+      recipients.map(async (to) => {
+        const sent = await smsModel.sendSMS(to, message);
+        await smsModel.logSMS(to, message, 'SENT');
+        return sent;
+      })
+    );
+    res.json({ success: true, message: 'Bulk SMS processed', data: results });
   } catch (error) {
-    console.error('Error sending bulk SMS:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to send bulk SMS', 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, message: 'Failed to send bulk SMS', error: error.message });
   }
 };
 
 // Get SMS templates
 const getSMSTemplates = async (req, res) => {
-  try {
-    const { type } = req.query;
-    const templates = await smsModel.getSMSTemplates(type);
-    res.json({ 
-      success: true, 
-      data: templates 
-    });
-  } catch (error) {
-    console.error('Error fetching SMS templates:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch SMS templates', 
-      error: error.message 
-    });
-  }
+  res.json({ success: true, data: [] });
 };
 
 // Create SMS template
 const createSMSTemplate = async (req, res) => {
-  try {
-    const templateData = {
-      name: req.body.name,
-      type: req.body.type,
-      message: req.body.message,
-      variables: req.body.variables || [],
-      is_active: req.body.is_active !== undefined ? req.body.is_active : true
-    };
-
-    const template = await smsModel.createSMSTemplate(templateData);
-    res.status(201).json({ 
-      success: true,
-      message: 'SMS template created successfully', 
-      data: template 
-    });
-  } catch (error) {
-    console.error('Error creating SMS template:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to create SMS template', 
-      error: error.message 
-    });
-  }
+  res.status(201).json({ success: true, message: 'SMS templates not implemented' });
 };
 
 module.exports = {

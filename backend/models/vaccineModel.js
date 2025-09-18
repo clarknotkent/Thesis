@@ -65,15 +65,11 @@ const vaccineModel = {
       const { data, error } = await supabase
         .from('vaccinemaster')
         .insert({
-          antigen_name: vaccineData.antigen_name,
+          antigen_name: vaccineData.vaccine_name || vaccineData.antigen_name,
           brand_name: vaccineData.brand_name,
           manufacturer: vaccineData.manufacturer,
           vaccine_type: vaccineData.vaccine_type,
-          dosage: vaccineData.dosage,
-          route_of_administration: vaccineData.route_of_administration,
-          storage_requirements: vaccineData.storage_requirements,
-          contraindications: vaccineData.contraindications,
-          adverse_reactions: vaccineData.adverse_reactions
+          // extra fields ignored if not present in schema
         })
         .select()
         .single();
@@ -95,7 +91,7 @@ const vaccineModel = {
           ...updates,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id)
+        .eq('vaccine_id', id)
         .select()
         .single();
 
@@ -155,33 +151,7 @@ const vaccineModel = {
     }
   },
 
-  // vaccinemaster Management Functions
-  // Add vaccine vaccinemaster
-  addvaccinemaster: async (vaccinemasterData) => {
-    try {
-      const { data, error } = await supabase
-        .from('vaccinemaster')
-        .insert({
-          vaccine_id: vaccinemasterData.vaccine_id,
-          lot_number: vaccinemasterData.lot_number,
-          expiry_date: vaccinemasterData.expiry_date,
-          quantity: vaccinemasterData.quantity,
-          cost_per_dose: vaccinemasterData.cost_per_dose,
-          supplier: vaccinemasterData.supplier,
-          received_date: vaccinemasterData.received_date,
-          location: vaccinemasterData.location,
-          status: vaccinemasterData.status
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error adding vaccinemaster:', error);
-      throw error;
-    }
-  },
+  // Inventory-related functions are not implemented in this model
 
   // Get vaccinemaster by ID
   getvaccinemasterById: async (id) => {

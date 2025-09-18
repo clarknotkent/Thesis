@@ -1,4 +1,5 @@
 const userModel = require('../models/userModel');
+const healthWorkerModel = require('../models/healthWorkerModel');
 
 // List all health workers
 const listHealthWorkers = async (req, res) => {

@@ -1,24 +1,20 @@
 const supabase = require('../db');
 
 const patientModel = {
-  // Fetch all patients with optional filters and pagination
+  // Fetch all patients with optional filters and pagination (reads from patients_view)
   getAllPatients: async (filters = {}, page = 1, limit = 10) => {
     try {
       let query = supabase
-        .from('patients')
+        .from('patients_view')
         .select('*', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
-        query = query.or(`firstname.ilike.%${filters.search}%,surname.ilike.%${filters.search}%`);
+        query = query.ilike('patient_name', `%${filters.search}%`);
       }
 
       if (filters.sex) {
         query = query.eq('sex', filters.sex);
-      }
-
-      if (filters.barangay) {
-        query = query.eq('barangay', filters.barangay);
       }
 
       if (filters.age_group) {
@@ -51,7 +47,7 @@ const patientModel = {
       const offset = (page - 1) * limit;
       const { data, error, count } = await query
         .range(offset, offset + limit - 1)
-        .order('firstname', { ascending: true });
+  .order('patient_id', { ascending: false });
 
       if (error) throw error;
 
@@ -68,23 +64,13 @@ const patientModel = {
     }
   },
 
-  // Get patient by ID
+  // Get patient by ID (reads from patients_view)
   getPatientById: async (id) => {
     try {
       const { data, error } = await supabase
-        .from('patients')
-        .select(`
-          *,
-          guardian:guardian_id (
-            guardian_id,
-            firstname,
-            surname,
-            contact_number,
-            address
-          )
-        `)
+        .from('patients_view')
+        .select('*')
         .eq('patient_id', id)
-        .eq('is_deleted', false)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -166,20 +152,12 @@ const patientModel = {
     }
   },
 
-  // Get patient vaccination schedule
+  // Get patient vaccination schedule (reads from patientschedule_view)
   getPatientVaccinationSchedule: async (patientId) => {
     try {
       const { data, error } = await supabase
-        .from('patientschedule')
-        .select(`
-          *,
-          vaccine:vaccine_id (
-            vaccine_id,
-            antigen_name,
-            brand_name,
-            dosage
-          )
-        `)
+        .from('patientschedule_view')
+        .select('*')
         .eq('patient_id', patientId)
         .order('scheduled_date', { ascending: true });
 
@@ -191,16 +169,16 @@ const patientModel = {
     }
   },
 
-  // Update patient tag
+  // Update patient tag(s)
   updatePatientTag: async (patientId, tag) => {
     try {
       const { data, error } = await supabase
         .from('patients')
         .update({ 
-          tag,
+          tags: tag,
           updated_at: new Date().toISOString()
         })
-        .eq('id', patientId)
+        .eq('patient_id', patientId)
         .select()
         .single();
 
@@ -212,13 +190,28 @@ const patientModel = {
     }
   },
 
-  // Get patient birth history
+  // Get patient birth history (from birthhistory table)
   getPatientBirthHistory: async (patientId) => {
     try {
       const { data, error } = await supabase
-        .from('patients')
-        .select('birth_weight, birth_height, birth_place, birthdate')
-        .eq('id', patientId)
+        .from('birthhistory')
+        .select(`
+          birthhistory_id,
+          patient_id,
+          birth_weight,
+          birth_length,
+          place_of_birth,
+          address_at_birth,
+          time_of_birth,
+          attendant_at_birth,
+          type_of_delivery,
+          ballards_score,
+          hearing_test_date,
+          newborn_screening_date,
+          newborn_screening_result
+        `)
+        .eq('patient_id', patientId)
+        .eq('is_deleted', false)
         .single();
 
       if (error) throw error;
@@ -229,18 +222,27 @@ const patientModel = {
     }
   },
 
-  // Update patient birth history
+  // Upsert patient birth history
   updatePatientBirthHistory: async (patientId, birthData) => {
     try {
+      const payload = {
+        patient_id: patientId,
+        birth_weight: birthData.birth_weight,
+        birth_length: birthData.birth_length,
+        place_of_birth: birthData.place_of_birth,
+        address_at_birth: birthData.address_at_birth,
+        time_of_birth: birthData.time_of_birth,
+        attendant_at_birth: birthData.attendant_at_birth,
+        type_of_delivery: birthData.type_of_delivery,
+        ballards_score: birthData.ballards_score,
+        hearing_test_date: birthData.hearing_test_date,
+        newborn_screening_date: birthData.newborn_screening_date,
+        newborn_screening_result: birthData.newborn_screening_result,
+        updated_at: new Date().toISOString()
+      };
       const { data, error } = await supabase
-        .from('patients')
-        .update({
-          birth_weight: birthData.birth_weight,
-          birth_height: birthData.birth_height,
-          birth_place: birthData.birth_place,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', patientId)
+        .from('birthhistory')
+        .upsert(payload, { onConflict: 'patient_id' })
         .select()
         .single();
 

@@ -106,22 +106,22 @@ const linkSupabaseUser = async (uuid, userId) => {
 const verifyToken = async (token) => {
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
-    
-    // Optionally verify user still exists and is active
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('user_id, role, username, email, is_deleted')
+
+    // Read from users_with_uuid view to include Supabase UUID for mapping
+    const { data: row, error } = await supabase
+      .from('users_with_uuid')
+      .select('user_id, role, username, email, supabase_uuid')
       .eq('user_id', decoded.id)
-      .eq('is_deleted', false)
       .single();
-    
-    if (error || !user) return null;
-    
+
+    if (error || !row) return null;
+
     return {
-      id: user.user_id,
-      role: user.role,
-      username: user.username,
-      email: user.email
+      id: row.user_id,
+      role: row.role,
+      username: row.username,
+      email: row.email,
+      uuid: row.supabase_uuid || null,
     };
   } catch (error) {
     return null;

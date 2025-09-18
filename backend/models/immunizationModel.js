@@ -11,7 +11,7 @@ const createImmunization = async (immunizationData) => {
   return data;
 };
 
-// Get immunization by ID
+// Get immunization by ID (base table OK; separate view exists for history)
 const getImmunizationById = async (id) => {
   const { data, error } = await supabase
     .from('immunizations')
@@ -51,20 +51,14 @@ const deleteImmunization = async (id) => {
   return data;
 };
 
-// List all immunizations with filters
+// List all immunizations with filters (prefer immunizationhistory_view for denormalized reads)
 const listImmunizations = async (filters = {}) => {
   let query = supabase
-    .from('immunizations')
-    .select(`
-      *,
-      visits:visit_id(*),
-      vaccinemaster:vaccine_id(*),
-      inventory:inventory_id(*)
-    `)
-    .eq('is_deleted', false);
+    .from('immunizationhistory_view')
+    .select('*');
 
   if (filters.patient_id) {
-    query = query.eq('visits.patient_id', filters.patient_id);
+    query = query.eq('patient_id', filters.patient_id);
   }
   
   if (filters.vaccine_id) {
@@ -96,7 +90,7 @@ const scheduleImmunization = async (scheduleData) => {
   return data;
 };
 
-// Enforce vaccine interval (this is handled by database trigger)
+// Enforce vaccine interval (this is handled by database trigger/policy)
 const enforceVaccineInterval = async (scheduleData) => {
   // This function validates interval rules before scheduling
   // The actual enforcement is done by the database trigger
@@ -109,7 +103,7 @@ const enforceVaccineInterval = async (scheduleData) => {
     .eq('patient_id', patient_id)
     .eq('vaccine_id', vaccine_id)
     .eq('dose_number', dose_number - 1)
-    .eq('status', 'Completed')
+    .eq('status', 'completed')
     .single();
   
   if (error && error.code !== 'PGRST116') throw error;

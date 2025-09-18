@@ -1,4 +1,20 @@
 const patientModel = require('../models/patientModel');
+const immunizationModel = require('../models/immunizationModel');
+
+// Normalize incoming payload to match DB schema
+const mapPatientPayload = (body) => ({
+  firstname: body.firstname || body.first_name || body.firstName || null,
+  surname: body.surname || body.last_name || body.lastName || null,
+  middlename: body.middlename || body.middle_name || body.middleName || null,
+  date_of_birth: body.date_of_birth || body.birth_date || body.birthDate || null,
+  sex: body.sex || body.gender || null,
+  address: body.address || null,
+  barangay: body.barangay || null,
+  health_center: body.health_center || body.healthCenter || null,
+  guardian_id: body.guardian_id || body.parent_guardian || null,
+  mother_name: body.mother_name || body.motherName || null,
+  father_name: body.father_name || body.fatherName || null,
+});
 
 // List all patients with optional filters
 const getAllPatients = async (req, res) => {
@@ -13,7 +29,7 @@ const getAllPatients = async (req, res) => {
       barangay 
     } = req.query;
     
-    const filters = { search, gender, status, age_group, barangay };
+    const filters = { search, sex: gender, status, age_group, barangay };
     const patients = await patientModel.getAllPatients(filters, page, limit);
     
     res.json({ 
@@ -33,40 +49,55 @@ const getAllPatients = async (req, res) => {
 // Register a new patient
 const createPatient = async (req, res) => {
   try {
-    const patientData = {
-      first_name: req.body.first_name,
-      last_name: req.body.last_name,
-      middle_name: req.body.middle_name,
-      birth_date: req.body.birth_date,
-      gender: req.body.gender,
-      address: req.body.address,
-      barangay: req.body.barangay,
-      parent_guardian: req.body.parent_guardian,
-      contact_number: req.body.contact_number,
-      birth_weight: req.body.birth_weight,
-      birth_height: req.body.birth_height,
-      birth_place: req.body.birth_place,
-      mother_name: req.body.mother_name,
-      father_name: req.body.father_name,
-      emergency_contact: req.body.emergency_contact,
-      medical_history: req.body.medical_history || [],
-      allergies: req.body.allergies || [],
-      status: req.body.status || 'active'
-    };
+    const patientData = mapPatientPayload(req.body);
     
     // Validate required fields
-    if (!patientData.first_name || !patientData.last_name || !patientData.birth_date) {
+    if (!patientData.firstname || !patientData.surname || !patientData.date_of_birth) {
       return res.status(400).json({ 
         success: false,
-        message: 'Missing required fields: first_name, last_name, birth_date' 
+        message: 'Missing required fields: firstname, surname, date_of_birth' 
       });
     }
 
     const newPatient = await patientModel.createPatient(patientData);
+
+    // Optional onboarding: handle immunizations plan
+    const immunizationsPlan = Array.isArray(req.body.immunizations) ? req.body.immunizations : [];
+    for (const item of immunizationsPlan) {
+      const status = (item.status || '').toLowerCase();
+      const base = {
+        patient_id: newPatient.patient_id,
+        vaccine_id: item.vaccine_id,
+        dose_number: item.dose_number,
+      };
+      if (status === 'taken' || status === 'completed') {
+        await immunizationModel.createImmunization({
+          ...base,
+          administered_date: item.administered_date || new Date().toISOString(),
+          administered_by: (req.user && req.user.user_id) || item.administered_by || null,
+          remarks: item.remarks || null,
+        });
+      } else {
+        if (!item.scheduled_date) {
+          // If scheduled_date is not provided, skip scheduling to avoid invalid data
+          continue;
+        }
+        await immunizationModel.scheduleImmunization({
+          ...base,
+          scheduled_date: item.scheduled_date,
+          status: 'scheduled',
+        });
+      }
+    }
+
+    // Return enriched patient data and schedule from views
+    const patientView = await patientModel.getPatientById(newPatient.patient_id);
+    const schedule = await patientModel.getPatientVaccinationSchedule(newPatient.patient_id);
+
     res.status(201).json({ 
       success: true,
       message: 'Patient registered successfully', 
-      data: newPatient 
+      data: { patient: patientView, schedule }
     });
   } catch (error) {
     console.error('Error registering patient:', error);
@@ -108,8 +139,8 @@ const getPatientById = async (req, res) => {
 // Update a patient
 const updatePatient = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+  const { id } = req.params;
+  const updates = mapPatientPayload(req.body);
     
     const updatedPatient = await patientModel.updatePatient(id, updates);
     

@@ -1,18 +1,55 @@
 const userModel = require('../models/userModel');
+const { createUserMapping } = require('../models/authModel');
+const { createClient } = require('@supabase/supabase-js');
+
+const getAuthAdmin = () => {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+};
 
 // Create a new user
 const createUser = async (req, res) => {
   try {
     const userData = req.body;
-    
+
     // Validate required fields
     if (!userData.username || !userData.email || !userData.password || !userData.role) {
       return res.status(400).json({ message: 'Missing required fields: username, email, password, role' });
     }
 
-    const newUser = await userModel.createUser(userData);
-    
-    // Remove password from response
+    // 1) Create Supabase Auth user (email/password)
+    const admin = getAuthAdmin();
+    console.log('[users] creating Supabase auth user', { email: userData.email });
+    const { data: created, error: sberr } = await admin.auth.admin.createUser({
+      email: userData.email,
+      password: userData.password,
+      email_confirm: true,
+    });
+    if (sberr) {
+      console.warn('[users] supabase createUser failed', sberr);
+      return res.status(400).json({ message: 'Supabase auth user creation failed', error: sberr.message });
+    }
+
+    // 2) Create application user record (with hashed password handled in model)
+    let newUser;
+    try {
+      newUser = await userModel.createUser(userData);
+    } catch (e) {
+      console.error('[users] local user create failed, rolling back auth user', e);
+      try { await admin.auth.admin.deleteUser(created.user.id); } catch (_) {}
+      throw e;
+    }
+
+    // 3) Map Supabase UUID to local user_id
+    try {
+      await createUserMapping({ uuid: created.user.id, user_id: newUser.user_id });
+    } catch (mapErr) {
+      // Best-effort cleanup if mapping fails: delete the auth user to avoid orphans
+      try { await admin.auth.admin.deleteUser(created.user.id); } catch (_) {}
+      return res.status(500).json({ message: 'Failed to map Supabase user to local account' });
+    }
+
     const { password, ...safeUser } = newUser;
     res.status(201).json({ message: 'User created successfully', user: safeUser });
   } catch (error) {

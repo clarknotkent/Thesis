@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
 const {
   createUser,
   getUser,
@@ -25,18 +26,18 @@ router.get('/:id/profile', getUserProfile);
 router.get('/:id/activity', getUserActivityLogs);
 
 // POST /api/users - Create new user
-router.post('/', createUser);
+router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createUser);
 
 // PUT /api/users/:id - Update user
-router.put('/:id', updateUser);
+router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateUser);
 
 // PUT /api/users/:id/role - Update user role
-router.put('/:id/role', updateUserRole);
+router.put('/:id/role', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateUserRole);
 
 // PUT /api/users/:id/deactivate - Deactivate user
-router.put('/:id/deactivate', deactivateUser);
+router.put('/:id/deactivate', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deactivateUser);
 
 // DELETE /api/users/:id - Delete user
-router.delete('/:id', deleteUser);
+router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteUser);
 
 module.exports = router;

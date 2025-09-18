@@ -10,7 +10,7 @@ const sendSMS = async (to, message) => {
 // Fetch SMS logs
 const getSMSLogs = async (filters) => {
   const { recipient, status } = filters;
-  let query = supabase.from('notifications').select('*').eq('channel', 'SMS');
+  let query = supabase.from('notifications_view').select('*').eq('channel', 'SMS');
 
   if (recipient) {
     query = query.eq('recipient_phone', recipient);
@@ -48,7 +48,7 @@ const logSMS = async (to, message, status) => {
 // Test functions for compatibility
 const getAllNotifications = async () => {
   const { data, error } = await supabase
-    .from('notifications')
+    .from('notifications_view')
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -57,7 +57,7 @@ const getAllNotifications = async () => {
 
 const getNotificationById = async (id) => {
   const { data, error } = await supabase
-    .from('notifications')
+    .from('notifications_view')
     .select('*')
     .eq('notification_id', id)
     .single();

@@ -252,6 +252,33 @@
               >
             </div>
           </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Middle Name</label>
+              <input
+                type="text"
+                class="form-control"
+                v-model="userForm.middleName"
+              >
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Sex *</label>
+              <select class="form-select" v-model="userForm.sex" required>
+                <option value="">Select Sex</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Birthdate</label>
+              <input
+                type="date"
+                class="form-control"
+                v-model="userForm.birthdate"
+              >
+            </div>
+          </div>
           <div class="mb-3">
             <label class="form-label">Email Address *</label>
             <input
@@ -259,6 +286,15 @@
               class="form-control"
               v-model="userForm.email"
               required
+            >
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <input
+              type="text"
+              class="form-control"
+              v-model="userForm.address"
+              placeholder="House/Street, Barangay, City/Municipality, Province"
             >
           </div>
           <div class="row">
@@ -302,6 +338,14 @@
               type="tel"
               class="form-control"
               v-model="userForm.phoneNumber"
+            >
+          </div>
+          <div class="mb-3" v-if="userForm.role !== 'parent'">
+            <label class="form-label">Contact Number</label>
+            <input
+              type="tel"
+              class="form-control"
+              v-model="userForm.contactNumber"
             >
           </div>
         </form>
@@ -403,12 +447,17 @@ const userForm = ref({
   id: '',
   firstName: '',
   lastName: '',
+  middleName: '',
   email: '',
   role: '',
   status: 'active',
   password: '',
   licenseNumber: '',
-  phoneNumber: ''
+  phoneNumber: '',
+  contactNumber: '',
+  sex: '',
+  birthdate: '',
+  address: ''
 })
 
 // Computed properties
@@ -506,12 +555,17 @@ const openUserModal = (user = null) => {
       id: user.id,
       firstName: user.firstName || '',
       lastName: user.lastName || '',
+      middleName: user.middleName || '',
       email: user.email,
       role: user.role,
       status: user.status,
       password: '',
       licenseNumber: user.licenseNumber || '',
-      phoneNumber: user.phone || ''
+      phoneNumber: user.phone || '',
+      contactNumber: user.contactNumber || '',
+      sex: user.sex || '',
+      birthdate: user.birthdate || '',
+      address: user.address || ''
     }
   } else {
     isEditing.value = false
@@ -519,12 +573,17 @@ const openUserModal = (user = null) => {
       id: '',
       firstName: '',
       lastName: '',
+      middleName: '',
       email: '',
       role: '',
       status: 'active',
       password: '',
       licenseNumber: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      contactNumber: '',
+      sex: '',
+      birthdate: '',
+      address: ''
     }
   }
   showUserModal.value = true
@@ -555,8 +614,12 @@ const saveUser = async () => {
       firstname: userForm.value.firstName,
       surname: userForm.value.lastName,
       password: userForm.value.password,
-      contact_number: userForm.value.phoneNumber || null,
-      status: userForm.value.status
+      contact_number: userForm.value.phoneNumber || userForm.value.contactNumber || null,
+      status: userForm.value.status,
+      sex: userForm.value.sex || 'Other',
+      birthdate: userForm.value.birthdate || null,
+      address: userForm.value.address || null,
+      professional_license_no: userForm.value.licenseNumber || null
     }
     if (isEditing.value) {
       await apiUpdateUser(userForm.value.id, payload)
@@ -568,7 +631,18 @@ const saveUser = async () => {
     alert(isEditing.value ? 'User updated successfully!' : 'User created successfully!')
   } catch (error) {
     console.error('Error saving user:', error)
-    alert('Error saving user. Please try again.')
+    const data = error?.response?.data
+    let msg = 'Error saving user. Please try again.'
+    if (data) {
+      if (typeof data.error === 'string') msg = data.error
+      else if (typeof data.message === 'string') msg = data.message
+      else if (data.error?.message) msg = data.error.message
+      else if (data.message?.message) msg = data.message.message
+      else msg = JSON.stringify(data)
+    } else if (error?.message) {
+      msg = error.message
+    }
+    alert(msg)
   } finally {
     saving.value = false
   }
