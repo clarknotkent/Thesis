@@ -14,8 +14,9 @@ export async function getUser(id) {
   return data
 }
 
+// Use the auth/register endpoint to create both Supabase Auth user and DB user
 export async function createUser(payload) {
-  const { data } = await api.post('/users', payload)
+  const { data } = await api.post('/auth/register', payload)
   return data
 }
 

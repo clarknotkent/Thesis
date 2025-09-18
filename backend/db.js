@@ -3,16 +3,10 @@ require('dotenv').config();
 
 const url = process.env.SUPABASE_URL;
 // Prefer service role key for server-side access
-const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
+const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
-if (!url) {
-  console.error('Missing SUPABASE_URL in environment.');
-  process.exit(1);
-}
-
-if (!serviceKey) {
-  console.error('Missing SUPABASE_SERVICE_KEY (or SUPABASE_KEY) in environment.');
-  process.exit(1);
+if (!url || !serviceKey) {
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in environment.');
 }
 
 if (!process.env.SUPABASE_SERVICE_KEY) {

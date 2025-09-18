@@ -19,44 +19,100 @@ const getAuthClient = () => {
 // Register a new user: create Supabase Auth user (email-only), then app user, then user_mapping
 const registerUser = async (req, res) => {
   try {
-    const { username, password, email, firstname, surname, contact_number, role } = req.body;
+    const {
+      username,
+      password,
+      email,
+      firstname,
+      surname,
+      contact_number,
+      role,
+      sex,
+      birthdate,
+      address,
+      professional_license_no,
+      status
+    } = req.body;
+    console.log('[registerUser] DEBUG: Received request body:', req.body);
     if (!email || !password) {
+      console.warn('[registerUser] DEBUG: Missing email or password');
       return res.status(400).json({ message: 'Email and password are required' });
     }
     // Create Supabase Auth user (email is the only enabled provider)
-    // Use per-request admin client as well to avoid shared session side-effects
     const admin = getAuthClient();
+    console.log('[registerUser] DEBUG: About to call admin.auth.admin.createUser');
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true
     });
     if (createErr) {
+      console.error('[registerUser] DEBUG: Supabase auth user creation failed:', createErr.message);
       return res.status(400).json({ message: 'Supabase auth user creation failed', error: createErr.message });
     }
+    console.log('[registerUser] DEBUG: Supabase Auth user created:', created?.user?.id);
 
-    // Create application user record
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await authModel.registerUser({
-      username,
-      password_hash: hashedPassword,
-      email,
-      firstname,
-      surname,
-      contact_number,
-      role: role || 'GUARDIAN'
-    });
+    // Create application user record (no password_hash)
+    console.log('[registerUser] DEBUG: About to call authModel.registerUser (no password_hash)');
+      // Normalize role and sex to match allowed values in DB
+      let normalizedRole = role;
+      if (typeof role === 'string') {
+        const r = role.trim().toLowerCase().replace(/\s+/g, '');
+        if (r === 'admin') normalizedRole = 'Admin';
+        else if (r === 'healthworker' || r === 'health_worker') normalizedRole = 'HealthWorker';
+        else if (r === 'nurse') normalizedRole = 'Nurse';
+        else if (r === 'nutritionist') normalizedRole = 'Nutritionist';
+        else if (r === 'guardian' || r === 'parent') normalizedRole = 'Guardian';
+        else normalizedRole = 'Guardian'; // fallback
+      }
+      let normalizedSex = sex;
+      if (typeof sex === 'string') {
+        const s = sex.trim().toLowerCase();
+        if (s === 'male') normalizedSex = 'Male';
+        else if (s === 'female') normalizedSex = 'Female';
+        else normalizedSex = 'Other';
+      } else {
+        normalizedSex = 'Other';
+      }
+      const newUser = await authModel.registerUser({
+        username,
+        email,
+        firstname,
+        surname,
+        contact_number,
+        role: normalizedRole,
+        sex: normalizedSex,
+        birthdate: birthdate || null,
+        address: address || null,
+        professional_license_no: professional_license_no || null,
+        user_status: status || 'active'
+      });
+    console.log('[registerUser] DEBUG: App user created:', newUser?.user_id);
 
     // Map Supabase UUID to local user_id
     try {
+      console.log('[registerUser] DEBUG: About to call authModel.createUserMapping');
       await authModel.createUserMapping({ uuid: created.user.id, user_id: newUser.user_id });
+      console.log('[registerUser] DEBUG: User mapping created');
     } catch (e) {
-      console.error('Mapping create failed:', e?.message || e);
+      console.error('[registerUser] DEBUG: Mapping create failed:', e?.message || e);
     }
 
+    // Log activity: user registration
+    try {
+      const { logActivity } = require('../models/activityLogger');
+      await logActivity({
+        action_type: 'USER_CREATED',
+        description: `User registered: ${newUser.username || newUser.email}`,
+        user_id: newUser.user_id
+      });
+    } catch (logErr) {
+      console.error('[registerUser] DEBUG: Failed to log activity:', logErr);
+    }
+    console.log('[registerUser] DEBUG: Registration complete');
     res.status(201).json({ message: 'User registered', user: newUser });
   } catch (error) {
-    console.error(error);
+    console.error('[registerUser] DEBUG: Registration failed:', error);
     res.status(500).json({ message: 'Registration failed' });
   }
 };
