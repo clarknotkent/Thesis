@@ -128,7 +128,7 @@ const vaccineModel = {
   getVaccineScheduleByAgeGroup: async (ageGroup) => {
     try {
       const { data, error } = await supabase
-        .from('schedulemaster')
+        .from('schedule_master')
         .select(`
           *,
           vaccine:vaccine_id (
@@ -151,22 +151,166 @@ const vaccineModel = {
     }
   },
 
-  // Inventory-related functions are not implemented in this model
+  // Get all inventory items with vaccine details
+  getAllInventory: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select(`
+          *,
+          vaccinemaster!inventory_vaccine_id_fkey (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            manufacturer,
+            vaccine_type
+          )
+        `)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      throw error;
+    }
+  },
+
+  // Create new inventory item
+  createInventoryItem: async (inventoryData) => {
+    try {
+      // First, insert without the join to avoid trigger issues
+      const { data: insertedData, error: insertError } = await supabase
+        .from('inventory')
+        .insert({
+          vaccine_id: inventoryData.vaccine_id,
+          lot_number: inventoryData.lot_number,
+          expiration_date: inventoryData.expiration_date,
+          current_stock_level: inventoryData.current_stock_level,
+          storage_location: inventoryData.storage_location || null,
+          created_by: inventoryData.created_by || 1
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Then fetch with vaccine details
+      const { data, error } = await supabase
+        .from('inventory')
+        .select(`
+          *,
+          vaccinemaster!inventory_vaccine_id_fkey (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            manufacturer,
+            vaccine_type
+          )
+        `)
+        .eq('inventory_id', insertedData.inventory_id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating inventory item:', error);
+      throw error;
+    }
+  },
+
+  // Get inventory item by ID
+  getInventoryById: async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select(`
+          *,
+          vaccinemaster!inventory_vaccine_id_fkey (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            manufacturer,
+            vaccine_type
+          )
+        `)
+        .eq('inventory_id', id)
+        .eq('is_deleted', false)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching inventory item:', error);
+      throw error;
+    }
+  },
+
+  // Update inventory item
+  updateInventoryItem: async (id, inventoryData) => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .update({
+          vaccine_id: inventoryData.vaccine_id,
+          lot_number: inventoryData.lot_number,
+          expiration_date: inventoryData.expiration_date,
+          current_stock_level: inventoryData.current_stock_level,
+          storage_location: inventoryData.storage_location,
+          updated_by: inventoryData.updated_by || 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('inventory_id', id)
+        .select(`
+          *,
+          vaccinemaster!inventory_vaccine_id_fkey (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            manufacturer,
+            vaccine_type
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating inventory item:', error);
+      throw error;
+    }
+  },
+
+  // Delete inventory item (soft delete)
+  deleteInventoryItem: async (id, deletedBy = 1) => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: deletedBy
+        })
+        .eq('inventory_id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      throw error;
+    }
+  },
 
   // Get vaccinemaster by ID
   getvaccinemasterById: async (id) => {
     try {
       const { data, error } = await supabase
         .from('vaccinemaster')
-        .select(`
-          *,
-          vaccines:vaccine_id (
-            antigen_name,
-            brand_name,
-            vaccine_type
-          )
-        `)
-        .eq('vaccinemaster_id', id)
+        .select('*')
+        .eq('vaccine_id', id)
         .single();
 
       if (error) throw error;

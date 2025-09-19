@@ -11,9 +11,15 @@ const mapPatientPayload = (body) => ({
   address: body.address || null,
   barangay: body.barangay || null,
   health_center: body.health_center || body.healthCenter || null,
-  guardian_id: body.guardian_id || body.parent_guardian || null,
+  guardian_id: body.guardian_id || body.parent_guardian || null, // This is actually the user_id from users table
   mother_name: body.mother_name || body.motherName || null,
+  mother_occupation: body.mother_occupation || body.motherOccupation || null,
+  mother_contact_number: body.mother_contact_number || body.motherContactNumber || null,
   father_name: body.father_name || body.fatherName || null,
+  father_occupation: body.father_occupation || body.fatherOccupation || null,
+  father_contact_number: body.father_contact_number || body.fatherContactNumber || null,
+  family_number: body.family_number || body.familyNumber || null,
+  tags: body.tags || null,
 });
 
 // List all patients with optional filters

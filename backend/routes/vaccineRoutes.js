@@ -26,14 +26,7 @@ router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin'])
 // GET /api/vaccines - List all vaccines
 router.get('/', listVaccines);
 
-// GET /api/vaccines/:id - Retrieve vaccine details
-router.get('/:id', getVaccine);
-
-// PUT /api/vaccines/:id - Edit vaccine info
-router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateVaccine);
-
-// DELETE /api/vaccines/:id - Remove vaccine type
-router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteVaccine);
+// Specific routes (Must come BEFORE /:id parameterized routes)
 
 // Inventory Management Routes
 // GET /api/vaccines/inventory - List all inventory items
@@ -67,5 +60,16 @@ router.get('/transactions', getInventoryTransactions);
 
 // POST /api/vaccines/transactions - Record inventory movement
 router.post('/transactions', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createInventoryTransaction);
+
+// Parameterized routes (Must come AFTER specific routes)
+
+// GET /api/vaccines/:id - Retrieve vaccine details
+router.get('/:id', getVaccine);
+
+// PUT /api/vaccines/:id - Edit vaccine info
+router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateVaccine);
+
+// DELETE /api/vaccines/:id - Remove vaccine type
+router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteVaccine);
 
 module.exports = router;

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create a simple healthcare icon programmatically
+        function createIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Blue background with rounded corners (simplified)
+            ctx.fillStyle = '#007bff';
+            ctx.fillRect(0, 0, size, size);
+            
+            // White cross
+            ctx.fillStyle = 'white';
+            const crossSize = size * 0.6;
+            const crossThickness = size * 0.15;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            
+            // Horizontal bar
+            ctx.fillRect(centerX - crossSize/2, centerY - crossThickness/2, crossSize, crossThickness);
+            // Vertical bar
+            ctx.fillRect(centerX - crossThickness/2, centerY - crossSize/2, crossThickness, crossSize);
+            
+            // Convert to blob and download
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}x${size}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        // Generate all sizes
+        sizes.forEach((size, index) => {
+            setTimeout(() => createIcon(size), index * 500);
+        });
+    </script>
+</body>
+</html>

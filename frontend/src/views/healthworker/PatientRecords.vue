@@ -176,59 +176,151 @@
           </div>
           <div class="modal-body">
             <form @submit.prevent="savePatient">
-              <!-- Child Information -->
-              <h6 class="text-primary mb-3">Child Information</h6>
+              <!-- Patient Basic Information -->
+              <h6 class="text-primary mb-3">Patient Information</h6>
               <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                  <label for="childName" class="form-label">Full Name *</label>
-                  <input type="text" class="form-control" id="childName" v-model="form.childInfo.name" required>
+                <div class="col-md-4">
+                  <label for="surname" class="form-label">Surname *</label>
+                  <input type="text" class="form-control" id="surname" v-model="form.surname" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="firstname" class="form-label">First Name *</label>
+                  <input type="text" class="form-control" id="firstname" v-model="form.firstname" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="middlename" class="form-label">Middle Name</label>
+                  <input type="text" class="form-control" id="middlename" v-model="form.middlename">
                 </div>
                 <div class="col-md-6">
-                  <label for="childSex" class="form-label">Sex *</label>
-                  <select class="form-select" id="childSex" v-model="form.childInfo.sex" required>
+                  <label for="sex" class="form-label">Sex *</label>
+                  <select class="form-select" id="sex" v-model="form.sex" required>
                     <option value="">Select Sex</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label for="birthDate" class="form-label">Birth Date *</label>
-                  <input type="date" class="form-control" id="birthDate" v-model="form.childInfo.birthDate" required>
-                </div>
-                <div class="col-md-6">
-                  <label for="phoneNumber" class="form-label">Contact Number *</label>
-                  <input type="tel" class="form-control" id="phoneNumber" v-model="form.childInfo.phoneNumber" required>
+                  <label for="date_of_birth" class="form-label">Date of Birth *</label>
+                  <input type="date" class="form-control" id="date_of_birth" v-model="form.date_of_birth" required>
                 </div>
                 <div class="col-12">
                   <label for="address" class="form-label">Address *</label>
-                  <textarea class="form-control" id="address" rows="2" v-model="addressString" required></textarea>
+                  <textarea class="form-control" id="address" rows="2" v-model="form.address" required></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label for="barangay" class="form-label">Barangay *</label>
+                  <input type="text" class="form-control" id="barangay" v-model="form.barangay" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="health_center" class="form-label">Health Center</label>
+                  <input type="text" class="form-control" id="health_center" v-model="form.health_center">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="guardian_id">Guardian: <span class="text-danger">*</span></label>
+                  <div class="position-relative">
+                    <input
+                      type="text"
+                      class="form-control"
+                      v-model="guardianSearchTerm"
+                      @focus="showGuardianDropdown = true"
+                      @blur="hideGuardianDropdown"
+                      :placeholder="selectedGuardianName || 'Search and select guardian...'"
+                      autocomplete="off"
+                    />
+                    <div
+                      v-if="showGuardianDropdown && filteredGuardians.length > 0"
+                      class="dropdown-menu show w-100 position-absolute"
+                      style="max-height: 300px; overflow-y: auto; z-index: 1000;"
+                    >
+                      <div
+                        v-for="guardian in filteredGuardians"
+                        :key="guardian.guardian_id"
+                        class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center"
+                        @mousedown="selectGuardian(guardian)"
+                      >
+                        <div>
+                          <strong>{{ guardian.full_name }}</strong>
+                          <br>
+                          <small class="text-muted">
+                            📞 {{ guardian.contact_number || 'No contact' }} | 
+                            👥 Family: {{ guardian.family_number || 'N/A' }}
+                          </small>
+                        </div>
+                        <span class="badge bg-primary">Guardian</span>
+                      </div>
+                    </div>
+                    <div
+                      v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0"
+                      class="dropdown-menu show w-100 position-absolute"
+                      style="z-index: 1000;"
+                    >
+                      <div class="dropdown-item-text text-muted text-center py-3">
+                        <i class="bi bi-search"></i>
+                        No guardians found matching "{{ guardianSearchTerm }}"
+                      </div>
+                    </div>
+                  </div>
+                  <input type="hidden" v-model="form.guardian_id" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="family_number" class="form-label">Family Number</label>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      id="family_number" 
+                      v-model="form.family_number"
+                      :readonly="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number"
+                    >
+                    <span 
+                      v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number" 
+                      class="input-group-text bg-success text-white"
+                      title="Auto-populated from guardian"
+                    >
+                      <i class="bi bi-check-circle"></i>
+                    </span>
+                  </div>
+                  <div class="form-text text-success" v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number">
+                    Auto-populated from selected guardian
+                  </div>
                 </div>
               </div>
 
-              <!-- Mother Information -->
-              <h6 class="text-primary mb-3">Mother's Information</h6>
+              <!-- Parent Information -->
+              <h6 class="text-primary mb-3">Parent Information</h6>
               <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                  <label for="motherName" class="form-label">Full Name *</label>
-                  <input type="text" class="form-control" id="motherName" v-model="form.motherInfo.name" required>
+                  <label for="mother_name" class="form-label">Mother's Name *</label>
+                  <input type="text" class="form-control" id="mother_name" v-model="form.mother_name" required>
                 </div>
                 <div class="col-md-6">
-                  <label for="motherAge" class="form-label">Age</label>
-                  <input type="number" class="form-control" id="motherAge" v-model="form.motherInfo.age" min="15" max="60">
+                  <label for="mother_occupation" class="form-label">Mother's Occupation</label>
+                  <input type="text" class="form-control" id="mother_occupation" v-model="form.mother_occupation">
+                </div>
+                <div class="col-md-12">
+                  <label for="mother_contact_number" class="form-label">Mother's Contact Number</label>
+                  <input type="tel" class="form-control" id="mother_contact_number" v-model="form.mother_contact_number">
                 </div>
                 <div class="col-md-6">
-                  <label for="motherEducation" class="form-label">Education Level</label>
-                  <select class="form-select" id="motherEducation" v-model="form.motherInfo.educationLevel">
-                    <option value="">Select Education Level</option>
-                    <option value="Elementary Graduate">Elementary Graduate</option>
-                    <option value="High School Graduate">High School Graduate</option>
-                    <option value="College Graduate">College Graduate</option>
-                    <option value="Vocational Graduate">Vocational Graduate</option>
-                  </select>
+                  <label for="father_name" class="form-label">Father's Name</label>
+                  <input type="text" class="form-control" id="father_name" v-model="form.father_name">
                 </div>
                 <div class="col-md-6">
-                  <label for="motherOccupation" class="form-label">Occupation</label>
-                  <input type="text" class="form-control" id="motherOccupation" v-model="form.motherInfo.occupation">
+                  <label for="father_occupation" class="form-label">Father's Occupation</label>
+                  <input type="text" class="form-control" id="father_occupation" v-model="form.father_occupation">
+                </div>
+                <div class="col-md-12">
+                  <label for="father_contact_number" class="form-label">Father's Contact Number</label>
+                  <input type="tel" class="form-control" id="father_contact_number" v-model="form.father_contact_number">
+                </div>
+              </div>
+
+              <!-- Additional Information -->
+              <h6 class="text-primary mb-3">Additional Information</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-12">
+                  <label for="tags" class="form-label">Tags (comma-separated)</label>
+                  <input type="text" class="form-control" id="tags" v-model="form.tags" placeholder="e.g. high-risk, malnourished, etc.">
                 </div>
               </div>
 
@@ -251,7 +343,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppCard from '@/components/common/AppCard.vue'
@@ -264,6 +356,11 @@ import api from '@/services/api'
 const loading = ref(true)
 const saving = ref(false)
 const patients = ref([])
+const guardians = ref([])
+// Guardian search functionality
+const guardianSearchTerm = ref('')
+const showGuardianDropdown = ref(false)
+const selectedGuardianName = ref('')
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const currentPage = ref(1)
@@ -280,50 +377,27 @@ const selectedPatientId = ref(null)
 // Form data
 const form = ref({
   id: null,
-  childInfo: {
-    name: '',
-    sex: '',
-    birthDate: '',
-    phoneNumber: '',
-    address: {
-      street: '',
-      barangay: '',
-      municipality: '',
-      province: '',
-      zipCode: ''
-    }
-  },
-  motherInfo: {
-    name: '',
-    age: null,
-    educationLevel: '',
-    occupation: ''
-  },
-  fatherInfo: {
-    name: '',
-    age: null,
-    educationLevel: '',
-    occupation: ''
-  }
+  patient_id: null,
+  surname: '',
+  firstname: '',
+  middlename: '',
+  sex: '',
+  date_of_birth: '',
+  address: '',
+  barangay: '',
+  health_center: '',
+  mother_name: '',
+  mother_occupation: '',
+  mother_contact_number: '',
+  father_name: '',
+  father_occupation: '',
+  father_contact_number: '',
+  guardian_id: null,
+  family_number: '',
+  tags: ''
 })
 
-const addressString = computed({
-  get() {
-    const addr = form.value.childInfo.address
-    if (!addr.street && !addr.barangay && !addr.municipality) return ''
-    return `${addr.street}, ${addr.barangay}, ${addr.municipality}, ${addr.province} ${addr.zipCode}`.trim()
-  },
-  set(value) {
-    const parts = value.split(',').map(p => p.trim())
-    form.value.childInfo.address = {
-      street: parts[0] || '',
-      barangay: parts[1] || '',
-      municipality: parts[2] || '',
-      province: parts[3] || '',
-      zipCode: parts[4] || ''
-    }
-  }
-})
+
 
 const breadcrumbs = [
   { text: 'Health Worker', href: '/healthworker/dashboard' },
@@ -360,6 +434,16 @@ const fetchPatients = async () => {
     totalPages.value = 0
   } finally {
     loading.value = false
+  }
+}
+
+const fetchGuardians = async () => {
+  try {
+    const response = await api.get('/guardians')
+    guardians.value = response.data.data || []
+  } catch (error) {
+    console.error('Error fetching guardians:', error)
+    guardians.value = []
   }
 }
 
@@ -479,32 +563,30 @@ const closeModal = () => {
   showEditModal.value = false
   form.value = {
     id: null,
-    childInfo: {
-      name: '',
-      sex: '',
-      birthDate: '',
-      phoneNumber: '',
-      address: {
-        street: '',
-        barangay: '',
-        municipality: '',
-        province: '',
-        zipCode: ''
-      }
-    },
-    motherInfo: {
-      name: '',
-      age: null,
-      educationLevel: '',
-      occupation: ''
-    },
-    fatherInfo: {
-      name: '',
-      age: null,
-      educationLevel: '',
-      occupation: ''
-    }
+    patient_id: null,
+    surname: '',
+    firstname: '',
+    middlename: '',
+    sex: '',
+    date_of_birth: '',
+    address: '',
+    barangay: '',
+    health_center: '',
+    mother_name: '',
+    mother_occupation: '',
+    mother_contact_number: '',
+    father_name: '',
+    father_occupation: '',
+    father_contact_number: '',
+    guardian_id: null,
+    family_number: '',
+    tags: ''
   }
+  
+  // Reset guardian search fields
+  guardianSearchTerm.value = ''
+  selectedGuardianName.value = ''
+  showGuardianDropdown.value = false
 }
 
 const openQrScanner = () => {
@@ -520,13 +602,72 @@ const getStatusBadgeClass = (status) => {
   return classes[status] || 'badge bg-secondary'
 }
 
+// Guardian search computed property
+const filteredGuardians = computed(() => {
+  if (!guardianSearchTerm.value) {
+    return guardians.value
+  }
+  
+  const searchTerm = guardianSearchTerm.value.toLowerCase()
+  return guardians.value.filter(guardian => {
+    return (
+      guardian.full_name?.toLowerCase().includes(searchTerm) ||
+      guardian.surname?.toLowerCase().includes(searchTerm) ||
+      guardian.firstname?.toLowerCase().includes(searchTerm) ||
+      guardian.middlename?.toLowerCase().includes(searchTerm) ||
+      guardian.contact_number?.includes(searchTerm) ||
+      guardian.family_number?.toLowerCase().includes(searchTerm)
+    )
+  })
+})
+
+// Guardian selection methods
+const selectGuardian = (guardian) => {
+  form.value.guardian_id = guardian.guardian_id
+  selectedGuardianName.value = guardian.full_name
+  guardianSearchTerm.value = ''
+  showGuardianDropdown.value = false
+  
+  // Auto-populate family number
+  if (guardian.family_number) {
+    form.value.family_number = guardian.family_number
+  }
+}
+
+const hideGuardianDropdown = () => {
+  setTimeout(() => {
+    showGuardianDropdown.value = false
+  }, 200) // Small delay to allow click events on dropdown items
+}
+
+// Watch for guardian selection to auto-populate family number
+watch(() => form.value.guardian_id, (newGuardianId) => {
+  if (newGuardianId) {
+    const selectedGuardian = guardians.value.find(g => g.guardian_id === newGuardianId)
+    if (selectedGuardian && selectedGuardian.family_number) {
+      form.value.family_number = selectedGuardian.family_number
+    }
+  } else {
+    // Clear family number if no guardian selected
+    form.value.family_number = ''
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   fetchPatients()
+  fetchGuardians()
 })
 </script>
 
 <style scoped>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  background-color: #f8f9fa;
+}
 .hw-patient-card {
   border: 1px solid #e3e6f0;
   border-radius: 0.35rem;

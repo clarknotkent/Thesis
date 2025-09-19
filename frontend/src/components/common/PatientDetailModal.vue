@@ -272,8 +272,8 @@ const props = defineProps({
     default: false
   },
   patientId: {
-    type: String,
-    required: true
+    type: [String, null],
+    default: null
   }
 })
 
@@ -286,7 +286,7 @@ const showVaccinationEditor = ref(false)
 const isAdmin = inject('isAdmin', () => false) // Inject user role, default to non-admin
 
 const fetchPatientData = async () => {
-  if (!props.patientId) return
+  if (!props.patientId || props.patientId === null) return
 
   try {
     loading.value = true

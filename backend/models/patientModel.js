@@ -81,26 +81,118 @@ const patientModel = {
     }
   },
 
+  // Helper function to calculate age in months
+  calculateAgeInMonths: (birthDate) => {
+    const birth = new Date(birthDate);
+    const today = new Date();
+    
+    // Calculate total months difference
+    let months = (today.getFullYear() - birth.getFullYear()) * 12;
+    months += today.getMonth() - birth.getMonth();
+    
+    // Adjust if the day hasn't occurred yet this month
+    if (today.getDate() < birth.getDate()) {
+      months--;
+    }
+    
+    // Ensure non-negative age
+    return Math.max(0, months);
+  },
+
   // Create a new patient
   createPatient: async (patientData) => {
     try {
-      const { data, error } = await supabase
-        .from('patients')
-        .insert({
-          firstname: patientData.firstname,
-          surname: patientData.surname,
-          middlename: patientData.middlename,
-          date_of_birth: patientData.date_of_birth,
-          sex: patientData.sex,
-          address: patientData.address,
-          barangay: patientData.barangay,
-          health_center: patientData.health_center,
-          guardian_id: patientData.guardian_id,
-          mother_name: patientData.mother_name,
-          father_name: patientData.father_name
-        })
-        .select()
-        .single();
+      // Calculate age in months from date_of_birth
+      // The database trigger will also calculate this, but we include it to be safe
+      let ageInMonths = 0;
+      if (patientData.date_of_birth) {
+        ageInMonths = patientModel.calculateAgeInMonths(patientData.date_of_birth);
+      }
+      
+      // Validate guardian_id if provided
+      let validGuardianId = null;
+      if (patientData.guardian_id) {
+        const { data: guardian, error: guardianError } = await supabase
+          .from('guardians')
+          .select('guardian_id')
+          .eq('guardian_id', patientData.guardian_id)
+          .single();
+        
+        if (!guardianError && guardian) {
+          validGuardianId = patientData.guardian_id;
+        } else {
+          console.log(`Warning: Guardian ID ${patientData.guardian_id} not found, setting to null`);
+        }
+      }
+      
+      const insertData = {
+        firstname: patientData.firstname,
+        surname: patientData.surname,
+        middlename: patientData.middlename,
+        date_of_birth: patientData.date_of_birth,
+        age_months: ageInMonths, // Include calculated age in months
+        sex: patientData.sex,
+        address: patientData.address,
+        barangay: patientData.barangay,
+        health_center: patientData.health_center,
+        guardian_id: validGuardianId, // Use validated guardian_id or null
+        mother_name: patientData.mother_name,
+        mother_occupation: patientData.mother_occupation,
+        mother_contact_number: patientData.mother_contact_number,
+        father_name: patientData.father_name,
+        father_occupation: patientData.father_occupation,
+        father_contact_number: patientData.father_contact_number,
+        family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
+        tags: null // Force null for tags due to database constraint
+      };
+
+      console.log('Creating patient with calculated age:', {
+        name: `${patientData.firstname} ${patientData.surname}`,
+        date_of_birth: patientData.date_of_birth,
+        age_months: ageInMonths
+      });
+
+      // Try using the RPC function to bypass broken trigger
+      const { data: rpcData, error: rpcError } = await supabase.rpc('insert_patient_bypass_trigger', {
+        p_firstname: patientData.firstname,
+        p_surname: patientData.surname,
+        p_middlename: patientData.middlename,
+        p_date_of_birth: patientData.date_of_birth,
+        p_sex: patientData.sex,
+        p_address: patientData.address,
+        p_barangay: patientData.barangay,
+        p_health_center: patientData.health_center,
+        p_guardian_id: validGuardianId, // Use validated guardian_id or null
+        p_mother_name: patientData.mother_name,
+        p_mother_occupation: patientData.mother_occupation,
+        p_mother_contact_number: patientData.mother_contact_number,
+        p_father_name: patientData.father_name,
+        p_father_occupation: patientData.father_occupation,
+        p_father_contact_number: patientData.father_contact_number,
+        p_family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
+        p_tags: null // Force null for tags due to database constraint
+      });
+
+      if (rpcError) {
+        console.log('RPC insert failed, trying direct insert fallback...');
+        
+        // Fallback to direct insert without age_months
+        const insertDataWithoutAge = { ...insertData };
+        delete insertDataWithoutAge.age_months;
+        
+        const { data, error } = await supabase
+          .from('patients')
+          .insert(insertDataWithoutAge)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        return data;
+      }
+      
+      // RPC succeeded, return the data
+      const data = rpcData;
+      const error = null;
 
       if (error) throw error;
       return data;
@@ -113,11 +205,27 @@ const patientModel = {
   // Update a patient
   updatePatient: async (id, patientData) => {
     try {
+      const updateData = { ...patientData };
+      
+      // Remove fields that don't exist in patients table
+      delete updateData.birth_weight;
+      delete updateData.birth_length;
+      delete updateData.place_of_birth;
+
+      // Recalculate age_months if date_of_birth is being updated
+      if (patientData.date_of_birth) {
+        updateData.age_months = patientModel.calculateAgeInMonths(patientData.date_of_birth);
+      }
+
+      console.log('Updating patient:', {
+        patient_id: id,
+        date_of_birth: patientData.date_of_birth,
+        age_months: updateData.age_months
+      });
+
       const { data, error } = await supabase
         .from('patients')
-        .update({
-          ...patientData
-        })
+        .update(updateData)
         .eq('patient_id', id)
         .select()
         .single();

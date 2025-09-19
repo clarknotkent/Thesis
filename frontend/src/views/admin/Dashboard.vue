@@ -22,7 +22,7 @@
       <!-- Stats Cards Row -->
       <div v-if="!loading" class="row g-3 mb-4">
         <!-- Vaccinations Today Card -->
-        <div class="col">
+        <div class="col-xl-3 col-md-6">
           <div class="card border-start border-success border-4 shadow h-100 py-2">
             <div class="card-body">
               <div class="row no-gutters align-items-center">
@@ -41,7 +41,7 @@
         </div>
 
         <!-- Total Patients Card -->
-        <div class="col">
+        <div class="col-xl-3 col-md-6">
           <div class="card border-start border-primary border-4 shadow h-100 py-2">
             <div class="card-body">
               <div class="row no-gutters align-items-center">
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Active Health Workers Card -->
-        <div class="col">
+        <div class="col-xl-3 col-md-6">
           <div class="card border-start border-info border-4 shadow h-100 py-2">
             <div class="card-body">
               <div class="row no-gutters align-items-center">
@@ -78,19 +78,19 @@
           </div>
         </div>
 
-        <!-- Pending Appointments Card -->
-        <div class="col">
-          <div class="card border-start border-warning border-4 shadow h-100 py-2">
+        <!-- Total Inventory Items Card -->
+        <div class="col-xl-3 col-md-6">
+          <div class="card border-start border-purple border-4 shadow h-100 py-2">
             <div class="card-body">
               <div class="row no-gutters align-items-center">
                 <div class="col me-2">
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
-                    Pending Appointments
+                  <div class="text-xs fw-bold text-purple text-uppercase mb-1">
+                    Total Inventory Items
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.pendingAppointments }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalInventoryItems }}</div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-calendar-event text-warning" style="font-size: 2rem;"></i>
+                  <i class="bi bi-box-seam text-purple" style="font-size: 2rem;"></i>
                 </div>
               </div>
             </div>
@@ -98,7 +98,69 @@
         </div>
       </div>
 
-      <!-- Chart and Recent Vaccinations -->
+      <!-- Inventory Status Cards Row -->
+      <div v-if="!loading" class="row g-3 mb-4">
+        <!-- Low Stock Alert Card -->
+        <div class="col-xl-4 col-md-6">
+          <div class="card border-start border-danger border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">
+                    Low Stock Alerts
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.lowStockItems }}</div>
+                  <small class="text-muted">Items below 10 units</small>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expiring Soon Card -->
+        <div class="col-xl-4 col-md-6">
+          <div class="card border-start border-warning border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                    Expiring Soon
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.expiringSoon }}</div>
+                  <small class="text-muted">Within 30 days</small>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Appointments Card -->
+        <div class="col-xl-4 col-md-6">
+          <div class="card border-start border-secondary border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-secondary text-uppercase mb-1">
+                    Pending Appointments
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.pendingAppointments }}</div>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-calendar-event text-secondary" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart and Recent Data -->
       <div v-if="!loading" class="row">
         <!-- Vaccine Data Chart -->
         <div class="col-12">
@@ -117,8 +179,65 @@
           </div>
         </div>
 
+        <!-- Inventory Status Table -->
+        <div class="col-lg-6">
+          <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+              <h6 class="m-0 fw-bold text-primary">Inventory Status</h6>
+              <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="inventoryDropdown" data-bs-toggle="dropdown">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end shadow">
+                  <div class="dropdown-header">Actions:</div>
+                  <a class="dropdown-item" href="#" @click.prevent="refreshData">Refresh Data</a>
+                  <router-link class="dropdown-item" to="/admin/vaccine-inventory">Manage Inventory</router-link>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Vaccine</th>
+                      <th>Stock</th>
+                      <th>Expiry</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in inventoryItems" :key="item.inventory_id">
+                      <td class="fw-semibold">
+                        {{ item.vaccinemaster?.antigen_name || 'Unknown' }}
+                        <small class="text-muted d-block">{{ item.vaccinemaster?.brand_name }}</small>
+                      </td>
+                      <td>
+                        <span :class="getStockClass(item.current_stock_level)">
+                          {{ item.current_stock_level === 0 ? 'No stock' : item.current_stock_level + ' units' }}
+                        </span>
+                      </td>
+                      <td>{{ item.expiration_date ? formatDate(item.expiration_date) : 'N/A' }}</td>
+                      <td>
+                        <span class="badge" :class="getStatusClass(item)">
+                          {{ getStatusText(item) }}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr v-if="inventoryItems.length === 0">
+                      <td colspan="4" class="text-center text-muted py-4">
+                        No inventory items found
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Recent Vaccinations Table -->
-        <div class="col-12">
+        <div class="col-lg-6">
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
               <h6 class="m-0 fw-bold text-primary">Recent Vaccinations</h6>
@@ -135,23 +254,22 @@
             </div>
             <div class="card-body">
               <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover table-sm">
                   <thead class="table-light">
                     <tr>
                       <th>Patient</th>
-                      <th>Parent</th>
                       <th>Vaccine</th>
-                      <th>Health Worker</th>
                       <th>Date</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="vaccination in recentVaccinations" :key="vaccination.id">
-                      <td class="fw-semibold">{{ vaccination.patientName }}</td>
-                      <td>{{ vaccination.parentName }}</td>
+                      <td class="fw-semibold">
+                        {{ vaccination.patientName }}
+                        <small class="text-muted d-block">{{ vaccination.parentName }}</small>
+                      </td>
                       <td>{{ vaccination.vaccineName }}</td>
-                      <td>{{ vaccination.healthWorker }}</td>
                       <td>{{ formatDate(vaccination.dateAdministered) }}</td>
                       <td>
                         <span 
@@ -163,7 +281,7 @@
                       </td>
                     </tr>
                     <tr v-if="recentVaccinations.length === 0">
-                      <td colspan="6" class="text-center text-muted py-4">
+                      <td colspan="4" class="text-center text-muted py-4">
                         No recent vaccinations found
                       </td>
                     </tr>
@@ -190,10 +308,14 @@ const stats = ref({
   vaccinationsToday: 0,
   totalPatients: 0,
   activeHealthWorkers: 0,
-  pendingAppointments: 0
+  pendingAppointments: 0,
+  totalInventoryItems: 0,
+  lowStockItems: 0,
+  expiringSoon: 0
 })
 const recentVaccinations = ref([])
 const vaccineChartData = ref([])
+const inventoryItems = ref([])
 
 const lastUpdated = computed(() => {
   return new Date().toLocaleString()
@@ -211,6 +333,7 @@ const fetchDashboardData = async () => {
     stats.value = data.stats
     recentVaccinations.value = data.recentVaccinations
     vaccineChartData.value = data.chartData
+    inventoryItems.value = data.inventoryItems || []
     
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
@@ -219,10 +342,14 @@ const fetchDashboardData = async () => {
       vaccinationsToday: 0,
       totalPatients: 0,
       activeHealthWorkers: 0,
-      pendingAppointments: 0
+      pendingAppointments: 0,
+      totalInventoryItems: 0,
+      lowStockItems: 0,
+      expiringSoon: 0
     }
     recentVaccinations.value = []
     vaccineChartData.value = []
+    inventoryItems.value = []
   } finally {
     loading.value = false
   }
@@ -238,6 +365,39 @@ const formatDate = (dateString) => {
     month: 'short',
     day: 'numeric'
   })
+}
+
+const getStockClass = (stockLevel) => {
+  if (stockLevel === 0) return 'text-secondary'
+  if (stockLevel <= 5) return 'text-danger fw-bold'
+  if (stockLevel <= 10) return 'text-warning fw-bold'
+  return 'text-success'
+}
+
+const getStatusClass = (item) => {
+  if (item.current_stock_level === 0) return 'bg-secondary'
+  
+  const daysToExpiry = item.expiration_date ? 
+    Math.ceil((new Date(item.expiration_date) - new Date()) / (1000 * 60 * 60 * 24)) : 
+    null
+  
+  if (item.current_stock_level <= 5) return 'bg-danger'
+  if (item.current_stock_level <= 10) return 'bg-warning text-dark'
+  if (daysToExpiry && daysToExpiry <= 30) return 'bg-warning text-dark'
+  return 'bg-success'
+}
+
+const getStatusText = (item) => {
+  if (item.current_stock_level === 0) return 'No Inventory'
+  
+  const daysToExpiry = item.expiration_date ? 
+    Math.ceil((new Date(item.expiration_date) - new Date()) / (1000 * 60 * 60 * 24)) : 
+    null
+  
+  if (item.current_stock_level <= 5) return 'Critical'
+  if (item.current_stock_level <= 10) return 'Low Stock'
+  if (daysToExpiry && daysToExpiry <= 30) return 'Expiring'
+  return 'Good'
 }
 
 // Lifecycle
@@ -266,5 +426,13 @@ onMounted(() => {
 .page-header {
   border-bottom: 1px solid #e3e6f0;
   padding-bottom: 1rem;
+}
+
+.border-purple {
+  border-color: #6f42c1 !important;
+}
+
+.text-purple {
+  color: #6f42c1 !important;
 }
 </style>

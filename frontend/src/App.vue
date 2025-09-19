@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-// Main App Component for ImmunizeMe
+// Main App Component for Healthcare Management System
 </script>
 
 <!-- Styles moved to src/assets/styles/global.css for consistency -->

@@ -23,6 +23,7 @@ const healthWorkerRoutes = require('./routes/healthWorkerRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const visitRoutes = require('./routes/visitRoutes');
 const conversationRoutes = require('./routes/conversationRoutes');
+const guardianRoutes = require('./routes/guardianRoutes');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
@@ -35,6 +36,7 @@ app.use('/api/health-workers', healthWorkerRoutes);
 app.use('/api/activity-logs', activityRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/guardians', guardianRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
