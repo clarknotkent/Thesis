@@ -1,4 +1,4 @@
-const { listVisits, getVisitById } = require('../models/visitModel');
+const { listVisits, getVisitById, createVisit } = require('../models/visitModel');
 
 const getVisits = async (req, res) => {
   try {
@@ -23,4 +23,17 @@ const getVisit = async (req, res) => {
   }
 };
 
-module.exports = { getVisits, getVisit };
+const postVisit = async (req, res) => {
+  try {
+    // Expect body to contain visit data and nested vitals
+    const payload = req.body || {};
+    const created = await createVisit(payload);
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Error creating visit', error);
+    res.status(500).json({ message: 'Failed to create visit' });
+  }
+};
+
+module.exports = { getVisits, getVisit, postVisit };
+

@@ -8,6 +8,15 @@ const createImmunization = async (immunizationData) => {
     .select()
     .single();
   if (error) throw error;
+
+  // After successful immunization insert, call DB helper to mark schedule completed and recompute
+  try {
+    if (data && data.patient_id && data.vaccine_id && data.dose_number && data.administered_date) {
+      await supabase.rpc('recalc_patient_schedule_enhanced', { p_patient_id: data.patient_id, p_vaccine_id: data.vaccine_id, p_dose_number: data.dose_number, p_actual_date: data.administered_date, p_user_id: immunizationData.administered_by || null });
+    }
+  } catch (rpcErr) {
+    console.error('[createImmunization] RPC recalc_patient_schedule_enhanced failed:', rpcErr);
+  }
   return data;
 };
 
@@ -33,6 +42,18 @@ const updateImmunization = async (id, immunizationData) => {
     .select()
     .single();
   if (error) throw error;
+
+  // If actual/administered date provided, trigger schedule recalculation
+  try {
+    if (data && data.patient_id && data.vaccine_id && data.dose_number && (immunizationData.administered_date || data.date_administered || data.administered_date)) {
+      const actualDate = immunizationData.administered_date || data.administered_date || data.date_administered || null;
+      if (actualDate) {
+        await supabase.rpc('recalc_patient_schedule_enhanced', { p_patient_id: data.patient_id, p_vaccine_id: data.vaccine_id, p_dose_number: data.dose_number, p_actual_date: actualDate, p_user_id: immunizationData.administered_by || null });
+      }
+    }
+  } catch (rpcErr) {
+    console.error('[updateImmunization] RPC recalc_patient_schedule_enhanced failed:', rpcErr);
+  }
   return data;
 };
 
@@ -87,6 +108,18 @@ const scheduleImmunization = async (scheduleData) => {
     .select()
     .single();
   if (error) throw error;
+
+  // Validate manual schedule edits via DB helper (non-blocking).
+  // This will insert activity log warnings if the scheduled date violates rules.
+  try {
+    const userId = scheduleData.updated_by || scheduleData.created_by || null;
+    if (data && data.patient_schedule_id) {
+      await supabase.rpc('validate_manual_schedule_edit', { p_patient_schedule_id: data.patient_schedule_id, p_user_id: userId });
+    }
+  } catch (rpcErr) {
+    console.error('[scheduleImmunization] validate_manual_schedule_edit RPC failed:', rpcErr);
+  }
+
   return data;
 };
 
@@ -115,6 +148,28 @@ const enforceVaccineInterval = async (scheduleData) => {
   return { valid: true, message: 'Interval validation passed' };
 };
 
+// Update patientschedule row (manual schedule edit)
+const updatePatientSchedule = async (patientScheduleId, updateData) => {
+  const { data, error } = await supabase
+    .from('patientschedule')
+    .update(updateData)
+    .eq('patient_schedule_id', patientScheduleId)
+    .eq('is_deleted', false)
+    .select()
+    .single();
+  if (error) throw error;
+
+  // Call DB helper to validate manual edit and emit warnings (non-blocking)
+  try {
+    const userId = updateData.updated_by || null;
+    await supabase.rpc('validate_manual_schedule_edit', { p_patient_schedule_id: data.patient_schedule_id, p_user_id: userId });
+  } catch (rpcErr) {
+    console.error('[updatePatientSchedule] validate_manual_schedule_edit RPC failed:', rpcErr);
+  }
+
+  return data;
+};
+
 module.exports = {
   createImmunization,
   getImmunizationById,
@@ -124,4 +179,5 @@ module.exports = {
   getAllImmunizations,
   scheduleImmunization,
   enforceVaccineInterval,
+  updatePatientSchedule,
 };

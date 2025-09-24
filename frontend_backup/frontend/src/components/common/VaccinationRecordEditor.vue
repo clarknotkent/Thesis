@@ -138,10 +138,10 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Vaccine Name *</label>
-                <select class="form-select" v-model="vaccinationForm.vaccineName" required>
+                <select class="form-select" v-model="vaccinationForm.vaccineId" required>
                   <option value="">Select a vaccine</option>
-                  <option v-for="vaccine in vaccineOptions" :key="vaccine.id" :value="vaccine.vaccineName">
-                    {{ vaccine.vaccineName }}
+                  <option v-for="vaccine in vaccineOptions" :key="vaccine.vaccine_id" :value="Number(vaccine.vaccine_id)">
+                    {{ vaccine.antigen_name || vaccine.vaccineName || 'Unknown' }}
                   </option>
                 </select>
               </div>

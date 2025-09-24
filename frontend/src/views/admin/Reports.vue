@@ -336,6 +336,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
@@ -508,7 +509,8 @@ const generateReport = async () => {
     
   } catch (error) {
     console.error('Error generating report:', error)
-    alert('Error generating report')
+    const { addToast } = useToast()
+    addToast({ title: 'Error', message: 'Error generating report', type: 'error' })
   } finally {
     generating.value = false
   }

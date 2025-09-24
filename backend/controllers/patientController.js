@@ -1,5 +1,7 @@
 const patientModel = require('../models/patientModel');
 const immunizationModel = require('../models/immunizationModel');
+const { logActivity } = require('../models/activityLogger');
+const { ACTIVITY } = require('../constants/activityTypes');
 
 // Normalize incoming payload to match DB schema
 const mapPatientPayload = (body) => ({
@@ -11,7 +13,8 @@ const mapPatientPayload = (body) => ({
   address: body.address || null,
   barangay: body.barangay || null,
   health_center: body.health_center || body.healthCenter || null,
-  guardian_id: body.guardian_id || body.parent_guardian || null, // This is actually the user_id from users table
+  guardian_id: body.guardian_id || body.parent_guardian || body.parent_id || body.parentId || null, // Accept parent_id variants from frontend
+  relationship_to_guardian: body.relationship_to_guardian || body.relationshipToGuardian || null,
   mother_name: body.mother_name || body.motherName || null,
   mother_occupation: body.mother_occupation || body.motherOccupation || null,
   mother_contact_number: body.mother_contact_number || body.motherContactNumber || null,
@@ -20,6 +23,8 @@ const mapPatientPayload = (body) => ({
   father_contact_number: body.father_contact_number || body.fatherContactNumber || null,
   family_number: body.family_number || body.familyNumber || null,
   tags: body.tags || null,
+  // Accept birth history nested payloads for onboarding
+  birthhistory: body.birthhistory || body.birth_history || body.medical_history || null
 });
 
 // List all patients with optional filters
@@ -55,17 +60,39 @@ const getAllPatients = async (req, res) => {
 // Register a new patient
 const createPatient = async (req, res) => {
   try {
-    const patientData = mapPatientPayload(req.body);
+  const patientData = mapPatientPayload(req.body);
+  console.debug('createPatient payload guardian_id (raw):', req.body.guardian_id, 'mapped:', patientData.guardian_id);
+  // Attach acting user id so DB triggers that fallback to NEW.created_by can attribute the record
+  if (req.user && req.user.user_id) patientData.created_by = req.user.user_id;
     
-    // Validate required fields
-    if (!patientData.firstname || !patientData.surname || !patientData.date_of_birth) {
+    // Validate required fields (general + guardian)
+    if (!patientData.firstname || !patientData.surname || !patientData.date_of_birth || !patientData.guardian_id || !patientData.relationship_to_guardian) {
       return res.status(400).json({ 
         success: false,
-        message: 'Missing required fields: firstname, surname, date_of_birth' 
+        message: 'Missing required fields: firstname, surname, date_of_birth, guardian_id, relationship_to_guardian' 
+      });
+    }
+
+    // Validate required birthhistory fields (ensure critical newborn info is captured)
+    const birthHistoryPayload = req.body.birthhistory || req.body.birth_history || req.body.medical_history || null;
+    console.debug('createPatient incoming birthhistory payload:', JSON.stringify(birthHistoryPayload));
+    if (!birthHistoryPayload || !birthHistoryPayload.time_of_birth || !birthHistoryPayload.attendant_at_birth || !birthHistoryPayload.type_of_delivery) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required birth history fields: time_of_birth, attendant_at_birth, type_of_delivery'
       });
     }
 
     const newPatient = await patientModel.createPatient(patientData);
+
+    // Log the patient creation
+    await logActivity({
+      action_type: ACTIVITY.CHILD.CREATE,
+      description: `Created patient ${newPatient.firstname} ${newPatient.surname}`,
+      user_id: req.user?.user_id || null,
+      entity_type: 'child',
+      entity_id: newPatient.patient_id
+    });
 
     // Optional onboarding: handle immunizations plan
     const immunizationsPlan = Array.isArray(req.body.immunizations) ? req.body.immunizations : [];
@@ -98,6 +125,31 @@ const createPatient = async (req, res) => {
 
     // Return enriched patient data and schedule from views
     const patientView = await patientModel.getPatientById(newPatient.patient_id);
+    // If birth history payload was provided, persist it to birthhistory table
+    if (birthHistoryPayload) {
+      try {
+        const upsertPayload = {
+          birth_weight: birthHistoryPayload.birth_weight || birthHistoryPayload.birthWeight || birthHistoryPayload.birthWeightKg || null,
+          birth_length: birthHistoryPayload.birth_length || birthHistoryPayload.birthLength || birthHistoryPayload.birthLengthCm || null,
+          place_of_birth: birthHistoryPayload.place_of_birth || birthHistoryPayload.placeOfBirth || patientData.date_of_birth || null,
+          address_at_birth: birthHistoryPayload.address_at_birth || birthHistoryPayload.addressAtBirth || null,
+          time_of_birth: birthHistoryPayload.time_of_birth || birthHistoryPayload.timeOfBirth || null,
+          attendant_at_birth: birthHistoryPayload.attendant_at_birth || birthHistoryPayload.attendantAtBirth || null,
+          type_of_delivery: birthHistoryPayload.type_of_delivery || birthHistoryPayload.typeOfDelivery || null,
+          ballards_score: birthHistoryPayload.ballards_score || birthHistoryPayload.ballardsScore || null,
+          hearing_test_date: birthHistoryPayload.hearing_test_date || birthHistoryPayload.hearingTestDate || null,
+          newborn_screening_date: birthHistoryPayload.newborn_screening_date || birthHistoryPayload.newbornScreeningDate || null,
+          newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
+          created_by: req.user?.user_id || null,
+          updated_by: req.user?.user_id || null
+        };
+        console.debug('createPatient calling updatePatientBirthHistory with:', JSON.stringify(upsertPayload));
+        const upsertResult = await patientModel.updatePatientBirthHistory(newPatient.patient_id, upsertPayload);
+        console.debug('updatePatientBirthHistory result:', upsertResult);
+      } catch (err) {
+        console.error('Failed to persist birth history for new patient:', err);
+      }
+    }
     const schedule = await patientModel.getPatientVaccinationSchedule(newPatient.patient_id);
 
     res.status(201).json({ 
@@ -128,10 +180,26 @@ const getPatientById = async (req, res) => {
       });
     }
     
-    res.json({ 
-      success: true, 
-      data: patient 
-    });
+    // Fetch birth history and attach as medical_history for backward compatibility with frontend
+    try {
+      const birthHistory = await patientModel.getPatientBirthHistory(id).catch(() => null);
+      const payload = { ...patient };
+      if (birthHistory) payload.medical_history = birthHistory;
+      
+      // Fetch vaccination history
+      const immunizationModel = require('../models/immunizationModel');
+      const vaccinationHistory = await immunizationModel.listImmunizations({ patient_id: id });
+      payload.vaccinationHistory = vaccinationHistory || [];
+      
+      // Fetch next scheduled vaccinations
+      const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id);
+      payload.nextScheduledVaccinations = nextScheduledVaccinations || [];
+      
+      res.json({ success: true, data: payload });
+    } catch (err) {
+      console.error('Error attaching additional data:', err);
+      res.json({ success: true, data: patient });
+    }
   } catch (error) {
     console.error('Error fetching patient:', error);
     res.status(500).json({ 
@@ -147,16 +215,51 @@ const updatePatient = async (req, res) => {
   try {
   const { id } = req.params;
   const updates = mapPatientPayload(req.body);
+  // Record who updated the patient for audit/triggers
+  if (req.user && req.user.user_id) updates.updated_by = req.user.user_id;
     
     const updatedPatient = await patientModel.updatePatient(id, updates);
-    
+
     if (!updatedPatient) {
       return res.status(404).json({ 
         success: false,
         message: 'Patient not found' 
       });
     }
-    
+
+    // If birthhistory is present in payload, update birth history
+    const birthHistoryPayload = req.body.birthhistory || req.body.birth_history || req.body.medical_history || null;
+    if (birthHistoryPayload) {
+      try {
+        const upsertPayload = {
+          birth_weight: birthHistoryPayload.birth_weight || birthHistoryPayload.birthWeight || birthHistoryPayload.birthWeightKg || null,
+          birth_length: birthHistoryPayload.birth_length || birthHistoryPayload.birthLength || birthHistoryPayload.birthLengthCm || null,
+          place_of_birth: birthHistoryPayload.place_of_birth || birthHistoryPayload.placeOfBirth || null,
+          address_at_birth: birthHistoryPayload.address_at_birth || birthHistoryPayload.addressAtBirth || null,
+          time_of_birth: birthHistoryPayload.time_of_birth || birthHistoryPayload.timeOfBirth || null,
+          attendant_at_birth: birthHistoryPayload.attendant_at_birth || birthHistoryPayload.attendantAtBirth || null,
+          type_of_delivery: birthHistoryPayload.type_of_delivery || birthHistoryPayload.typeOfDelivery || null,
+          ballards_score: birthHistoryPayload.ballards_score || birthHistoryPayload.ballardsScore || null,
+          hearing_test_date: birthHistoryPayload.hearing_test_date || birthHistoryPayload.hearingTestDate || null,
+          newborn_screening_date: birthHistoryPayload.newborn_screening_date || birthHistoryPayload.newbornScreeningDate || null,
+          newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
+          updated_by: req.user?.user_id || null
+        };
+        await patientModel.updatePatientBirthHistory(id, upsertPayload);
+      } catch (err) {
+        console.error('Failed to persist birth history for patient update:', err);
+      }
+    }
+
+    // Log the patient update
+    await logActivity({
+      action_type: ACTIVITY.CHILD.UPDATE,
+      description: `Updated patient ${updatedPatient.firstname} ${updatedPatient.surname}`,
+      user_id: req.user?.user_id || null,
+      entity_type: 'child',
+      entity_id: updatedPatient.patient_id
+    });
+
     res.json({ 
       success: true,
       message: 'Patient updated successfully',
@@ -175,10 +278,10 @@ const updatePatient = async (req, res) => {
 // Delete a patient (soft delete)
 const deletePatient = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user?.id; // From auth middleware
+  const { id } = req.params;
+  const userId = req.user?.user_id; // From checkUserMapping middleware
     
-    const result = await patientModel.deletePatient(id, userId);
+  const result = await patientModel.deletePatient(id, userId);
     
     if (!result) {
       return res.status(404).json({ 
@@ -294,10 +397,35 @@ const updateVitals = async (req, res) => {
     if (!updatedVitals) {
       return res.status(404).json({ message: 'Patient not found' });
     }
-    res.json({ message: 'Patient vitals updated successfully', vitals: updatedVitals });
+    res.json(updatedVitals);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to update patient vitals', error });
+  }
+};
+// Update patient schedule statuses (manual only - not for automatic updates)
+const updatePatientSchedules = async (req, res) => {
+  try {
+    const { id: patientId } = req.params;
+
+    // Call the database function to update schedule statuses
+    const result = await patientModel.updatePatientSchedules(patientId);
+
+    if (result.error) {
+      throw new Error(result.error.message || 'Database function error');
+    }
+
+    res.json({
+      success: true,
+      message: 'Patient schedule statuses updated successfully',
+      data: result.data
+    });
+  } catch (error) {
+    console.error('Error updating patient schedules:', error);
+    res.status(500).json({
+      message: 'Failed to update patient schedule statuses',
+      error: error.message
+    });
   }
 };
 
@@ -313,4 +441,5 @@ module.exports = {
   updateBirthHistory,
   getVitals,
   updateVitals,
+  updatePatientSchedules,
 };

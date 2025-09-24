@@ -1,14 +1,27 @@
 const userModel = require('../models/userModel');
+const { getActorId } = require('../utils/actor');
 const healthWorkerModel = require('../models/healthWorkerModel');
 
 // List all health workers
 const listHealthWorkers = async (req, res) => {
   try {
-    const filters = { role: 'HealthWorker' };
-    const healthWorkers = await userModel.getAllUsers(filters);
-    res.json(healthWorkers);
+    // Remove BHW filter to get all health workers (BHW, nurses, nutritionists, etc.)
+    const filters = { role: 'health_worker' };
+    // Set a high limit to ensure we get all health workers (no pagination for this endpoint)
+    const result = await userModel.getAllUsers(filters, 1, 1000);
+    const healthWorkers = result.users || [];
+    console.log('[healthWorkerController.listHealthWorkers] filters:', filters, 'result.users count:', healthWorkers.length);
+    console.log('[healthWorkerController.listHealthWorkers] health worker types:', [...new Set(healthWorkers.map(hw => hw.hw_type))]);
+    console.log('[healthWorkerController.listHealthWorkers] first health worker:', healthWorkers[0]);
+    res.json({
+      success: true,
+      data: {
+        healthWorkers: healthWorkers,
+        totalCount: result.totalCount || healthWorkers.length
+      }
+    });
   } catch (error) {
-    console.error(error);
+    console.error('[healthWorkerController.listHealthWorkers] Error:', error);
     res.status(500).json({ message: 'Failed to fetch health workers' });
   }
 };
@@ -30,8 +43,19 @@ const getHealthWorker = async (req, res) => {
 // Create a health worker
 const createHealthWorker = async (req, res) => {
   try {
-    const healthWorkerData = { ...req.body, role: 'HealthWorker' };
-    const newHealthWorker = await userModel.createUser(healthWorkerData);
+  const actorId = getActorId(req);
+  console.log('[healthWorkerController.createHealthWorker] ACTOR', actorId, 'USERNAME', req.body?.username);
+  // Accept incoming role tokens but force canonical token; strip any spoofed audit fields
+  const { created_by: _cb, updated_by: _ub, role: _roleIgnored, ...rest } = req.body;
+  const healthWorkerData = { ...rest, role: 'health_worker', created_by: actorId, updated_by: actorId };
+    try {
+      const safeBody = { ...req.body };
+      if (safeBody.password) safeBody.password = '***redacted***';
+      const safeConstructed = { ...healthWorkerData };
+      if (safeConstructed.password) safeConstructed.password = '***redacted***';
+  console.log('[healthWorkerController.createHealthWorker] PAYLOAD created_by', healthWorkerData.created_by, 'updated_by', healthWorkerData.updated_by, 'role', healthWorkerData.role);
+    } catch (logErr) { console.warn('HW create log failed', logErr); }
+  const newHealthWorker = await userModel.createUser(healthWorkerData, actorId, { allowSelf: false });
     res.status(201).json(newHealthWorker);
   } catch (error) {
     console.error(error);
@@ -42,7 +66,8 @@ const createHealthWorker = async (req, res) => {
 // Update a health worker
 const updateHealthWorker = async (req, res) => {
   try {
-    const updatedHealthWorker = await userModel.updateUser(req.params.id, req.body);
+    const actorId = req.user?.user_id || null;
+    const updatedHealthWorker = await userModel.updateUser(req.params.id, { ...req.body, updated_by: actorId });
     if (!updatedHealthWorker) {
       return res.status(404).json({ message: 'Health worker not found' });
     }

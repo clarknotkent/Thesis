@@ -91,7 +91,7 @@
             </div>
             <div class="col-6">
               <small class="text-muted">Contact:</small>
-              <div class="fw-semibold">{{ patient.childInfo.phoneNumber }}</div>
+              <div class="fw-semibold">{{ getContact(patient) }}</div>
             </div>
           </div>
 
@@ -324,6 +324,36 @@
                 </div>
               </div>
 
+              <!-- Birth History (optional for newborn onboarding) -->
+              <h6 class="text-primary mb-3">Birth History (optional)</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label for="time_of_birth" class="form-label">Time of Birth</label>
+                  <input type="time" class="form-control" id="time_of_birth" v-model="form.time_of_birth">
+                </div>
+                <div class="col-md-4">
+                  <label for="attendant_at_birth" class="form-label">Attendant at Birth</label>
+                  <input type="text" class="form-control" id="attendant_at_birth" v-model="form.attendant_at_birth">
+                </div>
+                <div class="col-md-4">
+                  <label for="type_of_delivery" class="form-label">Type of Delivery</label>
+                  <input type="text" class="form-control" id="type_of_delivery" v-model="form.type_of_delivery">
+                </div>
+
+                <div class="col-md-4">
+                  <label for="birth_weight" class="form-label">Birth Weight (kg)</label>
+                  <input type="number" step="0.01" class="form-control" id="birth_weight" v-model="form.birth_weight">
+                </div>
+                <div class="col-md-4">
+                  <label for="birth_length" class="form-label">Birth Length (cm)</label>
+                  <input type="number" step="0.1" class="form-control" id="birth_length" v-model="form.birth_length">
+                </div>
+                <div class="col-md-4">
+                  <label for="place_of_birth" class="form-label">Place of Birth</label>
+                  <input type="text" class="form-control" id="place_of_birth" v-model="form.place_of_birth">
+                </div>
+              </div>
+
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
                 <button type="submit" class="btn btn-primary" :disabled="saving">
@@ -394,7 +424,19 @@ const form = ref({
   father_contact_number: '',
   guardian_id: null,
   family_number: '',
-  tags: ''
+  tags: '',
+  // Birth history (optional onboarding fields)
+  birth_weight: null,
+  birth_length: null,
+  place_of_birth: null,
+  address_at_birth: null,
+  time_of_birth: null,
+  attendant_at_birth: null,
+  type_of_delivery: null,
+  ballards_score: null,
+  hearing_test_date: null,
+  newborn_screening_date: null,
+  newborn_screening_result: null
 })
 
 
@@ -496,6 +538,15 @@ const getLastVaccination = (patient) => {
   return `${lastVaccination.vaccineName} (${date})`
 }
 
+const getContact = (patient) => {
+  // Prefer guardian contact if available in patient payload
+  if (patient.guardianInfo && patient.guardianInfo.contact_number) return patient.guardianInfo.contact_number
+  if (patient.motherInfo && patient.motherInfo.phone) return patient.motherInfo.phone
+  if (patient.fatherInfo && patient.fatherInfo.phone) return patient.fatherInfo.phone
+  // Fallback to child phone or empty
+  return patient.childInfo?.phoneNumber || ''
+}
+
 const changePage = (page) => {
   currentPage.value = page
   fetchPatients()
@@ -545,7 +596,28 @@ const savePatient = async () => {
     if (showEditModal.value) {
       await api.put(`/patients/${form.value.id}`, form.value)
     } else {
-      await api.post('/patients', form.value)
+      // Prepare payload: include birthhistory nested object for onboarding
+      const payload = { ...form.value }
+      // Ensure place_of_birth defaults to date_of_birth when not provided
+      const placeOfBirth = form.value.place_of_birth || form.value.date_of_birth || null
+      payload.birthhistory = {
+        birth_weight: form.value.birth_weight,
+        birth_length: form.value.birth_length,
+        place_of_birth: placeOfBirth,
+        address_at_birth: form.value.address_at_birth,
+        time_of_birth: form.value.time_of_birth,
+        attendant_at_birth: form.value.attendant_at_birth,
+        type_of_delivery: form.value.type_of_delivery,
+        ballards_score: form.value.ballards_score,
+        hearing_test_date: form.value.hearing_test_date,
+        newborn_screening_date: form.value.newborn_screening_date,
+        newborn_screening_result: form.value.newborn_screening_result
+      }
+
+      // If front-end knows current user id (optional global), include created_by for audit
+      if (window?.APP_USER_ID) payload.birthhistory.created_by = window.APP_USER_ID
+
+      await api.post('/patients', payload)
     }
     
     closeModal()
@@ -580,7 +652,18 @@ const closeModal = () => {
     father_contact_number: '',
     guardian_id: null,
     family_number: '',
-    tags: ''
+    tags: '',
+    birth_weight: null,
+    birth_length: null,
+    place_of_birth: null,
+    address_at_birth: null,
+    time_of_birth: null,
+    attendant_at_birth: null,
+    type_of_delivery: null,
+    ballards_score: null,
+    hearing_test_date: null,
+    newborn_screening_date: null,
+    newborn_screening_result: null
   }
   
   // Reset guardian search fields

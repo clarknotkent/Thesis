@@ -13,6 +13,9 @@
           <button class="btn btn-success" @click="showAddVaccineModal = true">
             <i class="bi bi-plus-square me-2"></i>Add New Vaccine
           </button>
+          <button class="btn btn-secondary" @click="openScheduleModal()">
+            <i class="bi bi-calendar-event me-2"></i>Manage Scheduling
+          </button>
         </div>
       </div>
 
@@ -208,6 +211,50 @@
         </div>
       </div>
 
+      <!-- Schedules Table -->
+      <div v-if="!loading" class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+          <h6 class="m-0 fw-bold text-primary">Vaccine Schedules</h6>
+          <div>
+            <button class="btn btn-sm btn-primary" @click="openScheduleModal()">New Schedule</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Schedule Name</th>
+                  <th>Vaccine</th>
+                  <th>Total Doses</th>
+                  <th>Created</th>
+                  <th>Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="s in schedules" :key="s.id || s.schedule_master_id">
+                  <td>{{ s.name }}</td>
+                  <td>{{ s.vaccine?.antigen_name || s.vaccine?.brand_name || (s.vaccine_id) }}</td>
+                  <td>{{ s.total_doses }}</td>
+                  <td>{{ formatDate(s.created_at) }}</td>
+                  <td>{{ formatDate(s.updated_at) }}</td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-primary" @click="editSchedule(s)">Edit</button>
+                      <button class="btn btn-outline-secondary" @click="viewSchedule(s)">View</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="schedules.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">No schedules defined</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Add/Edit Modal -->
       <div class="modal fade" :class="{ show: showAddModal || showAddStockModal }" :style="{ display: (showAddModal || showAddStockModal) ? 'block' : 'none' }" tabindex="-1">
         <div class="modal-dialog">
@@ -286,6 +333,16 @@
                     required
                   >
                 </div>
+                <div class="mb-3">
+                  <label for="storageLocation" class="form-label">Storage Location</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="storageLocation"
+                    v-model="form.storageLocation"
+                    placeholder="e.g., Cold Room A"
+                  >
+                </div>
                 <div class="modal-footer">
                   <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
                   <button type="submit" class="btn btn-primary" :disabled="saving">
@@ -346,6 +403,17 @@
                   >
                 </div>
                 <div class="mb-3">
+                  <label for="newDiseasePrevented" class="form-label">Disease Prevented *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="newDiseasePrevented"
+                    v-model="vaccineForm.disease_prevented"
+                    required
+                    placeholder="e.g., Tuberculosis, Measles"
+                  />
+                </div>
+                <div class="mb-3">
                   <label for="newVaccineType" class="form-label">Vaccine Type *</label>
                   <select 
                     class="form-control" 
@@ -356,6 +424,20 @@
                     <option value="">-- Select Type --</option>
                     <option value="live">Live</option>
                     <option value="inactivated">Inactivated</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="newCategory" class="form-label">Category *</label>
+                  <select
+                    class="form-control"
+                    id="newCategory"
+                    v-model="vaccineForm.category"
+                    required
+                  >
+                    <option value="">-- Select Category --</option>
+                    <option value="VACCINE">Vaccine</option>
+                    <option value="DEWORMING">Deworming</option>
+                    <option value="VITAMIN_A">Vitamin A</option>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -377,6 +459,16 @@
                     id="newExpirationDate"
                     v-model="vaccineForm.expiration_date" 
                     required
+                  >
+                </div>
+                <div class="mb-3">
+                  <label for="newStorageLocation" class="form-label">Storage Location</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="newStorageLocation"
+                    v-model="vaccineForm.storage_location"
+                    placeholder="e.g., Cold Room A"
                   >
                 </div>
                 <div class="mb-3">
@@ -403,23 +495,213 @@
         </div>
       </div>
 
+      <!-- Scheduling Modal -->
+      <div v-if="showScheduleModal" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Manage Vaccine Scheduling</h5>
+              <button type="button" class="btn-close" @click="showScheduleModal = false"></button>
+            </div>
+            <div class="modal-body">
+              <form @submit.prevent="submitSchedule">
+                <div class="mb-3">
+                  <label class="form-label">Select Vaccine Type *</label>
+                  <select v-model="selectedVaccine" class="form-select" :disabled="scheduleReadOnly" required>
+                    <option value="">-- Select Vaccine --</option>
+                    <option v-for="v in existingVaccines" :key="v.id" :value="v.id">
+                      {{ v.antigen_name }} ({{ v.brand_name }})
+                    </option>
+                  </select>
+                </div>
+                <div v-if="selectedVaccine">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Schedule Name *</label>
+                      <input type="text" class="form-control" v-model="schedulingFields.name" :disabled="scheduleReadOnly" required placeholder="e.g. NIP BCG Schedule" />
+                      <small class="text-muted">A descriptive name for this schedule.</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Schedule Code</label>
+                      <input type="text" class="form-control" v-model="schedulingFields.code" :disabled="scheduleReadOnly" placeholder="e.g. NIP-BCG-2025" />
+                      <small class="text-muted">Optional code for reference.</small>
+                    </div>
+                  </div>
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                      <label class="form-label">Total Doses *</label>
+                      <input type="number" class="form-control" v-model.number="schedulingFields.total_doses" :disabled="scheduleReadOnly" min="1" required placeholder="e.g. 3" />
+                      <small class="text-muted">How many doses in this series? This creates per-dose panels automatically.</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Concurrent Allowed</label>
+                      <select class="form-select" v-model="schedulingFields.concurrent_allowed" :disabled="scheduleReadOnly">
+                        <option :value="true">Yes</option>
+                        <option :value="false">No</option>
+                      </select>
+                      <small class="text-muted">Can this vaccine be given with others?</small>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Catch-up Strategy</label>
+                      <input type="text" class="form-control" v-model="schedulingFields.catchup_strategy" :disabled="scheduleReadOnly" placeholder="e.g. Give ASAP if missed" />
+                      <small class="text-muted">Instructions if a dose is missed.</small>
+                    </div>
+                  </div>
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                      <label class="form-label">Minimum Age (days) *</label>
+                      <input type="number" class="form-control" v-model.number="schedulingFields.min_age_days" :disabled="scheduleReadOnly" min="0" required placeholder="e.g. 0 for birth" />
+                      <small class="text-muted">Earliest age (in days) for first dose. Use days for precision (e.g., 0 = birth).</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Maximum Age (days)</label>
+                      <input type="number" class="form-control" v-model.number="schedulingFields.max_age_days" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 365 for 1 year" />
+                      <small class="text-muted">Latest age (in days) for last dose (optional). Leave empty if not applicable.</small>
+                    </div>
+                  </div>
+                    <div class="mb-3 mt-2">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-control" v-model="schedulingFields.notes" :disabled="scheduleReadOnly" placeholder="Any extra info or instructions"></textarea>
+                  </div>
+                  <hr />
+                  <h6>Dose Schedule <span class="text-muted">(Configure each dose)</span></h6>
+                  <div v-if="(schedulingFields.doses || []).length === 0" class="alert alert-info">Enter a value in <strong>Total Doses</strong> to create per-dose panels.</div>
+                  <div v-else class="border rounded p-3 mb-3 bg-light-subtle">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div>
+                        <strong>Dose {{ (currentDoseIndex || 0) + 1 }} of {{ schedulingFields.total_doses }}</strong>
+                        <div class="text-muted">Use Prev/Next or pick a dose below to navigate</div>
+                      </div>
+                      <div>
+                        <button class="btn btn-sm btn-outline-secondary me-2" @click="prevDose" :disabled="scheduleReadOnly || currentDoseIndex === 0">&laquo; Prev</button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="nextDose" :disabled="scheduleReadOnly || currentDoseIndex >= (Number(schedulingFields.total_doses) - 1)">Next &raquo;</button>
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <div class="btn-group" role="group" aria-label="Dose picker">
+                        <button v-for="n in Number(schedulingFields.total_doses || 0)" :key="n" type="button" class="btn btn-sm" :class="{'btn-outline-secondary': currentDoseIndex !== (n-1), 'btn-primary': currentDoseIndex === (n-1)}" @click="!scheduleReadOnly && goToDose(n-1)">Dose {{ n }}</button>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-2">
+                        <label class="form-label">Dose # *</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].dose_number" :disabled="scheduleReadOnly" min="1" required />
+                        <small class="text-muted">e.g. 1, 2, 3</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Due After Days *</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].due_after_days" :disabled="scheduleReadOnly" min="0" required placeholder="e.g. 0, 42, 75" />
+                        <small class="text-muted">Child's age in days for this dose.</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Min Interval (days)</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_days" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 28" />
+                        <small class="text-muted">Min days after previous dose.</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Max Interval (days)</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].max_interval_days" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 90" />
+                        <small class="text-muted">Max days after previous dose.</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Min Interval Other Vax</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_other_vax" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 14" />
+                        <small class="text-muted">Min days after other vaccines.</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Requires Previous</label>
+                        <select class="form-select" v-model="schedulingFields.doses[currentDoseIndex].requires_previous" :disabled="scheduleReadOnly">
+                          <option :value="true">Yes</option>
+                          <option :value="false">No</option>
+                        </select>
+                        <small class="text-muted">Must follow previous dose?</small>
+                      </div>
+                    </div>
+                    <div class="mt-2">
+                      <div v-if="errors.doses && errors.doses[currentDoseIndex]" class="text-danger small">
+                        <div v-for="(msg, key) in errors.doses[currentDoseIndex]" :key="key">{{ msg }}</div>
+                      </div>
+                    </div>
+                    <div class="row g-3 mt-1">
+                      <div class="col-md-2">
+                        <label class="form-label">Skippable</label>
+                        <select class="form-select" v-model="schedulingFields.doses[currentDoseIndex].skippable" :disabled="scheduleReadOnly">
+                          <option :value="true">Yes</option>
+                          <option :value="false">No</option>
+                        </select>
+                        <small class="text-muted">Can this dose be skipped?</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Grace Period (days)</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].grace_period_days" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 7" />
+                        <small class="text-muted">Days after due date still on time.</small>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Absolute Latest (days)</label>
+                        <input type="number" class="form-control" v-model.number="schedulingFields.doses[currentDoseIndex].absolute_latest_days" :disabled="scheduleReadOnly" min="0" placeholder="e.g. 180" />
+                        <small class="text-muted">Last possible day for this dose.</small>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" v-model="schedulingFields.doses[currentDoseIndex].notes" :disabled="scheduleReadOnly" placeholder="Any special instructions" />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="submitMessage" :class="{'alert': true, 'alert-success': submitMessage.includes('success'), 'alert-danger': !submitMessage.includes('success')}" >{{ submitMessage }}</div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="showScheduleModal = false" :disabled="isSubmitting">Close</button>
+              <button v-if="!scheduleReadOnly" class="btn btn-outline-secondary me-2" type="button" @click="openPreview">Preview Payload</button>
+              <button v-if="!scheduleReadOnly" class="btn btn-primary" :disabled="!selectedVaccine || isSubmitting" @click="submitSchedule">
+                <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
+                Save Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Modal -->
+      <div v-if="showPreviewModal" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Preview Schedule Payload</h5>
+              <button type="button" class="btn-close" @click="closePreview"></button>
+            </div>
+            <div class="modal-body">
+              <pre style="max-height:60vh; overflow:auto; background:#f8f9fa; padding:1rem; border-radius:.25rem">{{ JSON.stringify(previewPayload, null, 2) }}</pre>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closePreview">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal Backdrop -->
-      <div v-if="showAddModal || showAddStockModal || showAddVaccineModal" class="modal-backdrop fade show"></div>
+      <div v-if="showAddModal || showAddStockModal || showAddVaccineModal || showScheduleModal" class="modal-backdrop fade show"></div>
     </div>
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import api from '@/services/api'
 import { usePagination } from '@/composables/usePagination'
+import { useToast } from '@/composables/useToast'
+
+const { addToast } = useToast()
 
 // Reactive data
 const loading = ref(true)
 const saving = ref(false)
 const vaccines = ref([])
 const existingVaccines = ref([])
+const schedules = ref([])
 const stats = ref({
   totalTypes: 0,
   totalDoses: 0,
@@ -432,7 +714,220 @@ const searchTerm = ref('')
 const showAddModal = ref(false)
 const showAddStockModal = ref(false)
 const showAddVaccineModal = ref(false)
+const showScheduleModal = ref(false)
+const scheduleReadOnly = ref(false)
 const isEditing = ref(false)
+const selectedVaccine = ref('')
+const schedulingFields = ref({
+  // schedule_master fields
+  name: '',
+  code: '',
+  total_doses: 1,
+  concurrent_allowed: false,
+  catchup_strategy: '',
+  min_age_days: 0,
+  max_age_days: null,
+  created_by: null,
+  notes: '',
+  // doses array (schedule_doses entries)
+  doses: []
+})
+const currentDoseIndex = ref(0)
+
+// Ensure schedulingFields.doses length matches schedulingFields.total_doses
+function ensureDosesCount(count) {
+  const n = Number(count) || 0
+  const doses = schedulingFields.value.doses || []
+  if (doses.length < n) {
+    for (let i = doses.length; i < n; i++) {
+      doses.push({
+        dose_number: i + 1,
+        due_after_days: '',
+        min_interval_days: '',
+        max_interval_days: '',
+        min_interval_other_vax: '',
+        requires_previous: false,
+        skippable: false,
+        grace_period_days: '',
+        absolute_latest_days: '',
+        notes: ''
+      })
+    }
+  } else if (doses.length > n) {
+    doses.splice(n)
+    if (currentDoseIndex.value >= n) currentDoseIndex.value = Math.max(0, n - 1)
+  }
+  schedulingFields.value.doses = doses
+}
+
+// Watch total_doses so dose panels are created/removed automatically
+watch(() => schedulingFields.value.total_doses, (newVal) => {
+  ensureDosesCount(newVal)
+})
+
+// Reset schedulingFields to defaults
+function resetSchedulingFields() {
+  schedulingFields.value = {
+    name: '',
+    code: '',
+    total_doses: 1,
+    concurrent_allowed: false,
+    catchup_strategy: '',
+    min_age_days: 0,
+    max_age_days: null,
+    created_by: null,
+    notes: '',
+    doses: []
+  }
+}
+
+// Fetch existing schedule for a vaccine (if any) and populate schedulingFields
+async function fetchSchedule(vaccineId) {
+  if (!vaccineId) return resetSchedulingFields()
+  try {
+    const res = await api.get(`/vaccines/${vaccineId}/schedule`)
+    const payload = res.data?.data || res.data || null
+    if (!payload) {
+      resetSchedulingFields()
+      return
+    }
+
+    schedulingFields.value = {
+      name: payload.name || '',
+      code: payload.code || '',
+      total_doses: Number(payload.total_doses) || (Array.isArray(payload.doses) ? payload.doses.length : 1),
+      concurrent_allowed: !!payload.concurrent_allowed,
+      catchup_strategy: payload.catchup_strategy || '',
+      min_age_days: payload.min_age_days != null ? Number(payload.min_age_days) : 0,
+      max_age_days: payload.max_age_days != null ? Number(payload.max_age_days) : null,
+      created_by: payload.created_by || null,
+      notes: payload.notes || '',
+      doses: Array.isArray(payload.doses) ? payload.doses.map((d, i) => ({
+        dose_number: Number(d.dose_number) || (i + 1),
+        due_after_days: d.due_after_days == null ? '' : Number(d.due_after_days),
+        min_interval_days: d.min_interval_days == null ? '' : Number(d.min_interval_days),
+        max_interval_days: d.max_interval_days == null ? '' : Number(d.max_interval_days),
+        min_interval_other_vax: d.min_interval_other_vax == null ? '' : Number(d.min_interval_other_vax),
+        requires_previous: !!d.requires_previous,
+        skippable: !!d.skippable,
+        grace_period_days: d.grace_period_days == null ? '' : Number(d.grace_period_days),
+        absolute_latest_days: d.absolute_latest_days == null ? '' : Number(d.absolute_latest_days),
+        notes: d.notes || ''
+      })) : []
+    }
+
+    ensureDosesCount(schedulingFields.value.total_doses)
+  } catch (e) {
+    console.error('Error fetching schedule for vaccine', vaccineId, e)
+    resetSchedulingFields()
+  }
+}
+
+// When user selects a vaccine, try to load its schedule for editing
+watch(selectedVaccine, (val) => {
+  if (val) fetchSchedule(val)
+  else resetSchedulingFields()
+})
+
+function nextDose() {
+  const total = Number(schedulingFields.value.total_doses) || schedulingFields.value.doses.length
+  if (currentDoseIndex.value < total - 1) currentDoseIndex.value++
+}
+
+function prevDose() {
+  if (currentDoseIndex.value > 0) currentDoseIndex.value--
+}
+
+function goToDose(i) {
+  const total = Number(schedulingFields.value.total_doses) || schedulingFields.value.doses.length
+  if (i >= 0 && i < total) currentDoseIndex.value = i
+}
+const isSubmitting = ref(false)
+const submitMessage = ref('')
+// Validation errors structure: { general: '', doses: [ { due_after_days: '...', ... } ] }
+const errors = ref({ general: '', doses: [] })
+
+function clearErrors() {
+  errors.value = { general: '', doses: [] }
+}
+
+function validateSchedule() {
+  clearErrors()
+  const sf = schedulingFields.value
+  if (!sf.name || String(sf.name).trim() === '') {
+    errors.value.general = 'Schedule name is required.'
+    return false
+  }
+  const total = Number(sf.total_doses) || 0
+  if (total < 1) {
+    errors.value.general = 'Total doses must be at least 1.'
+    return false
+  }
+  if (!Array.isArray(sf.doses) || sf.doses.length < total) {
+    errors.value.general = 'Dose count does not match Total Doses.'
+    return false
+  }
+  // per-dose checks
+  for (let i = 0; i < total; i++) {
+    const d = sf.doses[i] || {}
+    const dErr = {}
+    if (d.dose_number == null) dErr.dose_number = 'Dose number required.'
+    if (d.due_after_days === '' || d.due_after_days == null) dErr.due_after_days = 'Due After Days required.'
+    if (Object.keys(dErr).length > 0) {
+      errors.value.doses[i] = dErr
+    }
+  }
+  // if any dose errors exist, block submit
+  if (errors.value.doses.some(x => x && Object.keys(x).length > 0)) {
+    errors.value.general = errors.value.general || 'Please fix per-dose errors.'
+    return false
+  }
+  return true
+}
+
+const showPreviewModal = ref(false)
+const previewPayload = ref(null)
+
+function buildPayload() {
+  const sf = schedulingFields.value
+  const payload = {
+    name: String(sf.name || ''),
+    code: sf.code || null,
+    total_doses: Number(sf.total_doses) || 0,
+    concurrent_allowed: !!sf.concurrent_allowed,
+    catchup_strategy: sf.catchup_strategy || null,
+    min_age_days: sf.min_age_days != null ? Number(sf.min_age_days) : null,
+    max_age_days: sf.max_age_days != null ? Number(sf.max_age_days) : null,
+    notes: sf.notes || null,
+    doses: (sf.doses || []).map(d => ({
+      dose_number: Number(d.dose_number) || null,
+      due_after_days: d.due_after_days === '' || d.due_after_days == null ? null : Number(d.due_after_days),
+      min_interval_days: d.min_interval_days === '' || d.min_interval_days == null ? null : Number(d.min_interval_days),
+      max_interval_days: d.max_interval_days === '' || d.max_interval_days == null ? null : Number(d.max_interval_days),
+      min_interval_other_vax: d.min_interval_other_vax === '' || d.min_interval_other_vax == null ? null : Number(d.min_interval_other_vax),
+      requires_previous: !!d.requires_previous,
+      skippable: !!d.skippable,
+      grace_period_days: d.grace_period_days === '' || d.grace_period_days == null ? null : Number(d.grace_period_days),
+      absolute_latest_days: d.absolute_latest_days === '' || d.absolute_latest_days == null ? null : Number(d.absolute_latest_days),
+      notes: d.notes || null
+    }))
+  }
+  return payload
+}
+
+function openPreview() {
+  if (!validateSchedule()) {
+    submitMessage.value = errors.value.general || 'Validation failed.'
+    return
+  }
+  previewPayload.value = buildPayload()
+  showPreviewModal.value = true
+}
+
+function closePreview() {
+  showPreviewModal.value = false
+  previewPayload.value = null
+}
 
 // Reset pagination when search term changes
 const resetPagination = () => {
@@ -453,9 +948,11 @@ const form = ref({
   antigenName: '',
   brandName: '',
   manufacturer: '',
+  category: '',
   quantity: 0,
   lotNumber: '',
-  expirationDate: ''
+  expirationDate: '',
+  storageLocation: ''
 })
 
 // Form data for new vaccine
@@ -464,10 +961,13 @@ const vaccineForm = ref({
   antigen_name: '',
   brand_name: '',
   manufacturer: '',
+  disease_prevented: '',
   vaccine_type: '',
+  category: '',
   lot_number: '',
   expiration_date: '',
-  stock_level: 0
+  stock_level: 0,
+  storage_location: ''
 })
 
 // Computed properties
@@ -501,42 +1001,66 @@ const fetchVaccines = async () => {
       id: v.inventory_id || v.id,
       vaccineName: v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || '',
       manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
+      category: v.vaccinemaster?.category || v.category || '',
       batchNo: v.lot_number || v.batch_number || '',
       expiryDate: v.expiration_date || v.expiry_date || '',
       quantity: v.current_stock_level || v.quantity || 0,
       status: v.status || (v.current_stock_level > 0 ? (v.current_stock_level < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
     }))
+    console.debug('[fetchVaccines] fetched', items.length, 'inventory items, mapped', vaccines.value.length, 'for table')
   } catch (error) {
     console.error('Error fetching vaccines:', error)
-    alert('Error loading vaccine data')
+    addToast({ title: 'Error', message: 'Error loading vaccine data', type: 'error' })
   } finally {
     loading.value = false
   }
 }
 
+// Update stats calculation to use vaccines.value for all stats except totalTypes
 const fetchStats = async () => {
   try {
-    // Compute stats client-side from vaccines data
-    const totalTypes = new Set(vaccines.value.map(v => v.vaccineName)).size
-    const totalDoses = vaccines.value.reduce((sum, v) => sum + (v.quantity || 0), 0)
-    const lowStock = vaccines.value.filter(v => (v.quantity || 0) > 0 && (v.quantity || 0) < 10).length
+    // Use existingVaccines for unique vaccine types
+    const totalTypes = new Set(existingVaccines.value.map(v => v.antigen_name + '|' + v.brand_name)).size;
+    // Use vaccines.value for inventory-based stats
+    const totalDoses = vaccines.value.reduce((sum, v) => sum + (v.quantity || 0), 0);
+    const lowStock = vaccines.value.filter(v => (v.quantity || 0) > 0 && (v.quantity || 0) < 10).length;
     const expiringSoon = vaccines.value.filter(v => {
-      if (!v.expiryDate) return false
-      const d = new Date(v.expiryDate)
-      const now = new Date()
-      const in30 = new Date(now.getTime() + 30*24*60*60*1000)
-      return d >= now && d <= in30
-    }).length
-    stats.value = { totalTypes, totalDoses, lowStock, expiringSoon }
+      if (!v.expiryDate) return false;
+      const d = new Date(v.expiryDate);
+      const now = new Date();
+      const in30 = new Date(now.getTime() + 30*24*60*60*1000);
+      return d >= now && d <= in30;
+    }).length;
+    stats.value = { totalTypes, totalDoses, lowStock, expiringSoon };
   } catch (error) {
-    console.error('Error calculating stats:', error)
+    console.error('Error calculating stats:', error);
+    stats.value = { totalTypes: 0, totalDoses: 0, lowStock: 0, expiringSoon: 0 };
   }
-}
+};
 
 const fetchExistingVaccines = async () => {
   try {
     const response = await api.get('/vaccines')
-    existingVaccines.value = response.data?.data || response.data || []
+    let raw = response.data?.data || response.data || []
+    // If backend returns { vaccines: [...] }, extract the array
+    if (raw && typeof raw === 'object' && Array.isArray(raw.vaccines)) {
+      raw = raw.vaccines
+    }
+    console.debug('[fetchExistingVaccines] normalized:', raw)
+    if (Array.isArray(raw)) {
+      existingVaccines.value = raw.map(v => ({
+        ...v,
+        id: v.vaccine_id || v.id // alias for selection
+      }))
+    } else if (raw && typeof raw === 'object') {
+      // If API returns a single object, wrap in array
+      existingVaccines.value = [{
+        ...raw,
+        id: raw.vaccine_id || raw.id
+      }]
+    } else {
+      existingVaccines.value = []
+    }
   } catch (error) {
     console.error('Error fetching existing vaccines:', error)
     // Fallback to empty array if API fails
@@ -549,11 +1073,15 @@ const saveVaccine = async () => {
     saving.value = true
     
     const payload = {
-      brand_name: form.value.brandName,
-      manufacturer: form.value.manufacturer,
-      current_stock_level: form.value.quantity,
+      vaccine_id: form.value.vaccine_id,
       lot_number: form.value.lotNumber,
-      expiration_date: form.value.expirationDate
+      expiration_date: form.value.expirationDate,
+      current_stock_level: form.value.quantity,
+      storage_location: form.value.storageLocation || null
+    }
+    if (!payload.vaccine_id) {
+      addToast({ title: 'Validation', message: 'Please select a vaccine type first.', type: 'warning' })
+      return
     }
     
     if (isEditing.value) {
@@ -568,7 +1096,7 @@ const saveVaccine = async () => {
     await fetchExistingVaccines()
   } catch (error) {
     console.error('Error saving vaccine:', error)
-    alert('Error saving vaccine data')
+    addToast({ title: 'Error', message: 'Error saving vaccine data', type: 'error' })
   } finally {
     saving.value = false
   }
@@ -588,7 +1116,7 @@ const deleteVaccine = async (vaccine) => {
       await fetchStats()
     } catch (error) {
       console.error('Error deleting vaccine:', error)
-      alert('Error deleting vaccine')
+      addToast({ title: 'Error', message: 'Error deleting vaccine', type: 'error' })
     }
   }
 }
@@ -603,9 +1131,11 @@ const closeModal = () => {
     antigenName: '',
     brandName: '',
     manufacturer: '',
+    category: '',
     quantity: 0,
     lotNumber: '',
-    expirationDate: ''
+    expirationDate: '',
+    storageLocation: ''
   }
 }
 
@@ -627,10 +1157,13 @@ const closeVaccineModal = () => {
     antigen_name: '',
     brand_name: '',
     manufacturer: '',
+    disease_prevented: '',
     vaccine_type: '',
+    category: '',
     lot_number: '',
     expiration_date: '',
-    stock_level: 0
+    stock_level: 0,
+    storage_location: ''
   }
 }
 
@@ -642,8 +1175,10 @@ const saveNewVaccine = async () => {
     const vaccinePayload = {
       antigen_name: vaccineForm.value.antigen_name,
       brand_name: vaccineForm.value.brand_name,
+      disease_prevented: vaccineForm.value.disease_prevented,
       manufacturer: vaccineForm.value.manufacturer,
-      vaccine_type: vaccineForm.value.vaccine_type
+      vaccine_type: vaccineForm.value.vaccine_type,
+      category: vaccineForm.value.category
     }
     
     const vaccineResponse = await api.post('/vaccines', vaccinePayload)
@@ -655,62 +1190,139 @@ const saveNewVaccine = async () => {
         vaccine_id: vaccineId,
         lot_number: vaccineForm.value.lot_number,
         expiration_date: vaccineForm.value.expiration_date,
-        current_stock_level: vaccineForm.value.stock_level
+        current_stock_level: vaccineForm.value.stock_level,
+        storage_location: vaccineForm.value.storage_location || null
       }
       await api.post('/vaccines/inventory', inventoryPayload)
     }
     
-    closeVaccineModal()
-    await fetchVaccines()
-    await fetchStats()
-    await fetchExistingVaccines()
-    alert('Vaccine type added successfully!')
+  closeVaccineModal()
+  // Refresh inventory and vaccine type lists. Refresh existing types first so stats.totalTypes updates correctly.
+  await fetchVaccines()
+  await fetchExistingVaccines()
+  await fetchStats()
+    addToast({ title: 'Success', message: 'Vaccine type added successfully!', type: 'success' })
   } catch (error) {
     console.error('Error saving vaccine:', error)
     
     // Handle specific error types
     if (error.response?.status === 400 && error.response?.data?.error?.code === '23505') {
-      alert('This vaccine already exists! A vaccine with this Antigen Name and Brand Name combination is already in the system.')
+      addToast({ title: 'Duplicate', message: 'This vaccine already exists! A vaccine with this Antigen Name and Brand Name combination is already in the system.', type: 'warning' })
     } else if (error.response?.status === 400 && error.response?.data?.error?.code === '23514') {
-      alert('Invalid vaccine type selected. Please choose either "Live" or "Inactivated".')
+      addToast({ title: 'Invalid Input', message: 'Invalid vaccine type selected. Please choose either "Live" or "Inactivated".', type: 'warning' })
     } else {
-      alert('Error saving vaccine type. Please check your input and try again.')
+      addToast({ title: 'Error', message: 'Error saving vaccine type. Please check your input and try again.', type: 'error' })
     }
   } finally {
     saving.value = false
   }
 }
 
+async function submitSchedule() {
+  if (!selectedVaccine.value) return
+  isSubmitting.value = true
+  submitMessage.value = ''
+  // Client-side validation
+  if (!validateSchedule()) {
+    submitMessage.value = errors.value.general || 'Validation failed.'
+    isSubmitting.value = false
+    return
+  }
+  // Build payload using helper
+  const payload = buildPayload()
+  try {
+    const res = await api.post(`/vaccines/${selectedVaccine.value}/schedule`, payload)
+    const data = res.data
+    if (data && (data.success || res.status === 200 || res.status === 201)) {
+      submitMessage.value = 'Scheduling updated successfully.'
+      // Refresh schedule list so user sees the saved record
+      await fetchSchedules()
+      setTimeout(() => {
+        showScheduleModal.value = false
+        submitMessage.value = ''
+      }, 800)
+    } else {
+      submitMessage.value = data?.message || 'Failed to update scheduling.'
+    }
+  } catch (e) {
+    console.error('Error posting schedule', e)
+    submitMessage.value = 'Error connecting to server.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// Format date to short locale string
 const formatDate = (dateString) => {
+  if (!dateString) return '';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
-  })
-}
+  });
+};
+
+const getQuantityClass = (quantity) => {
+  if (quantity === 0) return 'text-danger';
+  if (quantity <= 50) return 'text-warning';
+  return 'text-success';
+};
 
 const getStatusBadgeClass = (status) => {
   switch (status) {
-    case 'Available': return 'bg-success'
-    case 'Low Stock': return 'bg-warning text-dark'
-    case 'Out of Stock': return 'bg-danger'
-    case 'Expiring Soon': return 'bg-danger'
-    default: return 'bg-secondary'
+    case 'Available': return 'bg-success';
+    case 'Low Stock': return 'bg-warning text-dark';
+    case 'Out of Stock': return 'bg-danger';
+    case 'Expiring Soon': return 'bg-danger';
+    default: return 'bg-secondary';
+  }
+};
+
+// Lifecycle
+onMounted(async () => {
+  await fetchVaccines();
+  await fetchExistingVaccines();
+  await fetchStats();
+  await fetchSchedules();
+})
+
+const fetchSchedules = async () => {
+  try {
+    const res = await api.get('/vaccines/schedules')
+    const data = res.data?.data || res.data || []
+    schedules.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('Error fetching schedules', e)
+    schedules.value = []
   }
 }
 
-const getQuantityClass = (quantity) => {
-  if (quantity === 0) return 'text-danger'
-  if (quantity <= 50) return 'text-warning'
-  return 'text-success'
+const editSchedule = (s) => {
+  // Open modal for editing
+  scheduleReadOnly.value = false
+  const vaccineId = s.vaccine?.vaccine_id || s.vaccine_id || null
+  if (vaccineId) selectedVaccine.value = vaccineId
+  showScheduleModal.value = true
 }
 
-// Lifecycle
-onMounted(() => {
-  fetchVaccines()
-  fetchStats()
-  fetchExistingVaccines()
-})
+const viewSchedule = (s) => {
+  // Open modal in read-only/view mode and load schedule for the vaccine
+  scheduleReadOnly.value = true
+  const vaccineId = s.vaccine?.vaccine_id || s.vaccine_id || null
+  if (vaccineId) selectedVaccine.value = vaccineId
+  showScheduleModal.value = true
+}
+
+function openScheduleModal() {
+  // open modal with defaults; selectedVaccine remains empty until user selects
+  resetSchedulingFields()
+  selectedVaccine.value = ''
+  // ensure modal is in editable mode when opened from the toolbar
+  scheduleReadOnly.value = false
+  // reset dose navigator
+  currentDoseIndex.value = 0
+  showScheduleModal.value = true
+}
 </script>
 
 <style scoped>

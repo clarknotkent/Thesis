@@ -12,7 +12,8 @@ const {
   getBirthHistory,
   updateBirthHistory,
   getVitals,
-  updateVitals
+  updateVitals,
+  updatePatientSchedules
 } = require('../controllers/patientController');
 
 // GET /api/patients - Get all patients with pagination and filtering
@@ -50,5 +51,8 @@ router.put('/:id/vitals', authenticateRequest, checkUserMapping, authorizeRole([
 
 // Optional: dedicated onboarding endpoint (same handler as create with immunizations plan support)
 router.post('/onboard', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), createPatient);
+
+// POST /api/patients/:id/update-schedules - Update patient schedule statuses
+router.post('/:id/update-schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), updatePatientSchedules);
 
 module.exports = router;

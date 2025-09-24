@@ -74,7 +74,37 @@ const patientModel = {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      return data || null;
+      if (!data) return null;
+
+      // Fetch guardian phone number and override patient contact_number
+      if (data.guardian_id) {
+        const { data: guardian, error: guardianErr } = await supabase
+          .from('guardians')
+          .select('contact_number')
+          .eq('guardian_id', data.guardian_id)
+          .eq('is_deleted', false)
+          .single();
+        if (!guardianErr && guardian && guardian.contact_number) {
+          data.contact_number = guardian.contact_number;
+        }
+      }
+
+      // Fetch birth history and attach place_of_birth and address_at_birth distinctly
+      try {
+        const { data: birthhistory, error: birthErr } = await supabase
+          .from('birthhistory')
+          .select('place_of_birth, address_at_birth')
+          .eq('patient_id', id)
+          .eq('is_deleted', false)
+          .single();
+        if (!birthErr && birthhistory) {
+          data.place_of_birth = birthhistory.place_of_birth || null;
+          data.address_at_birth = birthhistory.address_at_birth || null;
+        }
+      } catch (err) {
+        console.error('Error fetching birthhistory for patient details:', err);
+      }
+      return data;
     } catch (error) {
       console.error('Error fetching patient by ID:', error);
       throw error;
@@ -102,26 +132,35 @@ const patientModel = {
   // Create a new patient
   createPatient: async (patientData) => {
     try {
-      // Calculate age in months from date_of_birth
-      // The database trigger will also calculate this, but we include it to be safe
-      let ageInMonths = 0;
-      if (patientData.date_of_birth) {
-        ageInMonths = patientModel.calculateAgeInMonths(patientData.date_of_birth);
-      }
-      
-      // Validate guardian_id if provided
+      // Validate guardian identifier if provided. The frontend may send either
+      // the guardians.guardian_id (primary key) or the guardians.user_id
+      // (the linked users.user_id). Normalize to the guardian primary key.
       let validGuardianId = null;
       if (patientData.guardian_id) {
-        const { data: guardian, error: guardianError } = await supabase
+        // Try to find by guardian_id first, then by user_id
+        const { data: guardianById, error: byIdErr } = await supabase
           .from('guardians')
           .select('guardian_id')
           .eq('guardian_id', patientData.guardian_id)
+          .limit(1)
           .single();
-        
-        if (!guardianError && guardian) {
-          validGuardianId = patientData.guardian_id;
+
+        if (!byIdErr && guardianById) {
+          validGuardianId = guardianById.guardian_id;
         } else {
-          console.log(`Warning: Guardian ID ${patientData.guardian_id} not found, setting to null`);
+          // Try resolving by user_id (common when frontend passes selected user's id)
+          const { data: guardianByUser, error: byUserErr } = await supabase
+            .from('guardians')
+            .select('guardian_id')
+            .eq('user_id', patientData.guardian_id)
+            .limit(1)
+            .single();
+
+          if (!byUserErr && guardianByUser) {
+            validGuardianId = guardianByUser.guardian_id;
+          } else {
+            console.log(`Warning: Guardian not found for identifier ${patientData.guardian_id}, setting to null`);
+          }
         }
       }
       
@@ -130,12 +169,12 @@ const patientModel = {
         surname: patientData.surname,
         middlename: patientData.middlename,
         date_of_birth: patientData.date_of_birth,
-        age_months: ageInMonths, // Include calculated age in months
         sex: patientData.sex,
         address: patientData.address,
         barangay: patientData.barangay,
         health_center: patientData.health_center,
         guardian_id: validGuardianId, // Use validated guardian_id or null
+        relationship_to_guardian: patientData.relationship_to_guardian || null,
         mother_name: patientData.mother_name,
         mother_occupation: patientData.mother_occupation,
         mother_contact_number: patientData.mother_contact_number,
@@ -143,57 +182,21 @@ const patientModel = {
         father_occupation: patientData.father_occupation,
         father_contact_number: patientData.father_contact_number,
         family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
-        tags: null // Force null for tags due to database constraint
+        tags: null, // Force null for tags due to database constraint
+        created_by: patientData.created_by || null
       };
 
-      console.log('Creating patient with calculated age:', {
+      console.log('Creating patient:', {
         name: `${patientData.firstname} ${patientData.surname}`,
-        date_of_birth: patientData.date_of_birth,
-        age_months: ageInMonths
+        date_of_birth: patientData.date_of_birth
       });
 
-      // Try using the RPC function to bypass broken trigger
-      const { data: rpcData, error: rpcError } = await supabase.rpc('insert_patient_bypass_trigger', {
-        p_firstname: patientData.firstname,
-        p_surname: patientData.surname,
-        p_middlename: patientData.middlename,
-        p_date_of_birth: patientData.date_of_birth,
-        p_sex: patientData.sex,
-        p_address: patientData.address,
-        p_barangay: patientData.barangay,
-        p_health_center: patientData.health_center,
-        p_guardian_id: validGuardianId, // Use validated guardian_id or null
-        p_mother_name: patientData.mother_name,
-        p_mother_occupation: patientData.mother_occupation,
-        p_mother_contact_number: patientData.mother_contact_number,
-        p_father_name: patientData.father_name,
-        p_father_occupation: patientData.father_occupation,
-        p_father_contact_number: patientData.father_contact_number,
-        p_family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
-        p_tags: null // Force null for tags due to database constraint
-      });
-
-      if (rpcError) {
-        console.log('RPC insert failed, trying direct insert fallback...');
-        
-        // Fallback to direct insert without age_months
-        const insertDataWithoutAge = { ...insertData };
-        delete insertDataWithoutAge.age_months;
-        
-        const { data, error } = await supabase
-          .from('patients')
-          .insert(insertDataWithoutAge)
-          .select()
-          .single();
+      const { data, error } = await supabase
+        .from('patients')
+        .insert(insertData)
+        .select()
+        .single();
           
-        if (error) throw error;
-        return data;
-      }
-      
-      // RPC succeeded, return the data
-      const data = rpcData;
-      const error = null;
-
       if (error) throw error;
       return data;
     } catch (error) {
@@ -206,22 +209,48 @@ const patientModel = {
   updatePatient: async (id, patientData) => {
     try {
       const updateData = { ...patientData };
-      
       // Remove fields that don't exist in patients table
       delete updateData.birth_weight;
       delete updateData.birth_length;
       delete updateData.place_of_birth;
+      delete updateData.age_months;
+      delete updateData.birthhistory; // Remove birthhistory if present
 
-      // Recalculate age_months if date_of_birth is being updated
-      if (patientData.date_of_birth) {
-        updateData.age_months = patientModel.calculateAgeInMonths(patientData.date_of_birth);
+      // Normalize guardian_id to valid primary key
+      let validGuardianId = null;
+      if (updateData.guardian_id) {
+        // Try to find by guardian_id first, then by user_id
+        const { data: guardianById, error: byIdErr } = await supabase
+          .from('guardians')
+          .select('guardian_id')
+          .eq('guardian_id', updateData.guardian_id)
+          .limit(1)
+          .single();
+        if (!byIdErr && guardianById) {
+          validGuardianId = guardianById.guardian_id;
+        } else {
+          const { data: guardianByUser, error: byUserErr } = await supabase
+            .from('guardians')
+            .select('guardian_id')
+            .eq('user_id', updateData.guardian_id)
+            .limit(1)
+            .single();
+          if (!byUserErr && guardianByUser) {
+            validGuardianId = guardianByUser.guardian_id;
+          } else {
+            console.log(`Warning: Guardian not found for identifier ${updateData.guardian_id}, setting to null`);
+          }
+        }
       }
+      updateData.guardian_id = validGuardianId;
 
       console.log('Updating patient:', {
         patient_id: id,
-        date_of_birth: patientData.date_of_birth,
-        age_months: updateData.age_months
+        date_of_birth: patientData.date_of_birth
       });
+
+      // Ensure updated_by is present if provided
+      if (patientData.updated_by) updateData.updated_by = patientData.updated_by;
 
       const { data, error } = await supabase
         .from('patients')
@@ -348,14 +377,72 @@ const patientModel = {
         newborn_screening_result: birthData.newborn_screening_result,
         updated_at: new Date().toISOString()
       };
+      console.debug('updatePatientBirthHistory payload:', JSON.stringify(payload));
+      // Try the straightforward upsert first
       const { data, error } = await supabase
         .from('birthhistory')
         .upsert(payload, { onConflict: 'patient_id' })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (!error) {
+        console.debug('updatePatientBirthHistory result (upsert):', data);
+        return data;
+      }
+
+      // If Postgres complains about missing unique constraint (42P10), fall back
+      // to a safe select -> insert or update flow to avoid blocking patient creation.
+      if (error && error.code === '42P10') {
+        console.warn('Upsert failed due to missing unique constraint, falling back to select/insert/update');
+
+        // Check if a birthhistory record already exists
+        const { data: existing, error: selErr } = await supabase
+          .from('birthhistory')
+          .select('*')
+          .eq('patient_id', patientId)
+          .eq('is_deleted', false)
+          .limit(1)
+          .single();
+
+        if (selErr && selErr.code !== 'PGRST116') {
+          console.error('Error checking existing birthhistory during fallback:', selErr);
+          throw selErr;
+        }
+
+        if (existing) {
+          // Update the existing record
+          const { data: updData, error: updErr } = await supabase
+            .from('birthhistory')
+            .update(payload)
+            .eq('birthhistory_id', existing.birthhistory_id)
+            .select()
+            .single();
+
+          if (updErr) {
+            console.error('Error updating existing birthhistory during fallback:', updErr);
+            throw updErr;
+          }
+          console.debug('updatePatientBirthHistory result (fallback update):', updData);
+          return updData;
+        }
+
+        // No existing row - insert new
+        const { data: insData, error: insErr } = await supabase
+          .from('birthhistory')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (insErr) {
+          console.error('Error inserting birthhistory during fallback:', insErr);
+          throw insErr;
+        }
+        console.debug('updatePatientBirthHistory result (fallback insert):', insData);
+        return insData;
+      }
+
+      console.error('Supabase upsert birthhistory error:', error);
+      throw error;
     } catch (error) {
       console.error('Error updating birth history:', error);
       throw error;
@@ -403,6 +490,19 @@ const patientModel = {
     } catch (error) {
       console.error('Error updating patient vitals:', error);
       throw error;
+    }
+  },
+
+  // Update patient schedule statuses using database function
+  updatePatientSchedules: async (patientId) => {
+    try {
+      // Call the database function to update schedule statuses for this patient
+      const result = await supabase.rpc('update_patient_schedule_statuses');
+
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Error updating patient schedules:', error);
+      return { data: null, error };
     }
   },
 

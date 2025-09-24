@@ -97,6 +97,17 @@ const getUserMappingByUUID = async (uuid) => {
   return data;
 };
 
+// Get user mapping by local user_id
+const getUserMappingByUserId = async (userId) => {
+  const { data, error } = await supabase
+    .from('user_mapping')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+};
+
 // Link Supabase user to local user
 const linkSupabaseUser = async (uuid, userId) => {
   return await createUserMapping({ uuid, user_id: userId });
@@ -160,6 +171,7 @@ module.exports = {
   changePassword,
   createUserMapping,
   getUserMappingByUUID,
+  getUserMappingByUserId,
   linkSupabaseUser,
   verifyToken,
   generateToken,

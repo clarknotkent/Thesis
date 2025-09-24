@@ -28,25 +28,27 @@ const getImmunizationRecord = async (req, res) => {
 // Create immunization record
 const createImmunizationRecord = async (req, res) => {
   try {
-    const newImmunization = await immunizationModel.createImmunization(req.body);
-    res.status(201).json(newImmunization);
+    const payload = Object.assign({}, req.body);
+    if (!payload.administered_by && req.user && req.user.user_id) payload.administered_by = req.user.user_id;
+    const newImmunization = await immunizationModel.createImmunization(payload);
+    res.status(201).json({ success: true, data: newImmunization });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to create immunization' });
+    res.status(500).json({ success:false, message: 'Failed to create immunization' });
   }
 };
 
 // Update immunization record
 const updateImmunizationRecord = async (req, res) => {
   try {
-    const updatedImmunization = await immunizationModel.updateImmunization(req.params.id, req.body);
-    if (!updatedImmunization) {
-      return res.status(404).json({ message: 'Immunization not found' });
-    }
-    res.json(updatedImmunization);
+    const payload = Object.assign({}, req.body);
+    if (!payload.administered_by && req.user && req.user.user_id) payload.administered_by = req.user.user_id;
+    const updatedImmunization = await immunizationModel.updateImmunization(req.params.id, payload);
+    if (!updatedImmunization) return res.status(404).json({ success:false, message: 'Immunization not found' });
+    res.json({ success:true, data: updatedImmunization });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to update immunization' });
+    res.status(500).json({ success:false, message: 'Failed to update immunization' });
   }
 };
 
@@ -72,6 +74,20 @@ const scheduleImmunization = async (req, res) => {
   }
 };
 
+// Update patientschedule (manual edit)
+const updatePatientSchedule = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const payload = req.body;
+    const updated = await immunizationModel.updatePatientSchedule(id, payload);
+    if (!updated) return res.status(404).json({ message: 'Patient schedule not found' });
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to update patient schedule' });
+  }
+};
+
 // Enforce vaccine interval
 const enforceVaccineInterval = async (req, res) => {
   try {
@@ -91,4 +107,5 @@ module.exports = {
   listImmunizations,
   scheduleImmunization,
   enforceVaccineInterval,
+  updatePatientSchedule,
 };

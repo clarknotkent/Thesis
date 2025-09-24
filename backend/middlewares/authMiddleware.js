@@ -21,7 +21,15 @@ const authenticateRequest = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
     req.user = user;
-    console.log('[auth] authenticated', { id: user.id, role: user.role, hasUUID: !!user.uuid });
+    // If verifyToken returned a uuid field, try to attach local mapping user_id
+    try {
+      if (user.uuid) {
+        const { getUserMappingByUUID } = require('../models/authModel');
+        const mapping = await getUserMappingByUUID(user.uuid).catch(() => null);
+        if (mapping && mapping.user_id) req.user.user_id = mapping.user_id;
+      }
+    } catch (_) {}
+    console.log('[auth] authenticated', { id: user.id, role: user.role, user_id: req.user.user_id || null });
     next();
   } catch (error) {
     console.error('[auth] authenticateRequest error', error);
@@ -158,6 +166,30 @@ const logRequest = (req, res, next) => {
 
 module.exports = {
   authenticateRequest,
+  // Attempts to authenticate but never blocks. If token invalid/missing, continues without req.user.
+  optionalAuthenticate: async (req, res, next) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) return next();
+      const token = authHeader.split(' ')[1];
+      if (!token) return next();
+      const user = await verifyToken(token);
+      if (user) {
+        req.user = user;
+        // Also attempt mapping (non-fatal if missing)
+        try {
+          if (user.uuid) {
+            const mapping = await getUserMappingByUUID(user.uuid);
+            if (mapping) req.user.user_id = mapping.user_id;
+          }
+        } catch(_) {}
+        console.log('[auth optional] attached user context', { id: req.user.user_id || req.user.id, role: req.user.role });
+      }
+      return next();
+    } catch (_) {
+      return next();
+    }
+  },
   authorizeRole,
   checkUserMapping,
   enforceRLS,

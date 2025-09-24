@@ -153,6 +153,7 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { offlineStorage } from '../services/offlineStorage.js'
 import { backgroundSync } from '../services/backgroundSync.js'
 import { dbHelpers } from '../services/offlineDB.js'
@@ -265,6 +266,8 @@ export default {
       }
     }
 
+    const { addToast } = useToast()
+
     const exportData = async () => {
       try {
         const data = await dbHelpers.exportData()
@@ -279,7 +282,7 @@ export default {
         URL.revokeObjectURL(url)
       } catch (error) {
         console.error('Export failed:', error)
-        alert('Export failed. Please try again.')
+        addToast({ title: 'Error', message: 'Export failed. Please try again.', type: 'error' })
       }
     }
 
@@ -288,10 +291,10 @@ export default {
         try {
           await dbHelpers.clearAllData()
           await updateSyncStatus()
-          alert('Offline data cleared successfully')
+          addToast({ title: 'Success', message: 'Offline data cleared successfully', type: 'success' })
         } catch (error) {
           console.error('Clear data failed:', error)
-          alert('Failed to clear data. Please try again.')
+          addToast({ title: 'Error', message: 'Failed to clear data. Please try again.', type: 'error' })
         }
       }
     }

@@ -1,0 +1,77 @@
+// Centralized activity action type constants grouped by domain
+// Keep in sync with migration seeding activity_action_types.
+
+const USER = Object.freeze({
+  CREATE: 'USER_CREATE',
+  UPDATE: 'USER_UPDATE',
+  ROLE_UPDATE: 'USER_ROLE_UPDATE',
+  SOFT_DELETE: 'USER_SOFT_DELETE',
+  RESTORE: 'USER_RESTORE',
+  DEACTIVATE: 'USER_DEACTIVATE',
+  PASSWORD_RESET: 'USER_PASSWORD_RESET',
+  LOGIN: 'USER_LOGIN',
+  LOGIN_FAILED: 'USER_LOGIN_FAILED',
+  LOGOUT: 'USER_LOGOUT'
+});
+
+const GUARDIAN = Object.freeze({
+  CREATE: 'GUARDIAN_CREATE',
+  UPDATE: 'GUARDIAN_UPDATE'
+});
+
+const CHILD = Object.freeze({
+  CREATE: 'CHILD_CREATE',
+  UPDATE: 'CHILD_UPDATE'
+});
+
+const IMMUNIZATION = Object.freeze({
+  CREATE: 'IMMUNIZATION_CREATE',
+  UPDATE: 'IMMUNIZATION_UPDATE'
+});
+
+const SCHEDULE = Object.freeze({
+  CREATE: 'SCHEDULE_CREATE',
+  UPDATE: 'SCHEDULE_UPDATE'
+});
+
+const INVENTORY = Object.freeze({
+  CREATE: 'INVENTORY_CREATE',
+  UPDATE: 'INVENTORY_UPDATE',
+  DELETE: 'INVENTORY_DELETE'
+});
+
+const VACCINE = Object.freeze({
+  CREATE: 'VACCINE_CREATE',
+  UPDATE: 'VACCINE_UPDATE',
+  DELETE: 'VACCINE_DELETE'
+});
+
+const NOTIFICATION = Object.freeze({
+  SEND: 'NOTIFICATION_SEND',
+  FAIL: 'NOTIFICATION_FAIL'
+});
+
+const MESSAGE = Object.freeze({
+  SEND: 'MESSAGE_SEND',
+  FAIL: 'MESSAGE_FAIL'
+});
+
+const SYSTEM = Object.freeze({
+  START: 'SYSTEM_START',
+  SHUTDOWN: 'SYSTEM_SHUTDOWN'
+});
+
+const TASK = Object.freeze({
+  RUN: 'TASK_RUN',
+  SUCCESS: 'TASK_SUCCESS',
+  FAILURE: 'TASK_FAILURE'
+});
+
+const SECURITY = Object.freeze({
+  LOGIN_SUSPICIOUS: 'SECURITY_LOGIN_SUSPICIOUS',
+  LOCKOUT: 'SECURITY_LOCKOUT'
+});
+
+module.exports = {
+  ACTIVITY: { USER, GUARDIAN, CHILD, IMMUNIZATION, SCHEDULE, INVENTORY, VACCINE, NOTIFICATION, MESSAGE, SYSTEM, TASK, SECURITY }
+};

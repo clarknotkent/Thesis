@@ -29,3 +29,13 @@ export async function deleteUser(id) {
   const { data } = await api.delete(`/users/${id}`)
   return data
 }
+
+export async function restoreUser(id) {
+  const { data } = await api.post(`/users/${id}/restore`)
+  return data
+}
+
+export async function resetPassword(id, newPassword) {
+  const { data } = await api.post(`/users/${id}/reset-password`, { newPassword })
+  return data
+}

@@ -203,6 +203,7 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { offlineStorage } from '../services/offlineStorage.js'
 import OfflineSyncStatus from './OfflineSyncStatus.vue'
 
@@ -234,7 +235,9 @@ export default {
       }
     }
 
-    // Add new patient
+  const { addToast } = useToast()
+
+  // Add new patient
     const addPatient = async () => {
       if (!newPatient.name.trim()) return
 
@@ -259,13 +262,12 @@ export default {
         // Reload patients list
         await loadPatients()
         
-        // Show success message
-        alert('✅ Patient added successfully!' + 
-              (navigator.onLine ? ' (Will sync with server)' : ' (Saved offline - will sync when online)'))
+    // Show success message
+    addToast({ title: 'Saved', message: '✅ Patient added successfully!' + (navigator.onLine ? ' (Will sync with server)' : ' (Saved offline - will sync when online)'), type: 'success' })
         
       } catch (error) {
         console.error('Failed to add patient:', error)
-        alert('❌ Failed to add patient. Please try again.')
+        addToast({ title: 'Error', message: '❌ Failed to add patient. Please try again.', type: 'error' })
       } finally {
         isSubmitting.value = false
       }
@@ -278,10 +280,10 @@ export default {
       try {
         await offlineStorage.delete('patients', id)
         await loadPatients()
-        alert('✅ Patient deleted successfully!')
+        addToast({ title: 'Deleted', message: '✅ Patient deleted successfully!', type: 'success' })
       } catch (error) {
         console.error('Failed to delete patient:', error)
-        alert('❌ Failed to delete patient. Please try again.')
+        addToast({ title: 'Error', message: '❌ Failed to delete patient. Please try again.', type: 'error' })
       }
     }
 
@@ -298,10 +300,10 @@ export default {
       try {
         await offlineStorage.update('patients', id, updates)
         await loadPatients()
-        alert('✅ Patient updated successfully!')
+        addToast({ title: 'Saved', message: '✅ Patient updated successfully!', type: 'success' })
       } catch (error) {
         console.error('Failed to update patient:', error)
-        alert('❌ Failed to update patient. Please try again.')
+        addToast({ title: 'Error', message: '❌ Failed to update patient. Please try again.', type: 'error' })
       }
     }
 
@@ -314,10 +316,10 @@ export default {
           await offlineStorage.delete('patients', patient.id)
         }
         await loadPatients()
-        alert('✅ All patients cleared!')
+        addToast({ title: 'Cleared', message: '✅ All patients cleared!', type: 'success' })
       } catch (error) {
         console.error('Failed to clear patients:', error)
-        alert('❌ Failed to clear patients. Please try again.')
+        addToast({ title: 'Error', message: '❌ Failed to clear patients. Please try again.', type: 'error' })
       }
     }
 

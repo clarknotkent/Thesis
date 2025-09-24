@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
+const { manageScheduling, getScheduleForVaccine } = require('../controllers/vaccineController');
+// Scheduling Management Route
+// POST /api/vaccines/:id/schedule - Manage scheduling for a vaccine type
+router.post('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
+// GET /api/vaccines/:id/schedule - Retrieve schedule for a vaccine type
+router.get('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleForVaccine);
 const {
   addVaccine,
   getVaccine,
@@ -18,6 +24,11 @@ const {
   createInventoryTransaction,
   getInventoryTransactions
 } = require('../controllers/vaccineController');
+
+const { listSchedules } = require('../controllers/vaccineController');
+
+// GET /api/vaccines/schedules - list all schedules
+router.get('/schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin']), listSchedules);
 
 // Vaccine Type Management Routes
 // POST /api/vaccines - Add a new vaccine type

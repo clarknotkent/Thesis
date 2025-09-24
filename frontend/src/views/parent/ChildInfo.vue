@@ -221,6 +221,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useToast } from '@/composables/useToast'
 import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -254,8 +255,9 @@ const vaccinationSummary = ref({
   total: 10
 })
 
+const { addToast } = useToast()
 const downloadRecord = () => {
-  alert('Downloading vaccination record... (Feature to be implemented)')
+  addToast({ title: 'Info', message: 'Downloading vaccination record... (Feature to be implemented)', type: 'info' })
 }
 </script>
 

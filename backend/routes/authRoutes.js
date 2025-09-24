@@ -4,15 +4,14 @@ const {
 	registerUser,
 	loginUser,
 	logoutUser,
-	resetPassword,
 	linkSupabaseUser,
 	getUserMapping,
 	refreshToken
 } = require('../controllers/authController');
-const { validateToken } = require('../middlewares/authMiddleware');
+const { validateToken, optionalAuthenticate } = require('../middlewares/authMiddleware');
 
 // POST /api/auth/register - User registration
-router.post('/register', registerUser);
+router.post('/register', optionalAuthenticate, registerUser);
 
 // POST /api/auth/login - User login
 router.post('/login', loginUser);
@@ -20,8 +19,6 @@ router.post('/login', loginUser);
 // POST /api/auth/logout - User logout (validate token so we can log user info)
 router.post('/logout', validateToken, logoutUser);
 
-// POST /api/auth/reset-password - Reset password
-router.post('/reset-password', resetPassword);
 
 // POST /api/auth/link-supabase - Link Supabase user
 router.post('/link-supabase', linkSupabaseUser);

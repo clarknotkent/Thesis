@@ -199,6 +199,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useToast } from '@/composables/useToast'
 import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -319,22 +320,24 @@ const getDaysOverdue = (dueDate) => {
   return `Overdue by ${diffDays} days`
 }
 
+const { addToast } = useToast()
+
 const scheduleAppointment = (vaccine) => {
-  alert(`Scheduling appointment for ${vaccine.name}...`)
+  addToast({ title: 'Info', message: `Scheduling appointment for ${vaccine.name}...`, type: 'info' })
 }
 
 const scheduleUrgent = (vaccine) => {
-  alert(`Scheduling urgent appointment for ${vaccine.name}...`)
+  addToast({ title: 'Info', message: `Scheduling urgent appointment for ${vaccine.name}...`, type: 'info' })
 }
 
 const reschedule = () => {
-  alert('Rescheduling appointment...')
+  addToast({ title: 'Info', message: 'Rescheduling appointment...', type: 'info' })
 }
 
 const cancelAppointment = () => {
   if (confirm('Are you sure you want to cancel this appointment?')) {
     nextAppointment.value = null
-    alert('Appointment cancelled')
+    addToast({ title: 'Cancelled', message: 'Appointment cancelled', type: 'success' })
   }
 }
 </script>

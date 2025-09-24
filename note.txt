@@ -1,0 +1,19 @@
+- Soft Deleting Users then Restoring them, changes their UUID in user_mapping
+- Must Finalize/Maximize Activity Logging
+- If Patient Relationship with Guardian is Mother, Mother Field should be autofilled
+- Can have a function in the Backend to gather all list of Mother and Father Full Name, to have a Dropdown upon Patient Creation
+- Apply the Toast in Everything
+- Apply Smart Dose Dropdown (must be derived from the schedule_doses)
+- Findings and Service Rendered must be automatically filled after event creation (vaccine admnistration/deworm/vitamin a),
+  it is not visible to the frontend but it is in the database
+- Apply Logic to Add Vaccination Record to accept Null Visit ID (for Vaccinations outside Center)
+- Apply Logic to Add Vacination Record to select a Visit Date (if Record Creation done in Patient List)
+- Implement Deworm & Vitamin
+- Vaccination Records must show to the Patient's Edit Vaccinations
+- Improve View Visit
+- List must be in Ascending Order (patient_id)
+- Upon Creating Immunization Record, must also update the Patient Schedule to 'Complete'
+- Already have auto update for Patient Schedule (but for Missed or Pending only)
+- Must have list of all functions and triggers to analyze which ones overlap, unnecessary, duplicated, or missing
+- Must always update schema overview.txt
+- Make sure all buttons and CRUDs are working perfectly

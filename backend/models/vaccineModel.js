@@ -1,7 +1,90 @@
 const supabase = require('../db');
 
+// Lightweight status derivation (mirrors frontend logic)
+function deriveInventoryStatus(row) {
+  const qty = row.current_stock_level || 0;
+  if (qty === 0) return 'Out of Stock';
+  const exp = row.expiration_date ? new Date(row.expiration_date) : null;
+  const now = new Date();
+  const soon = new Date(now.getTime() + 30*24*60*60*1000);
+  if (exp && exp >= now && exp <= soon) return 'Expiring Soon';
+  if (qty < 10) return 'Low Stock';
+  return 'Available';
+}
+
+function mapInventoryDTO(row) {
+  if (!row) return null;
+  const v = row.vaccinemaster || row.vaccinemaster_id || row; // joined alias safety
+  return {
+    inventory_id: row.inventory_id,
+    vaccine_id: row.vaccine_id,
+    antigen_name: v.antigen_name,
+    brand_name: v.brand_name,
+    manufacturer: v.manufacturer,
+    disease_prevented: v.disease_prevented || null,
+    vaccine_type: v.vaccine_type,
+    category: v.category,
+    lot_number: row.lot_number,
+    expiration_date: row.expiration_date,
+    current_stock_level: row.current_stock_level,
+    storage_location: row.storage_location || null,
+    status: deriveInventoryStatus(row),
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null
+  };
+}
+
+function mapVaccineDTO(row) {
+  if (!row) return null;
+  return {
+    vaccine_id: row.vaccine_id,
+    antigen_name: row.antigen_name,
+    brand_name: row.brand_name,
+    manufacturer: row.manufacturer,
+    disease_prevented: row.disease_prevented || null,
+    vaccine_type: row.vaccine_type,
+    category: row.category,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+    is_deleted: row.is_deleted || false
+  };
+}
+
+async function logActivitySafely(payload) {
+  try {
+    const { logActivity } = require('./activityLogger');
+    await logActivity(payload);
+  } catch (_) {}
+}
+
+// Ledger insert maps to legacy inventorytransactions schema:
+//   quantity = delta, date = now, remarks = note, performed_by/created_by = user
+//   Ignores vaccine_id, uses only inventory_id as FK
+async function insertLedgerIfExists({ inventory_id, transaction_type, quantity_delta, balance_after, performed_by, note }) {
+  try {
+    // Attempt insert; if table absent, ignore error code 42P01
+    const { error } = await supabase.from('inventorytransactions').insert({
+      inventory_id,
+      transaction_type,
+      quantity: quantity_delta,
+      balance_after,
+      performed_by: performed_by || null,
+      created_by: performed_by || null,
+      remarks: note || null,
+      date: new Date().toISOString()
+    });
+    if (error && error.code === '42P01') {
+  console.warn('[inventory ledger] table missing, skipping ledger insert');
+      return;
+    }
+  } catch (_) {}
+}
+
+// Manage scheduling for a vaccine type (stub)
+
 const vaccineModel = {
   // Get all vaccines with filtering and pagination
+
   getAllVaccines: async (filters = {}, page = 1, limit = 10) => {
     try {
       let query = supabase
@@ -37,7 +120,81 @@ const vaccineModel = {
         totalPages: Math.ceil((count || 0) / limit)
       };
     } catch (error) {
+      console.debug('[vaccineModel.getVaccines] fetching all vaccines');
       console.error('Error fetching vaccines:', error);
+      throw error;
+    }
+  },
+
+  // Manage scheduling for a vaccine type (stub)
+  manageScheduling: async function(vaccine_id, scheduleData, actorId) {
+    try {
+      // Normalize master payload
+      const masterPayload = {
+        vaccine_id: Number(vaccine_id),
+        total_doses: scheduleData.total_doses != null ? Number(scheduleData.total_doses) : null,
+        concurrent_allowed: !!scheduleData.concurrent_allowed,
+        code: scheduleData.code || null,
+        name: scheduleData.name || null,
+        min_age_days: scheduleData.min_age_days != null ? Number(scheduleData.min_age_days) : null,
+        max_age_days: scheduleData.max_age_days != null ? Number(scheduleData.max_age_days) : null,
+        catchup_strategy: scheduleData.catchup_strategy || null,
+        notes: scheduleData.notes || null,
+        updated_by: actorId || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // Check if schedule_master exists for this vaccine
+      const { data: existing, error: fetchErr } = await supabase.from('schedule_master').select('*').eq('vaccine_id', vaccine_id).eq('is_deleted', false).limit(1).maybeSingle();
+      if (fetchErr && fetchErr.code !== 'PGRST116') throw fetchErr;
+
+      let masterId = null;
+      if (existing && existing.id) {
+        // Update existing
+        const { data: updated, error: updErr } = await supabase.from('schedule_master').update(masterPayload).eq('id', existing.id).select().single();
+        if (updErr) throw updErr;
+        masterId = updated.id;
+      } else {
+        // Insert new
+        masterPayload.created_by = actorId || null;
+        masterPayload.created_at = new Date().toISOString();
+        const { data: inserted, error: insErr } = await supabase.from('schedule_master').insert(masterPayload).select().single();
+        if (insErr) throw insErr;
+        masterId = inserted.id;
+      }
+
+      // Replace schedule_doses for this master: delete old and insert new
+      // First attempt to delete existing dose rows (if table exists)
+      try {
+        await supabase.from('schedule_doses').delete().eq('schedule_id', masterId);
+      } catch (_) {
+        // ignore if table missing
+      }
+
+      const doses = Array.isArray(scheduleData.doses) ? scheduleData.doses.map(d => ({
+        schedule_id: masterId,
+        dose_number: d.dose_number != null ? Number(d.dose_number) : null,
+        due_after_days: d.due_after_days != null ? Number(d.due_after_days) : null,
+        min_interval_days: d.min_interval_days != null ? Number(d.min_interval_days) : null,
+        max_interval_days: d.max_interval_days != null ? Number(d.max_interval_days) : null,
+        min_interval_other_vax: d.min_interval_other_vax != null ? Number(d.min_interval_other_vax) : null,
+        requires_previous: !!d.requires_previous,
+        skippable: !!d.skippable,
+        grace_period_days: d.grace_period_days != null ? Number(d.grace_period_days) : null,
+        absolute_latest_days: d.absolute_latest_days != null ? Number(d.absolute_latest_days) : null,
+        notes: d.notes || null,
+        created_by: actorId || null,
+        created_at: new Date().toISOString()
+      })) : [];
+
+      if (doses.length > 0) {
+        const { data: insD, error: insDErr } = await supabase.from('schedule_doses').insert(doses).select();
+        if (insDErr) throw insDErr;
+      }
+
+      return { schedule_master_id: masterId, vaccine_id: Number(vaccine_id) };
+    } catch (error) {
+      console.error('[vaccineModel.manageScheduling] error:', error);
       throw error;
     }
   },
@@ -54,72 +211,92 @@ const vaccineModel = {
       if (error && error.code !== 'PGRST116') throw error;
       return data || null;
     } catch (error) {
-      console.error('Error fetching vaccine by ID:', error);
+  console.debug('[vaccineModel.getVaccineById] id:', id);
+  console.error('Error fetching vaccine by ID:', error);
       throw error;
     }
   },
 
   // Create new vaccine
-  createVaccine: async (vaccineData) => {
+  createVaccine: async (vaccineData, actorId) => {
     try {
-      const { data, error } = await supabase
-        .from('vaccinemaster')
-        .insert({
-          antigen_name: vaccineData.vaccine_name || vaccineData.antigen_name,
-          brand_name: vaccineData.brand_name,
-          manufacturer: vaccineData.manufacturer,
-          vaccine_type: vaccineData.vaccine_type,
-          // extra fields ignored if not present in schema
-        })
-        .select()
+      // Basic validation
+  const required = ['antigen_name','brand_name','manufacturer','vaccine_type','category','disease_prevented'];
+      for (const f of required) {
+        if (!vaccineData[f] || String(vaccineData[f]).trim() === '') {
+          const err = new Error(`Missing required field: ${f}`); err.status = 400; throw err;
+        }
+      }
+      if (!['VACCINE','DEWORMING','VITAMIN_A'].includes(vaccineData.category)) {
+        const err = new Error('Invalid category'); err.status = 400; throw err;
+      }
+      // Uniqueness pre-check
+      const { data: existing } = await supabase.from('vaccinemaster')
+        .select('vaccine_id')
+        .eq('antigen_name', vaccineData.antigen_name)
+        .eq('brand_name', vaccineData.brand_name)
+        .eq('category', vaccineData.category)
+        .limit(1)
         .single();
+      if (existing) { const err = new Error('Duplicate vaccine (antigen_name, brand_name, category)'); err.status = 409; throw err; }
 
+      const insertPayload = {
+        antigen_name: vaccineData.antigen_name,
+        brand_name: vaccineData.brand_name,
+        disease_prevented: vaccineData.disease_prevented || null,
+        manufacturer: vaccineData.manufacturer,
+        vaccine_type: vaccineData.vaccine_type,
+        category: vaccineData.category,
+        created_by: actorId || null
+      };
+      const { data, error } = await supabase.from('vaccinemaster').insert(insertPayload).select().single();
       if (error) throw error;
-      return data;
+      await logActivitySafely({ action_type: 'VACCINE_CREATE', description: `Created vaccine ${data.vaccine_id}`, user_id: actorId || null, entity_type: 'vaccine', entity_id: data.vaccine_id, new_value: { antigen_name: data.antigen_name, brand_name: data.brand_name } });
+      return mapVaccineDTO(data);
     } catch (error) {
-      console.error('Error creating vaccine:', error);
+  console.debug('[vaccineModel.createVaccine] payload:', vaccineData, 'actor:', actorId);
+  console.error('Error creating vaccine:', error);
       throw error;
     }
   },
 
   // Update vaccine
-  updateVaccine: async (id, updates) => {
+  updateVaccine: async (id, updates, actorId) => {
     try {
-      const { data, error } = await supabase
-        .from('vaccinemaster')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('vaccine_id', id)
-        .select()
-        .single();
-
+      const { data: before } = await supabase.from('vaccinemaster').select('*').eq('vaccine_id', id).single();
+      if (!before) return null;
+  const allowed = ['antigen_name','brand_name','manufacturer','vaccine_type','category','disease_prevented'];
+      const patch = {};
+  for (const k of allowed) { if (k in updates) patch[k] = updates[k]; }
+      if (patch.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(patch.category)) { const e = new Error('Invalid category'); e.status=400; throw e; }
+      patch.updated_at = new Date().toISOString();
+      patch.updated_by = actorId || null;
+      const { data, error } = await supabase.from('vaccinemaster').update(patch).eq('vaccine_id', id).select().single();
       if (error) throw error;
-      return data;
+      await logActivitySafely({ action_type: 'VACCINE_UPDATE', description: `Updated vaccine ${id}`, user_id: actorId || null, entity_type: 'vaccine', entity_id: id, old_value: { antigen_name: before.antigen_name, brand_name: before.brand_name }, new_value: { antigen_name: data.antigen_name, brand_name: data.brand_name } });
+      return mapVaccineDTO(data);
     } catch (error) {
-      console.error('Error updating vaccine:', error);
+  console.debug('[vaccineModel.updateVaccine] id:', id, 'payload:', vaccineData, 'actor:', actorId);
+  console.error('Error updating vaccine:', error);
       throw error;
     }
   },
 
   // Soft delete vaccine
-  deleteVaccine: async (id) => {
+  deleteVaccine: async (id, actorId) => {
     try {
-      const { data, error } = await supabase
-        .from('vaccinemaster')
-        .update({ 
-          is_deleted: true,
-          deleted_at: new Date().toISOString()
-        })
-        .eq('vaccine_id', id)
-        .select()
-        .single();
-
+      // Block if any active inventory exists
+      const { data: invCheck } = await supabase.from('inventory').select('inventory_id').eq('vaccine_id', id).eq('is_deleted', false).limit(1).maybeSingle();
+      if (invCheck) { const e = new Error('Cannot delete vaccine with existing inventory'); e.status=400; throw e; }
+      const { data: before } = await supabase.from('vaccinemaster').select('*').eq('vaccine_id', id).single();
+      if (!before) return null;
+      const { data, error } = await supabase.from('vaccinemaster').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null }).eq('vaccine_id', id).select().single();
       if (error) throw error;
-      return data;
+      await logActivitySafely({ action_type: 'VACCINE_DELETE', description: `Deleted vaccine ${id}`, user_id: actorId || null, entity_type: 'vaccine', entity_id: id, old_value: { antigen_name: before.antigen_name, brand_name: before.brand_name } });
+      return mapVaccineDTO(data);
     } catch (error) {
-      console.error('Error deleting vaccine:', error);
+  console.debug('[vaccineModel.deleteVaccine] id:', id, 'actor:', actorId);
+  console.error('Error deleting vaccine:', error);
       throw error;
     }
   },
@@ -146,7 +323,36 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error fetching vaccine schedule:', error);
+  console.debug('[vaccineModel.getVaccineSchedule] vaccine_id:', vaccine_id);
+  console.error('Error fetching vaccine schedule:', error);
+      throw error;
+    }
+  },
+
+  // List all schedules (with vaccine brief and doses)
+  getAllSchedules: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schedule_master')
+        .select(`*, schedule_doses(*), vaccine:vaccine_id (vaccine_id, antigen_name, brand_name)`)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || [];
+    } catch (error) {
+      console.error('[vaccineModel.getAllSchedules] error:', error);
+      throw error;
+    }
+  },
+
+  // Get schedule for a specific vaccine_id including its doses
+  getScheduleByVaccineId: async (vaccine_id) => {
+    try {
+      const { data, error } = await supabase.from('schedule_master').select(`*, schedule_doses(*)`).eq('vaccine_id', vaccine_id).eq('is_deleted', false).limit(1).maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('[vaccineModel.getScheduleByVaccineId] error:', error);
       throw error;
     }
   },
@@ -154,6 +360,7 @@ const vaccineModel = {
   // Get all inventory items with vaccine details
   getAllInventory: async () => {
     try {
+      console.debug('[vaccineModel.getAllInventory] Querying inventory with joined vaccinemaster');
       const { data, error } = await supabase
         .from('inventory')
         .select(`
@@ -163,59 +370,62 @@ const vaccineModel = {
             antigen_name,
             brand_name,
             manufacturer,
-            vaccine_type
+            vaccine_type,
+            category,
+            disease_prevented
           )
         `)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.debug('[vaccineModel.getAllInventory] fetched', Array.isArray(data) ? data.length : 0, 'rows');
       return data || [];
     } catch (error) {
+      console.debug('[vaccineModel.getAllInventory] error during fetch');
       console.error('Error fetching inventory:', error);
       throw error;
     }
   },
 
   // Create new inventory item
-  createInventoryItem: async (inventoryData) => {
+  createInventoryItem: async (inventoryData, actorId) => {
     try {
-      // First, insert without the join to avoid trigger issues
-      const { data: insertedData, error: insertError } = await supabase
-        .from('inventory')
-        .insert({
-          vaccine_id: inventoryData.vaccine_id,
-          lot_number: inventoryData.lot_number,
-          expiration_date: inventoryData.expiration_date,
-          current_stock_level: inventoryData.current_stock_level,
-          storage_location: inventoryData.storage_location || null,
-          created_by: inventoryData.created_by || 1
-        })
-        .select()
-        .single();
-
+      // Validation
+      const required = ['vaccine_id','lot_number','expiration_date'];
+      for (const f of required) { if (!inventoryData[f]) { const e = new Error(`Missing required field: ${f}`); e.status=400; throw e; } }
+      const qty = Number(inventoryData.current_stock_level || 0);
+      if (qty < 0) { const e = new Error('current_stock_level cannot be negative'); e.status=400; throw e; }
+      const exp = new Date(inventoryData.expiration_date);
+      if (isNaN(exp.getTime())) { const e = new Error('Invalid expiration_date'); e.status=400; throw e; }
+      // Insert
+      const { data: insertedData, error: insertError } = await supabase.from('inventory').insert({
+        vaccine_id: inventoryData.vaccine_id,
+        lot_number: inventoryData.lot_number,
+        expiration_date: inventoryData.expiration_date,
+        current_stock_level: qty,
+        storage_location: inventoryData.storage_location || null,
+        created_by: actorId || null
+      }).select().single();
       if (insertError) throw insertError;
-
-      // Then fetch with vaccine details
-      const { data, error } = await supabase
-        .from('inventory')
-        .select(`
-          *,
-          vaccinemaster!inventory_vaccine_id_fkey (
-            vaccine_id,
-            antigen_name,
-            brand_name,
-            manufacturer,
-            vaccine_type
-          )
-        `)
-        .eq('inventory_id', insertedData.inventory_id)
-        .single();
-
+  await insertLedgerIfExists({ inventory_id: insertedData.inventory_id, transaction_type: 'RECEIVE', quantity_delta: qty, balance_after: qty, performed_by: actorId, note: 'Initial stock' });
+      await logActivitySafely({ action_type: 'INVENTORY_CREATE', description: `Added inventory ${insertedData.inventory_id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: insertedData.inventory_id, new_value: { lot_number: insertedData.lot_number, qty } });
+      const { data, error } = await supabase.from('inventory').select(`
+        *,
+        vaccinemaster!inventory_vaccine_id_fkey (
+          vaccine_id,
+          antigen_name,
+          brand_name,
+          manufacturer,
+          vaccine_type,
+          category
+        )
+      `).eq('inventory_id', insertedData.inventory_id).single();
       if (error) throw error;
-      return data;
+      return mapInventoryDTO({ ...data, vaccinemaster: data.vaccinemaster });
     } catch (error) {
-      console.error('Error creating inventory item:', error);
+  console.debug('[vaccineModel.createInventoryItem] payload:', inventoryData, 'actor:', actorId);
+  console.error('Error creating inventory item:', error);
       throw error;
     }
   },
@@ -232,7 +442,8 @@ const vaccineModel = {
             antigen_name,
             brand_name,
             manufacturer,
-            vaccine_type
+            vaccine_type,
+            category
           )
         `)
         .eq('inventory_id', id)
@@ -242,64 +453,68 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error fetching inventory item:', error);
+  console.debug('[vaccineModel.getInventoryItemById] id:', id);
+  console.error('Error fetching inventory item:', error);
       throw error;
     }
   },
 
   // Update inventory item
-  updateInventoryItem: async (id, inventoryData) => {
+  updateInventoryItem: async (id, inventoryData, actorId) => {
     try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .update({
-          vaccine_id: inventoryData.vaccine_id,
-          lot_number: inventoryData.lot_number,
-          expiration_date: inventoryData.expiration_date,
-          current_stock_level: inventoryData.current_stock_level,
-          storage_location: inventoryData.storage_location,
-          updated_by: inventoryData.updated_by || 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('inventory_id', id)
-        .select(`
-          *,
-          vaccinemaster!inventory_vaccine_id_fkey (
-            vaccine_id,
-            antigen_name,
-            brand_name,
-            manufacturer,
-            vaccine_type
-          )
-        `)
-        .single();
-
+      const { data: before } = await supabase.from('inventory').select('*').eq('inventory_id', id).single();
+      if (!before) return null;
+      const patch = {
+        vaccine_id: inventoryData.vaccine_id,
+        lot_number: inventoryData.lot_number,
+        expiration_date: inventoryData.expiration_date,
+        storage_location: inventoryData.storage_location,
+        updated_by: actorId || null,
+        updated_at: new Date().toISOString()
+      };
+      const newQty = Number(inventoryData.current_stock_level);
+      if (isNaN(newQty) || newQty < 0) { const e = new Error('Invalid current_stock_level'); e.status=400; throw e; }
+      patch.current_stock_level = newQty;
+      const { data, error } = await supabase.from('inventory').update(patch).eq('inventory_id', id).select(`
+        *,
+        vaccinemaster!inventory_vaccine_id_fkey (
+          vaccine_id,
+          antigen_name,
+          brand_name,
+          manufacturer,
+          vaccine_type,
+          category
+        )
+      `).single();
       if (error) throw error;
-      return data;
+      const delta = newQty - (before.current_stock_level || 0);
+      if (delta !== 0) {
+    await insertLedgerIfExists({ inventory_id: id, transaction_type: delta>0?'RECEIVE':'ISSUE', quantity_delta: delta, balance_after: newQty, performed_by: actorId, note: 'Manual adjustment' });
+      }
+      await logActivitySafely({ action_type: 'INVENTORY_UPDATE', description: `Updated inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { qty: before.current_stock_level }, new_value: { qty: newQty } });
+      return mapInventoryDTO({ ...data, vaccinemaster: data.vaccinemaster });
     } catch (error) {
-      console.error('Error updating inventory item:', error);
+  console.debug('[vaccineModel.updateInventoryItem] id:', id, 'payload:', inventoryData, 'actor:', actorId);
+  console.error('Error updating inventory item:', error);
       throw error;
     }
   },
 
   // Delete inventory item (soft delete)
-  deleteInventoryItem: async (id, deletedBy = 1) => {
+  deleteInventoryItem: async (id, actorId) => {
     try {
-      const { data, error } = await supabase
-        .from('inventory')
-        .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-          deleted_by: deletedBy
-        })
-        .eq('inventory_id', id)
-        .select()
-        .single();
-
+      const { data: before } = await supabase.from('inventory').select('*').eq('inventory_id', id).single();
+      if (!before) return null;
+      const { data, error } = await supabase.from('inventory').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null }).eq('inventory_id', id).select('*').single();
       if (error) throw error;
-      return data;
+      if ((before.current_stock_level || 0) > 0) {
+  await insertLedgerIfExists({ inventory_id: id, transaction_type: 'ADJUST', quantity_delta: -(before.current_stock_level||0), balance_after: 0, performed_by: actorId, note: 'Deletion correction' });
+      }
+      await logActivitySafely({ action_type: 'INVENTORY_DELETE', description: `Deleted inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { qty: before.current_stock_level } });
+      return mapInventoryDTO(data);
     } catch (error) {
-      console.error('Error deleting inventory item:', error);
+  console.debug('[vaccineModel.deleteInventoryItem] id:', id, 'actor:', actorId);
+  console.error('Error deleting inventory item:', error);
       throw error;
     }
   },
@@ -316,7 +531,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error fetching vaccinemaster by ID:', error);
+  console.debug('[vaccineModel.getVaccineMasterById] id:', id);
+  console.error('Error fetching vaccinemaster by ID:', error);
       throw error;
     }
   },
@@ -336,7 +552,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error updating vaccinemaster:', error);
+  console.debug('[vaccineModel.updateVaccineMaster] id:', id, 'payload:', vaccineData, 'actor:', actorId);
+  console.error('Error updating vaccinemaster:', error);
       throw error;
     }
   },
@@ -354,7 +571,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error deleting vaccinemaster:', error);
+  console.debug('[vaccineModel.deleteVaccineMaster] id:', id, 'actor:', actorId);
+  console.error('Error deleting vaccinemaster:', error);
       throw error;
     }
   },
@@ -405,7 +623,8 @@ const vaccineModel = {
         totalPages: Math.ceil(count / limit)
       };
     } catch (error) {
-      console.error('Error fetching vaccinemaster:', error);
+  console.debug('[vaccineModel.getVaccineMaster] fetching all vaccinemaster');
+  console.error('Error fetching vaccinemaster:', error);
       throw error;
     }
   },
@@ -434,7 +653,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error creating vaccinemaster request:', error);
+  console.debug('[vaccineModel.createVaccineMasterRequest] payload:', requestData, 'actor:', actorId);
+  console.error('Error creating vaccinemaster request:', error);
       throw error;
     }
   },
@@ -455,7 +675,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error updating vaccinemaster request:', error);
+  console.debug('[vaccineModel.updateVaccineMasterRequest] id:', id, 'payload:', requestData, 'actor:', actorId);
+  console.error('Error updating vaccinemaster request:', error);
       throw error;
     }
   },
@@ -503,7 +724,8 @@ const vaccineModel = {
         totalPages: Math.ceil(count / limit)
       };
     } catch (error) {
-      console.error('Error fetching vaccinemaster requests:', error);
+  console.debug('[vaccineModel.getVaccineMasterRequests] fetching all requests');
+  console.error('Error fetching vaccinemaster requests:', error);
       throw error;
     }
   },
@@ -531,7 +753,8 @@ const vaccineModel = {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error creating vaccinemaster transaction:', error);
+  console.debug('[vaccineModel.createVaccineMasterTransaction] payload:', transactionData, 'actor:', actorId);
+  console.error('Error creating vaccinemaster transaction:', error);
       throw error;
     }
   },
@@ -584,9 +807,32 @@ const vaccineModel = {
         totalPages: Math.ceil(count / limit)
       };
     } catch (error) {
-      console.error('Error fetching vaccinemaster transactions:', error);
+  console.debug('[vaccineModel.getVaccineMasterTransactions] fetching all transactions');
+  console.error('Error fetching vaccinemaster transactions:', error);
       throw error;
     }
+  }
+};
+
+// Inventory transactions retrieval (ledger)
+vaccineModel.getAllInventoryTransactions = async (filters = {}, page = 1, limit = 20) => {
+  try {
+    let query = supabase.from('inventorytransactions')
+      .select(`transaction_id, inventory_id, vaccine_id, transaction_type, quantity_delta, balance_after, note, created_at, performed_by`, { count: 'exact' })
+      .order('created_at', { ascending: false });
+    if (filters.inventory_id) query = query.eq('inventory_id', filters.inventory_id);
+    if (filters.vaccine_id) query = query.eq('vaccine_id', filters.vaccine_id);
+    if (filters.transaction_type) query = query.eq('transaction_type', filters.transaction_type);
+    if (filters.date_from) query = query.gte('created_at', filters.date_from);
+    if (filters.date_to) query = query.lte('created_at', filters.date_to);
+    const offset = (page - 1) * limit;
+    query = query.range(offset, offset + limit - 1);
+    const { data, error, count } = await query;
+    if (error) throw error;
+    return { transactions: data || [], totalCount: count || 0, currentPage: page, totalPages: count ? Math.ceil(count/limit) : 0 };
+  } catch (error) {
+    console.error('Error fetching inventory transactions:', error);
+    throw error;
   }
 };
 

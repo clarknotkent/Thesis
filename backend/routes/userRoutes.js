@@ -10,7 +10,9 @@ const {
   getUserProfile,
   updateUserRole,
   deactivateUser,
-  getUserActivityLogs
+  getUserActivityLogs,
+  restoreUser,
+  resetPassword
 } = require('../controllers/userController');
 
 // GET /api/users - Get all users with pagination and filtering
@@ -39,5 +41,11 @@ router.put('/:id/deactivate', authenticateRequest, checkUserMapping, authorizeRo
 
 // DELETE /api/users/:id - Delete user
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteUser);
+
+// POST /api/users/:id/restore - Restore soft deleted user
+router.post('/:id/restore', authenticateRequest, checkUserMapping, authorizeRole(['admin']), restoreUser);
+
+// POST /api/users/:id/reset-password - Reset password (self or admin)
+router.post('/:id/reset-password', authenticateRequest, checkUserMapping, resetPassword);
 
 module.exports = router;

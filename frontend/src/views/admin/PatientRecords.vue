@@ -1,6 +1,7 @@
 <template>
   <AdminLayout>
     <div class="container-fluid p-4">
+      <ToastContainer />
       <AppPageHeader 
         title="Patient Records" 
         subtitle="Manage patient information and vaccination history"
@@ -8,6 +9,9 @@
         <template #actions>
           <AppButton variant="primary" icon="bi-plus-circle" @click="showAddModal = true">
             Add New Patient
+          </AppButton>
+          <AppButton variant="outline-primary" icon="bi-file-medical" class="ms-2" @click="showVisitModal = true">
+            Add Patient Record
           </AppButton>
         </template>
       </AppPageHeader>
@@ -102,7 +106,7 @@
                   <td>{{ formatDate(patient.childInfo.birthDate) }}</td>
                   <td>{{ calculateAge(patient.childInfo.birthDate) }}</td>
                   <td>{{ patient.motherInfo.name }}</td>
-                  <td>{{ patient.childInfo.phoneNumber }}</td>
+              <td>{{ patient.guardian_contact_number }}</td>
                   <td>
                     <span v-if="patient.lastVaccination" class="text-muted">
                       {{ formatDate(patient.lastVaccination) }}
@@ -171,6 +175,15 @@
         @close="showViewModal = false"
       />
 
+      <!-- Visit Editor Modal -->
+      <VisitEditor
+        :show="showVisitModal"
+        :collected-vaccinations="collectedVaccinationsForVisit"
+        @close="showVisitModal = false"
+        @saved="onVisitSaved"
+        @update-collected-vaccinations="handleVaccinationsCollected"
+      />
+
       <!-- Add/Edit Modal -->
       <div class="modal fade" :class="{ show: showAddModal || showEditModal }" :style="{ display: (showAddModal || showEditModal) ? 'block' : 'none' }" tabindex="-1">
         <div class="modal-dialog modal-xl">
@@ -211,22 +224,6 @@
                         <option value="Female">Female</option>
                       </select>
                     </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
-                      <input type="date" class="form-control" v-model="form.date_of_birth" required>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Birth Weight (kg):</label>
-                      <input type="number" step="0.1" class="form-control" v-model="form.birth_weight">
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Birth Length (cm):</label>
-                      <input type="number" step="0.1" class="form-control" v-model="form.birth_length">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Place of Birth:</label>
-                      <input type="text" class="form-control" v-model="form.place_of_birth">
-                    </div>
                     <div class="col-md-6">
                       <label class="form-label">Barangay: <span class="text-danger">*</span></label>
                       <input type="text" class="form-control" v-model="form.barangay" required>
@@ -236,83 +233,66 @@
                       <textarea class="form-control" rows="2" v-model="form.address" required></textarea>
                     </div>
                     <div class="col-md-4">
-                      <label class="form-label">Health Center:</label>
-                      <input type="text" class="form-control" v-model="form.health_center">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Guardian: <span class="text-danger">*</span></label>
-                      <div class="position-relative">
-                        <input
-                          type="text"
-                          class="form-control"
-                          v-model="guardianSearchTerm"
-                          @focus="showGuardianDropdown = true"
-                          @blur="hideGuardianDropdown"
-                          :placeholder="selectedGuardianName || 'Search and select guardian...'"
-                          autocomplete="off"
-                        />
-                        <div
-                          v-if="showGuardianDropdown && filteredGuardians.length > 0"
-                          class="dropdown-menu show w-100 position-absolute"
-                          style="max-height: 300px; overflow-y: auto; z-index: 1000;"
-                        >
-                          <div
-                            v-for="guardian in filteredGuardians"
-                            :key="guardian.guardian_id"
-                            class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center"
-                            @mousedown="selectGuardian(guardian)"
-                          >
-                            <div>
-                              <strong>{{ guardian.full_name }}</strong>
-                              <br>
-                              <small class="text-muted">
-                                📞 {{ guardian.contact_number || 'No contact' }} | 
-                                👥 Family: {{ guardian.family_number || 'N/A' }}
-                              </small>
-                            </div>
-                            <span class="badge bg-primary">Guardian</span>
-                          </div>
-                        </div>
-                        <div
-                          v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0"
-                          class="dropdown-menu show w-100 position-absolute"
-                          style="z-index: 1000;"
-                        >
-                          <div class="dropdown-item-text text-muted text-center py-3">
-                            <i class="bi bi-search"></i>
-                            No guardians found matching "{{ guardianSearchTerm }}"
-                          </div>
-                        </div>
-                      </div>
-                      <input type="hidden" v-model="form.guardian_id" required>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Family Number:</label>
-                      <div class="input-group">
-                        <input 
-                          type="text" 
-                          class="form-control" 
-                          v-model="form.family_number"
-                          :readonly="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number"
-                        >
-                        <span 
-                          v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number" 
-                          class="input-group-text bg-success text-white"
-                          title="Auto-populated from guardian"
-                        >
-                          <i class="bi bi-check-circle"></i>
-                        </span>
-                      </div>
-                      <div class="form-text text-success" v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number">
-                        Auto-populated from selected guardian
-                      </div>
+                      <label class="form-label">Health Center: <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" v-model="form.health_center" required>
                     </div>
                   </div>
                 </div>
 
-                <!-- Parent Information -->
+                <!-- Guardian / Parent Information -->
                 <div class="row mb-4">
-                  <!-- Mother Information -->
+                  <div class="col-md-6">
+                    <label class="form-label">Guardian: <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="guardianSearchTerm"
+                        @focus="showGuardianDropdown = true"
+                        @blur="hideGuardianDropdown"
+                        :placeholder="selectedGuardianName || 'Search and select guardian...'"
+                        autocomplete="off"
+                      />
+                      <div v-if="showGuardianDropdown && filteredGuardians.length > 0" class="dropdown-menu show w-100 position-absolute" style="max-height: 300px; overflow-y: auto; z-index: 1000;">
+                        <div v-for="guardian in filteredGuardians" :key="guardian.guardian_id" class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center" @mousedown="selectGuardian(guardian)">
+                          <div>
+                            <strong>{{ guardian.full_name }}</strong>
+                            <br>
+                            <small class="text-muted">📞 {{ guardian.contact_number || 'No contact' }} | 👥 Family: {{ guardian.family_number || 'N/A' }}</small>
+                          </div>
+                          <span class="badge bg-primary">Guardian</span>
+                        </div>
+                      </div>
+                      <div v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0" class="dropdown-menu show w-100 position-absolute" style="z-index: 1000;">
+                        <div class="dropdown-item-text text-muted text-center py-3">
+                          <i class="bi bi-search"></i>
+                          No guardians found matching "{{ guardianSearchTerm }}"
+                        </div>
+                      </div>
+                    </div>
+                    <input type="hidden" v-model="form.guardian_id" required>
+                    <div class="mt-2">
+                      <label class="form-label small mb-1">Relationship to Guardian: <span class="text-danger">*</span></label>
+                      <select class="form-select" v-model="form.relationship_to_guardian" required>
+                        <option value="">Select relationship</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Father">Father</option>
+                        <option value="Guardian">Guardian</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Family Number:</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" v-model="form.family_number" readonly placeholder="Auto-generated from selected guardian" />
+                      <span v-if="form.family_number" class="input-group-text bg-success text-white" title="Auto-populated from guardian"><i class="bi bi-check-circle"></i></span>
+                    </div>
+                    <div class="form-text text-muted">Family number is derived from the selected guardian and cannot be edited here.</div>
+                  </div>
+                </div>
+
+                <div class="row mb-4">
                   <div class="col-md-6">
                     <div class="d-flex align-items-center mb-2">
                       <i class="bi bi-person-heart text-primary me-2"></i>
@@ -333,8 +313,6 @@
                       </div>
                     </div>
                   </div>
-                  
-                  <!-- Father Information -->
                   <div class="col-md-6">
                     <div class="d-flex align-items-center mb-2">
                       <i class="bi bi-person-check text-primary me-2"></i>
@@ -356,7 +334,71 @@
                     </div>
                   </div>
                 </div>
-                
+
+                <!-- Birth History -->
+                <div class="mb-4">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-heart-pulse text-primary me-2"></i>
+                    <h6 class="text-primary fw-bold mb-0">Birth History (required)</h6>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
+                      <input type="date" class="form-control" v-model="form.date_of_birth" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Time of Birth: <span class="text-danger">*</span></label>
+                      <input type="time" class="form-control" v-model="form.time_of_birth" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Attendant at Birth: <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" v-model="form.attendant_at_birth" required>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Type of Delivery: <span class="text-danger">*</span></label>
+                      <select class="form-select" v-model="form.type_of_delivery" required>
+                        <option value="">Select delivery type</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Cesarean">Cesarean</option>
+                        <option value="Assisted">Assisted</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Birth Weight (kg):</label>
+                      <input type="number" step="0.1" class="form-control" v-model="form.birth_weight">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Birth Length (cm):</label>
+                      <input type="number" step="0.1" class="form-control" v-model="form.birth_length">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Place of Birth:</label>
+                      <input type="text" class="form-control" v-model="form.place_of_birth">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Ballard's Score:</label>
+                      <input type="number" class="form-control" v-model="form.ballards_score">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Hearing Test Date:</label>
+                      <input type="date" class="form-control" v-model="form.hearing_test_date">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Newborn Screening Date:</label>
+                      <input type="date" class="form-control" v-model="form.newborn_screening_date">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Newborn Screening Result:</label>
+                      <input type="text" class="form-control" v-model="form.newborn_screening_result">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Address at Birth:</label>
+                      <input type="text" class="form-control" v-model="form.address_at_birth">
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Additional Information -->
                 <div class="mb-4">
                   <div class="d-flex align-items-center mb-2">
@@ -371,12 +413,8 @@
                     </div>
                   </div>
                 </div>
-                
-                <!-- Vaccination Data (Read-only info) -->
-                <div class="mb-2 text-center text-muted small" v-if="showEditModal">
-                  <i class="bi bi-info-circle me-1"></i>
-                  Vaccination records can only be updated by healthcare providers during a vaccination visit.
-                </div>
+
+                <!-- Vaccinations & Schedules removed from Add/Edit modal per UX request -->
 
                 <div class="modal-footer">
                   <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
@@ -398,8 +436,11 @@
       <VaccinationRecordEditor
         :show="showVaccinationEditor"
         :patient-id="selectedPatientId"
-        @close="showVaccinationEditor = false"
+        :patient-data="selectedPatientData"
+        :visit-context="vaccinationVisitContext"
+        @close="closeVaccinationEditor"
         @update="fetchPatients"
+        @vaccinations-collected="handleVaccinationsCollected"
       />
     </div>
   </AdminLayout>
@@ -413,7 +454,10 @@ import AppButton from '@/components/common/AppButton.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import PatientDetailModal from '@/components/common/PatientDetailModal.vue'
 import VaccinationRecordEditor from '@/components/common/VaccinationRecordEditor.vue'
+import VisitEditor from '@/components/common/VisitEditor.vue'
 import api from '@/services/api'
+import ToastContainer from '@/components/common/ToastContainer.vue'
+import { useToast } from '@/composables/useToast'
 
 // Reactive data
 const loading = ref(true)
@@ -437,7 +481,14 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showViewModal = ref(false)
 const showVaccinationEditor = ref(false)
+const showVisitModal = ref(false)
 const selectedPatientId = ref(null)
+const selectedPatientData = ref(null)
+const vaccinationVisitContext = ref(false) // Whether vaccination editor is opened from visit context
+const collectedVaccinationsForVisit = ref([]) // Store vaccinations collected during visit
+
+// Toasts
+const { addToast } = useToast();
 
 // Form data
 const form = ref({
@@ -460,6 +511,7 @@ const form = ref({
   guardian_id: null,
   family_number: '',
   tags: '',
+  relationship_to_guardian: '',
   // Additional fields for birth history
   birth_weight: '',
   birth_length: '',
@@ -501,6 +553,7 @@ const fetchPatients = async () => {
       motherInfo: {
         name: p.mother_name || '',
       },
+      guardian_contact_number: p.guardian_contact_number || p.guardian?.contact_number || '',
       lastVaccination: p.last_vaccination_date || null
     }))
 
@@ -588,52 +641,77 @@ const editVaccinations = (patient) => {
   showVaccinationEditor.value = true
 }
 
+const openVaccinationFromVisit = (patientId, patientData = null) => {
+  selectedPatientId.value = patientId
+  selectedPatientData.value = patientData
+  vaccinationVisitContext.value = true
+  collectedVaccinationsForVisit.value = [] // Reset collected vaccinations
+  showVaccinationEditor.value = true
+}
+
+const handleVaccinationsCollected = (vaccinations) => {
+  // Replace the collected vaccinations with the updated array
+  collectedVaccinationsForVisit.value = [...vaccinations]
+  console.log('Vaccinations collected for visit:', collectedVaccinationsForVisit.value)
+}
+
+const closeVaccinationEditor = () => {
+  showVaccinationEditor.value = false
+  vaccinationVisitContext.value = false
+}
+
+const onVisitSaved = () => {
+  // Reset collected vaccinations after visit is saved
+  collectedVaccinationsForVisit.value = []
+  fetchPatients() // Refresh patient list
+}
+
 const editPatient = async (patient) => {
   try {
     // Fetch patient details from backend
     const response = await api.get(`/patients/${patient.id}`)
     const p = response.data?.data || {}
     
-    // Deep copy the complete patient data to the form
+    // Map backend patient object to the flat form fields used by savePatient()
     form.value = {
       id: p.patient_id || p.id,
-      childInfo: {
-        name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim(),
-        sex: p.sex || p.gender || '',
-        birthDate: p.date_of_birth || p.birth_date || '',
-        phoneNumber: p.contact_number || '',
-        birthWeightKg: p.birth_weight || '',
-        birthLengthCm: p.birth_height || '',
-        placeOfBirth: p.birth_place || '',
-        address: {
-          street: p.address || '',
-          barangay: p.barangay || '',
-          municipality: p.municipality || '',
-          province: p.province || '',
-          zipCode: p.zip_code || ''
-        }
-      },
-      motherInfo: {
-        name: p.mother_name || '',
-        phoneNumber: p.mother_phone || ''
-      },
-      fatherInfo: {
-        name: p.father_name || '',
-        phoneNumber: p.father_phone || ''
-      },
-      medicalHistory: {
-        birthComplications: p.birth_complications || '',
-        allergies: (p.allergies || []).join(', '),
-        chronicConditions: (p.chronic_conditions || []).join(', '),
-        nutritionalStatus: p.nutritional_status || ''
-      },
-      vaccinationHistory: p.vaccinations || [],
-      nextScheduledVaccinations: p.next_scheduled || []
+      patient_id: p.patient_id || p.id,
+      surname: p.surname || p.lastname || p.family_name || '',
+      firstname: p.firstname || p.given_name || '',
+      middlename: p.middlename || p.middle_name || '',
+      sex: p.sex || p.gender || '',
+      date_of_birth: p.date_of_birth || p.birth_date || '',
+      address: p.address || '',
+      barangay: p.barangay || '',
+      health_center: p.health_center || p.clinic || '',
+      mother_name: p.mother_name || '',
+      mother_occupation: p.mother_occupation || '',
+      mother_contact_number: p.mother_phone || p.mother_contact_number || '',
+      father_name: p.father_name || '',
+      father_occupation: p.father_occupation || '',
+      father_contact_number: p.father_phone || p.father_contact_number || '',
+      guardian_id: p.guardian_id || null,
+      family_number: p.family_number || '',
+      tags: Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || ''),
+      relationship_to_guardian: p.relationship_to_guardian || '',
+      birth_weight: p.birth_weight || p.birthWeight || '',
+      birth_length: p.birth_length || p.birthLength || '',
+      place_of_birth: p.place_of_birth || p.birth_place || '',
+      // Birth history fields
+      time_of_birth: (p.medical_history && (p.medical_history.time_of_birth || p.medical_history.timeOfBirth)) || p.time_of_birth || '',
+      attendant_at_birth: (p.medical_history && (p.medical_history.attendant_at_birth || p.medical_history.attendantAtBirth)) || p.attendant_at_birth || '',
+      type_of_delivery: (p.medical_history && (p.medical_history.type_of_delivery || p.medical_history.typeOfDelivery)) || p.type_of_delivery || '',
+      ballards_score: (p.medical_history && (p.medical_history.ballards_score || p.medical_history.ballardsScore)) || p.ballards_score || '',
+      hearing_test_date: (p.medical_history && (p.medical_history.hearing_test_date || p.medical_history.hearingTestDate)) || p.hearing_test_date || '',
+      newborn_screening_date: (p.medical_history && (p.medical_history.newborn_screening_date || p.medical_history.newbornScreeningDate)) || p.newborn_screening_date || '',
+      newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
+      address_at_birth: (p.medical_history && (p.medical_history.address_at_birth || p.medical_history.addressAtBirth)) || p.address_at_birth || ''
     }
     showEditModal.value = true;
   } catch (error) {
     console.error('Error fetching full patient details for edit:', error);
-    alert('Failed to load complete patient data for editing. Please try again.');
+    // show toast instead of alert
+    addToast({ title: 'Error', message: 'Failed to load complete patient data for editing. Please try again.', type: 'error' });
     
     // Fallback to basic edit with available data
     form.value = {
@@ -684,12 +762,12 @@ const deletePatient = async (patient) => {
     try {
       const response = await api.delete(`/patients/${patient.id}`)
       
-      if (response.data.success) {
-        // Show success message
-        alert(`Patient record for "${patientName}" has been successfully deleted.`)
-        
-        // Refresh the patient list
-        await fetchPatients()
+  if (response.data.success) {
+  // Show success toast
+  addToast({ title: 'Deleted', message: `Patient record for "${patientName}" has been successfully deleted.`, type: 'success' })
+
+  // Refresh the patient list
+  await fetchPatients()
         
         // If we're on the last page and it's now empty, go to previous page
         if (patients.value.length === 0 && currentPage.value > 1) {
@@ -702,7 +780,7 @@ const deletePatient = async (patient) => {
     } catch (error) {
       console.error('Error deleting patient:', error)
       const errorMessage = error.response?.data?.message || error.message || 'An error occurred while deleting the patient'
-      alert(`Failed to delete patient: ${errorMessage}`)
+      addToast({ title: 'Error', message: `Failed to delete patient: ${errorMessage}`, type: 'error' })
     }
   }
 }
@@ -711,10 +789,18 @@ const savePatient = async () => {
   try {
     saving.value = true
     
-    // Validate required fields
-    if (!form.value.surname || !form.value.firstname || !form.value.sex || !form.value.date_of_birth || !form.value.mother_name) {
-      alert('Please fill in all required fields marked with *')
+    // Validate required fields (always required)
+    if (!form.value.surname || !form.value.firstname || !form.value.sex || !form.value.date_of_birth || !form.value.mother_name || !form.value.guardian_id || !form.value.relationship_to_guardian) {
+      addToast({ title: 'Validation', message: 'Please fill in all required fields marked with *', type: 'error' })
       return
+    }
+
+    // On patient creation, require critical birth history fields
+    if (!showEditModal.value) {
+      if (!form.value.time_of_birth || !form.value.attendant_at_birth || !form.value.type_of_delivery) {
+        addToast({ title: 'Validation', message: 'Please provide required birth history: Time of Birth, Attendant at Birth, and Type of Delivery', type: 'error' })
+        return
+      }
     }
     
     // Prepare patient data using the flat form structure
@@ -735,10 +821,25 @@ const savePatient = async () => {
       father_contact_number: form.value.father_contact_number,
       guardian_id: form.value.guardian_id,
       family_number: form.value.family_number,
+  relationship_to_guardian: form.value.relationship_to_guardian,
       tags: form.value.tags,
       birth_weight: form.value.birth_weight,
       birth_length: form.value.birth_length,
-      place_of_birth: form.value.place_of_birth
+      place_of_birth: form.value.place_of_birth,
+      address_at_birth: form.value.address_at_birth,
+      birthhistory: {
+        birth_weight: form.value.birth_weight,
+        birth_length: form.value.birth_length,
+        place_of_birth: form.value.place_of_birth,
+        address_at_birth: form.value.address_at_birth,
+        time_of_birth: form.value.time_of_birth,
+        attendant_at_birth: form.value.attendant_at_birth,
+        type_of_delivery: form.value.type_of_delivery,
+        ballards_score: form.value.ballards_score,
+        hearing_test_date: form.value.hearing_test_date,
+        newborn_screening_date: form.value.newborn_screening_date,
+        newborn_screening_result: form.value.newborn_screening_result
+      }
     }
     
     // We don't include vaccination history and scheduled vaccinations in the edit form
@@ -749,13 +850,13 @@ const savePatient = async () => {
       // Update existing patient
       response = await api.put(`/patients/${form.value.id}`, patientData)
       if (response.data.success) {
-        alert('Patient information updated successfully!')
+        addToast({ title: 'Saved', message: 'Patient information updated successfully!', type: 'success' })
       }
     } else {
       // Create new patient
       response = await api.post('/patients', patientData)
       if (response.data.success) {
-        alert('New patient added successfully!')
+        addToast({ title: 'Saved', message: 'New patient added successfully!', type: 'success' })
       }
     }
     
@@ -764,8 +865,8 @@ const savePatient = async () => {
     
   } catch (error) {
     console.error('Error saving patient:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred while saving the patient'
-    alert(`Failed to save patient: ${errorMessage}`)
+  const errorMessage = error.response?.data?.message || error.message || 'An error occurred while saving the patient'
+  addToast({ title: 'Error', message: `Failed to save patient: ${errorMessage}`, type: 'error' })
   } finally {
     saving.value = false
   }
@@ -797,10 +898,30 @@ const closeModal = () => {
     guardian_id: null,
     family_number: '',
     tags: '',
+    relationship_to_guardian: '',
     birth_weight: '',
     birth_length: '',
-    place_of_birth: ''
+    place_of_birth: '',
+    // Birth history defaults
+    time_of_birth: '',
+    attendant_at_birth: '',
+    type_of_delivery: '',
+    ballards_score: '',
+    hearing_test_date: '',
+    newborn_screening_date: '',
+    newborn_screening_result: '',
+    address_at_birth: ''
   }
+
+  // Also clear birthhistory fields
+  form.value.time_of_birth = ''
+  form.value.attendant_at_birth = ''
+  form.value.type_of_delivery = ''
+  form.value.ballards_score = ''
+  form.value.hearing_test_date = ''
+  form.value.newborn_screening_date = ''
+  form.value.newborn_screening_result = ''
+  form.value.address_at_birth = ''
   
   // Reset guardian search fields
   guardianSearchTerm.value = ''

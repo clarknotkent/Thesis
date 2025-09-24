@@ -91,7 +91,7 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center">
             <h6 class="m-0 font-weight-bold text-primary me-4">User List</h6>
-            <div class="btn-group btn-group-sm">
+            <div class="btn-group btn-group-sm me-3">
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'all' }"
@@ -112,6 +112,10 @@
                 :class="{ active: activeFilter === 'parent' }"
                 @click="setFilter('parent')"
               >Parents</button>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="showDeletedSwitch" v-model="showDeleted" @change="fetchUsers">
+              <label class="form-check-label small" for="showDeletedSwitch">Show Deleted</label>
             </div>
           </div>
           <div class="input-group w-25">
@@ -174,6 +178,14 @@
                       >
                         <i class="bi bi-person-x"></i>
                       </button>
+                      <button 
+                        class="btn btn-outline-success"
+                        v-if="user.status === 'inactive'"
+                        @click="restore(user)"
+                        title="Restore"
+                      >
+                        <i class="bi bi-arrow-clockwise"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -214,8 +226,8 @@
               </thead>
               <tbody>
                 <tr v-for="activity in recentActivity" :key="activity.id">
-                  <td>{{ formatDate(activity.timestamp) }}</td>
-                  <td>{{ activity.userName }}</td>
+                  <td>{{ formatDatePH(activity.timestamp) }}</td>
+                  <td>{{ activity.userFullName }}</td>
                   <td>{{ activity.action }}</td>
                   <td>{{ activity.ipAddress }}</td>
                 </tr>
@@ -315,6 +327,15 @@
               </select>
             </div>
           </div>
+          <div class="mb-3" v-if="userForm.role === 'health_worker'">
+            <label class="form-label">Health Worker Type *</label>
+            <select class="form-select" v-model="userForm.hwType" required>
+              <option value="">Select Type</option>
+              <option value="nurse">Nurse</option>
+              <option value="nutritionist">Nutritionist</option>
+              <option value="bhw">Barangay Health Worker</option>
+            </select>
+          </div>
           <div class="mb-3" v-if="!isEditing">
             <label class="form-label">Password *</label>
             <input
@@ -324,12 +345,20 @@
               :required="!isEditing"
             >
           </div>
-          <div class="mb-3" v-if="userForm.role === 'health_worker'">
-            <label class="form-label">License Number</label>
+          <div class="mb-3" v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'">
+            <label class="form-label">PRC License Number</label>
             <input
               type="text"
               class="form-control"
               v-model="userForm.licenseNumber"
+            >
+          </div>
+          <div class="mb-3" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
+            <label class="form-label">Employee ID</label>
+            <input
+              type="text"
+              class="form-control"
+              v-model="userForm.employeeId"
             >
           </div>
           <div class="mb-3" v-if="userForm.role === 'parent'">
@@ -412,7 +441,7 @@ import AppSpinner from '@/components/common/AppSpinner.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import api from '@/services/api'
-import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser } from '@/services/users'
+import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 
 // Backend-driven; remove mock data
 
@@ -425,6 +454,7 @@ const deleting = ref(false)
 const resettingPassword = ref(false)
 const searchQuery = ref('')
 const activeFilter = ref('all')
+const showDeleted = ref(false)
 const currentUserId = ref('1') // This would come from auth context
 
 // Pagination state (simplified)
@@ -450,9 +480,11 @@ const userForm = ref({
   middleName: '',
   email: '',
   role: '',
+  hwType: '',
   status: 'active',
   password: '',
   licenseNumber: '',
+  employeeId: '',
   phoneNumber: '',
   contactNumber: '',
   sex: '',
@@ -469,21 +501,37 @@ const userStats = computed(() => ({
 }))
 
 // Methods
+const mapBackendRoleToOption = (role) => {
+  // Normalize any incoming backend role string to frontend option tokens
+  if (!role) return ''
+  let r = String(role).toLowerCase().trim()
+  // Unify separators
+  r = r.replace(/[-\s]+/g, '_') // "health worker" / "health-worker" -> health_worker
+  // Handle common variants
+  if (r === 'health_worker' || r === 'healthworker') return 'health_worker'
+  if (r === 'guardian' || r === 'parent') return 'parent'
+  if (r === 'admin') return 'admin'
+  return r
+}
+
 const fetchUsers = async () => {
   loading.value = true
   try {
     const role = activeFilter.value !== 'all' ? activeFilter.value : ''
+    const status = showDeleted.value ? '' : 'active'
     const { users: rows, pagination } = await apiListUsers({
       page: currentPage.value,
       limit: itemsPerPage,
       search: searchQuery.value,
-      role
+      role,
+      status
     })
     users.value = rows.map(u => ({
       id: u.id,
       name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
       email: u.email,
-      role: u.role,
+      role: mapBackendRoleToOption(u.role),
+      hwType: u.hw_type || '',
       status: u.status || 'active',
       lastLogin: u.lastLogin || u.last_login || null
     }))
@@ -501,32 +549,17 @@ const fetchUsers = async () => {
 
 const fetchRecentActivity = async () => {
   try {
-    // Mock data for demo
-    recentActivity.value = [
-      {
-        id: 1,
-        timestamp: new Date('2025-01-26T09:45:00'),
-        userName: 'Admin User',
-        action: 'Logged in',
-        ipAddress: '192.168.1.1'
-      },
-      {
-        id: 2,
-        timestamp: new Date('2025-01-26T09:30:00'),
-        userName: 'Dr. Smith',
-        action: 'Updated patient record',
-        ipAddress: '192.168.1.5'
-      },
-      {
-        id: 3,
-        timestamp: new Date('2025-01-26T09:15:00'),
-        userName: 'Dr. Wilson',
-        action: 'Registered new vaccination',
-        ipAddress: '192.168.1.10'
-      }
-    ]
+    const { data } = await api.get('/activity-logs', { params: { page: 1, limit: 10 } })
+    recentActivity.value = (data.items || []).map(r => ({
+      id: r.log_id || r.id,
+      timestamp: r.timestamp,
+      userFullName: r.display_user_name || r.user_fullname || r.username || r.user_id,
+      action: r.display_action || r.description || r.action_type,
+      ipAddress: r.ip_address || ''
+    }))
   } catch (error) {
     console.error('Error fetching activity:', error)
+    recentActivity.value = []
   }
 }
 
@@ -548,24 +581,50 @@ const goToPage = (page) => {
   }
 }
 
-const openUserModal = (user = null) => {
+const openUserModal = async (user = null) => {
   if (user) {
     isEditing.value = true
-    userForm.value = {
-      id: user.id,
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      middleName: user.middleName || '',
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      password: '',
-      licenseNumber: user.licenseNumber || '',
-      phoneNumber: user.phone || '',
-      contactNumber: user.contactNumber || '',
-      sex: user.sex || '',
-      birthdate: user.birthdate || '',
-      address: user.address || ''
+    try {
+      const full = await apiGetUser(user.id)
+      userForm.value = {
+        id: full.user_id || user.id,
+        firstName: full.firstname || user.firstName || '',
+        lastName: full.surname || user.lastName || '',
+        middleName: full.middlename || user.middleName || '',
+        email: full.email || user.email,
+        role: mapBackendRoleToOption(full.role || user.role || ''),
+        hwType: full.hw_type || '',
+        status: full.is_deleted ? 'inactive' : (user.status || 'active'),
+        password: '',
+        licenseNumber: full.professional_license_no || user.licenseNumber || '',
+        employeeId: full.employee_id || user.employeeId || '',
+        phoneNumber: full.contact_number || user.phone || '',
+        contactNumber: full.contact_number || user.contactNumber || '',
+        sex: full.sex || user.sex || '',
+        birthdate: full.birthdate || user.birthdate || '',
+        address: full.address || user.address || ''
+      }
+    } catch (e) {
+      console.error('Failed to fetch full user details', e)
+      // Fallback to provided user object
+      userForm.value = {
+        id: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        middleName: user.middleName || '',
+        email: user.email,
+        role: mapBackendRoleToOption(user.role),
+        hwType: user.hwType || '',
+        status: user.status,
+        password: '',
+        licenseNumber: user.licenseNumber || '',
+        employeeId: user.employeeId || '',
+        phoneNumber: user.phone || '',
+        contactNumber: user.contactNumber || '',
+        sex: user.sex || '',
+        birthdate: user.birthdate || '',
+        address: user.address || ''
+      }
     }
   } else {
     isEditing.value = false
@@ -576,9 +635,11 @@ const openUserModal = (user = null) => {
       middleName: '',
       email: '',
       role: '',
+      hwType: '',
       status: 'active',
       password: '',
       licenseNumber: '',
+      employeeId: '',
       phoneNumber: '',
       contactNumber: '',
       sex: '',
@@ -595,12 +656,19 @@ const closeUserModal = () => {
     id: '',
     firstName: '',
     lastName: '',
+    middleName: '',
     email: '',
     role: '',
+    hwType: '',
     status: 'active',
     password: '',
     licenseNumber: '',
-    phoneNumber: ''
+    employeeId: '',
+    phoneNumber: '',
+    contactNumber: '',
+    sex: '',
+    birthdate: '',
+    address: ''
   }
 }
 
@@ -612,6 +680,7 @@ const saveUser = async () => {
       email: userForm.value.email,
       role: userForm.value.role,
       firstname: userForm.value.firstName,
+      middlename: userForm.value.middleName || null,
       surname: userForm.value.lastName,
       password: userForm.value.password,
       contact_number: userForm.value.phoneNumber || userForm.value.contactNumber || null,
@@ -619,7 +688,17 @@ const saveUser = async () => {
       sex: userForm.value.sex || 'Other',
       birthdate: userForm.value.birthdate || null,
       address: userForm.value.address || null,
-      professional_license_no: userForm.value.licenseNumber || null
+      professional_license_no: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
+      employee_id: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.employeeId || null) : null
+    }
+    if (userForm.value.role === 'health_worker') {
+      payload.hw_type = userForm.value.hwType || null
+      // if bhw, remove license
+      if (payload.hw_type === 'bhw') {
+        payload.professional_license_no = null
+      }
+    } else {
+      payload.hw_type = null
     }
     if (isEditing.value) {
       await apiUpdateUser(userForm.value.id, payload)
@@ -628,6 +707,7 @@ const saveUser = async () => {
     }
     closeUserModal()
     await fetchUsers()
+    await fetchRecentActivity()
     alert(isEditing.value ? 'User updated successfully!' : 'User created successfully!')
   } catch (error) {
     console.error('Error saving user:', error)
@@ -670,6 +750,7 @@ const deleteUser = async () => {
     await apiDeleteUser(userToDelete.value.id)
     closeDeleteModal()
     await fetchUsers()
+  await fetchRecentActivity()
     alert('User deleted successfully!')
   } catch (error) {
     console.error('Error deleting user:', error)
@@ -693,19 +774,29 @@ const closePasswordModal = () => {
 
 const updatePassword = async () => {
   if (!userToResetPassword.value || !newPassword.value) return
-  
   resettingPassword.value = true
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
+    await apiResetPassword(userToResetPassword.value.id, newPassword.value)
     closePasswordModal()
+  await fetchRecentActivity()
     alert('Password reset successfully!')
   } catch (error) {
     console.error('Error resetting password:', error)
-    alert('Error resetting password. Please try again.')
+    alert(error?.response?.data?.message || 'Error resetting password.')
   } finally {
     resettingPassword.value = false
+  }
+}
+
+const restore = async (user) => {
+  try {
+    await apiRestoreUser(user.id)
+    await fetchUsers()
+  await fetchRecentActivity()
+    alert('User restored successfully!')
+  } catch (e) {
+    console.error('Restore failed', e)
+    alert('Failed to restore user.')
   }
 }
 
@@ -723,7 +814,11 @@ const getRoleDisplayName = (role) => {
     case 'health_worker': return 'Health Worker'
     case 'parent': return 'Parent'
     case 'admin': return 'Admin'
-    default: return role
+    default: {
+      // Fallback: attempt to prettify unforeseen variants
+      if (!role) return ''
+      return role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    }
   }
 }
 
@@ -736,6 +831,25 @@ const formatDate = (date) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// Explicit PH timezone formatting for activity logs (Asia/Manila)
+const formatDatePH = (date) => {
+  if (!date) return 'Never'
+  try {
+    return new Date(date).toLocaleString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    })
+  } catch (e) {
+    return formatDate(date)
+  }
 }
 
 // Lifecycle

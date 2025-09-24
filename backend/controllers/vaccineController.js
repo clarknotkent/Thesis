@@ -1,336 +1,264 @@
 const vaccineModel = require('../models/vaccineModel');
 
-// 1. Add a new vaccine type
+// Helper to send standardized error
+function sendError(res, error, fallback) {
+  const status = error.status || 500;
+  return res.status(status).json({ success: false, message: error.status ? error.message : fallback, error: error.message });
+}
+
+// Manage scheduling for a vaccine type
+const manageScheduling = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params; // vaccine_id
+    const scheduleData = req.body;
+    // Call model to handle scheduling logic (auto or manual)
+    const result = await vaccineModel.manageScheduling(id, scheduleData, actorId);
+    return res.status(200).json({ success: true, message: 'Scheduling updated', data: result });
+  } catch (error) {
+    console.error('manageScheduling error:', error);
+    return sendError(res, error, 'Failed to manage scheduling');
+  }
+};
+
+// GET /api/vaccines/:id/schedule - retrieve schedule for vaccine
+const getScheduleForVaccine = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const schedule = await vaccineModel.getScheduleByVaccineId(id);
+    if (!schedule) return res.status(404).json({ success:false, message:'Schedule not found' });
+    return res.json({ success:true, data: schedule });
+  } catch (error) {
+    console.error('[vaccineController.getScheduleForVaccine] error:', error);
+    return sendError(res, error, 'Failed to fetch schedule');
+  }
+}
+
+// Create vaccine
 const addVaccine = async (req, res) => {
-	try {
-		const vaccineData = {
-			antigen_name: req.body.antigen_name,
-			brand_name: req.body.brand_name,
-			manufacturer: req.body.manufacturer,
-			vaccine_type: req.body.vaccine_type,
-			description: req.body.description,
-			created_by: req.user?.user_id || 1
-		};
-
-		const vaccine = await vaccineModel.createVaccine(vaccineData);
-		res.status(201).json({ 
-			success: true, 
-			message: 'Vaccine type added successfully', 
-			data: vaccine 
-		});
-	} catch (error) {
-		console.error('Error adding vaccine:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to add vaccine type', 
-			error: error.message 
-		});
-	}
+  try {
+    const actorId = req.user?.user_id || null;
+    const payload = {
+      antigen_name: req.body.antigen_name,
+      brand_name: req.body.brand_name,
+      disease_prevented: req.body.disease_prevented,
+      manufacturer: req.body.manufacturer,
+      vaccine_type: req.body.vaccine_type,
+      category: req.body.category,
+      description: req.body.description
+    };
+    if (payload.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(payload.category)) {
+      return res.status(400).json({ success:false, message:'Invalid category. Allowed: VACCINE, DEWORMING, VITAMIN_A' });
+    }
+    const dto = await vaccineModel.createVaccine(payload, actorId);
+    return res.status(201).json({ success:true, message:'Vaccine created', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.addVaccine] payload:', req.body, 'actor:', req.user?.user_id);
+  console.error('addVaccine error:', error);
+    return sendError(res, error, 'Failed to create vaccine');
+  }
 };
 
-// 2. Get vaccine by ID
+// Get single vaccine (returns raw record or null)
 const getVaccine = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const vaccine = await vaccineModel.getvaccinemasterById(id);
-		
-		if (!vaccine) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Vaccine not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			data: vaccine 
-		});
-	} catch (error) {
-		console.error('Error fetching vaccine:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to fetch vaccine', 
-			error: error.message 
-		});
-	}
+  try {
+    const { id } = req.params;
+    const record = await vaccineModel.getVaccineById(id);
+    if (!record) return res.status(404).json({ success:false, message:'Vaccine not found' });
+    return res.json({ success:true, data: record });
+  } catch (error) {
+  console.debug('[vaccineController.getVaccine] id:', req.params.id);
+  console.error('getVaccine error:', error);
+    return sendError(res, error, 'Failed to fetch vaccine');
+  }
 };
 
-// 3. Update vaccine
+// Update vaccine
 const updateVaccine = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const vaccineData = {
-			antigen_name: req.body.antigen_name,
-			brand_name: req.body.brand_name,
-			manufacturer: req.body.manufacturer,
-			vaccine_type: req.body.vaccine_type,
-			description: req.body.description,
-			updated_by: req.user?.user_id || 1
-		};
-
-		const vaccine = await vaccineModel.updateVaccine(id, vaccineData);
-		
-		if (!vaccine) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Vaccine not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			message: 'Vaccine updated successfully', 
-			data: vaccine 
-		});
-	} catch (error) {
-		console.error('Error updating vaccine:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to update vaccine', 
-			error: error.message 
-		});
-	}
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params;
+    const updates = {
+      antigen_name: req.body.antigen_name,
+      brand_name: req.body.brand_name,
+      disease_prevented: req.body.disease_prevented,
+      manufacturer: req.body.manufacturer,
+      vaccine_type: req.body.vaccine_type,
+      category: req.body.category,
+      description: req.body.description
+    };
+    if (updates.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(updates.category)) {
+      return res.status(400).json({ success:false, message:'Invalid category. Allowed: VACCINE, DEWORMING, VITAMIN_A' });
+    }
+    const dto = await vaccineModel.updateVaccine(id, updates, actorId);
+    if (!dto) return res.status(404).json({ success:false, message:'Vaccine not found' });
+    return res.json({ success:true, message:'Vaccine updated', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.updateVaccine] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
+  console.error('updateVaccine error:', error);
+    return sendError(res, error, 'Failed to update vaccine');
+  }
 };
 
-// 4. Delete vaccine
+// Delete vaccine (soft)
 const deleteVaccine = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const deletedBy = req.user?.user_id || 1;
-		
-		const result = await vaccineModel.deleteVaccine(id, deletedBy);
-		
-		if (!result) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Vaccine not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			message: 'Vaccine deleted successfully' 
-		});
-	} catch (error) {
-		console.error('Error deleting vaccine:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to delete vaccine', 
-			error: error.message 
-		});
-	}
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params;
+    const dto = await vaccineModel.deleteVaccine(id, actorId);
+    if (!dto) return res.status(404).json({ success:false, message:'Vaccine not found' });
+    return res.json({ success:true, message:'Vaccine deleted', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.deleteVaccine] id:', req.params.id, 'actor:', req.user?.user_id);
+  console.error('deleteVaccine error:', error);
+    return sendError(res, error, 'Failed to delete vaccine');
+  }
 };
 
-// 5. List all vaccines
-const listVaccines = async (req, res) => {
-	try {
-		const vaccines = await vaccineModel.getAllVaccines();
-		res.json({ 
-			success: true, 
-			data: vaccines,
-			message: 'Vaccines retrieved successfully' 
-		});
-	} catch (error) {
-		console.error('Error listing vaccines:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to retrieve vaccines', 
-			error: error.message 
-		});
-	}
+// List vaccines (model has getAllVaccines existing)
+const listVaccines = async (_req, res) => {
+  try {
+    const result = await vaccineModel.getAllVaccines();
+    return res.json({ success:true, data: result.vaccines });
+  } catch (error) {
+  console.debug('[vaccineController.listVaccines] actor:', req.user?.user_id);
+  console.error('listVaccines error:', error);
+    return sendError(res, error, 'Failed to list vaccines');
+  }
 };
 
-// 8. Retrieve inventory details
-const getInventory = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const inventory = await vaccineModel.getInventoryById(id);
-		
-		if (!inventory) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Inventory item not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			data: inventory 
-		});
-	} catch (error) {
-		console.error('Error fetching inventory item:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to fetch inventory item', 
-			error: error.message 
-		});
-	}
-};
-
-// 9. Edit inventory info
-const updateInventory = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const inventoryData = {
-			vaccine_id: req.body.vaccine_id,
-			lot_number: req.body.lot_number,
-			expiration_date: req.body.expiration_date,
-			current_stock_level: parseInt(req.body.current_stock_level) || 0,
-			storage_location: req.body.storage_location,
-			updated_by: req.user?.user_id || 1
-		};
-
-		const inventory = await vaccineModel.updateInventoryItem(id, inventoryData);
-		
-		if (!inventory) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Inventory item not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			message: 'Inventory item updated successfully', 
-			data: inventory 
-		});
-	} catch (error) {
-		console.error('Error updating inventory item:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to update inventory item', 
-			error: error.message 
-		});
-	}
-};
-
-// 10. Remove inventory entry
-const deleteInventory = async (req, res) => {
-	try {
-		const { id } = req.params;
-		const deletedBy = req.user?.user_id || 1;
-		
-		const result = await vaccineModel.deleteInventoryItem(id, deletedBy);
-		
-		if (!result) {
-			return res.status(404).json({ 
-				success: false, 
-				message: 'Inventory item not found' 
-			});
-		}
-		
-		res.json({ 
-			success: true, 
-			message: 'Inventory item deleted successfully' 
-		});
-	} catch (error) {
-		console.error('Error deleting inventory item:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to delete inventory item', 
-			error: error.message 
-		});
-	}
-};Vaccine = async (req, res) => {
-	try {
-		const vaccineData = {
-			vaccine_name: req.body.vaccine_name,
-			manufacturer: req.body.manufacturer,
-			vaccine_type: req.body.vaccine_type,
-			description: req.body.description,
-			dosage: req.body.dosage,
-			route_of_administration: req.body.route_of_administration,
-			storage_temperature: req.body.storage_temperature,
-			age_group: req.body.age_group,
-			recommended_schedule: req.body.recommended_schedule,
-			side_effects: req.body.side_effects,
-			contraindications: req.body.contraindications,
-			is_active: req.body.is_active !== undefined ? req.body.is_active : true
-		};
-		const vaccine = await vaccineModel.createVaccine(vaccineData);
-		res.status(201).json({ success: true, message: 'Vaccine added successfully', data: vaccine });
-	} catch (error) {
-		console.error('Error adding vaccine:', error);
-		res.status(500).json({ success: false, message: 'Failed to add vaccine', error: error.message });
-	}
-};
-
-// 7. Add vaccine stock
+// Create inventory item
 const addInventory = async (req, res) => {
-	try {
-		const inventoryData = {
-			vaccine_id: req.body.vaccine_id,
-			lot_number: req.body.lot_number,
-			expiration_date: req.body.expiration_date,
-			current_stock_level: parseInt(req.body.current_stock_level) || 0,
-			storage_location: req.body.storage_location,
-			created_by: req.user?.user_id || 1
-		};
-
-		const inventory = await vaccineModel.createInventoryItem(inventoryData);
-		res.status(201).json({ 
-			success: true, 
-			message: 'Inventory item added successfully', 
-			data: inventory 
-		});
-	} catch (error) {
-		console.error('Error adding inventory:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to add inventory item', 
-			error: error.message 
-		});
-	}
+  try {
+    const actorId = req.user?.user_id || null;
+    const payload = {
+      vaccine_id: req.body.vaccine_id,
+      lot_number: req.body.lot_number,
+      expiration_date: req.body.expiration_date,
+      current_stock_level: req.body.current_stock_level,
+      storage_location: req.body.storage_location
+    };
+    const dto = await vaccineModel.createInventoryItem(payload, actorId);
+    return res.status(201).json({ success:true, message:'Inventory item created', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.addInventory] payload:', req.body, 'actor:', req.user?.user_id);
+  console.error('addInventory error:', error);
+    return sendError(res, error, 'Failed to create inventory item');
+  }
 };
 
-// 10. List all inventory items
+// Get inventory item
+const getInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await vaccineModel.getInventoryById(id);
+    if (!record) return res.status(404).json({ success:false, message:'Inventory item not found' });
+    return res.json({ success:true, data: record });
+  } catch (error) {
+  console.debug('[vaccineController.getInventory] id:', req.params.id);
+  console.error('getInventory error:', error);
+    return sendError(res, error, 'Failed to fetch inventory item');
+  }
+};
+
+// Update inventory item
+const updateInventory = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params;
+    const updates = {
+      vaccine_id: req.body.vaccine_id,
+      lot_number: req.body.lot_number,
+      expiration_date: req.body.expiration_date,
+      current_stock_level: req.body.current_stock_level,
+      storage_location: req.body.storage_location
+    };
+    const dto = await vaccineModel.updateInventoryItem(id, updates, actorId);
+    if (!dto) return res.status(404).json({ success:false, message:'Inventory item not found' });
+    return res.json({ success:true, message:'Inventory item updated', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.updateInventory] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
+  console.error('updateInventory error:', error);
+    return sendError(res, error, 'Failed to update inventory item');
+  }
+};
+
+// Delete inventory item
+const deleteInventory = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params;
+    const dto = await vaccineModel.deleteInventoryItem(id, actorId);
+    if (!dto) return res.status(404).json({ success:false, message:'Inventory item not found' });
+    return res.json({ success:true, message:'Inventory item deleted', data: dto });
+  } catch (error) {
+  console.debug('[vaccineController.deleteInventory] id:', req.params.id, 'actor:', req.user?.user_id);
+  console.error('deleteInventory error:', error);
+    return sendError(res, error, 'Failed to delete inventory item');
+  }
+};
+
+// List inventory
 const listInventory = async (req, res) => {
-	try {
-		const inventory = await vaccineModel.getAllInventory();
-		res.json({ 
-			success: true, 
-			data: inventory,
-			message: 'Inventory retrieved successfully' 
-		});
-	} catch (error) {
-		console.error('Error fetching inventory:', error);
-		res.status(500).json({ 
-			success: false, 
-			message: 'Failed to fetch inventory', 
-			error: error.message 
-		});
-	}
+  try {
+    console.debug('[vaccineController.listInventory] Fetching inventory for table...');
+    const list = await vaccineModel.getAllInventory();
+    console.debug('[vaccineController.listInventory] Returning', Array.isArray(list) ? list.length : 0, 'inventory items');
+    return res.json({ success:true, data: list });
+  } catch (error) {
+    console.debug('[vaccineController.listInventory] error');
+    console.error('listInventory error:', error);
+    return sendError(res, error, 'Failed to list inventory');
+  }
 };
 
-// 11. Request new vaccine stock
-const createInventoryRequest = async (req, res) => res.status(501).json({ success: false, message: 'Inventory requests not implemented' });
-
-// 12. Approve or reject inventory requests
-const approveInventoryRequest = async (req, res) => res.status(501).json({ success: false, message: 'Inventory requests not implemented' });
-
-// 13. List all inventory requests
-const getInventoryRequests = async (req, res) => res.status(501).json({ success: false, message: 'Inventory requests not implemented' });
-
-// 14. Record inventory movement
-const createInventoryTransaction = async (req, res) => res.status(501).json({ success: false, message: 'Inventory transactions not implemented' });
-
-// 15. List all inventory transactions
-const getInventoryTransactions = async (req, res) => res.status(501).json({ success: false, message: 'Inventory transactions not implemented' });
+// Placeholders (not implemented yet)
+const createInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+const approveInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+const getInventoryRequests = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+// Manual creation blocked (ledger is system generated)
+const createInventoryTransaction = async (_req, res) => res.status(400).json({ success:false, message:'Manual transaction creation not allowed; adjust inventory instead.' });
+const getInventoryTransactions = async (req, res) => {
+  try {
+    const { page=1, limit=20, inventory_id, vaccine_id, transaction_type, date_from, date_to } = req.query;
+    const filters = { inventory_id, vaccine_id, transaction_type, date_from, date_to };
+    Object.keys(filters).forEach(k => filters[k] === undefined && delete filters[k]);
+    const result = await vaccineModel.getAllInventoryTransactions(filters, Number(page), Number(limit));
+    return res.json({ success:true, ...result });
+  } catch (error) {
+  console.debug('[vaccineController.getInventoryTransactions] inventory_id:', req.params.inventory_id);
+  console.error('getInventoryTransactions error:', error);
+    return sendError(res, error, 'Failed to fetch inventory transactions');
+  }
+};
+// List all schedules
+const listSchedules = async (req, res) => {
+  try {
+    const schedules = await vaccineModel.getAllSchedules();
+    return res.json({ success: true, data: schedules });
+  } catch (error) {
+    console.error('[vaccineController.listSchedules] error:', error);
+    return sendError(res, error, 'Failed to list schedules');
+  }
+};
 
 module.exports = {
-	addVaccine,
-	getVaccine,
-	updateVaccine,
-	deleteVaccine,
-	listVaccines,
-	addInventory,
-	getInventory,
-	updateInventory,
-	deleteInventory,
-	listInventory,
-	createInventoryRequest,
-	approveInventoryRequest,
-	getInventoryRequests,
-	createInventoryTransaction,
-	getInventoryTransactions
+  addVaccine,
+  getVaccine,
+  updateVaccine,
+  deleteVaccine,
+  listVaccines,
+  addInventory,
+  getInventory,
+  updateInventory,
+  deleteInventory,
+  listInventory,
+  createInventoryRequest,
+  approveInventoryRequest,
+  getInventoryRequests,
+  createInventoryTransaction,
+  getInventoryTransactions,
+  manageScheduling,
+  getScheduleForVaccine,
+  listSchedules
 };

@@ -16,8 +16,7 @@ const guardianModel = {
           email,
           address,
           guardians!guardians_user_id_fkey (
-            family_number,
-            relationship_to_patient
+            family_number
           )
         `)
         .eq('role', 'Guardian')
@@ -36,8 +35,7 @@ const guardianModel = {
         contact_number: user.contact_number,
         email: user.email,
         address: user.address,
-        family_number: user.guardians[0]?.family_number || '',
-        relationship_to_patient: user.guardians[0]?.relationship_to_patient || '',
+  family_number: user.guardians[0]?.family_number || '',
         full_name: `${user.surname}, ${user.firstname} ${user.middlename || ''}`.trim()
       }));
 
@@ -69,6 +67,11 @@ const guardianModel = {
   // Create a new guardian
   createGuardian: async (guardianData) => {
     try {
+      // Auto-generate family_number if not provided (column is NOT NULL)
+      let familyNumber = guardianData.family_number;
+      if (!familyNumber) {
+        familyNumber = 'FAM-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1e4).toString().padStart(4, '0');
+      }
       const { data, error } = await supabase
         .from('guardians')
         .insert({
@@ -81,8 +84,7 @@ const guardianModel = {
           contact_number: guardianData.contact_number,
           alternative_contact_number: guardianData.alternative_contact_number,
           email: guardianData.email,
-          relationship_to_patient: guardianData.relationship_to_patient,
-          family_number: guardianData.family_number,
+          family_number: familyNumber,
           user_id: guardianData.user_id
         })
         .select()
