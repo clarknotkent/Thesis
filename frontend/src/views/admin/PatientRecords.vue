@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid p-4">
+    <div class="container-fluid">
       <ToastContainer />
       <AppPageHeader 
         title="Patient Records" 
@@ -186,7 +186,7 @@
 
       <!-- Add/Edit Modal -->
       <div class="modal fade" :class="{ show: showAddModal || showEditModal }" :style="{ display: (showAddModal || showEditModal) ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
@@ -195,235 +195,316 @@
               </h5>
               <button type="button" class="btn-close" @click="closeModal"></button>
             </div>
-            <div class="modal-body pb-0">
-              <form @submit.prevent="savePatient">
+            <div class="modal-body px-4">
+              <form id="patient-form" @submit.prevent="savePatient">
                 <!-- Patient Basic Information -->
-                <div class="mb-4">
-                  <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-person-fill text-primary me-2"></i>
-                    <h6 class="text-primary fw-bold mb-0">Patient Information</h6>
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-md-4">
-                      <label class="form-label">Surname: <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" v-model="form.surname" required>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">First Name: <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" v-model="form.firstname" required>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Middle Name:</label>
-                      <input type="text" class="form-control" v-model="form.middlename">
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Sex: <span class="text-danger">*</span></label>
-                      <select class="form-select" v-model="form.sex" required>
-                        <option value="">Select Sex</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Barangay: <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" v-model="form.barangay" required>
-                    </div>
-                    <div class="col-md-8">
-                      <label class="form-label">Address: <span class="text-danger">*</span></label>
-                      <textarea class="form-control" rows="2" v-model="form.address" required></textarea>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Health Center: <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" v-model="form.health_center" required>
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-person-fill me-2"></i>Patient Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">First Name: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="form.firstname" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Middle Name:</label>
+                        <input type="text" class="form-control" v-model="form.middlename">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Surname: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="form.surname" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Sex: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="form.sex" required>
+                          <option value="">Select Sex</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            v-model="form.date_of_birth" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('date_of_birth')"
+                            required
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('date_of_birth')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerBirth"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('date_of_birth', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Barangay: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="form.barangay" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Health Center: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="form.health_center" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Address: <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="2" v-model="form.address" required></textarea>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Guardian / Parent Information -->
+                <!-- Guardian & Family Information -->
                 <div class="row mb-4">
-                  <div class="col-md-6">
-                    <label class="form-label">Guardian: <span class="text-danger">*</span></label>
-                    <div class="position-relative">
-                      <input
-                        type="text"
-                        class="form-control"
-                        v-model="guardianSearchTerm"
-                        @focus="showGuardianDropdown = true"
-                        @blur="hideGuardianDropdown"
-                        :placeholder="selectedGuardianName || 'Search and select guardian...'"
-                        autocomplete="off"
-                      />
-                      <div v-if="showGuardianDropdown && filteredGuardians.length > 0" class="dropdown-menu show w-100 position-absolute" style="max-height: 300px; overflow-y: auto; z-index: 1000;">
-                        <div v-for="guardian in filteredGuardians" :key="guardian.guardian_id" class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center" @mousedown="selectGuardian(guardian)">
-                          <div>
-                            <strong>{{ guardian.full_name }}</strong>
-                            <br>
-                            <small class="text-muted">📞 {{ guardian.contact_number || 'No contact' }} | 👥 Family: {{ guardian.family_number || 'N/A' }}</small>
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-people-fill me-2"></i>Guardian & Family Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-4 col-lg-6 col-md-6">
+                        <label class="form-label">Guardian: <span class="text-danger">*</span></label>
+                        <div class="position-relative">
+                          <input
+                            type="text"
+                            class="form-control"
+                            v-model="guardianSearchTerm"
+                            @focus="showGuardianDropdown = true"
+                            @blur="hideGuardianDropdown"
+                            :placeholder="selectedGuardianName || 'Search and select guardian...'"
+                            autocomplete="off"
+                          />
+                          <div v-if="showGuardianDropdown && filteredGuardians.length > 0" class="dropdown-menu show w-100 position-absolute" style="max-height: 300px; overflow-y: auto; z-index: 1000;">
+                            <div v-for="guardian in filteredGuardians" :key="guardian.guardian_id" class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center" @mousedown="selectGuardian(guardian)">
+                              <div>
+                                <strong>{{ guardian.full_name }}</strong>
+                                <br>
+                                <small class="text-muted">📞 {{ guardian.contact_number || 'No contact' }} | 👥 Family: {{ guardian.family_number || 'N/A' }}</small>
+                              </div>
+                              <span class="badge bg-primary">Guardian</span>
+                            </div>
                           </div>
-                          <span class="badge bg-primary">Guardian</span>
+                          <div v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0" class="dropdown-menu show w-100 position-absolute" style="z-index: 1000;">
+                            <div class="dropdown-item-text text-muted text-center py-3">
+                              <i class="bi bi-search"></i>
+                              No guardians found matching "{{ guardianSearchTerm }}"
+                            </div>
+                          </div>
                         </div>
+                        <input type="hidden" v-model="form.guardian_id" required>
                       </div>
-                      <div v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0" class="dropdown-menu show w-100 position-absolute" style="z-index: 1000;">
-                        <div class="dropdown-item-text text-muted text-center py-3">
-                          <i class="bi bi-search"></i>
-                          No guardians found matching "{{ guardianSearchTerm }}"
+                      <div class="col-xl-4 col-lg-6 col-md-6">
+                        <label class="form-label">Relationship to Guardian: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="form.relationship_to_guardian" required>
+                          <option value="">Select relationship</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Father">Father</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-4 col-lg-6 col-md-6">
+                        <label class="form-label">Family Number:</label>
+                        <div class="input-group">
+                          <input type="text" class="form-control" v-model="form.family_number" readonly placeholder="Auto-generated from selected guardian" />
+                          <span v-if="form.family_number" class="input-group-text bg-success text-white" title="Auto-populated from guardian"><i class="bi bi-check-circle"></i></span>
                         </div>
+                        <div class="form-text text-muted">Auto-generated from selected guardian.</div>
                       </div>
                     </div>
-                    <input type="hidden" v-model="form.guardian_id" required>
-                    <div class="mt-2">
-                      <label class="form-label small mb-1">Relationship to Guardian: <span class="text-danger">*</span></label>
-                      <select class="form-select" v-model="form.relationship_to_guardian" required>
-                        <option value="">Select relationship</option>
-                        <option value="Mother">Mother</option>
-                        <option value="Father">Father</option>
-                        <option value="Guardian">Guardian</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Family Number:</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" v-model="form.family_number" readonly placeholder="Auto-generated from selected guardian" />
-                      <span v-if="form.family_number" class="input-group-text bg-success text-white" title="Auto-populated from guardian"><i class="bi bi-check-circle"></i></span>
-                    </div>
-                    <div class="form-text text-muted">Family number is derived from the selected guardian and cannot be edited here.</div>
                   </div>
                 </div>
 
-                <div class="row mb-4">
-                  <div class="col-md-6">
-                    <div class="d-flex align-items-center mb-2">
-                      <i class="bi bi-person-heart text-primary me-2"></i>
-                      <h6 class="text-primary fw-bold mb-0">Mother's Information</h6>
-                    </div>
-                    <div class="row g-3">
-                      <div class="col-12">
-                        <label class="form-label">Name: <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="form.mother_name" required>
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">Occupation:</label>
-                        <input type="text" class="form-control" v-model="form.mother_occupation">
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">Contact Number:</label>
-                        <input type="tel" class="form-control" v-model="form.mother_contact_number">
+                <!-- Parent Information -->
+                <div class="row g-4 mb-4">
+                  <div class="col-xl-6 col-lg-6 col-md-6">
+                    <div class="p-3 border-start border-primary border-3 h-100">
+                      <h6 class="text-primary fw-bold mb-3">Mother's Information</h6>
+                      <div class="row g-3">
+                        <div class="col-12">
+                          <label class="form-label">Name: <span class="text-danger">*</span></label>
+                          <input type="text" class="form-control" v-model="form.mother_name" required>
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Occupation:</label>
+                          <input type="text" class="form-control" v-model="form.mother_occupation">
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Contact Number:</label>
+                          <input type="tel" class="form-control" v-model="form.mother_contact_number">
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-6">
-                    <div class="d-flex align-items-center mb-2">
-                      <i class="bi bi-person-check text-primary me-2"></i>
-                      <h6 class="text-primary fw-bold mb-0">Father's Information</h6>
-                    </div>
-                    <div class="row g-3">
-                      <div class="col-12">
-                        <label class="form-label">Name:</label>
-                        <input type="text" class="form-control" v-model="form.father_name">
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">Occupation:</label>
-                        <input type="text" class="form-control" v-model="form.father_occupation">
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">Contact Number:</label>
-                        <input type="tel" class="form-control" v-model="form.father_contact_number">
+                  <div class="col-xl-6 col-lg-6 col-md-6">
+                    <div class="p-3 border-start border-info border-3 h-100">
+                      <h6 class="text-info fw-bold mb-3">Father's Information</h6>
+                      <div class="row g-3">
+                        <div class="col-12">
+                          <label class="form-label">Name:</label>
+                          <input type="text" class="form-control" v-model="form.father_name">
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Occupation:</label>
+                          <input type="text" class="form-control" v-model="form.father_occupation">
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Contact Number:</label>
+                          <input type="tel" class="form-control" v-model="form.father_contact_number">
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Birth History -->
-                <div class="mb-4">
-                  <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-heart-pulse text-primary me-2"></i>
-                    <h6 class="text-primary fw-bold mb-0">Birth History (required)</h6>
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-md-3">
-                      <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
-                      <input type="date" class="form-control" v-model="form.date_of_birth" required>
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-heart-pulse me-2"></i>Birth History
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Time of Birth: <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" v-model="form.time_of_birth" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Attendant at Birth: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="form.attendant_at_birth" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Type of Delivery: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="form.type_of_delivery" required>
+                          <option value="">Select delivery type</option>
+                          <option value="Normal">Normal</option>
+                          <option value="Cesarean">Cesarean</option>
+                          <option value="Assisted">Assisted</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Birth Weight (kg):</label>
+                        <input type="number" step="0.1" class="form-control" v-model="form.birth_weight">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Birth Length (cm):</label>
+                        <input type="number" step="0.1" class="form-control" v-model="form.birth_length">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Place of Birth:</label>
+                        <input type="text" class="form-control" v-model="form.place_of_birth">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Ballard's Score:</label>
+                        <input type="number" class="form-control" v-model="form.ballards_score">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Address at Birth:</label>
+                        <input type="text" class="form-control" v-model="form.address_at_birth">
+                      </div>
                     </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Time of Birth: <span class="text-danger">*</span></label>
-                      <input type="time" class="form-control" v-model="form.time_of_birth" required>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Attendant at Birth: <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" v-model="form.attendant_at_birth" required>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Type of Delivery: <span class="text-danger">*</span></label>
-                      <select class="form-select" v-model="form.type_of_delivery" required>
-                        <option value="">Select delivery type</option>
-                        <option value="Normal">Normal</option>
-                        <option value="Cesarean">Cesarean</option>
-                        <option value="Assisted">Assisted</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Birth Weight (kg):</label>
-                      <input type="number" step="0.1" class="form-control" v-model="form.birth_weight">
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Birth Length (cm):</label>
-                      <input type="number" step="0.1" class="form-control" v-model="form.birth_length">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Place of Birth:</label>
-                      <input type="text" class="form-control" v-model="form.place_of_birth">
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Ballard's Score:</label>
-                      <input type="number" class="form-control" v-model="form.ballards_score">
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Hearing Test Date:</label>
-                      <input type="date" class="form-control" v-model="form.hearing_test_date">
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Newborn Screening Date:</label>
-                      <input type="date" class="form-control" v-model="form.newborn_screening_date">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Newborn Screening Result:</label>
-                      <input type="text" class="form-control" v-model="form.newborn_screening_result">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Address at Birth:</label>
-                      <input type="text" class="form-control" v-model="form.address_at_birth">
+                    <div class="row g-4 mt-2">
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label class="form-label">Hearing Test Date:</label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            v-model="form.hearing_test_date" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('hearing_test_date')"
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('hearing_test_date')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerHearing"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('hearing_test_date', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label class="form-label">Newborn Screening Date:</label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            v-model="form.newborn_screening_date" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('newborn_screening_date')"
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('newborn_screening_date')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerScreening"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('newborn_screening_date', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label class="form-label">Newborn Screening Result:</label>
+                        <input type="text" class="form-control" v-model="form.newborn_screening_result">
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Additional Information -->
-                <div class="mb-4">
-                  <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-clipboard-heart text-primary me-2"></i>
-                    <h6 class="text-primary fw-bold mb-0">Additional Information</h6>
-                  </div>
-                  <div class="row g-3">
-                    <div class="col-12">
-                      <label class="form-label">Tags (comma-separated):</label>
-                      <input type="text" class="form-control" v-model="form.tags" placeholder="e.g. high-risk, malnourished, premature">
-                      <div class="form-text">Use tags to categorize or flag special conditions</div>
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-clipboard-heart me-2"></i>Additional Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-12">
+                        <label class="form-label">Tags (comma-separated):</label>
+                        <input type="text" class="form-control" v-model="form.tags" placeholder="e.g. high-risk, malnourished, premature">
+                        <div class="form-text">Use tags to categorize or flag special conditions</div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Vaccinations & Schedules removed from Add/Edit modal per UX request -->
 
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
-                  <button type="submit" class="btn btn-primary" :disabled="saving">
-                    <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                    {{ showEditModal ? 'Update' : 'Add' }} Patient
-                  </button>
-                </div>
               </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeModal">
+                <i class="bi bi-x-circle me-2"></i>Close
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="saving" form="patient-form">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                {{ showEditModal ? 'Update' : 'Add' }} Patient
+              </button>
             </div>
           </div>
         </div>
@@ -464,6 +545,10 @@ const loading = ref(true)
 const saving = ref(false)
 const patients = ref([])
 const guardians = ref([])
+// Date picker refs
+const datePickerBirth = ref(null)
+const datePickerHearing = ref(null)
+const datePickerScreening = ref(null)
 // Guardian search functionality
 const guardianSearchTerm = ref('')
 const showGuardianDropdown = ref(false)
@@ -680,7 +765,7 @@ const editPatient = async (patient) => {
       firstname: p.firstname || p.given_name || '',
       middlename: p.middlename || p.middle_name || '',
       sex: p.sex || p.gender || '',
-      date_of_birth: p.date_of_birth || p.birth_date || '',
+      date_of_birth: formatForInput(p.date_of_birth || p.birth_date) || '',
       address: p.address || '',
       barangay: p.barangay || '',
       health_center: p.health_center || p.clinic || '',
@@ -702,8 +787,8 @@ const editPatient = async (patient) => {
       attendant_at_birth: (p.medical_history && (p.medical_history.attendant_at_birth || p.medical_history.attendantAtBirth)) || p.attendant_at_birth || '',
       type_of_delivery: (p.medical_history && (p.medical_history.type_of_delivery || p.medical_history.typeOfDelivery)) || p.type_of_delivery || '',
       ballards_score: (p.medical_history && (p.medical_history.ballards_score || p.medical_history.ballardsScore)) || p.ballards_score || '',
-      hearing_test_date: (p.medical_history && (p.medical_history.hearing_test_date || p.medical_history.hearingTestDate)) || p.hearing_test_date || '',
-      newborn_screening_date: (p.medical_history && (p.medical_history.newborn_screening_date || p.medical_history.newbornScreeningDate)) || p.newborn_screening_date || '',
+      hearing_test_date: formatForInput((p.medical_history && (p.medical_history.hearing_test_date || p.medical_history.hearingTestDate)) || p.hearing_test_date) || '',
+      newborn_screening_date: formatForInput((p.medical_history && (p.medical_history.newborn_screening_date || p.medical_history.newbornScreeningDate)) || p.newborn_screening_date) || '',
       newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
       address_at_birth: (p.medical_history && (p.medical_history.address_at_birth || p.medical_history.addressAtBirth)) || p.address_at_birth || ''
     }
@@ -809,7 +894,7 @@ const savePatient = async () => {
       firstname: form.value.firstname,
       middlename: form.value.middlename,
       sex: form.value.sex,
-      date_of_birth: form.value.date_of_birth,
+      date_of_birth: convertToISODate(form.value.date_of_birth) || form.value.date_of_birth,
       address: form.value.address,
       barangay: form.value.barangay,
       health_center: form.value.health_center,
@@ -836,8 +921,8 @@ const savePatient = async () => {
         attendant_at_birth: form.value.attendant_at_birth,
         type_of_delivery: form.value.type_of_delivery,
         ballards_score: form.value.ballards_score,
-        hearing_test_date: form.value.hearing_test_date,
-        newborn_screening_date: form.value.newborn_screening_date,
+        hearing_test_date: convertToISODate(form.value.hearing_test_date) || form.value.hearing_test_date,
+        newborn_screening_date: convertToISODate(form.value.newborn_screening_date) || form.value.newborn_screening_date,
         newborn_screening_result: form.value.newborn_screening_result
       }
     }
@@ -936,6 +1021,90 @@ const exportData = () => {
 
 const printData = () => {
   window.print()
+}
+
+// Date formatting and validation methods
+const formatForInput = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}/${dd}/${yyyy}`
+}
+
+const validateAndFormatDate = (fieldName) => {
+  if (!form.value[fieldName]) return
+  
+  // Handle various input formats and convert to MM/DD/YYYY
+  let dateStr = form.value[fieldName].trim()
+  let date = null
+  
+  // Try parsing MM/DD/YYYY format
+  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [month, day, year] = dateStr.split('/')
+    date = new Date(year, month - 1, day)
+  }
+  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
+  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const parts = dateStr.split('/')
+    // Assume DD/MM/YYYY if day > 12 or month <= 12
+    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
+      const [day, month, year] = parts
+      date = new Date(year, month - 1, day)
+    }
+  }
+  // Try parsing YYYY-MM-DD format
+  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    date = new Date(dateStr)
+  }
+  
+  if (date && !isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    form.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const openDatePicker = (fieldName) => {
+  const refMap = {
+    'date_of_birth': datePickerBirth,
+    'hearing_test_date': datePickerHearing, 
+    'newborn_screening_date': datePickerScreening
+  }
+  
+  const datePickerEl = refMap[fieldName].value
+  if (datePickerEl) {
+    // Set the current value in ISO format for the date picker
+    const isoDate = convertToISODate(form.value[fieldName])
+    if (isoDate) {
+      datePickerEl.value = isoDate
+    }
+    // Trigger the date picker
+    datePickerEl.showPicker()
+  }
+}
+
+const onDatePickerChange = (fieldName, event) => {
+  const isoDate = event.target.value
+  if (isoDate) {
+    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
+    const date = new Date(isoDate)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    form.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const convertToISODate = (mmddyyyy) => {
+  if (!mmddyyyy) return null
+  const [month, day, year] = mmddyyyy.split('/')
+  if (!month || !day || !year) return null
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
 }
 
 // Guardian search computed property

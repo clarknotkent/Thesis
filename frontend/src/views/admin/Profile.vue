@@ -1,0 +1,752 @@
+<template>
+  <AdminLayout>
+    <div class="container-fluid">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-0 text-gray-800">Profile Settings</h1>
+          <p class="text-muted mb-0">Manage your account information and preferences</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" @click="editMode = !editMode">
+            <i class="bi bi-pencil me-2"></i>{{ editMode ? 'Cancel Edit' : 'Edit Profile' }}
+          </button>
+          <button v-if="editMode" class="btn btn-primary" @click="saveProfile" :disabled="saving">
+            <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+            <i v-else class="bi bi-check-circle me-2"></i>
+            {{ saving ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Profile Overview -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-start border-primary border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                    Account Status
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ profile.status || 'Active' }}</div>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-shield-check text-primary" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card border-start border-success border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                    Member Since
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ formatMemberSince(profile.createdAt) }}</div>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-calendar-check text-success" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card border-start border-info border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                    Last Login
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ formatLastLogin(profile.lastLogin) }}</div>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-clock text-info" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card border-start border-warning border-4 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col me-2">
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                    Profile Score
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">{{ profileCompleteness }}%</div>
+                </div>
+                <div class="col-auto">
+                  <i class="bi bi-graph-up text-warning" style="font-size: 2rem;"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Information -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-person-circle me-2"></i>
+            Personal Information
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <!-- Profile Picture -->
+            <div class="col-md-12 text-center mb-4">
+              <div class="position-relative d-inline-block">
+                <img 
+                  :src="profile.avatar || '/default-avatar.png'" 
+                  alt="Profile Picture" 
+                  class="rounded-circle border shadow"
+                  style="width: 120px; height: 120px; object-fit: cover;"
+                >
+                <button 
+                  v-if="editMode" 
+                  class="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle"
+                  style="width: 35px; height: 35px;"
+                  @click="$refs.fileInput.click()"
+                  title="Change Profile Picture"
+                >
+                  <i class="bi bi-camera"></i>
+                </button>
+                <input 
+                  ref="fileInput" 
+                  type="file" 
+                  class="d-none" 
+                  accept="image/*" 
+                  @change="handleAvatarChange"
+                >
+              </div>
+            </div>
+
+            <!-- Basic Information -->
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">First Name:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.firstName" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Middle Name:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.middleName" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Last Name:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.lastName" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Email Address:</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                v-model="profileForm.email" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Sex:</label>
+              <select 
+                class="form-select" 
+                v-model="profileForm.sex" 
+                :disabled="!editMode"
+                v-if="editMode"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              <input 
+                v-else
+                type="text" 
+                class="form-control-plaintext border-0" 
+                :value="profileForm.sex" 
+                readonly
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Birthdate:</label>
+              <div v-if="editMode" class="input-group">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  v-model="profileForm.birthdate" 
+                  placeholder="MM/DD/YYYY"
+                  @blur="validateAndFormatDate('birthdate')"
+                />
+                <button 
+                  class="btn btn-outline-secondary" 
+                  type="button"
+                  @click="openDatePicker('birthdate')"
+                  title="Select date"
+                >
+                  <i class="bi bi-calendar3"></i>
+                </button>
+                <input 
+                  type="date" 
+                  ref="datePickerBirthdate"
+                  style="position: absolute; visibility: hidden; pointer-events: none;"
+                  @change="onDatePickerChange('birthdate', $event)"
+                />
+              </div>
+              <input 
+                v-else
+                type="text" 
+                class="form-control-plaintext border-0" 
+                :value="profileForm.birthdate" 
+                readonly
+              >
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Address:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.address" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Professional Information -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-briefcase me-2"></i>
+            Professional Information
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Role:</label>
+              <input 
+                type="text" 
+                class="form-control-plaintext border-0" 
+                :value="getRoleDisplayName(profile.role)" 
+                readonly
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6" v-if="profile.role === 'health_worker'">
+              <label class="form-label fw-semibold">Health Worker Type:</label>
+              <input 
+                type="text" 
+                class="form-control-plaintext border-0" 
+                :value="getHwTypeDisplayName(profile.hwType)" 
+                readonly
+              >
+            </div>
+            <div class="col-xl-4 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Employee ID:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.employeeId" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-6 col-lg-6 col-md-6" v-if="profile.role === 'health_worker' || profile.role === 'admin'">
+              <label class="form-label fw-semibold">PRC License Number:</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                v-model="profileForm.licenseNumber" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+            <div class="col-xl-6 col-lg-6 col-md-6">
+              <label class="form-label fw-semibold">Contact Number:</label>
+              <input 
+                type="tel" 
+                class="form-control" 
+                v-model="profileForm.contactNumber" 
+                :readonly="!editMode"
+                :class="{ 'form-control-plaintext border-0': !editMode }"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Settings -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3">
+          <h6 class="m-0 fw-bold text-primary">
+            <i class="bi bi-shield-lock me-2"></i>
+            Security Settings
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-12">
+              <button class="btn btn-outline-warning" @click="showPasswordModal = true">
+                <i class="bi bi-key me-2"></i>
+                Change Password
+              </button>
+              <small class="text-muted ms-3">Last changed: {{ formatDate(profile.passwordChangedAt) || 'Never' }}</small>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="twoFactorAuth" 
+                  v-model="profileForm.twoFactorEnabled"
+                  :disabled="!editMode"
+                >
+                <label class="form-check-label" for="twoFactorAuth">
+                  Enable Two-Factor Authentication
+                </label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="emailNotifications" 
+                  v-model="profileForm.emailNotifications"
+                  :disabled="!editMode"
+                >
+                <label class="form-check-label" for="emailNotifications">
+                  Receive email notifications
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Password Modal -->
+      <div class="modal fade" :class="{ show: showPasswordModal }" :style="{ display: showPasswordModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-key me-2"></i>
+                Change Password
+              </h5>
+              <button type="button" class="btn-close" @click="closePasswordModal"></button>
+            </div>
+            <div class="modal-body">
+              <form @submit.prevent="changePassword">
+                <div class="mb-3">
+                  <label class="form-label">Current Password:</label>
+                  <input 
+                    type="password" 
+                    class="form-control" 
+                    v-model="passwordForm.currentPassword" 
+                    required
+                  >
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">New Password:</label>
+                  <input 
+                    type="password" 
+                    class="form-control" 
+                    v-model="passwordForm.newPassword" 
+                    required
+                    minlength="8"
+                  >
+                  <div class="form-text">Password must be at least 8 characters long.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Confirm New Password:</label>
+                  <input 
+                    type="password" 
+                    class="form-control" 
+                    v-model="passwordForm.confirmPassword" 
+                    required
+                  >
+                  <div v-if="passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword" class="text-danger small">
+                    Passwords do not match
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closePasswordModal">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                @click="changePassword" 
+                :disabled="changingPassword || passwordForm.newPassword !== passwordForm.confirmPassword"
+              >
+                <span v-if="changingPassword" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                {{ changingPassword ? 'Changing...' : 'Change Password' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Backdrop -->
+      <div v-if="showPasswordModal" class="modal-backdrop fade show"></div>
+    </div>
+  </AdminLayout>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import AdminLayout from '@/components/layout/AdminLayout.vue'
+import api from '@/services/api'
+
+// Reactive data
+const loading = ref(true)
+const saving = ref(false)
+const changingPassword = ref(false)
+const editMode = ref(false)
+const showPasswordModal = ref(false)
+
+// Date picker ref
+const datePickerBirthdate = ref(null)
+
+// Profile data
+const profile = ref({
+  id: '',
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  email: '',
+  role: '',
+  hwType: '',
+  status: 'Active',
+  createdAt: '',
+  lastLogin: '',
+  avatar: '',
+  sex: '',
+  birthdate: '',
+  address: '',
+  employeeId: '',
+  licenseNumber: '',
+  contactNumber: '',
+  twoFactorEnabled: false,
+  emailNotifications: true,
+  passwordChangedAt: ''
+})
+
+const profileForm = ref({ ...profile.value })
+
+const passwordForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+// Computed properties
+const profileCompleteness = computed(() => {
+  const fields = [
+    profile.value.firstName,
+    profile.value.lastName,
+    profile.value.email,
+    profile.value.sex,
+    profile.value.birthdate,
+    profile.value.address,
+    profile.value.contactNumber
+  ]
+  
+  if (profile.value.role === 'health_worker' || profile.value.role === 'admin') {
+    fields.push(profile.value.employeeId, profile.value.licenseNumber)
+  }
+  
+  const completedFields = fields.filter(field => field && field.trim() !== '').length
+  return Math.round((completedFields / fields.length) * 100)
+})
+
+// Methods
+const fetchProfile = async () => {
+  try {
+    loading.value = true
+    const response = await api.get('/profile')
+    const data = response.data?.data || response.data
+    
+    profile.value = {
+      id: data.user_id || data.id,
+      firstName: data.firstname || '',
+      lastName: data.surname || '',
+      middleName: data.middlename || '',
+      email: data.email || '',
+      role: data.role || '',
+      hwType: data.hw_type || '',
+      status: data.status || 'Active',
+      createdAt: data.created_at || data.createdAt || '',
+      lastLogin: data.last_login || data.lastLogin || '',
+      avatar: data.avatar || '',
+      sex: data.sex || '',
+      birthdate: formatForInput(data.birthdate) || '',
+      address: data.address || '',
+      employeeId: data.employee_id || '',
+      licenseNumber: data.professional_license_no || '',
+      contactNumber: data.contact_number || '',
+      twoFactorEnabled: data.two_factor_enabled || false,
+      emailNotifications: data.email_notifications !== false,
+      passwordChangedAt: data.password_changed_at || ''
+    }
+    
+    profileForm.value = { ...profile.value }
+  } catch (error) {
+    console.error('Error fetching profile:', error)
+    alert('Error loading profile information.')
+  } finally {
+    loading.value = false
+  }
+}
+
+const saveProfile = async () => {
+  try {
+    saving.value = true
+    
+    const payload = {
+      firstname: profileForm.value.firstName,
+      surname: profileForm.value.lastName,
+      middlename: profileForm.value.middleName,
+      email: profileForm.value.email,
+      sex: profileForm.value.sex,
+      birthdate: convertToISODate(profileForm.value.birthdate) || profileForm.value.birthdate,
+      address: profileForm.value.address,
+      employee_id: profileForm.value.employeeId,
+      professional_license_no: profileForm.value.licenseNumber,
+      contact_number: profileForm.value.contactNumber,
+      two_factor_enabled: profileForm.value.twoFactorEnabled,
+      email_notifications: profileForm.value.emailNotifications
+    }
+    
+    await api.put('/profile', payload)
+    
+    profile.value = { ...profileForm.value }
+    editMode.value = false
+    alert('Profile updated successfully!')
+    
+  } catch (error) {
+    console.error('Error saving profile:', error)
+    alert('Error updating profile. Please try again.')
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleAvatarChange = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  const formData = new FormData()
+  formData.append('avatar', file)
+  
+  try {
+    const response = await api.post('/profile/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    
+    profile.value.avatar = response.data.avatarUrl
+    profileForm.value.avatar = response.data.avatarUrl
+    alert('Profile picture updated successfully!')
+    
+  } catch (error) {
+    console.error('Error uploading avatar:', error)
+    alert('Error uploading profile picture. Please try again.')
+  }
+}
+
+const changePassword = async () => {
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    alert('Passwords do not match!')
+    return
+  }
+  
+  try {
+    changingPassword.value = true
+    
+    await api.post('/profile/change-password', {
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword
+    })
+    
+    closePasswordModal()
+    alert('Password changed successfully!')
+    
+  } catch (error) {
+    console.error('Error changing password:', error)
+    alert(error.response?.data?.message || 'Error changing password. Please try again.')
+  } finally {
+    changingPassword.value = false
+  }
+}
+
+const closePasswordModal = () => {
+  showPasswordModal.value = false
+  passwordForm.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  }
+}
+
+// Date formatting methods
+const formatForInput = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}/${dd}/${yyyy}`
+}
+
+const validateAndFormatDate = (fieldName) => {
+  if (!profileForm.value[fieldName]) return
+  
+  let dateStr = profileForm.value[fieldName].trim()
+  let date = null
+  
+  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [month, day, year] = dateStr.split('/')
+    date = new Date(year, month - 1, day)
+  } else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    date = new Date(dateStr)
+  }
+  
+  if (date && !isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    profileForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const openDatePicker = (fieldName) => {
+  const datePickerEl = datePickerBirthdate.value
+  if (datePickerEl) {
+    const isoDate = convertToISODate(profileForm.value[fieldName])
+    if (isoDate) {
+      datePickerEl.value = isoDate
+    }
+    datePickerEl.showPicker()
+  }
+}
+
+const onDatePickerChange = (fieldName, event) => {
+  const isoDate = event.target.value
+  if (isoDate) {
+    const date = new Date(isoDate)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    profileForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const convertToISODate = (mmddyyyy) => {
+  if (!mmddyyyy) return null
+  const [month, day, year] = mmddyyyy.split('/')
+  if (!month || !day || !year) return null
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'Never'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const formatMemberSince = (dateString) => {
+  if (!dateString) return 'Unknown'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short'
+  })
+}
+
+const formatLastLogin = (dateString) => {
+  if (!dateString) return 'Never'
+  const now = new Date()
+  const date = new Date(dateString)
+  const diffTime = Math.abs(now - date)
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 30) return `${diffDays} days ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const getRoleDisplayName = (role) => {
+  switch (role) {
+    case 'health_worker': return 'Health Worker'
+    case 'parent': return 'Parent'
+    case 'admin': return 'Administrator'
+    default: return role || 'Unknown'
+  }
+}
+
+const getHwTypeDisplayName = (hwType) => {
+  switch (hwType) {
+    case 'nurse': return 'Nurse'
+    case 'nutritionist': return 'Nutritionist'
+    case 'bhw': return 'Barangay Health Worker'
+    default: return hwType || 'Unknown'
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  fetchProfile()
+})
+</script>
+
+<style scoped>
+.modal.show {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.border-start {
+  border-left: 0.25rem solid !important;
+}
+
+.text-gray-800 {
+  color: #5a5c69 !important;
+}
+
+.form-control-plaintext {
+  background-color: transparent !important;
+}
+</style>

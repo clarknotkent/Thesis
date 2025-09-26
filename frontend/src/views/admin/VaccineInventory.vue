@@ -1,20 +1,17 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid p-4">
+    <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">Vaccine Inventory</h1>
           <p class="text-muted mb-0">Manage vaccine types and track vaccine stock levels</p>
         </div>
-        <div class="btn-group">
+        <div class="d-flex gap-2">
           <button class="btn btn-primary" @click="showAddStockModal = true">
             <i class="bi bi-plus-circle me-2"></i>Add New Stock
           </button>
           <button class="btn btn-success" @click="showAddVaccineModal = true">
             <i class="bi bi-plus-square me-2"></i>Add New Vaccine
-          </button>
-          <button class="btn btn-secondary" @click="openScheduleModal()">
-            <i class="bi bi-calendar-event me-2"></i>Manage Scheduling
           </button>
         </div>
       </div>
@@ -175,39 +172,16 @@
                 </tr>
               </tbody>
             </table>
-            
-            <!-- Pagination Controls -->
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <div class="text-muted">
-                Showing {{ paginatedVaccines.length > 0 ? ((currentPage - 1) * 5 + 1) : 0 }}
-                to {{ Math.min(currentPage * 5, filteredVaccines.length) }}
-                of {{ filteredVaccines.length }} entries
-              </div>
-              <nav aria-label="Vaccine inventory pagination">
-                <ul class="pagination">
-                  <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                    <button class="page-link" @click="prevPage()" aria-label="Previous">
-                      <span aria-hidden="true">&laquo;</span>
-                    </button>
-                  </li>
-                  
-                  <li v-for="(page, index) in pageNumbers" :key="index" 
-                      class="page-item" 
-                      :class="{ active: page === currentPage, disabled: page === '...' }">
-                    <button class="page-link" @click="page !== '...' && goToPage(page)">
-                      {{ page }}
-                    </button>
-                  </li>
-                  
-                  <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                    <button class="page-link" @click="nextPage()" aria-label="Next">
-                      <span aria-hidden="true">&raquo;</span>
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            </div>
           </div>
+        </div>
+        <div class="card-footer">
+          <AppPagination
+            :currentPage="currentPage"
+            :totalPages="totalPages"
+            :totalItems="filteredVaccines.length"
+            :itemsPerPage="itemsPerPage"
+            @page-changed="goToPage"
+          />
         </div>
       </div>
 
@@ -255,241 +229,346 @@
         </div>
       </div>
 
-      <!-- Add/Edit Modal -->
+      <!-- Add/Edit Stock Modal -->
       <div class="modal fade" :class="{ show: showAddModal || showAddStockModal }" :style="{ display: (showAddModal || showAddStockModal) ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">{{ isEditing ? 'Edit' : 'Add New' }} Vaccine Stock</h5>
+              <h5 class="modal-title">
+                <i class="bi bi-plus-circle me-2"></i>
+                {{ isEditing ? 'Edit Vaccine Stock' : 'Add New Stock' }}
+              </h5>
               <button type="button" class="btn-close" @click="closeModal"></button>
             </div>
-            <div class="modal-body">
-              <form @submit.prevent="saveVaccine">
-                <div class="mb-3">
-                  <label for="vaccineSelect" class="form-label">Select Vaccine *</label>
-                  <select 
-                    class="form-control" 
-                    id="vaccineSelect"
-                    v-model="form.vaccine_id" 
-                    @change="onVaccineSelect"
-                    required
-                  >
-                    <option value="">-- Select a Vaccine --</option>
-                    <option v-for="vaccine in existingVaccines" :key="vaccine.id" :value="vaccine.id">
-                      {{ vaccine.antigen_name }} - {{ vaccine.brand_name }}
-                    </option>
-                  </select>
+            <div class="modal-body px-4">
+              <form id="stock-form" @submit.prevent="saveVaccine">
+                <!-- Stock Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-box-seam me-2"></i>Stock Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="vaccineSelect" class="form-label">Select Vaccine Type: <span class="text-danger">*</span></label>
+                        <select 
+                          class="form-select" 
+                          id="vaccineSelect"
+                          v-model="form.vaccine_id" 
+                          @change="onVaccineSelect"
+                          required
+                        >
+                          <option value="">-- Select a Vaccine Type --</option>
+                          <option v-for="vaccine in existingVaccines" :key="vaccine.id" :value="vaccine.id">
+                            {{ vaccine.antigen_name }} - {{ vaccine.brand_name }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="brandName" class="form-label">Brand Name:</label>
+                        <input 
+                          type="text" 
+                          class="form-control bg-light" 
+                          id="brandName"
+                          v-model="form.brandName" 
+                          readonly
+                          placeholder="Auto-populated from selected vaccine"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="manufacturer" class="form-label">Manufacturer: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="manufacturer"
+                          v-model="form.manufacturer" 
+                          required
+                          placeholder="e.g., Pfizer Inc., Moderna Inc."
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="quantity" class="form-label">Stock Quantity: <span class="text-danger">*</span></label>
+                        <input 
+                          type="number" 
+                          class="form-control" 
+                          id="quantity"
+                          v-model="form.quantity" 
+                          min="0"
+                          required
+                          placeholder="Number of doses"
+                        >
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label for="brandName" class="form-label">Brand Name</label>
-                  <input 
-                    type="text" 
-                    class="form-control bg-light" 
-                    id="brandName"
-                    v-model="form.brandName" 
-                    readonly
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="manufacturer" class="form-label">Manufacturer *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="manufacturer"
-                    v-model="form.manufacturer" 
-                    required
-                    placeholder="e.g., Pfizer Inc., Moderna Inc."
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="quantity" class="form-label">Quantity *</label>
-                  <input 
-                    type="number" 
-                    class="form-control" 
-                    id="quantity"
-                    v-model="form.quantity" 
-                    min="0"
-                    required
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="lotNumber" class="form-label">Lot Number *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="lotNumber"
-                    v-model="form.lotNumber" 
-                    required
-                    placeholder="e.g., LOT123456"
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="expirationDate" class="form-label">Expiration Date *</label>
-                  <input 
-                    type="date" 
-                    class="form-control" 
-                    id="expirationDate"
-                    v-model="form.expirationDate" 
-                    required
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="storageLocation" class="form-label">Storage Location</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="storageLocation"
-                    v-model="form.storageLocation"
-                    placeholder="e.g., Cold Room A"
-                  >
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
-                  <button type="submit" class="btn btn-primary" :disabled="saving">
-                    <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                    {{ isEditing ? 'Update' : 'Add' }} Stock
-                  </button>
+
+                <!-- Batch & Storage Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-archive me-2"></i>Batch & Storage Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="lotNumber" class="form-label">Lot Number: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="lotNumber"
+                          v-model="form.lotNumber" 
+                          required
+                          placeholder="e.g., LOT123456"
+                        >
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="expirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            id="expirationDate"
+                            v-model="form.expirationDate" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('expirationDate')"
+                            required
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('expirationDate')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerStock"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('expirationDate', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="storageLocation" class="form-label">Storage Location:</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="storageLocation"
+                          v-model="form.storageLocation"
+                          placeholder="e.g., Cold Room A, Refrigerator 1"
+                        >
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeModal">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="saving" form="stock-form">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                {{ isEditing ? 'Update' : 'Add' }} Stock
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Add New Vaccine Modal -->
+      <!-- Add New Vaccine Type Modal -->
       <div class="modal fade" :class="{ show: showAddVaccineModal }" :style="{ display: showAddVaccineModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Add New Vaccine Type</h5>
+              <h5 class="modal-title">
+                <i class="bi bi-plus-square me-2"></i>
+                Add New Vaccine Type
+              </h5>
               <button type="button" class="btn-close" @click="closeVaccineModal"></button>
             </div>
-            <div class="alert alert-info mx-3 mt-3 mb-0">
-              <small><strong>Note:</strong> This creates a new vaccine type. Each combination of Antigen Name + Brand Name must be unique.</small>
-            </div>
-            <div class="modal-body">
-              <form @submit.prevent="saveNewVaccine">
-                <div class="mb-3">
-                  <label for="newAntigenName" class="form-label">Antigen Name *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="newAntigenName"
-                    v-model="vaccineForm.antigen_name" 
-                    required
-                    placeholder="Enter new antigen name (e.g., COVID-19, Rotavirus)"
-                  >
+            <div class="modal-body px-4">
+              <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Note:</strong> This creates a new vaccine type. Each combination of Antigen Name + Brand Name must be unique.
+              </div>
+              <form id="vaccine-form" @submit.prevent="saveNewVaccine">
+                <!-- Vaccine Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-shield-check me-2"></i>Vaccine Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newAntigenName" class="form-label">Antigen Name: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="newAntigenName"
+                          v-model="vaccineForm.antigen_name" 
+                          required
+                          placeholder="e.g., COVID-19, Rotavirus, Measles"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newBrandName" class="form-label">Brand Name: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="newBrandName"
+                          v-model="vaccineForm.brand_name" 
+                          required
+                          placeholder="e.g., Pfizer, Moderna, Sinovac"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newManufacturer" class="form-label">Manufacturer: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="newManufacturer"
+                          v-model="vaccineForm.manufacturer" 
+                          required
+                          placeholder="e.g., Pfizer Inc., Moderna Inc."
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newDiseasePrevented" class="form-label">Disease Prevented: <span class="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="newDiseasePrevented"
+                          v-model="vaccineForm.disease_prevented"
+                          required
+                          placeholder="e.g., Tuberculosis, Measles, COVID-19"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label for="newBrandName" class="form-label">Brand Name *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="newBrandName"
-                    v-model="vaccineForm.brand_name" 
-                    required
-                    placeholder="e.g., Pfizer, Moderna, Sinovac"
-                  >
+
+                <!-- Classification & Category -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-tags me-2"></i>Classification & Category
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newVaccineType" class="form-label">Vaccine Type: <span class="text-danger">*</span></label>
+                        <select 
+                          class="form-select" 
+                          id="newVaccineType"
+                          v-model="vaccineForm.vaccine_type" 
+                          required
+                        >
+                          <option value="">-- Select Type --</option>
+                          <option value="live">Live Attenuated</option>
+                          <option value="inactivated">Inactivated/Killed</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newCategory" class="form-label">Category: <span class="text-danger">*</span></label>
+                        <select
+                          class="form-select"
+                          id="newCategory"
+                          v-model="vaccineForm.category"
+                          required
+                        >
+                          <option value="">-- Select Category --</option>
+                          <option value="VACCINE">Vaccine</option>
+                          <option value="DEWORMING">Deworming</option>
+                          <option value="VITAMIN_A">Vitamin A Supplement</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label for="newManufacturer" class="form-label">Manufacturer *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="newManufacturer"
-                    v-model="vaccineForm.manufacturer" 
-                    required
-                    placeholder="e.g., Pfizer Inc., Moderna Inc."
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="newDiseasePrevented" class="form-label">Disease Prevented *</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="newDiseasePrevented"
-                    v-model="vaccineForm.disease_prevented"
-                    required
-                    placeholder="e.g., Tuberculosis, Measles"
-                  />
-                </div>
-                <div class="mb-3">
-                  <label for="newVaccineType" class="form-label">Vaccine Type *</label>
-                  <select 
-                    class="form-control" 
-                    id="newVaccineType"
-                    v-model="vaccineForm.vaccine_type" 
-                    required
-                  >
-                    <option value="">-- Select Type --</option>
-                    <option value="live">Live</option>
-                    <option value="inactivated">Inactivated</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="newCategory" class="form-label">Category *</label>
-                  <select
-                    class="form-control"
-                    id="newCategory"
-                    v-model="vaccineForm.category"
-                    required
-                  >
-                    <option value="">-- Select Category --</option>
-                    <option value="VACCINE">Vaccine</option>
-                    <option value="DEWORMING">Deworming</option>
-                    <option value="VITAMIN_A">Vitamin A</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="newLotNumber" class="form-label">Lot Number *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="newLotNumber"
-                    v-model="vaccineForm.lot_number" 
-                    required
-                    placeholder="e.g., LOT123456"
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="newExpirationDate" class="form-label">Expiration Date *</label>
-                  <input 
-                    type="date" 
-                    class="form-control" 
-                    id="newExpirationDate"
-                    v-model="vaccineForm.expiration_date" 
-                    required
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="newStorageLocation" class="form-label">Storage Location</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="newStorageLocation"
-                    v-model="vaccineForm.storage_location"
-                    placeholder="e.g., Cold Room A"
-                  >
-                </div>
-                <div class="mb-3">
-                  <label for="newStockLevel" class="form-label">Stock Level *</label>
-                  <input 
-                    type="number" 
-                    class="form-control" 
-                    id="newStockLevel"
-                    v-model="vaccineForm.stock_level" 
-                    min="0"
-                    required
-                  >
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" @click="closeVaccineModal">Cancel</button>
-                  <button type="submit" class="btn btn-success" :disabled="saving">
-                    <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                    Add Vaccine
-                  </button>
+
+                <!-- Initial Stock Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-archive me-2"></i>Initial Stock Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="newLotNumber" class="form-label">Lot Number: <span class="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          id="newLotNumber"
+                          v-model="vaccineForm.lot_number" 
+                          required
+                          placeholder="e.g., LOT123456"
+                        >
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="newExpirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            id="newExpirationDate"
+                            v-model="vaccineForm.expiration_date" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('expiration_date')"
+                            required
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('expiration_date')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerVaccine"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('expiration_date', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label for="newStockLevel" class="form-label">Initial Stock Level: <span class="text-danger">*</span></label>
+                        <input 
+                          type="number" 
+                          class="form-control" 
+                          id="newStockLevel"
+                          v-model="vaccineForm.stock_level" 
+                          min="0"
+                          required
+                          placeholder="Number of doses"
+                        >
+                      </div>
+                      <div class="col-12">
+                        <label for="newStorageLocation" class="form-label">Storage Location:</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="newStorageLocation"
+                          v-model="vaccineForm.storage_location"
+                          placeholder="e.g., Cold Room A, Refrigerator 1, Freezer Section B"
+                        >
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeVaccineModal">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+              </button>
+              <button type="submit" class="btn btn-success" :disabled="saving" form="vaccine-form">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                Add Vaccine Type
+              </button>
             </div>
           </div>
         </div>
@@ -690,6 +769,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
 import { usePagination } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
@@ -702,6 +782,9 @@ const saving = ref(false)
 const vaccines = ref([])
 const existingVaccines = ref([])
 const schedules = ref([])
+// Date picker refs
+const datePickerStock = ref(null)
+const datePickerVaccine = ref(null)
 const stats = ref({
   totalTypes: 0,
   totalDoses: 0,
@@ -981,6 +1064,7 @@ const filteredVaccines = computed(() => {
 })
 
 // Pagination
+const itemsPerPage = ref(5)
 const {
   currentPage,
   totalPages,
@@ -989,7 +1073,7 @@ const {
   prevPage,
   goToPage,
   pageNumbers
-} = usePagination(filteredVaccines, 5)
+} = usePagination(filteredVaccines, itemsPerPage.value)
 
 // Methods
 const fetchVaccines = async () => {
@@ -1075,7 +1159,7 @@ const saveVaccine = async () => {
     const payload = {
       vaccine_id: form.value.vaccine_id,
       lot_number: form.value.lotNumber,
-      expiration_date: form.value.expirationDate,
+      expiration_date: convertToISODate(form.value.expirationDate) || form.value.expirationDate,
       current_stock_level: form.value.quantity,
       storage_location: form.value.storageLocation || null
     }
@@ -1103,7 +1187,10 @@ const saveVaccine = async () => {
 }
 
 const editVaccine = (vaccine) => {
-  form.value = { ...vaccine }
+  form.value = { 
+    ...vaccine,
+    expirationDate: formatForInput(vaccine.expiryDate || vaccine.expirationDate)
+  }
   isEditing.value = true
   showAddStockModal.value = true
 }
@@ -1189,7 +1276,7 @@ const saveNewVaccine = async () => {
       const inventoryPayload = {
         vaccine_id: vaccineId,
         lot_number: vaccineForm.value.lot_number,
-        expiration_date: vaccineForm.value.expiration_date,
+        expiration_date: convertToISODate(vaccineForm.value.expiration_date) || vaccineForm.value.expiration_date,
         current_stock_level: vaccineForm.value.stock_level,
         storage_location: vaccineForm.value.storage_location || null
       }
@@ -1261,6 +1348,109 @@ const formatDate = (dateString) => {
     day: 'numeric'
   });
 };
+
+// Date formatting and validation methods
+const formatForInput = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}/${dd}/${yyyy}`
+}
+
+const validateAndFormatDate = (fieldName) => {
+  let dateValue
+  if (fieldName === 'expirationDate') {
+    dateValue = form.value.expirationDate
+  } else if (fieldName === 'expiration_date') {
+    dateValue = vaccineForm.value.expiration_date
+  }
+  
+  if (!dateValue) return
+  
+  // Handle various input formats and convert to MM/DD/YYYY
+  let dateStr = dateValue.trim()
+  let date = null
+  
+  // Try parsing MM/DD/YYYY format
+  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [month, day, year] = dateStr.split('/')
+    date = new Date(year, month - 1, day)
+  }
+  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
+  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const parts = dateStr.split('/')
+    // Assume DD/MM/YYYY if day > 12 or month <= 12
+    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
+      const [day, month, year] = parts
+      date = new Date(year, month - 1, day)
+    }
+  }
+  // Try parsing YYYY-MM-DD format
+  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    date = new Date(dateStr)
+  }
+  
+  if (date && !isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    const formattedDate = `${mm}/${dd}/${yyyy}`
+    
+    if (fieldName === 'expirationDate') {
+      form.value.expirationDate = formattedDate
+    } else if (fieldName === 'expiration_date') {
+      vaccineForm.value.expiration_date = formattedDate
+    }
+  }
+}
+
+const openDatePicker = (fieldName) => {
+  const refMap = {
+    'expirationDate': datePickerStock,
+    'expiration_date': datePickerVaccine
+  }
+  
+  const datePickerEl = refMap[fieldName].value
+  if (datePickerEl) {
+    // Set the current value in ISO format for the date picker
+    const currentValue = fieldName === 'expirationDate' ? form.value.expirationDate : vaccineForm.value.expiration_date
+    const isoDate = convertToISODate(currentValue)
+    if (isoDate) {
+      datePickerEl.value = isoDate
+    }
+    // Trigger the date picker
+    datePickerEl.showPicker()
+  }
+}
+
+const onDatePickerChange = (fieldName, event) => {
+  const isoDate = event.target.value
+  if (isoDate) {
+    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
+    const date = new Date(isoDate)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    const formattedDate = `${mm}/${dd}/${yyyy}`
+    
+    if (fieldName === 'expirationDate') {
+      form.value.expirationDate = formattedDate
+    } else if (fieldName === 'expiration_date') {
+      vaccineForm.value.expiration_date = formattedDate
+    }
+  }
+}
+
+const convertToISODate = (mmddyyyy) => {
+  if (!mmddyyyy) return null
+  const [month, day, year] = mmddyyyy.split('/')
+  if (!month || !day || !year) return null
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
+}
 
 const getQuantityClass = (quantity) => {
   if (quantity === 0) return 'text-danger';

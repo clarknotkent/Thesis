@@ -35,7 +35,8 @@ const menuItems = computed(() => {
       { name: 'vaccines', path: '/admin/vaccines', label: 'Vaccine Inventory', icon: 'bi bi-box-seam' },
       { name: 'sms', path: '/admin/sms', label: 'SMS Logs', icon: 'bi bi-chat-dots' },
       { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
-      { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' }
+      { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' },
+      { name: 'activity-logs', path: '/admin/activity-logs', label: 'Activity Logs', icon: 'bi bi-activity' }
     ],
     healthworker: [
       { name: 'dashboard', path: '/healthworker/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },

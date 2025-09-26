@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid p-4">
+    <div class="container-fluid">
       <AppPageHeader 
         title="SMS Communication Logs" 
         subtitle="Monitor and manage SMS notifications and reminders"

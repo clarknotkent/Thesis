@@ -1,6 +1,6 @@
 <template>
   <div class="modal fade" :class="{ show: show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -17,89 +17,111 @@
           </div>
           <p class="text-muted mt-3">Loading patient information...</p>
         </div>
-        <div v-else-if="patientData" class="modal-body">
-          <!-- Patient Information -->
+        <div v-else-if="patientData" class="modal-body px-4">
+          <!-- Patient Basic Information -->
           <div class="row mb-4">
             <div class="col-12">
               <h6 class="text-primary fw-bold mb-3">
                 <i class="bi bi-person-fill me-2"></i>Patient Information
               </h6>
-              <div class="row g-3">
-                <!-- Phone number moved to Guardian section below -->
-                <div class="col-md-4">
-                  <strong>First Name:</strong><br>
-                  <span class="text-muted">{{ patientData.patientInfo.firstname || '—' }}</span>
+              <div class="row g-4">
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">First Name:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.firstname || '—' }}</div>
                 </div>
-                <div class="col-md-4">
-                  <strong>Middle Name:</strong><br>
-                  <span class="text-muted">{{ patientData.patientInfo.middlename || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Middle Name:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.middlename || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Sex:</strong><br>
-                  <span class="text-muted">{{ patientData.patientInfo.sex || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Surname:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.surname || '—' }}</div>
                 </div>
-                <div class="col-md-4">
-                  <strong>Barangay:</strong><br>
-                  <span class="text-muted">{{ patientData.patientInfo.barangay || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Sex:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.sex || '—' }}</div>
                 </div>
-                <div class="col-md-5">
-                  <strong>Health Center:</strong><br>
-                  <span class="text-muted">{{ patientData.patientInfo.health_center || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Date of Birth:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ formatDateMDY(patientData.patientInfo.date_of_birth) || '—' }}</div>
                 </div>
-                <div class="col-md-12">
-                  <strong>Address:</strong><br>
-                  <span class="text-muted">{{ patientData.childInfo.address.street }}, {{ patientData.childInfo.address.barangay }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Barangay:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.barangay || '—' }}</div>
                 </div>
-                <!-- Phone number moved to Guardian section below -->
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Health Center:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.health_center || '—' }}</div>
+                </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Address:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.address || '—' }}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Guardian & Parent Information -->
-          <div class="row g-3">
-            <div class="col-md-4">
-              <strong>Guardian:</strong><br>
-              <span class="text-muted">{{ patientData.guardianInfo?.full_name || '—' }}</span>
-            </div>
-            <div class="col-md-4">
-              <strong>Relationship to Guardian:</strong><br>
-              <span class="text-muted">{{ patientData.patientInfo.relationship_to_guardian || '—' }}</span>
-            </div>
-            <div class="col-md-4">
-              <strong>Guardian Contact:</strong><br>
-              <span class="text-muted">{{ patientData.guardianInfo?.contact_number || patientData.childInfo?.phoneNumber || '—' }}</span>
+          <!-- Guardian & Family Information -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <h6 class="text-primary fw-bold mb-3">
+                <i class="bi bi-people-fill me-2"></i>Guardian & Family Information
+              </h6>
+              <div class="row g-4">
+                <div class="col-xl-4 col-lg-6 col-md-6">
+                  <label class="form-label fw-semibold">Guardian:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.guardianInfo?.full_name || '—' }}</div>
+                </div>
+                <div class="col-xl-4 col-lg-6 col-md-6">
+                  <label class="form-label fw-semibold">Relationship to Guardian:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.relationship_to_guardian || '—' }}</div>
+                </div>
+                <div class="col-xl-4 col-lg-6 col-md-6">
+                  <label class="form-label fw-semibold">Family Number:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.family_number || '—' }}</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="row mt-3">
-            <div class="col-md-6">
-              <h6 class="text-primary fw-bold mb-2">Mother's Information</h6>
-              <div>
-                <strong>Name:</strong><br>
-                <span class="text-muted">{{ patientData.motherInfo.name || '—' }}</span>
-              </div>
-              <div class="mt-1">
-                <strong>Occupation:</strong><br>
-                <span class="text-muted">{{ patientData.motherInfo.occupation || '—' }}</span>
-              </div>
-              <div class="mt-1">
-                <strong>Contact:</strong><br>
-                <span class="text-muted">{{ patientData.motherInfo.phoneNumber || '—' }}</span>
+          <!-- Parent Information -->
+          <div class="row g-4 mb-4">
+            <div class="col-xl-6 col-lg-6 col-md-6">
+              <div class="p-3 border-start border-primary border-3 h-100">
+                <h6 class="text-primary fw-bold mb-3">Mother's Information</h6>
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Name:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.motherInfo.name || '—' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Occupation:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.motherInfo.occupation || '—' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Contact Number:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.motherInfo.phoneNumber || '—' }}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="col-md-6">
-              <h6 class="text-primary fw-bold mb-2">Father's Information</h6>
-              <div>
-                <strong>Name:</strong><br>
-                <span class="text-muted">{{ patientData.fatherInfo.name || '—' }}</span>
-              </div>
-              <div class="mt-1">
-                <strong>Occupation:</strong><br>
-                <span class="text-muted">{{ patientData.fatherInfo.occupation || '—' }}</span>
-              </div>
-              <div class="mt-1">
-                <strong>Contact:</strong><br>
-                <span class="text-muted">{{ patientData.fatherInfo.phoneNumber || '—' }}</span>
+            <div class="col-xl-6 col-lg-6 col-md-6">
+              <div class="p-3 border-start border-info border-3 h-100">
+                <h6 class="text-info fw-bold mb-3">Father's Information</h6>
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Name:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.fatherInfo.name || '—' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Occupation:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.fatherInfo.occupation || '—' }}</div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Contact Number:</label>
+                    <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.fatherInfo.phoneNumber || '—' }}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -110,54 +132,67 @@
               <h6 class="text-primary fw-bold mb-3">
                 <i class="bi bi-heart-pulse me-2"></i>Birth History
               </h6>
-              <div class="row g-3">
-                <div class="col-md-3">
-                  <strong>Date of Birth:</strong><br>
-                  <span class="text-muted">{{ formatDate(patientData.birthHistory.date_of_birth) }}</span>
+              <div class="row g-4">
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Time of Birth:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.time_of_birth || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Time of Birth:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.time_of_birth || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Attendant at Birth:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.attendant_at_birth || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Attendant:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.attendant_at_birth || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Type of Delivery:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.type_of_delivery || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Delivery Type:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.type_of_delivery || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Birth Weight (kg):</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.birth_weight || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Birth Weight (kg):</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.birth_weight || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Birth Length (cm):</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.birth_length || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Birth Length (cm):</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.birth_length || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Place of Birth:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.place_of_birth || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Place of Birth:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.place_of_birth || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Ballard's Score:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.ballards_score || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Address at Birth:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.address_at_birth || '—' }}</span>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Address at Birth:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.address_at_birth || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Ballard's Score:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.ballards_score || '—' }}</span>
+              </div>
+              <div class="row g-4 mt-2">
+                <div class="col-xl-4 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Hearing Test Date:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ formatDateMDY(patientData.birthHistory.hearing_test_date) || '—' }}</div>
                 </div>
-                <div class="col-md-3">
-                  <strong>Hearing Test:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.hearing_test_date || '—' }}</span>
+                <div class="col-xl-4 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Newborn Screening Date:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ formatDateMDY(patientData.birthHistory.newborn_screening_date) || '—' }}</div>
                 </div>
-                <div class="col-md-4">
-                  <strong>Newborn Screening Date:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.newborn_screening_date || '—' }}</span>
+                <div class="col-xl-4 col-lg-4 col-md-6">
+                  <label class="form-label fw-semibold">Newborn Screening Result:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.birthHistory.newborn_screening_result || '—' }}</div>
                 </div>
-                <div class="col-md-5">
-                  <strong>Newborn Screening Result:</strong><br>
-                  <span class="text-muted">{{ patientData.birthHistory.newborn_screening_result || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="row mb-4" v-if="patientData.patientInfo.tags">
+            <div class="col-12">
+              <h6 class="text-primary fw-bold mb-3">
+                <i class="bi bi-clipboard-heart me-2"></i>Additional Information
+              </h6>
+              <div class="row g-4">
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Tags:</label>
+                  <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.tags || '—' }}</div>
                 </div>
               </div>
             </div>
@@ -170,15 +205,15 @@
                 <i class="bi bi-shield-check me-2"></i>Vaccination History
               </h6>
               <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                  <thead class="table-dark">
+                <table class="table table-striped table-hover vaccination-table">
+                  <thead class="bg-primary text-white">
                     <tr>
-                      <th>Vaccine Name</th>
-                      <th>Date Administered</th>
-                      <th>Dose</th>
-                      <th>Manufacturer</th>
-                      <th>Lot Number</th>
-                      <th>Health Worker</th>
+                      <th width="15%">Vaccine Name</th>
+                      <th width="12%">Date Administered</th>
+                      <th width="8%">Dose</th>
+                      <th width="15%">Manufacturer</th>
+                      <th width="12%">Lot Number</th>
+                      <th width="15%">Health Worker</th>
                       <th>Remarks</th>
                     </tr>
                   </thead>
@@ -205,13 +240,13 @@
                 <i class="bi bi-calendar-check me-2"></i>Next Scheduled Vaccinations
               </h6>
               <div class="table-responsive">
-                <table class="table table-bordered">
-                  <thead class="table-light">
+                <table class="table table-bordered schedule-table">
+                  <thead class="bg-info text-white">
                     <tr>
-                      <th>Vaccine Name</th>
-                      <th>Scheduled Date</th>
-                      <th>Dose Number</th>
-                      <th>Status</th>
+                      <th width="20%">Vaccine Name</th>
+                      <th width="15%">Scheduled Date</th>
+                      <th width="10%">Dose Number</th>
+                      <th width="10%">Status</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
@@ -219,9 +254,14 @@
                     <tr v-for="vaccine in patientData.nextScheduledVaccinations" :key="vaccine.vaccineName + vaccine.scheduledDate">
                       <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
                       <td>{{ formatDate(vaccine.scheduledDate) }}</td>
-                      <td>{{ vaccine.doseNumber }}</td>
+                      <td class="text-center">{{ vaccine.doseNumber }}</td>
                       <td>
-                        <span class="badge" :class="vaccine.status === 'Due' ? 'bg-warning text-dark' : 'bg-success'">
+                        <span class="badge" :class="{
+                          'bg-warning text-dark': vaccine.status === 'Due', 
+                          'bg-success': vaccine.status === 'Completed',
+                          'bg-danger': vaccine.status === 'Missed',
+                          'bg-info': vaccine.status === 'Scheduled'
+                        }">
                           {{ vaccine.status }}
                         </span>
                       </td>
@@ -244,9 +284,6 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="$emit('close')">Close</button>
-                <button type="button" class="btn btn-primary" @click="printRecord" v-if="patientData">
-            <i class="bi bi-printer me-2"></i>Print Record
-          </button>
                 <button v-if="isAdmin && patientData && patientData.nextScheduledVaccinations && patientData.nextScheduledVaccinations.length > 0" type="button" class="btn btn-outline-secondary ms-2" @click="showScheduleEditor = true">
                   <i class="bi bi-calendar2-event me-2"></i>View/Edit Schedule
                 </button>
@@ -401,7 +438,9 @@ const fetchPatientData = async () => {
         address: p.address || '',
         barangay: p.barangay || '',
         health_center: p.health_center || p.clinic || '',
-        relationship_to_guardian: p.relationship_to_guardian || ''
+        relationship_to_guardian: p.relationship_to_guardian || '',
+        family_number: p.family_number || '',
+        tags: Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || '')
       },
       childInfo: {
         name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim(),
@@ -487,8 +526,13 @@ const formatDate = (dateString) => {
   })
 }
 
-const printRecord = () => {
-  window.print()
+const formatDateMDY = (dateString) => {
+  if (!dateString) return null
+  const date = new Date(dateString)
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  return `${mm}/${dd}/${yyyy}`
 }
 
 // Watch for show prop changes to fetch data when modal opens
@@ -518,20 +562,26 @@ code {
   font-size: 0.75rem;
 }
 
-@media print {
-  .modal-header,
-  .modal-footer {
-    display: none;
-  }
-  
-  .modal-dialog {
-    max-width: none;
-    margin: 0;
-  }
-  
-  .modal-content {
-    border: none;
-    box-shadow: none;
-  }
+.vaccination-table, .schedule-table {
+  border: 1px solid #dee2e6;
 }
+
+.vaccination-table th, .schedule-table th {
+  vertical-align: middle;
+}
+
+/* Print button styling */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+
+
 </style>

@@ -1,0 +1,26 @@
+/* Admin Pages specific styling */
+.admin-page-container {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.admin-page-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Adjust card spacing in admin pages */
+.admin-page-container .card {
+  margin-bottom: 1.5rem;
+}
+
+/* Add proper spacing for stats cards */
+.admin-page-container .stats-row {
+  margin-bottom: 2rem;
+}
+
+/* Add top margin to table cards */
+.admin-page-container .table-card {
+  margin-top: 1rem;
+}

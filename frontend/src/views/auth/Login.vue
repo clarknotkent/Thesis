@@ -27,7 +27,7 @@
                     />
                   </div>
 
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <label for="password" class="form-label">Password</label>
                     <input
                       type="password"
@@ -37,21 +37,6 @@
                       placeholder="Enter your password"
                       required
                     />
-                  </div>
-
-                  <div class="mb-4">
-                    <label for="userRole" class="form-label">Login as</label>
-                    <select
-                      class="form-select form-select-lg"
-                      id="userRole"
-                      v-model="form.role"
-                      required
-                    >
-                      <option value="">Select your role</option>
-                      <option value="admin">City Health Staff (Admin)</option>
-                      <option value="health-worker">Health Worker</option>
-                      <option value="parent">Parent/Guardian</option>
-                    </select>
                   </div>
 
                   <button
@@ -108,8 +93,7 @@ const router = useRouter()
 // Form data
 const form = reactive({
   identifier: '',
-  password: '',
-  role: ''
+  password: ''
 })
 
 // Component state
@@ -122,26 +106,24 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
-    if (!form.identifier || !form.password || !form.role) {
+    if (!form.identifier || !form.password) {
       throw new Error('Please fill in all fields')
     }
 
     // Call backend login; identifier can be phone/email/username
     const { user } = await loginApi({ identifier: form.identifier, password: form.password })
 
-    // If role chosen in UI mismatches backend role, reject
-    const backendRole = (user.role || '').toLowerCase()
-    const selectedRole = form.role.toLowerCase()
-    if (backendRole && backendRole !== selectedRole) {
-      throw new Error('Role mismatch. Please select your correct role.')
+    // Navigate based on user role from backend
+    const role = (user.role || '').toLowerCase()
+    if (role === 'admin') {
+      router.push('/admin/dashboard')
+    } else if (role === 'healthworker' || role === 'health-worker') {
+      router.push('/healthworker/dashboard')
+    } else if (role === 'parent') {
+      router.push('/parent/dashboard')
+    } else {
+      throw new Error('Unknown user role. Please contact support.')
     }
-
-    // Navigate by role (prefer backend role if present)
-    const role = backendRole || selectedRole
-    if (role === 'admin') router.push('/admin/dashboard')
-    else if (role === 'healthworker' || role === 'health-worker') router.push('/healthworker/dashboard')
-    else if (role === 'parent') router.push('/parent/dashboard')
-    else router.push('/')
   } catch (err) {
     error.value = err?.response?.data?.message || err.message || 'Login failed. Please try again.'
   } finally {

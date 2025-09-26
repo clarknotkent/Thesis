@@ -12,6 +12,9 @@ import VaccineInventory from '@/views/admin/VaccineInventory.vue'
 import SMSLogs from '@/views/admin/SMSLogs.vue'
 import Reports from '@/views/admin/Reports.vue'
 import UserAccounts from '@/views/admin/UserAccounts.vue'
+import ActivityLogs from '@/views/admin/ActivityLogs.vue'
+import Profile from '@/views/admin/Profile.vue'
+import Settings from '@/views/admin/Settings.vue'
 
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
@@ -98,6 +101,36 @@ const routes = [
     component: UserAccounts,
     meta: {
       title: 'User Accounts - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/activity-logs',
+    name: 'ActivityLogs',
+    component: ActivityLogs,
+    meta: {
+      title: 'Activity Logs - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: {
+      title: 'Profile - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/settings',
+    name: 'Settings',
+    component: Settings,
+    meta: {
+      title: 'Settings - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }

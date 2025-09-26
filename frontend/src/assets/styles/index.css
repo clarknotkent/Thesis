@@ -15,6 +15,7 @@
 @import './healthworker.css';
 @import './parent.css';
 @import './utilities.css';
+@import './admin-fix.css';
 
 /* Additional utility classes and overrides */
 .cursor-pointer {

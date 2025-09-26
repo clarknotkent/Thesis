@@ -29,10 +29,41 @@
                   <tr v-for="item in scheduleData" :key="item.patient_schedule_id">
                     <td>{{ item.vaccine_name || item.vaccineName }}</td>
                     <td>
-                      <input type="date" class="form-control form-control-sm" v-model="item._editedDate" />
+                      <div class="input-group">
+                        <input 
+                          type="text" 
+                          class="form-control form-control-sm" 
+                          v-model="item._editedDate" 
+                          placeholder="MM/DD/YYYY"
+                          @blur="validateAndFormatDate(item)"
+                          :id="`date-input-${item.patient_schedule_id}`"
+                        />
+                        <button 
+                          class="btn btn-outline-secondary btn-sm" 
+                          type="button"
+                          @click="openDatePicker(item)"
+                          title="Select date"
+                        >
+                          <i class="bi bi-calendar3"></i>
+                        </button>
+                        <input 
+                          type="date" 
+                          :ref="el => datePickerRefs[item.patient_schedule_id] = el"
+                          style="position: absolute; visibility: hidden; pointer-events: none;"
+                          @change="onDatePickerChange(item, $event)"
+                        />
+                      </div>
                     </td>
                     <td>{{ item.dose_number || item.doseNumber }}</td>
-                    <td>{{ item.status }}</td>
+                    <td>
+                      <select class="form-select form-select-sm" v-model="item._editedStatus">
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Missed">Missed</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Rescheduled">Rescheduled</option>
+                      </select>
+                    </td>
                     <td>
                       <button class="btn btn-sm btn-primary me-2" @click="saveEdit(item)">Save</button>
                       <button class="btn btn-sm btn-outline-secondary" @click="resetItem(item)">Reset</button>
@@ -73,6 +104,7 @@ const emit = defineEmits(['close', 'updated'])
 
 const loading = ref(false)
 const scheduleData = ref([])
+const datePickerRefs = ref({})
 
 // Initialize vaccine lookup once to resolve vaccine names
 let vaccineLookup = {}
@@ -97,6 +129,7 @@ watch(() => props.schedule, (val) => {
   scheduleData.value = (val || []).map(s => ({
     ...s,
     _editedDate: formatForInput(s.scheduledDate || s.scheduled_date),
+    _editedStatus: s.status || 'Pending',
     vaccine_name: s.vaccine_name || s.vaccineName || vaccineLookup[s.vaccine_id] || vaccineLookup[s.vaccineId] || ''
   }))
 }, { immediate: true })
@@ -107,6 +140,7 @@ watch(() => props.show, (v) => {
     scheduleData.value = (props.schedule || []).map(s => ({
       ...s,
       _editedDate: formatForInput(s.scheduledDate || s.scheduled_date),
+      _editedStatus: s.status || 'Pending',
       vaccine_name: s.vaccine_name || s.vaccineName || vaccineLookup[s.vaccine_id] || vaccineLookup[s.vaccineId] || ''
     }))
   }
@@ -118,17 +152,96 @@ const formatForInput = (date) => {
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
+  return `${mm}/${dd}/${yyyy}`
+}
+
+const validateAndFormatDate = (item) => {
+  if (!item._editedDate) return
+  
+  // Handle various input formats and convert to MM/DD/YYYY
+  let dateStr = item._editedDate.trim()
+  let date = null
+  
+  // Try parsing MM/DD/YYYY format
+  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [month, day, year] = dateStr.split('/')
+    date = new Date(year, month - 1, day)
+  }
+  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
+  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const parts = dateStr.split('/')
+    // Assume DD/MM/YYYY if day > 12 or month <= 12
+    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
+      const [day, month, year] = parts
+      date = new Date(year, month - 1, day)
+    }
+  }
+  // Try parsing YYYY-MM-DD format
+  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    date = new Date(dateStr)
+  }
+  
+  if (date && !isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    item._editedDate = `${mm}/${dd}/${yyyy}`
+  }
 }
 
 const resetItem = (item) => {
   item._editedDate = formatForInput(item.scheduledDate || item.scheduled_date)
+  item._editedStatus = item.status || 'Pending'
+}
+
+const convertToISODate = (mmddyyyy) => {
+  if (!mmddyyyy) return null
+  const [month, day, year] = mmddyyyy.split('/')
+  if (!month || !day || !year) return null
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
+}
+
+const openDatePicker = (item) => {
+  const datePickerEl = datePickerRefs.value[item.patient_schedule_id]
+  if (datePickerEl) {
+    // Set the current value in ISO format for the date picker
+    const isoDate = convertToISODate(item._editedDate)
+    if (isoDate) {
+      datePickerEl.value = isoDate
+    }
+    // Trigger the date picker
+    datePickerEl.showPicker()
+  }
+}
+
+const onDatePickerChange = (item, event) => {
+  const isoDate = event.target.value
+  if (isoDate) {
+    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
+    const date = new Date(isoDate)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    item._editedDate = `${mm}/${dd}/${yyyy}`
+  }
 }
 
 const saveEdit = async (item) => {
   // send PUT to backend route for updating patientschedule row
   try {
-    const payload = { scheduled_date: item._editedDate, updated_by: localStorage.getItem('userId') }
+    const isoDate = convertToISODate(item._editedDate)
+    if (!isoDate) {
+      addToast({ title: 'Error', message: 'Please enter a valid date in MM/DD/YYYY format.', type: 'error' })
+      return
+    }
+    
+    const payload = { 
+      scheduled_date: isoDate, 
+      status: item._editedStatus,
+      updated_by: localStorage.getItem('userId') 
+    }
     await api.put(`/immunizations/schedule/${item.patient_schedule_id}`, payload)
     // emit update to parent and refresh local copy
     emit('updated')

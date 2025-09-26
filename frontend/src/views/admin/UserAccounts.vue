@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid p-4">
+    <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">User Accounts</h1>
@@ -238,156 +238,199 @@
       </div>
 
       <!-- User Modal -->
-      <AppModal
-        :show="showUserModal"
-        :title="isEditing ? 'Edit User' : 'Add New User'"
-        @close="closeUserModal"
-      >
-        <form @submit.prevent="saveUser">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">First Name *</label>
-              <input
-                type="text"
-                class="form-control"
-                v-model="userForm.firstName"
-                required
-              >
+      <div class="modal fade" :class="{ show: showUserModal }" :style="{ display: showUserModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-person-circle me-2"></i>
+                {{ isEditing ? 'Edit User' : 'Add New User' }}
+              </h5>
+              <button type="button" class="btn-close" @click="closeUserModal"></button>
             </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Last Name *</label>
-              <input
-                type="text"
-                class="form-control"
-                v-model="userForm.lastName"
-                required
-              >
+            <div class="modal-body px-4">
+              <form id="user-form" @submit.prevent="saveUser">
+                <!-- Personal Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-person-fill me-2"></i>Personal Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">First Name: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="userForm.firstName" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Middle Name:</label>
+                        <input type="text" class="form-control" v-model="userForm.middleName">
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Last Name: <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" v-model="userForm.lastName" required>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Sex: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="userForm.sex" required>
+                          <option value="">Select Sex</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-3 col-lg-4 col-md-6">
+                        <label class="form-label">Birthdate:</label>
+                        <div class="input-group">
+                          <input 
+                            type="text" 
+                            class="form-control" 
+                            v-model="userForm.birthdate" 
+                            placeholder="MM/DD/YYYY"
+                            @blur="validateAndFormatDate('birthdate')"
+                          />
+                          <button 
+                            class="btn btn-outline-secondary" 
+                            type="button"
+                            @click="openDatePicker('birthdate')"
+                            title="Select date"
+                          >
+                            <i class="bi bi-calendar3"></i>
+                          </button>
+                          <input 
+                            type="date" 
+                            ref="datePickerBirthdate"
+                            style="position: absolute; visibility: hidden; pointer-events: none;"
+                            @change="onDatePickerChange('birthdate', $event)"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-xl-9 col-lg-8 col-md-6">
+                        <label class="form-label">Address:</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          v-model="userForm.address"
+                          placeholder="House/Street, Barangay, City/Municipality, Province"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Account Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-envelope me-2"></i>Account Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label class="form-label">Email Address: <span class="text-danger">*</span></label>
+                        <input
+                          type="email"
+                          class="form-control"
+                          v-model="userForm.email"
+                          required
+                        >
+                      </div>
+                      <div class="col-xl-3 col-lg-3 col-md-6" v-if="!isEditing">
+                        <label class="form-label">Password: <span class="text-danger">*</span></label>
+                        <input
+                          type="password"
+                          class="form-control"
+                          v-model="userForm.password"
+                          :required="!isEditing"
+                        >
+                      </div>
+                      <div class="col-xl-3 col-lg-3 col-md-6">
+                        <label class="form-label">Status:</label>
+                        <select class="form-select" v-model="userForm.status">
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Role & Professional Information -->
+                <div class="row mb-4">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-briefcase me-2"></i>Role & Professional Information
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-4 col-lg-4 col-md-6">
+                        <label class="form-label">Role: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="userForm.role" required>
+                          <option value="">Select Role</option>
+                          <option value="admin">Admin</option>
+                          <option value="health_worker">Health Worker</option>
+                          <option value="parent">Parent</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker'">
+                        <label class="form-label">Health Worker Type: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="userForm.hwType" required>
+                          <option value="">Select Type</option>
+                          <option value="nurse">Nurse</option>
+                          <option value="nutritionist">Nutritionist</option>
+                          <option value="bhw">Barangay Health Worker</option>
+                        </select>
+                      </div>
+                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
+                        <label class="form-label">Employee ID:</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          v-model="userForm.employeeId"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'">
+                        <label class="form-label">PRC License Number:</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          v-model="userForm.licenseNumber"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="userForm.role === 'parent'">
+                        <label class="form-label">Phone Number:</label>
+                        <input
+                          type="tel"
+                          class="form-control"
+                          v-model="userForm.phoneNumber"
+                        >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="userForm.role !== 'parent'">
+                        <label class="form-label">Contact Number:</label>
+                        <input
+                          type="tel"
+                          class="form-control"
+                          v-model="userForm.contactNumber"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeUserModal">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="saving" form="user-form">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                {{ saving ? 'Saving...' : (isEditing ? 'Update User' : 'Create User') }}
+              </button>
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Middle Name</label>
-              <input
-                type="text"
-                class="form-control"
-                v-model="userForm.middleName"
-              >
-            </div>
-            <div class="col-md-3 mb-3">
-              <label class="form-label">Sex *</label>
-              <select class="form-select" v-model="userForm.sex" required>
-                <option value="">Select Sex</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="col-md-3 mb-3">
-              <label class="form-label">Birthdate</label>
-              <input
-                type="date"
-                class="form-control"
-                v-model="userForm.birthdate"
-              >
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Email Address *</label>
-            <input
-              type="email"
-              class="form-control"
-              v-model="userForm.email"
-              required
-            >
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Address</label>
-            <input
-              type="text"
-              class="form-control"
-              v-model="userForm.address"
-              placeholder="House/Street, Barangay, City/Municipality, Province"
-            >
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Role *</label>
-              <select class="form-select" v-model="userForm.role" required>
-                <option value="">Select Role</option>
-                <option value="admin">Admin</option>
-                <option value="health_worker">Health Worker</option>
-                <option value="parent">Parent</option>
-              </select>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Status</label>
-              <select class="form-select" v-model="userForm.status">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3" v-if="userForm.role === 'health_worker'">
-            <label class="form-label">Health Worker Type *</label>
-            <select class="form-select" v-model="userForm.hwType" required>
-              <option value="">Select Type</option>
-              <option value="nurse">Nurse</option>
-              <option value="nutritionist">Nutritionist</option>
-              <option value="bhw">Barangay Health Worker</option>
-            </select>
-          </div>
-          <div class="mb-3" v-if="!isEditing">
-            <label class="form-label">Password *</label>
-            <input
-              type="password"
-              class="form-control"
-              v-model="userForm.password"
-              :required="!isEditing"
-            >
-          </div>
-          <div class="mb-3" v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'">
-            <label class="form-label">PRC License Number</label>
-            <input
-              type="text"
-              class="form-control"
-              v-model="userForm.licenseNumber"
-            >
-          </div>
-          <div class="mb-3" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
-            <label class="form-label">Employee ID</label>
-            <input
-              type="text"
-              class="form-control"
-              v-model="userForm.employeeId"
-            >
-          </div>
-          <div class="mb-3" v-if="userForm.role === 'parent'">
-            <label class="form-label">Phone Number</label>
-            <input
-              type="tel"
-              class="form-control"
-              v-model="userForm.phoneNumber"
-            >
-          </div>
-          <div class="mb-3" v-if="userForm.role !== 'parent'">
-            <label class="form-label">Contact Number</label>
-            <input
-              type="tel"
-              class="form-control"
-              v-model="userForm.contactNumber"
-            >
-          </div>
-        </form>
-        
-        <!-- Modal Footer -->
-        <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closeUserModal">Cancel</button>
-          <button class="btn btn-primary" @click="saveUser" :disabled="saving">
-            <i class="bi bi-save me-1"></i>
-            {{ saving ? 'Saving...' : (isEditing ? 'Update User' : 'Create User') }}
-          </button>
         </div>
-      </AppModal>
+      </div>
+
+      <!-- Modal Backdrop -->
+      <div v-if="showUserModal" class="modal-backdrop fade show"></div>
 
       <!-- Delete Confirmation Modal -->
       <AppModal
@@ -450,6 +493,8 @@ const users = ref([])
 const recentActivity = ref([])
 const loading = ref(false)
 const saving = ref(false)
+// Date picker ref
+const datePickerBirthdate = ref(null)
 const deleting = ref(false)
 const resettingPassword = ref(false)
 const searchQuery = ref('')
@@ -549,7 +594,7 @@ const fetchUsers = async () => {
 
 const fetchRecentActivity = async () => {
   try {
-    const { data } = await api.get('/activity-logs', { params: { page: 1, limit: 10 } })
+    const { data } = await api.get('/activity-logs', { params: { page: 1, limit: 7 } })
     recentActivity.value = (data.items || []).map(r => ({
       id: r.log_id || r.id,
       timestamp: r.timestamp,
@@ -601,7 +646,7 @@ const openUserModal = async (user = null) => {
         phoneNumber: full.contact_number || user.phone || '',
         contactNumber: full.contact_number || user.contactNumber || '',
         sex: full.sex || user.sex || '',
-        birthdate: full.birthdate || user.birthdate || '',
+        birthdate: formatForInput(full.birthdate || user.birthdate) || '',
         address: full.address || user.address || ''
       }
     } catch (e) {
@@ -686,7 +731,7 @@ const saveUser = async () => {
       contact_number: userForm.value.phoneNumber || userForm.value.contactNumber || null,
       status: userForm.value.status,
       sex: userForm.value.sex || 'Other',
-      birthdate: userForm.value.birthdate || null,
+      birthdate: convertToISODate(userForm.value.birthdate) || userForm.value.birthdate || null,
       address: userForm.value.address || null,
       professional_license_no: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
       employee_id: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.employeeId || null) : null
@@ -852,9 +897,106 @@ const formatDatePH = (date) => {
   }
 }
 
+// Date formatting and validation methods
+const formatForInput = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}/${dd}/${yyyy}`
+}
+
+const validateAndFormatDate = (fieldName) => {
+  if (!userForm.value[fieldName]) return
+  
+  // Handle various input formats and convert to MM/DD/YYYY
+  let dateStr = userForm.value[fieldName].trim()
+  let date = null
+  
+  // Try parsing MM/DD/YYYY format
+  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [month, day, year] = dateStr.split('/')
+    date = new Date(year, month - 1, day)
+  }
+  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
+  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const parts = dateStr.split('/')
+    // Assume DD/MM/YYYY if day > 12 or month <= 12
+    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
+      const [day, month, year] = parts
+      date = new Date(year, month - 1, day)
+    }
+  }
+  // Try parsing YYYY-MM-DD format
+  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    date = new Date(dateStr)
+  }
+  
+  if (date && !isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    userForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const openDatePicker = (fieldName) => {
+  const datePickerEl = datePickerBirthdate.value
+  if (datePickerEl) {
+    // Set the current value in ISO format for the date picker
+    const isoDate = convertToISODate(userForm.value[fieldName])
+    if (isoDate) {
+      datePickerEl.value = isoDate
+    }
+    // Trigger the date picker
+    datePickerEl.showPicker()
+  }
+}
+
+const onDatePickerChange = (fieldName, event) => {
+  const isoDate = event.target.value
+  if (isoDate) {
+    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
+    const date = new Date(isoDate)
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    const yyyy = date.getFullYear()
+    userForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
+  }
+}
+
+const convertToISODate = (mmddyyyy) => {
+  if (!mmddyyyy) return null
+  const [month, day, year] = mmddyyyy.split('/')
+  if (!month || !day || !year) return null
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  return `${year}-${mm}-${dd}`
+}
+
 // Lifecycle
 onMounted(() => {
   fetchUsers()
   fetchRecentActivity()
 })
 </script>
+
+<style scoped>
+.modal.show {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.text-gray-800 {
+  color: #5a5c69 !important;
+}
+
+.btn-group .btn {
+  border-radius: 0.25rem;
+  margin-right: 0.125rem;
+}
+
+.btn-group .btn:last-child {
+  margin-right: 0;
+}
+</style>

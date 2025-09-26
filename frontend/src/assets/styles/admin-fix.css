@@ -1,0 +1,19 @@
+/* Fix for admin pages top alignment */
+.admin-layout .main-content {
+  padding-top: var(--navbar-height);
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.admin-layout .container-fluid {
+  padding-top: 0;
+  padding-bottom: 1rem;
+}
+
+/* Adjust responsive behavior */
+@media (max-width: 991.98px) {
+  .admin-layout .main-content {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}

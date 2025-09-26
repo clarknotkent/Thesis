@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid p-4">
+    <div class="container-fluid">
       <AppPageHeader 
         title="Reports & Analytics" 
         subtitle="Generate and view comprehensive system reports"
