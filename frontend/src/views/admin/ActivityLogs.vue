@@ -107,55 +107,11 @@
             </div>
             <div class="col-md-3" v-if="filters.dateRange === 'custom'">
               <label class="form-label">From Date:</label>
-              <div class="input-group">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  v-model="filters.fromDate" 
-                  placeholder="MM/DD/YYYY"
-                  @blur="validateAndFormatDate('fromDate')"
-                />
-                <button 
-                  class="btn btn-outline-secondary" 
-                  type="button"
-                  @click="openDatePicker('fromDate')"
-                  title="Select date"
-                >
-                  <i class="bi bi-calendar3"></i>
-                </button>
-                <input 
-                  type="date" 
-                  ref="datePickerFrom"
-                  style="position: absolute; visibility: hidden; pointer-events: none;"
-                  @change="onDatePickerChange('fromDate', $event)"
-                />
-              </div>
+              <DateInput v-model="filters.fromDate" />
             </div>
             <div class="col-md-3" v-if="filters.dateRange === 'custom'">
               <label class="form-label">To Date:</label>
-              <div class="input-group">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  v-model="filters.toDate" 
-                  placeholder="MM/DD/YYYY"
-                  @blur="validateAndFormatDate('toDate')"
-                />
-                <button 
-                  class="btn btn-outline-secondary" 
-                  type="button"
-                  @click="openDatePicker('toDate')"
-                  title="Select date"
-                >
-                  <i class="bi bi-calendar3"></i>
-                </button>
-                <input 
-                  type="date" 
-                  ref="datePickerTo"
-                  style="position: absolute; visibility: hidden; pointer-events: none;"
-                  @change="onDatePickerChange('toDate', $event)"
-                />
-              </div>
+              <DateInput v-model="filters.toDate" />
             </div>
             <div class="col-md-3">
               <label class="form-label">Action Type:</label>
@@ -391,10 +347,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
+import DateInput from '@/components/common/DateInput.vue'
 
 // Reactive data
 const loading = ref(true)
@@ -408,8 +365,6 @@ const totalItems = ref(0)
 const totalPages = ref(0)
 
 // Date picker refs
-const datePickerFrom = ref(null)
-const datePickerTo = ref(null)
 
 // Modal states
 const showDetailsModal = ref(false)
@@ -426,11 +381,33 @@ const filters = ref({
 })
 
 // Computed properties
+// Helper: normalize various timestamp shapes to a Date assuming UTC if timezone is missing
+const toDateAssumingUTCIfMissingTZ = (val) => {
+  if (!val) return null
+  if (val instanceof Date) return val
+  if (typeof val === 'number') return new Date(val)
+  if (typeof val === 'string') {
+    // If string lacks timezone offset or Z, treat it as UTC and append Z
+    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(val)
+    const normalized = hasTZ ? val : (val.replace(' ', 'T') + 'Z')
+    return new Date(normalized)
+  }
+  return new Date(val)
+}
+
+// Helper: get YYYY-MM-DD string in Asia/Manila for day comparisons
+const getPHDateKey = (val) => {
+  const d = toDateAssumingUTCIfMissingTZ(val)
+  if (!d || isNaN(d.getTime())) return ''
+  // en-CA yields YYYY-MM-DD
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+}
+
 const stats = computed(() => ({
   totalLogs: totalItems.value,
   todayLogs: logs.value.filter(log => {
-    const today = new Date().toDateString()
-    return new Date(log.timestamp).toDateString() === today
+    const todayPH = getPHDateKey(new Date())
+    return getPHDateKey(log.timestamp) === todayPH
   }).length,
   activeUsers: new Set(logs.value.map(log => log.userId)).size,
   failedActions: logs.value.filter(log => log.status === 'failed').length
@@ -575,8 +552,10 @@ const exportLogs = async () => {
 // Date formatting methods
 const formatDatePH = (date) => {
   if (!date) return 'Never'
+  const d = toDateAssumingUTCIfMissingTZ(date)
+  if (!d || isNaN(d.getTime())) return 'Invalid date'
   try {
-    return new Date(date).toLocaleString('en-PH', {
+    return d.toLocaleString('en-PH', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -587,67 +566,11 @@ const formatDatePH = (date) => {
       timeZone: 'Asia/Manila'
     })
   } catch (e) {
-    return new Date(date).toLocaleString()
+    return d.toLocaleString()
   }
 }
 
-const validateAndFormatDate = (fieldName) => {
-  if (!filters.value[fieldName]) return
-  
-  let dateStr = filters.value[fieldName].trim()
-  let date = null
-  
-  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const [month, day, year] = dateStr.split('/')
-    date = new Date(year, month - 1, day)
-  } else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
-    date = new Date(dateStr)
-  }
-  
-  if (date && !isNaN(date.getTime())) {
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    filters.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
-const openDatePicker = (fieldName) => {
-  const refMap = {
-    'fromDate': datePickerFrom,
-    'toDate': datePickerTo
-  }
-  
-  const datePickerEl = refMap[fieldName].value
-  if (datePickerEl) {
-    const isoDate = convertToISODate(filters.value[fieldName])
-    if (isoDate) {
-      datePickerEl.value = isoDate
-    }
-    datePickerEl.showPicker()
-  }
-}
-
-const onDatePickerChange = (fieldName, event) => {
-  const isoDate = event.target.value
-  if (isoDate) {
-    const date = new Date(isoDate)
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    filters.value[fieldName] = `${mm}/${dd}/${yyyy}`
-    applyFilters()
-  }
-}
-
-const convertToISODate = (mmddyyyy) => {
-  if (!mmddyyyy) return null
-  const [month, day, year] = mmddyyyy.split('/')
-  if (!month || !day || !year) return null
-  const mm = String(month).padStart(2, '0')
-  const dd = String(day).padStart(2, '0')
-  return `${year}-${mm}-${dd}`
-}
+// DateInput handles formatting and picker; we'll watch for changes to apply filters
 
 const getActionBadgeClass = (action) => {
   switch (action?.toLowerCase()) {
@@ -664,6 +587,14 @@ const getActionBadgeClass = (action) => {
 // Lifecycle
 onMounted(() => {
   fetchLogs()
+})
+
+// Auto-apply filters when custom dates change
+watch(() => filters.value.fromDate, (nv, ov) => {
+  if (filters.value.dateRange === 'custom') applyFilters()
+})
+watch(() => filters.value.toDate, (nv, ov) => {
+  if (filters.value.dateRange === 'custom') applyFilters()
 })
 </script>
 

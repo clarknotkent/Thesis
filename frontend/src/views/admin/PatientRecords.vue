@@ -10,7 +10,7 @@
           <AppButton variant="primary" icon="bi-plus-circle" @click="showAddModal = true">
             Add New Patient
           </AppButton>
-          <AppButton variant="outline-primary" icon="bi-file-medical" class="ms-2" @click="showVisitModal = true">
+          <AppButton variant="outline-primary" icon="bi-file-medical" class="ms-2" @click="openAddRecord()">
             Add Patient Record
           </AppButton>
         </template>
@@ -106,7 +106,12 @@
                   <td>{{ formatDate(patient.childInfo.birthDate) }}</td>
                   <td>{{ calculateAge(patient.childInfo.birthDate) }}</td>
                   <td>{{ patient.motherInfo.name }}</td>
-              <td>{{ patient.guardian_contact_number }}</td>
+                  <td>
+                    <span v-if="patient.guardian_contact_number || patient.childInfo.phoneNumber">
+                      <i class="bi bi-telephone me-1"></i>{{ patient.guardian_contact_number || patient.childInfo.phoneNumber }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
                   <td>
                     <span v-if="patient.lastVaccination" class="text-muted">
                       {{ formatDate(patient.lastVaccination) }}
@@ -173,15 +178,18 @@
         :show="showViewModal"
         :patient-id="selectedPatientId"
         @close="showViewModal = false"
+        @open-add-patient-record="onOpenAddPatientRecord"
       />
 
-      <!-- Visit Editor Modal -->
-      <VisitEditor
-        :show="showVisitModal"
-        :collected-vaccinations="collectedVaccinationsForVisit"
-        @close="showVisitModal = false"
+      <!-- Unified Add Record Modal (Outside or In-facility) -->
+      <AdminAddRecordModal
+        :show="showAddRecord"
+        :initial-patient-id="selectedPatientId"
+        :initial-visit-id="selectedVisitId"
+        :lock-patient-when-prefilled="Boolean(selectedPatientId)"
+        :default-outside-mode="addRecordOutsideMode"
+        @close="closeAddRecordModal"
         @saved="onVisitSaved"
-        @update-collected-vaccinations="handleVaccinationsCollected"
       />
 
       <!-- Add/Edit Modal -->
@@ -226,30 +234,7 @@
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            v-model="form.date_of_birth" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('date_of_birth')"
-                            required
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('date_of_birth')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerBirth"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('date_of_birth', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="form.date_of_birth" />
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Barangay: <span class="text-danger">*</span></label>
@@ -418,55 +403,11 @@
                     <div class="row g-4 mt-2">
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label class="form-label">Hearing Test Date:</label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            v-model="form.hearing_test_date" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('hearing_test_date')"
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('hearing_test_date')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerHearing"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('hearing_test_date', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="form.hearing_test_date" />
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label class="form-label">Newborn Screening Date:</label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            v-model="form.newborn_screening_date" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('newborn_screening_date')"
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('newborn_screening_date')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerScreening"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('newborn_screening_date', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="form.newborn_screening_date" />
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label class="form-label">Newborn Screening Result:</label>
@@ -519,9 +460,11 @@
         :patient-id="selectedPatientId"
         :patient-data="selectedPatientData"
         :visit-context="vaccinationVisitContext"
+        :default-outside="vaccinationOutsideMode"
         @close="closeVaccinationEditor"
         @update="fetchPatients"
         @vaccinations-collected="handleVaccinationsCollected"
+        @open-add-patient-record="onOpenAddPatientRecord"
       />
     </div>
   </AdminLayout>
@@ -536,19 +479,18 @@ import AppPagination from '@/components/common/AppPagination.vue'
 import PatientDetailModal from '@/components/common/PatientDetailModal.vue'
 import VaccinationRecordEditor from '@/components/common/VaccinationRecordEditor.vue'
 import VisitEditor from '@/components/common/VisitEditor.vue'
+import AdminAddRecordModal from '@/components/common/AdminAddRecordModal.vue'
 import api from '@/services/api'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast'
+import DateInput from '@/components/common/DateInput.vue'
 
 // Reactive data
 const loading = ref(true)
 const saving = ref(false)
 const patients = ref([])
 const guardians = ref([])
-// Date picker refs
-const datePickerBirth = ref(null)
-const datePickerHearing = ref(null)
-const datePickerScreening = ref(null)
+// (Legacy native date picker refs removed; using shared DateInput component instead)
 // Guardian search functionality
 const guardianSearchTerm = ref('')
 const showGuardianDropdown = ref(false)
@@ -566,11 +508,15 @@ const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showViewModal = ref(false)
 const showVaccinationEditor = ref(false)
-const showVisitModal = ref(false)
+const showVisitModal = ref(false) // legacy; retained for compatibility
+const showAddRecord = ref(false)
 const selectedPatientId = ref(null)
 const selectedPatientData = ref(null)
+const selectedVisitId = ref(null)
 const vaccinationVisitContext = ref(false) // Whether vaccination editor is opened from visit context
 const collectedVaccinationsForVisit = ref([]) // Store vaccinations collected during visit
+const vaccinationOutsideMode = ref(true) // default to outside mode unless in-facility is chosen
+const addRecordOutsideMode = ref(true)
 
 // Toasts
 const { addToast } = useToast();
@@ -667,25 +613,34 @@ const fetchGuardians = async () => {
 }
 
 const calculateAge = (birthDate) => {
+  if (!birthDate) return '—'
   const birth = new Date(birthDate)
+  if (isNaN(birth.getTime())) return '—'
   const today = new Date()
-  const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
-  
-  if (ageInMonths < 12) {
-    return `${ageInMonths} months`
-  } else {
-    const years = Math.floor(ageInMonths / 12)
-    const months = ageInMonths % 12
-    return months > 0 ? `${years}y ${months}m` : `${years} years`
+  let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
+  let days = today.getDate() - birth.getDate()
+  if (days < 0) {
+    months -= 1
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+    days += prevMonth.getDate()
   }
+  if (months < 0) months = 0
+  if (days < 0) days = 0
+  return `${months}m ${days}d`
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString()
+  }
 }
 
 const changePage = (page) => {
@@ -722,7 +677,13 @@ const viewPatient = (patient) => {
 }
 
 const editVaccinations = (patient) => {
+  // New flow: remove prompt. Open Vaccination editor directly.
+  // Inside the editor: clicking "Add Vaccination Record" will first show a Visit picker for in-facility,
+  // and there will be a separate "Outside Record" button to go straight to outside mode.
   selectedPatientId.value = patient.id
+  vaccinationVisitContext.value = false
+  // Default to in-facility context (not outside) so user can pick a visit or switch to outside in the editor
+  vaccinationOutsideMode.value = false
   showVaccinationEditor.value = true
 }
 
@@ -730,6 +691,7 @@ const openVaccinationFromVisit = (patientId, patientData = null) => {
   selectedPatientId.value = patientId
   selectedPatientData.value = patientData
   vaccinationVisitContext.value = true
+  vaccinationOutsideMode.value = false
   collectedVaccinationsForVisit.value = [] // Reset collected vaccinations
   showVaccinationEditor.value = true
 }
@@ -745,10 +707,41 @@ const closeVaccinationEditor = () => {
   vaccinationVisitContext.value = false
 }
 
+const onOpenAddPatientRecord = ({ outside, visitId, patientId }) => {
+  addRecordOutsideMode.value = outside
+  if (visitId) {
+    selectedVisitId.value = visitId
+  }
+  if (patientId) {
+    selectedPatientId.value = patientId
+  }
+  showAddRecord.value = true
+}
+
 const onVisitSaved = () => {
   // Reset collected vaccinations after visit is saved
   collectedVaccinationsForVisit.value = []
   fetchPatients() // Refresh patient list
+}
+
+const closeAddRecordModal = () => {
+  showAddRecord.value = false
+  // Reset selections when modal closes
+  selectedPatientId.value = null
+  selectedVisitId.value = null
+  addRecordOutsideMode.value = false
+}
+
+const openAddRecord = (patient = null) => {
+  console.log('🚀 [PATIENT_RECORDS] openAddRecord called with patient:', {
+    patient,
+    patientId: patient?.id,
+    patientName: patient ? `${patient.childInfo?.name}` : 'No patient provided'
+  })
+  // This opens the unified modal with Outside toggle by default
+  selectedPatientId.value = patient?.id || ''
+  console.log('📝 [PATIENT_RECORDS] Setting selectedPatientId to:', selectedPatientId.value)
+  showAddRecord.value = true
 }
 
 const editPatient = async (patient) => {
@@ -1031,71 +1024,6 @@ const formatForInput = (date) => {
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
   return `${mm}/${dd}/${yyyy}`
-}
-
-const validateAndFormatDate = (fieldName) => {
-  if (!form.value[fieldName]) return
-  
-  // Handle various input formats and convert to MM/DD/YYYY
-  let dateStr = form.value[fieldName].trim()
-  let date = null
-  
-  // Try parsing MM/DD/YYYY format
-  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const [month, day, year] = dateStr.split('/')
-    date = new Date(year, month - 1, day)
-  }
-  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
-  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const parts = dateStr.split('/')
-    // Assume DD/MM/YYYY if day > 12 or month <= 12
-    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
-      const [day, month, year] = parts
-      date = new Date(year, month - 1, day)
-    }
-  }
-  // Try parsing YYYY-MM-DD format
-  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
-    date = new Date(dateStr)
-  }
-  
-  if (date && !isNaN(date.getTime())) {
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    form.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
-const openDatePicker = (fieldName) => {
-  const refMap = {
-    'date_of_birth': datePickerBirth,
-    'hearing_test_date': datePickerHearing, 
-    'newborn_screening_date': datePickerScreening
-  }
-  
-  const datePickerEl = refMap[fieldName].value
-  if (datePickerEl) {
-    // Set the current value in ISO format for the date picker
-    const isoDate = convertToISODate(form.value[fieldName])
-    if (isoDate) {
-      datePickerEl.value = isoDate
-    }
-    // Trigger the date picker
-    datePickerEl.showPicker()
-  }
-}
-
-const onDatePickerChange = (fieldName, event) => {
-  const isoDate = event.target.value
-  if (isoDate) {
-    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
-    const date = new Date(isoDate)
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    form.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
 }
 
 const convertToISODate = (mmddyyyy) => {

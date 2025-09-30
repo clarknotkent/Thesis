@@ -54,12 +54,7 @@
               </select>
             </div>
             <div class="col-md-3">
-              <input 
-                type="date" 
-                class="form-control" 
-                v-model="selectedDate" 
-                @change="applyFilters"
-              >
+              <DateInput v-model="selectedDate" />
             </div>
             <div class="col-md-2">
               <button class="btn btn-outline-secondary w-100" @click="resetFilters">
@@ -386,6 +381,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
+import DateInput from '@/components/common/DateInput.vue'
 
 // Reactive data
 const loading = ref(true)
@@ -612,18 +608,32 @@ const printLogs = () => {
 
 // Utility functions
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  if (!dateString) return '—'
+  try {
+    return new Date(dateString).toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString()
+  }
 }
 
 const formatTime = (dateString) => {
-  return new Date(dateString).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleTimeString('en-PH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleTimeString()
+  }
 }
 
 const formatMessageType = (type) => {

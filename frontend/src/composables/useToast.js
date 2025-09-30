@@ -5,7 +5,7 @@ let nextId = 1;
 
 export function addToast({ title = 'Notice', message = '', type = 'info', timeout = 4000 } = {}) {
   const id = nextId++;
-  const time = new Date().toLocaleTimeString();
+  const time = new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' });
   toasts.value.push({ id, title, message, type, time });
   if (timeout > 0) setTimeout(() => dismiss(id), timeout);
   return id;

@@ -61,6 +61,17 @@ const createUser = async (req, res) => {
       try { await admin.auth.admin.deleteUser(created.user.id); } catch (_) {}
       return res.status(500).json({ message: 'Failed to map Supabase user to local account' });
     }
+    // 4) Ensure guardian row exists if role is Guardian
+    try {
+      const roleToken = (newUser.role || '').toLowerCase();
+      if (['guardian','parent','guardian-parent'].includes(roleToken)) {
+        const actorId = getActorId(req);
+        const ensured = await require('../models/guardianModel').ensureGuardianForUser(newUser, actorId);
+        console.log('[users:createUser] ensured guardian_id:', ensured && ensured.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:createUser] ensureGuardianForUser failed (non-fatal):', e && e.message);
+    }
 
     const { password, ...safeUser } = newUser;
     try {
@@ -102,7 +113,37 @@ const updateUser = async (req, res) => {
   console.debug('[users:updateUser] before:', JSON.stringify(before || {}));
   console.debug('[users:updateUser] incoming updateData:', JSON.stringify(updateData || {}));
   const updatedUser = await userModel.updateUser(id, { ...updateData, updated_by: actorId });
+  // If resulting role is Guardian, ensure guardian record exists
+  try {
+    const roleToken = (updatedUser && updatedUser.role || '').toLowerCase();
+    if (['guardian','parent','guardian-parent'].includes(roleToken)) {
+      const actorId2 = getActorId(req);
+      const ensured = await require('../models/guardianModel').ensureGuardianForUser({
+        user_id: updatedUser.user_id,
+        role: updatedUser.role,
+        surname: updatedUser.surname,
+        firstname: updatedUser.firstname,
+        middlename: updatedUser.middlename,
+        email: updatedUser.email,
+        address: updatedUser.address,
+        contact_number: updatedUser.contact_number,
+      }, actorId2);
+      console.log('[users:updateUser] ensured guardian_id:', ensured && ensured.guardian_id);
+    }
+  } catch (e) {
+    console.warn('[users:updateUser] ensureGuardianForUser failed (non-fatal):', e && e.message);
+  }
   console.debug('[users:updateUser] after:', JSON.stringify(updatedUser || {}));
+  // If user is guardian, sync guardian core fields from user
+  try {
+    const roleToken2 = (updatedUser && updatedUser.role || '').toLowerCase();
+    if (['guardian','parent','guardian-parent'].includes(roleToken2)) {
+      const actorSync = getActorId(req);
+      await require('../models/guardianModel').syncGuardianFromUser(updatedUser, actorSync);
+    }
+  } catch (e) {
+    console.warn('[users:updateUser] syncGuardianFromUser failed (non-fatal):', e && e.message);
+  }
     
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
@@ -143,6 +184,22 @@ const deleteUser = async (req, res) => {
     }
     
   try { await logActivity({ action_type: ACTIVITY.USER.SOFT_DELETE, description: `Soft deleted user ${id} by ${actorId}`, user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deleted_by: actorId } }); } catch (e) { /* activity log failed */ }
+  // Cascade soft-delete to guardian if exists
+  try {
+    const { data: g, error: gErr } = await require('../db')
+      .from('guardians')
+      .select('guardian_id')
+      .eq('user_id', id)
+      .maybeSingle();
+    if (!gErr && g && g.guardian_id) {
+      await require('../db')
+        .from('guardians')
+        .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
+        .eq('guardian_id', g.guardian_id);
+    }
+  } catch (e) {
+    console.warn('[users:deleteUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
+  }
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
   console.error(error);
@@ -220,6 +277,17 @@ const updateUserRole = async (req, res) => {
         new_value: { role: updatedUser.role }
       });
   } catch(e) { /* activity log failed */ }
+    // Ensure guardian if role becomes Guardian
+    try {
+      const roleToken = (updatedUser && updatedUser.role || '').toLowerCase();
+      if (['guardian','parent','guardian-parent'].includes(roleToken)) {
+        const actorId3 = getActorId(req);
+        const ensured = await require('../models/guardianModel').ensureGuardianForUser({ user_id: updatedUser.user_id, role: updatedUser.role }, actorId3);
+        console.log('[users:updateUserRole] ensured guardian_id:', ensured && ensured.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:updateUserRole] ensureGuardianForUser failed (non-fatal):', e && e.message);
+    }
     res.json({ message: 'User role updated successfully', user: updatedUser });
   } catch (error) {
   console.error(error);
@@ -239,6 +307,22 @@ const deactivateUser = async (req, res) => {
     }
     
   try { await logActivity({ action_type: ACTIVITY.USER.DEACTIVATE, description: `Deactivated user ${id} by ${actorId}` , user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deactivated_by: actorId } }); } catch (e) { /* activity log failed */ }
+  // Cascade soft-delete to guardian if exists
+  try {
+    const { data: g, error: gErr } = await require('../db')
+      .from('guardians')
+      .select('guardian_id')
+      .eq('user_id', id)
+      .maybeSingle();
+    if (!gErr && g && g.guardian_id) {
+      await require('../db')
+        .from('guardians')
+        .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
+        .eq('guardian_id', g.guardian_id);
+    }
+  } catch (e) {
+    console.warn('[users:deactivateUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
+  }
     res.json({ message: 'User account deactivated successfully' });
   } catch (error) {
   console.error(error);
@@ -266,7 +350,23 @@ const restoreUser = async (req, res) => {
     const { id } = req.params;
     const restored = await userModel.restoreUser(id);
     if (!restored) return res.status(404).json({ message: 'User not found' });
-  try { await logActivity({ action_type: ACTIVITY.USER.RESTORE, description: `Restored user ${id}`, user_id: req.user?.user_id || null, entity_id: id, entity_type: 'user' }); } catch (e) { /* activity log failed */ }
+    // Also restore linked guardian if exists (mirror of soft-delete cascade)
+    try {
+      const { data: g, error: gErr } = await require('../db')
+        .from('guardians')
+        .select('guardian_id, is_deleted')
+        .eq('user_id', id)
+        .maybeSingle();
+      if (!gErr && g && g.guardian_id && g.is_deleted) {
+        await require('../db')
+          .from('guardians')
+          .update({ is_deleted: false, deleted_at: null, deleted_by: null, updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
+          .eq('guardian_id', g.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:restoreUser] guardian restore cascade failed (non-fatal):', e && e.message);
+    }
+    try { await logActivity({ action_type: ACTIVITY.USER.RESTORE, description: `Restored user ${id}`, user_id: req.user?.user_id || null, entity_id: id, entity_type: 'user' }); } catch (e) { /* activity log failed */ }
     res.json({ message: 'User restored successfully' });
   } catch (error) {
     console.error(error);

@@ -2,15 +2,15 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const url = process.env.SUPABASE_URL;
-// Prefer service role key for server-side access
-const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+// Prefer service role key for server-side access; fall back to anon key if needed (dev only)
+const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 
 if (!url || !serviceKey) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in environment.');
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY/SUPABASE_KEY in environment.');
 }
 
-if (!process.env.SUPABASE_SERVICE_KEY) {
-  console.warn('Warning: Using SUPABASE_KEY instead of SUPABASE_SERVICE_KEY. Set SUPABASE_SERVICE_KEY for server-side operations.');
+if (!process.env.SUPABASE_SERVICE_KEY && process.env.SUPABASE_KEY) {
+  console.warn('[Supabase] Using SUPABASE_KEY (anon) instead of SUPABASE_SERVICE_KEY. Set SUPABASE_SERVICE_KEY for server-side operations.');
 }
 
 const supabase = createClient(url, serviceKey);

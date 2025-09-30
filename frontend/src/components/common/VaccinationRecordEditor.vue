@@ -30,9 +30,11 @@
               </p>
             </div>
 
-            <button class="btn btn-success btn-sm" @click="openNewVaccinationModal">
-              <i class="bi bi-plus-circle me-1"></i> Add Vaccination Record
-            </button>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-success" @click="startInFacilityAdd">
+                <i class="bi bi-plus-circle me-1"></i> Add Vaccination Record
+              </button>
+            </div>
           </div>
 
           <!-- Vaccination History Table -->
@@ -104,6 +106,7 @@
                       <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
                         {{ vaccine.status || 'Unknown' }}
                       </span>
+                      <span v-if="computeDaysOverdue(vaccine) > 0" class="badge bg-danger ms-2">{{ computeDaysOverdue(vaccine) }}d overdue</span>
                     </td>
                   </tr>
                 </tbody>
@@ -148,27 +151,55 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="bi bi-shield-plus me-2"></i>
-            {{ showEditVaccinationModal ? 'Edit' : 'Add New' }} Vaccination Record
-          </h5>
+          <div class="d-flex align-items-center w-100">
+            <h5 class="modal-title me-auto">
+              <i class="bi bi-shield-plus me-2"></i>
+              {{ showEditVaccinationModal ? 'Edit' : 'Add New' }} Vaccination Record
+            </h5>
+            <!-- Inside the add/edit vaccination modal: outside toggle at upper right -->
+            <div class="form-check form-switch" v-if="!showEditVaccinationModal">
+              <input class="form-check-input" type="checkbox" id="insideOutsideToggle" v-model="outsideImmunization">
+              <label class="form-check-label" for="insideOutsideToggle">Outside record</label>
+            </div>
+          </div>
           <button type="button" class="btn-close" @click="closeVaccinationModal"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="saveVaccinationRecord">
             <div class="row g-3">
+              <div class="col-12">
+                <small class="text-muted d-block">
+                  Outside = vaccinations done outside the facility. No inventory is used; choose a vaccine from the catalog. In-facility = administered here; choose a stock from inventory and ensure a same-day visit exists.
+                </small>
+              </div>
               <div class="col-md-6">
                 <label class="form-label">Vaccine *</label>
-                <select class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" required>
+                <!-- In-facility: choose from inventory stocks -->
+                <select v-if="!outsideImmunization" class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" :required="!outsideImmunization" :disabled="showEditVaccinationModal">
                   <option value="">Select a vaccine stock</option>
-                  <option v-for="v in vaccineOptions" :key="v.inventory_id" :value="v.inventory_id">
-                    {{ v.display_name }}
+                  <option v-for="v in vaccineOptions" :key="v.inventory_id" :value="v.inventory_id" :disabled="v.isExpired">
+                    {{ v.display_name }}<span v-if="v.isExpired"> — [EXPIRED]</span>
+                  </option>
+                </select>
+                <!-- Outside: choose vaccine (no inventory) -->
+                <select v-else class="form-select" v-model="vaccinationForm.vaccineId" @change="onVaccineCatalogSelect" :required="outsideImmunization" :disabled="showEditVaccinationModal">
+                  <option value="">Select a vaccine</option>
+                  <option v-for="v in vaccineCatalog" :key="v.vaccine_id || v.id" :value="v.vaccine_id || v.id">
+                    {{ v.antigen_name || v.name || 'Vaccine' }}
                   </option>
                 </select>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Disease Prevented</label>
                 <input type="text" class="form-control" v-model="vaccinationForm.diseasePrevented" readonly>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Dose Number *</label>
+                <select class="form-select" v-model="vaccinationForm.doseNumber" required>
+                  <option value="">Select dose</option>
+                  <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
+                </select>
+                <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Date Administered *</label>
@@ -197,7 +228,7 @@
                   <option value="Oral">Oral</option>
                 </select>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-6" v-if="!outsideImmunization">
                 <label class="form-label">Health Worker *</label>
                 <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
                   <option value="">Select health worker</option>
@@ -217,6 +248,35 @@
               </div>
             </div>
 
+              <!-- Visit Picker Inline (for in-facility add) -->
+              <div v-if="showVisitPicker" class="modal fade" :class="{ show: showVisitPicker }" :style="{ display: showVisitPicker ? 'block' : 'none' }" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Select a Visit</h5>
+                      <button type="button" class="btn-close" @click="showVisitPicker = false"></button>
+                    </div>
+                    <div class="modal-body">
+                      <div v-if="loadingVisits" class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+                      <div v-else>
+                        <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
+                        <div class="list-group">
+                          <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
+                            <span>{{ formatDateShort(v.visit_date) }}</span>
+                            <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
+                          </button>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-end">
+                          <button type="button" class="btn btn-outline-secondary btn-sm" @click="openOutsideRecordFromVisitPicker">
+                            <i class="bi bi-geo-alt me-1"></i> Outside record
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             <div class="mt-4 text-muted small">
               <i class="bi bi-info-circle me-1"></i>
               Fields marked with * are required
@@ -224,7 +284,7 @@
 
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="closeVaccinationModal">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="saving">
+              <button type="submit" class="btn btn-primary" :disabled="saving || !canSave">
                 <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                 {{ showEditVaccinationModal ? 'Update' : 'Add' }} Record
               </button>
@@ -235,12 +295,70 @@
     </div>
   </div>
 
-  <!-- Modal Backdrop -->
-  <div v-if="show || showNewVaccinationModal || showEditVaccinationModal" class="modal-backdrop fade show"></div>
+  <!-- Visit Picker Modal (moved outside main modal) -->
+  <div v-if="showVisitPicker" class="modal fade" :class="{ show: showVisitPicker }" :style="{ display: showVisitPicker ? 'block' : 'none', zIndex: 1060 }" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select a Visit</h5>
+          <button type="button" class="btn-close" @click="showVisitPicker = false"></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="loadingVisits" class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+          <div v-else>
+            <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
+            <div class="list-group">
+              <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
+                <span>{{ formatDateShort(v.visit_date) }}</span>
+                <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
+              </button>
+            </div>
+            <div class="mt-3 d-flex justify-content-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" @click="openOutsideRecordFromVisitPicker">
+                <i class="bi bi-geo-alt me-1"></i> Create Record
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Backdrop only for main modal -->
+  <div v-if="show" class="modal-backdrop fade show"></div>
+
+  <!-- Modal Backdrop for visit picker -->
+  <div v-if="showVisitPicker" class="modal-backdrop fade show" :style="{ zIndex: 1050 }" @click="showVisitPicker = false"></div>
+
+  <!-- Embedded Visit View (read-only + services active) -->
+  <div v-if="showVisitView" class="card border-primary mt-3">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <h6 class="mb-0">Visit Details</h6>
+      <button type="button" class="btn-close" @click="closeVisitView"></button>
+    </div>
+    <div class="card-body p-0">
+      <div class="p-3">
+        <VisitEditor
+          :show="true"
+          :initial-patient-id="patientId"
+          :lock-patient="true"
+          :collected-vaccinations="[]"
+          :record-mode="false"
+          :embedded="true"
+          :view-mode="true"
+          :existing-visit-id="selectedVisitId"
+          @close="closeVisitView"
+          @saved="onVisitSaved"
+          @update-collected-vaccinations="noop"
+        />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue';
+import VisitEditor from '@/components/common/VisitEditor.vue'
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast'
 
@@ -264,12 +382,17 @@ const props = defineProps({
   visitContext: {
     type: Boolean,
     default: false
+  },
+  // When true, pre-selects the Outside Immunization mode when opening the add/edit modal
+  defaultOutside: {
+    type: Boolean,
+    default: false
   }
 });
 
 console.log('VaccinationRecordEditor props:', { show: props.show, patientId: props.patientId });
 
-const emit = defineEmits(['close', 'update', 'vaccinations-collected']);
+const emit = defineEmits(['close', 'update', 'vaccinations-collected', 'open-add-patient-record']);
 
 // State management
 const loading = ref(false);
@@ -280,15 +403,27 @@ const healthWorkers = ref([]);
 const nurses = ref([]);
 const showNewVaccinationModal = ref(false);
 const showEditVaccinationModal = ref(false);
+// Visit picker state
+const showVisitPicker = ref(false);
+const loadingVisits = ref(false);
+const visits = ref([]);
 const currentEditIndex = ref(-1);
-const showDebug = ref(true); // Enable debug mode
+const showDebug = ref(false);
 const collectedVaccinations = ref([]); // Store vaccinations collected in visit context
+const availableDoses = ref([1, 2, 3, 4, 5]);
+const autoSelectHint = ref('');
+const outsideImmunization = ref(false);
+const vaccineCatalog = ref([]);
+// Outside record modal state
+// const showOutsideRecord = ref(false);
 
 // Form for vaccination record
 const vaccinationForm = ref({
   inventoryId: '',
+  vaccineId: '',
   vaccineName: '',
   diseasePrevented: '',
+  doseNumber: '',
   dateAdministered: new Date().toISOString().split('T')[0], // Default to today
   ageAtAdministration: '',
   vaccineManufacturer: '',
@@ -298,13 +433,75 @@ const vaccinationForm = ref({
   facilityName: '',
   remarks: ''
 });
+// Helpers for new flow
+const formatDateShort = (d) => {
+  if (!d) return ''
+  try {
+    return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })
+  } catch {
+    return new Date(d).toLocaleDateString()
+  }
+}
+
+const fetchVisits = async () => {
+  loadingVisits.value = true
+  visits.value = []
+  try {
+    const res = await api.get('/visits', { params: { patient_id: props.patientId } })
+    visits.value = res.data?.items || res.data?.data || res.data || []
+  } catch (e) {
+    visits.value = []
+  } finally {
+    loadingVisits.value = false
+  }
+}
+
+const startInFacilityAdd = async () => {
+  // Ensure we are in in-facility mode initially
+  outsideImmunization.value = false
+  // Show visit picker first (even if empty)
+  showVisitPicker.value = true
+  await fetchVisits()
+}
+
+const pickVisit = (v) => {
+  // Instead of showing visit view, open the add record modal with this visit
+  showVisitPicker.value = false
+  emit('open-add-patient-record', { outside: false, visitId: v.visit_id || v.id, patientId: props.patientId })
+}
+
+const selectedVisitId = ref(null)
+const showVisitView = ref(false)
+
+const startOutsideAdd = () => {
+  // Open add modal with outside pre-enabled
+  outsideImmunization.value = true
+  openNewVaccinationModal()
+}
+
+const openOutsideRecordFromVisitPicker = () => {
+  console.log('Emitting open-add-patient-record with outside: true')
+  console.log('Closing visit picker')
+  showVisitPicker.value = false
+  emit('open-add-patient-record', { outside: true, patientId: props.patientId })
+}
+
+const closeVisitView = () => {
+  showVisitView.value = false
+}
+
+const onVisitSaved = () => {
+  showVisitView.value = false
+}
 
 // Initialize default form for new vaccination record
 const initVaccinationForm = () => {
   vaccinationForm.value = {
     inventoryId: '',
+    vaccineId: '',
     vaccineName: '',
     diseasePrevented: '',
+    doseNumber: '',
     dateAdministered: new Date().toISOString().split('T')[0],
     ageAtAdministration: '',
     vaccineManufacturer: '',
@@ -420,11 +617,29 @@ const fetchVaccineOptions = async () => {
       disease_prevented: v.vaccinemaster?.disease_prevented || '',
       expiration_date: v.expiration_date || '',
       current_stock_level: v.current_stock_level || 0,
-      display_name: `${v.vaccinemaster?.antigen_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Expires: ${v.expiration_date ? new Date(v.expiration_date).toLocaleDateString() : 'N/A'} - ${v.vaccinemaster?.manufacturer || 'Unknown'}`
+      isExpired: v.expiration_date ? new Date(v.expiration_date) < new Date(new Date().setHours(0,0,0,0)) : false,
+  display_name: `${v.vaccinemaster?.antigen_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Expires: ${v.expiration_date ? new Date(v.expiration_date).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : 'N/A'} - ${v.vaccinemaster?.manufacturer || 'Unknown'}`
     }));
   } catch (error) {
     console.error('Error fetching vaccine inventory:', error);
     vaccineOptions.value = [];
+  }
+};
+
+// Fetch vaccine catalog (for outside immunizations)
+const fetchVaccineCatalog = async () => {
+  try {
+    const response = await api.get('/vaccines');
+    const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+    vaccineCatalog.value = list.map(v => ({
+      vaccine_id: v.vaccine_id || v.id,
+      antigen_name: v.antigen_name || v.name || '',
+      disease_prevented: v.disease_prevented || '',
+      manufacturer: v.manufacturer || ''
+    }));
+  } catch (error) {
+    console.error('Error fetching vaccine catalog:', error);
+    vaccineCatalog.value = [];
   }
 };
 
@@ -486,7 +701,7 @@ const fetchHealthWorkers = async () => {
 }
 
 // When a vaccine is selected, autofill details from vaccineOptions
-const onVaccineSelect = () => {
+const onVaccineSelect = async () => {
   const iid = vaccinationForm.value.inventoryId;
   console.log('Vaccine selected with inventory ID:', iid);
   if (!iid) {
@@ -494,6 +709,9 @@ const onVaccineSelect = () => {
     vaccinationForm.value.vaccineManufacturer = '';
     vaccinationForm.value.vaccineName = '';
     vaccinationForm.value.lotNumber = '';
+    vaccinationForm.value.vaccineId = '';
+    availableDoses.value = [1,2,3,4,5];
+    autoSelectHint.value = '';
     return;
   }
   const v = (vaccineOptions.value || []).find(x => x.inventory_id === iid);
@@ -502,10 +720,74 @@ const onVaccineSelect = () => {
     vaccinationForm.value.vaccineManufacturer = v.manufacturer || '';
     vaccinationForm.value.vaccineName = v.antigen_name || '';
     vaccinationForm.value.lotNumber = v.lot_number || '';
+    vaccinationForm.value.vaccineId = v.vaccine_id || '';
   }
   // Calculate age at administration
   console.log('Recalculating age after vaccine selection');
   calculateAgeAtAdministration();
+
+  // Smart dose options and auto-select
+  try {
+    const res = await api.get(`/patients/${props.patientId}/smart-doses`, { params: { vaccine_id: vaccinationForm.value.vaccineId } });
+    const data = res.data?.data || res.data || {};
+    const doses = Array.isArray(data.available_doses) ? data.available_doses : (Array.isArray(data.doses) ? data.doses : []);
+    availableDoses.value = doses.length > 0 ? doses : [1,2,3,4,5];
+    if (data.auto_select) {
+      vaccinationForm.value.doseNumber = data.auto_select;
+      autoSelectHint.value = `Auto-selected Dose ${data.auto_select} based on schedule`;
+    } else if (doses.length === 1) {
+      vaccinationForm.value.doseNumber = doses[0];
+      autoSelectHint.value = `Auto-selected Dose ${doses[0]} (only remaining)`;
+    } else {
+      autoSelectHint.value = '';
+    }
+  } catch (err) {
+    console.warn('Smart dose endpoint not available or failed.', err);
+    availableDoses.value = [1,2,3,4,5];
+    autoSelectHint.value = '';
+  }
+}
+
+// When a vaccine is selected from catalog (outside flow)
+const onVaccineCatalogSelect = async () => {
+  const vid = vaccinationForm.value.vaccineId;
+  if (!vid) {
+    vaccinationForm.value.diseasePrevented = '';
+    vaccinationForm.value.vaccineManufacturer = '';
+    vaccinationForm.value.vaccineName = '';
+    availableDoses.value = [1,2,3,4,5];
+    autoSelectHint.value = '';
+    return;
+  }
+  const v = (vaccineCatalog.value || []).find(x => (x.vaccine_id === vid));
+  if (v) {
+    vaccinationForm.value.vaccineName = v.antigen_name || '';
+    vaccinationForm.value.diseasePrevented = v.disease_prevented || '';
+    vaccinationForm.value.vaccineManufacturer = v.manufacturer || '';
+    vaccinationForm.value.lotNumber = '';
+  }
+  calculateAgeAtAdministration();
+
+  // Smart dose options and auto-select for outside flow
+  try {
+    const res = await api.get(`/patients/${props.patientId}/smart-doses`, { params: { vaccine_id: vaccinationForm.value.vaccineId } });
+    const data = res.data?.data || res.data || {};
+    const doses = Array.isArray(data.available_doses) ? data.available_doses : (Array.isArray(data.doses) ? data.doses : []);
+    availableDoses.value = doses.length > 0 ? doses : [1,2,3,4,5];
+    if (data.auto_select) {
+      vaccinationForm.value.doseNumber = data.auto_select;
+      autoSelectHint.value = `Auto-selected Dose ${data.auto_select} based on schedule`;
+    } else if (doses.length === 1) {
+      vaccinationForm.value.doseNumber = doses[0];
+      autoSelectHint.value = `Auto-selected Dose ${doses[0]} (only remaining)`;
+    } else {
+      autoSelectHint.value = '';
+    }
+  } catch (err) {
+    console.warn('Smart dose endpoint not available or failed.', err);
+    availableDoses.value = [1,2,3,4,5];
+    autoSelectHint.value = '';
+  }
 }
 
 // Calculate age at administration based on patient's DOB and selected date
@@ -638,14 +920,7 @@ This action cannot be undone.`;
         await api.delete(`/patients/${props.patientId}/vaccinations`, { data: { lotNumber: vaccine.lotNumber, dateAdministered: vaccine.dateAdministered } });
       }
       
-      // Update schedule statuses in the database after vaccination deletion
-      try {
-        await api.post(`/patients/${props.patientId}/update-schedules`);
-        console.log('Schedule statuses updated in database after deletion');
-      } catch (scheduleError) {
-        console.error('Error updating schedule statuses after deletion:', scheduleError);
-        // Don't fail the whole operation if schedule update fails
-      }
+      // Schedule maintenance is handled by backend; no explicit schedule update call needed here.
       
       await fetchPatientData(); // Refresh data
       emit('update'); // Notify parent component
@@ -665,35 +940,26 @@ const saveVaccinationRecord = async () => {
 
     // If in visit context, save to database and emit the vaccination data for the visit
     if (props.visitContext) {
-      // Save to database first
-      const response = await fetch('/api/vaccination-records', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          patient_id: props.patientId,
-          inventory_id: vaccinationForm.value.inventoryId,
-          vaccine_name: vaccinationForm.value.vaccineName,
-          disease_prevented: vaccinationForm.value.diseasePrevented,
-          administered_date: vaccinationForm.value.dateAdministered,
-          age_at_administration: vaccinationForm.value.ageAtAdministration,
-          vaccine_manufacturer: vaccinationForm.value.vaccineManufacturer,
-          lot_number: vaccinationForm.value.lotNumber,
-          site_of_administration: vaccinationForm.value.siteOfAdministration,
-          administered_by: vaccinationForm.value.healthWorkerId,
-          facility_name: vaccinationForm.value.facilityName,
-          remarks: vaccinationForm.value.remarks
-        })
-      });
+      // Build vaccination object to be saved with the visit (no direct API call here)
+      const remarksWithSite = vaccinationForm.value.siteOfAdministration 
+        ? `${vaccinationForm.value.remarks || ''} (Site: ${vaccinationForm.value.siteOfAdministration})`.trim()
+        : vaccinationForm.value.remarks || ''
 
-      if (!response.ok) {
-        throw new Error('Failed to save vaccination record');
-      }
+      const savedVaccination = {
+        patient_id: props.patientId,
+        inventory_id: vaccinationForm.value.inventoryId,
+        vaccine_id: vaccinationForm.value.vaccineId,
+        vaccine_name: vaccinationForm.value.vaccineName,
+        disease_prevented: vaccinationForm.value.diseasePrevented,
+        dose_number: vaccinationForm.value.doseNumber || 1,
+        administered_date: vaccinationForm.value.dateAdministered,
+        age_at_administration: vaccinationForm.value.ageAtAdministration,
+        administered_by: vaccinationForm.value.healthWorkerId,
+        facility_name: vaccinationForm.value.facilityName,
+        remarks: remarksWithSite
+      };
 
-      const savedVaccination = await response.json();
-
-      // Emit the saved vaccination data to parent component for visit reference
+      // Emit the vaccination data to parent component for visit reference
       emit('vaccinations-collected', [savedVaccination]);
 
       addToast({ title: 'Success', message: 'Vaccination administered and recorded', type: 'success' });
@@ -708,15 +974,17 @@ const saveVaccinationRecord = async () => {
       // Update existing immunization by id
       const existing = patientData.value.vaccinationHistory[currentEditIndex.value];
       if (existing && existing.immunization_id) {
+        const remarksWithSite = vaccinationForm.value.siteOfAdministration 
+          ? `${vaccinationForm.value.remarks || ''} (Site: ${vaccinationForm.value.siteOfAdministration})`.trim()
+          : vaccinationForm.value.remarks || ''
+
         await api.put(`/immunizations/${existing.immunization_id}`, {
-          vaccine_id: vaccinationForm.value.vaccineId || vaccinationForm.value.vaccineId,
           administered_date: vaccinationForm.value.dateAdministered,
-          lot_number: vaccinationForm.value.lotNumber,
-          manufacturer: vaccinationForm.value.vaccineManufacturer,
+          dose_number: vaccinationForm.value.doseNumber || existing.dose_number || 1,
           site_of_administration: vaccinationForm.value.siteOfAdministration,
           administered_by: vaccinationForm.value.healthWorkerId,
           facility_name: vaccinationForm.value.facilityName,
-          remarks: vaccinationForm.value.remarks
+          remarks: remarksWithSite
         });
       } else {
         // Fallback: replace via patient vaccinations endpoint
@@ -727,27 +995,40 @@ const saveVaccinationRecord = async () => {
     } else {
       // Create new immunization (associate to patient)
       // Send minimal fields; backend will compute age_at_administration from patient's DOB and administered_date
-      await api.post(`/immunizations`, {
-        patient_id: props.patientId,
-        vaccine_id: vaccinationForm.value.vaccineId,
-        administered_date: vaccinationForm.value.dateAdministered,
-        lot_number: vaccinationForm.value.lotNumber,
-        manufacturer: vaccinationForm.value.vaccineManufacturer,
-        site_of_administration: vaccinationForm.value.siteOfAdministration,
-        administered_by: vaccinationForm.value.healthWorkerId,
-        facility_name: vaccinationForm.value.facilityName,
-        remarks: vaccinationForm.value.remarks
-      });
+      const remarksWithSite = vaccinationForm.value.siteOfAdministration 
+        ? `${vaccinationForm.value.remarks || ''} (Site: ${vaccinationForm.value.siteOfAdministration})`.trim()
+        : vaccinationForm.value.remarks || ''
+
+      if (outsideImmunization.value) {
+        // Outside flow: no inventory, send outside flag
+        await api.post(`/immunizations`, {
+          patient_id: props.patientId,
+          vaccine_id: vaccinationForm.value.vaccineId,
+          administered_date: vaccinationForm.value.dateAdministered,
+          dose_number: vaccinationForm.value.doseNumber || 1,
+          administered_by: vaccinationForm.value.healthWorkerId,
+          facility_name: vaccinationForm.value.facilityName,
+          remarks: remarksWithSite,
+          outside: true
+        });
+      } else {
+        // In-facility: inventory is required; backend will validate same-day visit with vitals exists
+        const payload = {
+          patient_id: props.patientId,
+          inventory_id: vaccinationForm.value.inventoryId,
+          vaccine_id: vaccinationForm.value.vaccineId,
+          administered_date: vaccinationForm.value.dateAdministered,
+          dose_number: vaccinationForm.value.doseNumber || 1,
+          administered_by: vaccinationForm.value.healthWorkerId,
+          facility_name: vaccinationForm.value.facilityName,
+          remarks: remarksWithSite
+        }
+        if (selectedVisitId.value) payload.visit_id = selectedVisitId.value
+        await api.post(`/immunizations`, payload)
+      }
     }
 
-    // Update schedule statuses in the database after vaccination changes
-    try {
-      await api.post(`/patients/${props.patientId}/update-schedules`);
-      console.log('Schedule statuses updated in database');
-    } catch (scheduleError) {
-      console.error('Error updating schedule statuses:', scheduleError);
-      // Don't fail the whole operation if schedule update fails
-    }
+    // Schedule statuses are maintained by backend logic; no explicit call needed here.
 
     await fetchPatientData(); // Refresh data
     emit('update'); // Notify parent component
@@ -779,7 +1060,9 @@ const closeMainModal = () => {
 
 // Helper functions
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -835,6 +1118,20 @@ const getStatusBadgeClass = (status) => {
   }
 };
 
+// Compute days overdue for a schedule row
+const computeDaysOverdue = (s) => {
+  const scheduled = s.scheduledDate || s.scheduled_date || s.date || null;
+  if (!scheduled) return 0;
+  const grace = parseInt(s.grace_period || s.gracePeriod || s.dose_grace_days || 0, 10) || 0;
+  const scheduledDate = new Date(scheduled);
+  const deadline = new Date(scheduledDate);
+  deadline.setDate(deadline.getDate() + grace);
+  const now = new Date();
+  if (now <= deadline) return 0;
+  const diffMs = now.getTime() - deadline.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
 // Watch for show prop changes to fetch data when modal opens
 watch(() => props.show, (newVal) => {
   console.log('Show prop changed to:', newVal, 'patientId:', props.patientId);
@@ -842,6 +1139,10 @@ watch(() => props.show, (newVal) => {
     fetchPatientData();
     fetchVaccineOptions();
     fetchHealthWorkers();
+  }
+  // When modal is toggled open, set the outside toggle based on defaultOutside hint
+  if (newVal) {
+    outsideImmunization.value = !!props.defaultOutside;
   }
 });
 
@@ -851,11 +1152,26 @@ watch(() => vaccinationForm.value.dateAdministered, (newDate) => {
   calculateAgeAtAdministration();
 });
 
+// Watch outside toggle to reset conflicting fields
+watch(() => outsideImmunization.value, (isOutside) => {
+  if (isOutside) {
+    vaccinationForm.value.inventoryId = '';
+    vaccinationForm.value.lotNumber = '';
+    // Ensure catalog is loaded
+    fetchVaccineCatalog();
+  } else {
+    vaccinationForm.value.vaccineId = '';
+    // Ensure inventory options are loaded
+    fetchVaccineOptions();
+  }
+});
+
 onMounted(() => {
   console.log('VaccinationRecordEditor mounted with props:', { show: props.show, patientId: props.patientId, visitContext: props.visitContext });
   if (props.show && props.patientId) {
     fetchPatientData();
     fetchVaccineOptions();
+    fetchVaccineCatalog();
     fetchHealthWorkers();
 
     // If in visit context, automatically open the add vaccination modal
@@ -866,7 +1182,32 @@ onMounted(() => {
       }, 500); // Small delay to ensure data is loaded
     }
   }
+  // Initialize outside mode based on defaultOutside on mount
+  outsideImmunization.value = !!props.defaultOutside;
 });
+
+// Validation for save button
+const canSave = computed(() => {
+  // Shared required fields
+  const hasBasics = !!vaccinationForm.value.dateAdministered && !!vaccinationForm.value.doseNumber && !!vaccinationForm.value.healthWorkerId;
+  if (!hasBasics) return false;
+  if (props.visitContext) {
+    // In visit context, we still require a stock selection for in-facility
+    if (!vaccinationForm.value.inventoryId) return false;
+    // Block expired stock selections
+    const inv = (vaccineOptions.value || []).find(x => x.inventory_id === vaccinationForm.value.inventoryId);
+    return inv ? !inv.isExpired : false;
+  }
+  // Standalone
+  if (outsideImmunization.value) {
+    return !!vaccinationForm.value.vaccineId;
+  }
+  if (!vaccinationForm.value.inventoryId) return false;
+  const inv = (vaccineOptions.value || []).find(x => x.inventory_id === vaccinationForm.value.inventoryId);
+  return inv ? !inv.isExpired : false;
+});
+
+const noop = () => {}
 </script>
 
 <style scoped>

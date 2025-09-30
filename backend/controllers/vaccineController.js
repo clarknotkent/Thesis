@@ -121,9 +121,31 @@ const listVaccines = async (_req, res) => {
     const result = await vaccineModel.getAllVaccines();
     return res.json({ success:true, data: result.vaccines });
   } catch (error) {
-  console.debug('[vaccineController.listVaccines] actor:', req.user?.user_id);
+  console.debug('[vaccineController.listVaccines] error occurred while listing vaccines');
   console.error('listVaccines error:', error);
     return sendError(res, error, 'Failed to list vaccines');
+  }
+};
+
+// Manual stock adjustment endpoint: inserts a single ledger transaction
+const adjustInventoryStock = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const { id } = req.params; // inventory_id
+    const { type, quantity, note } = req.body;
+    const allowed = ['ADJUST','RECEIVE','RETURN','EXPIRED'];
+    if (!allowed.includes(type)) {
+      return res.status(400).json({ success:false, message:`Invalid type. Allowed: ${allowed.join(', ')}` });
+    }
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      return res.status(400).json({ success:false, message:'Quantity must be a positive number' });
+    }
+    const result = await vaccineModel.applyInventoryTransaction(id, type, qty, actorId, note || 'Manual adjustment');
+    return res.json({ success:true, message:'Inventory adjusted', data: result });
+  } catch (error) {
+    console.error('[vaccineController.adjustInventoryStock] error:', error);
+    return sendError(res, error, 'Failed to adjust inventory');
   }
 };
 
@@ -212,6 +234,55 @@ const listInventory = async (req, res) => {
   }
 };
 
+// Read-only stock list for health worker portal
+const listStock = async (_req, res) => {
+  try {
+    const rows = await vaccineModel.getAllInventory();
+    const mapped = (rows || []).map(v => {
+      const qty = (v.current_stock_level ?? v.quantity ?? 0);
+      const status = v.status || (qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock');
+      return {
+        id: v.inventory_id || v.id,
+        vaccineName: v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || '',
+        manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
+        batchNo: v.lot_number || v.batch_number || '',
+        expiryDate: v.expiration_date || v.expiry_date || '',
+        quantity: qty,
+        status
+      };
+    });
+    return res.json({ success: true, data: mapped });
+  } catch (error) {
+    console.error('[vaccineController.listStock] error:', error);
+    return sendError(res, error, 'Failed to list stock');
+  }
+};
+
+// Summary stats for health worker portal
+const getStockStats = async (_req, res) => {
+  try {
+    const rows = await vaccineModel.getAllInventory();
+    const items = (rows || []).map(v => ({
+      qty: v.current_stock_level ?? v.quantity ?? 0,
+      exp: v.expiration_date || v.expiry_date || null
+    }));
+    const now = new Date();
+    const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const outOfStock = items.filter(x => (x.qty || 0) === 0).length;
+    const lowStock = items.filter(x => (x.qty || 0) > 0 && (x.qty || 0) < 10).length;
+    const available = items.filter(x => (x.qty || 0) >= 10).length;
+    const expiringSoon = items.filter(x => {
+      if (!x.exp) return false;
+      const d = new Date(x.exp);
+      return d >= now && d <= in30;
+    }).length;
+    return res.json({ success: true, data: { available, lowStock, outOfStock, expiringSoon } });
+  } catch (error) {
+    console.error('[vaccineController.getStockStats] error:', error);
+    return sendError(res, error, 'Failed to compute stock stats');
+  }
+};
+
 // Placeholders (not implemented yet)
 const createInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
 const approveInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
@@ -253,6 +324,9 @@ module.exports = {
   updateInventory,
   deleteInventory,
   listInventory,
+  adjustInventoryStock,
+  listStock,
+  getStockStats,
   createInventoryRequest,
   approveInventoryRequest,
   getInventoryRequests,

@@ -1,6 +1,12 @@
-const supabase = require('../db');
+const serviceSupabase = require('../db');
+const immunizationModel = require('./immunizationModel');
 
-const listVisits = async (filters = {}, page = 1, limit = 20) => {
+function withClient(client) {
+  return client || serviceSupabase;
+}
+
+const listVisits = async (filters = {}, page = 1, limit = 20, client) => {
+  const supabase = withClient(client);
   let query = supabase.from('visits_view').select('*', { count: 'exact' });
 
   if (filters.patient_id) query = query.eq('patient_id', filters.patient_id);
@@ -20,7 +26,8 @@ const listVisits = async (filters = {}, page = 1, limit = 20) => {
   };
 };
 
-const getVisitById = async (id) => {
+const getVisitById = async (id, client) => {
+  const supabase = withClient(client);
   const { data, error } = await supabase
     .from('visits_view')
     .select('*')
@@ -30,7 +37,68 @@ const getVisitById = async (id) => {
   return data || null;
 };
 
-const createVisit = async (visitPayload) => {
+const updateVisitById = async (id, updatePayload, client) => {
+  const supabase = withClient(client);
+  
+  // Sanitize the payload: convert empty strings to null for bigint fields
+  const sanitizedPayload = { ...updatePayload };
+  const bigintFields = ['recorded_by', 'created_by', 'updated_by'];
+  
+  for (const field of bigintFields) {
+    if (sanitizedPayload[field] === '') {
+      sanitizedPayload[field] = null;
+    }
+  }
+  
+  const { data, error } = await supabase
+    .from('visits')
+    .update(sanitizedPayload)
+    .eq('visit_id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+// Ensure a visit exists for a patient on a specific date; if not, create it.
+const ensureVisitForDate = async (patient_id, visit_date, recorded_by = null, client) => {
+  const supabase = withClient(client);
+  // Normalize to day range in UTC
+  const start = new Date(new Date(visit_date || Date.now()).setHours(0,0,0,0)).toISOString();
+  const end = new Date(new Date(visit_date || Date.now()).setHours(23,59,59,999)).toISOString();
+  const { data: existing, error: exErr } = await supabase
+    .from('visits')
+    .select('visit_id')
+    .eq('patient_id', patient_id)
+    .gte('visit_date', start)
+    .lte('visit_date', end)
+    .order('visit_id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (exErr) throw exErr;
+  if (existing && existing.visit_id) {
+    const { data: viewRow, error: vErr } = await supabase.from('visits_view').select('*').eq('visit_id', existing.visit_id).single();
+    if (!vErr) return viewRow;
+    return existing;
+  }
+  const insert = {
+    patient_id,
+    visit_date: visit_date || new Date().toISOString(),
+    findings: null,
+    service_rendered: null,
+    recorded_by: recorded_by || null,
+    created_by: recorded_by || null,
+    updated_by: recorded_by || null,
+  };
+  const { data: created, error: insErr } = await supabase.from('visits').insert(insert).select().single();
+  if (insErr) throw insErr;
+  const { data: viewRow, error: vErr } = await supabase.from('visits_view').select('*').eq('visit_id', created.visit_id).single();
+  if (!vErr) return viewRow;
+  return created;
+};
+
+const createVisit = async (visitPayload, client) => {
+  const supabase = withClient(client);
   // visitPayload expected to contain:
   // patient_id, visit_date, recorded_by, vitals {...}, collectedVaccinations [...], services [...]
   const { vitals, collectedVaccinations = [], services = [], ...visitData } = visitPayload;
@@ -82,7 +150,9 @@ const createVisit = async (visitPayload) => {
       visit_date: visitData.visit_date || new Date().toISOString(),
       findings: findings,
       service_rendered: serviceRendered,
-      recorded_by: visitData.recorded_by || null
+      recorded_by: visitData.recorded_by || null,
+      created_by: visitData.recorded_by || null,
+      updated_by: visitData.recorded_by || null
     })
     .select()
     .single();
@@ -94,6 +164,7 @@ const createVisit = async (visitPayload) => {
   console.log('✅ [VISIT_SAVE] Visit saved successfully, ID:', visit.visit_id);
 
   // Insert vitalsigns if provided
+  let createdVitalId = null;
   if (vitals && visit && visit.visit_id) {
     console.log('💾 [VITALS_SAVE] Saving vitals data...');
     const { temperature, muac, respiration, weight, height } = vitals;
@@ -105,7 +176,9 @@ const createVisit = async (visitPayload) => {
         muac: muac || null,
         respiration_rate: respiration || null,
         weight: weight || null,
-        height_length: height || null
+        height_length: height || null,
+        created_by: visitData.recorded_by || null,
+        updated_by: visitData.recorded_by || null
       })
       .select()
       .single();
@@ -114,45 +187,72 @@ const createVisit = async (visitPayload) => {
       console.error('❌ [VITALS_SAVE] Failed to save vitals:', vitErr);
       throw vitErr;
     }
-    console.log('✅ [VITALS_SAVE] Vitals saved successfully');
+    createdVitalId = vit && vit.vital_id ? vit.vital_id : null;
+    console.log('✅ [VITALS_SAVE] Vitals saved successfully, vital_id:', createdVitalId);
   }
 
-  // Insert collected vaccinations with visit_id
+  // Enforce: if services/vaccinations present, vitals must be recorded for this visit
+  const hasVaccinations = collectedVaccinations && collectedVaccinations.length > 0;
+  const hasServices = services && services.length > 0;
+  if ((hasVaccinations || hasServices) && !createdVitalId) {
+    throw new Error('Vitals are required for in-facility services on a visit');
+  }
+
+  // Insert collected vaccinations with visit_id and propagate vital_id (using model to trigger schedule recalculation)
   console.log('💾 [VACCINATIONS_SAVE] Saving collected vaccinations...');
   for (const vaccination of collectedVaccinations) {
     console.log('💉 [VACCINATION_ITEM] Processing vaccination:', vaccination.inventory_id, 'for patient:', vaccination.patient_id);
+    // Resolve vaccine_id from inventory
+    let vaccine_id = vaccination.vaccine_id || null;
+    if (!vaccine_id && vaccination.inventory_id) {
+      const { data: inv, error: invErr } = await supabase
+        .from('inventory')
+        .select('vaccine_id')
+        .eq('inventory_id', vaccination.inventory_id)
+        .single();
+      if (invErr || !inv) {
+        console.error('❌ [VACCINATIONS_SAVE] Failed to resolve vaccine_id from inventory:', invErr);
+        throw invErr || new Error('Unable to resolve vaccine_id');
+      }
+      vaccine_id = inv.vaccine_id;
+    }
+
     const immunizationData = {
-      inventory_id: vaccination.inventory_id,
-      disease_prevented: vaccination.disease_prevented,
+      inventory_id: vaccination.inventory_id || null,
+      vaccine_id,
+      patient_id: visitData.patient_id,
+      disease_prevented: vaccination.disease_prevented || null,
       dose_number: vaccination.dose_number,
       administered_date: vaccination.administered_date,
-      age_at_administration: vaccination.age_at_administration,
-      administered_by: vaccination.administered_by,
-      facility_name: vaccination.facility_name,
-      remarks: vaccination.remarks,
-      visit_id: visit.visit_id // Link to this visit
+      age_at_administration: vaccination.age_at_administration || null,
+      administered_by: vaccination.administered_by || visitData.recorded_by || null,
+      facility_name: vaccination.facility_name || null,
+      remarks: vaccination.remarks || null,
+      visit_id: visit.visit_id, // Link to this visit
+      vital_id: createdVitalId || null,
+      outside: vaccination.outside || false
     };
 
-    const { error: immErr } = await supabase
-      .from('immunizations')
-      .insert(immunizationData);
-
-    if (immErr) {
-      console.error('❌ [VACCINATIONS_SAVE] Failed to save vaccination:', immErr);
+    try {
+      await immunizationModel.createImmunization(immunizationData, supabase);
+    } catch (immErr) {
+      console.error('❌ [VACCINATIONS_SAVE] Failed to save vaccination via model:', immErr);
       throw immErr;
     }
   }
   console.log('✅ [VACCINATIONS_SAVE] All vaccinations saved successfully');
 
-  // Insert other services (deworming, etc.) - assuming they go to a services table
+  // Insert other services (deworming, vitamina)
   console.log('💾 [SERVICES_SAVE] Saving additional services...');
   for (const service of services) {
-    if (service.name?.toLowerCase() === 'deworming') {
+    const name = (service.name || '').toLowerCase();
+    if (name === 'deworming') {
       console.log('🪱 [DEWORMING] Processing deworming service');
       // Insert into deworming table
       const dewormingData = {
         visit_id: visit.visit_id,
         administered_by: service.administered_by || visitData.recorded_by,
+        vital_id: createdVitalId || null,
         remarks: service.remarks || null,
         created_by: visitData.recorded_by || null,
         updated_by: visitData.recorded_by || null
@@ -167,6 +267,24 @@ const createVisit = async (visitPayload) => {
         throw dewErr;
       }
       console.log('✅ [DEWORMING] Deworming service saved successfully');
+    } else if (name === 'vitamina' || name === 'vitamin a' || name === 'vitamin_a') {
+      console.log('🧡 [VITAMIN A] Processing vitamin A service');
+      const vitaminaData = {
+        visit_id: visit.visit_id,
+        administered_by: service.administered_by || visitData.recorded_by,
+        vital_id: createdVitalId || null,
+        remarks: service.remarks || null,
+        created_by: visitData.recorded_by || null,
+        updated_by: visitData.recorded_by || null
+      };
+      const { error: vitAErr } = await supabase
+        .from('vitamina')
+        .insert(vitaminaData);
+      if (vitAErr) {
+        console.error('❌ [SERVICES_SAVE] Failed to save vitamina:', vitAErr);
+        throw vitAErr;
+      }
+      console.log('✅ [VITAMIN A] Vitamina service saved successfully');
     } else {
       // For other services, you might want to create a generic visit_services table
       // For now, we'll skip unknown services or you can add more specific handling
@@ -194,4 +312,4 @@ const createVisit = async (visitPayload) => {
   return createdVisit || visit;
 };
 
-module.exports = { listVisits, getVisitById, createVisit };
+module.exports = { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById };

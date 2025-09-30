@@ -1,4 +1,5 @@
 const supabase = require('../db');
+const bcrypt = require('bcrypt');
 
 // Map any incoming variant to DB-enforced tokens: 'Admin','HealthWorker','Guardian'
 const mapIncomingRoleToStored = (role) => {
@@ -76,7 +77,7 @@ const userModel = {
       }
 
       return {
-        users: (data || []).map(u => {
+  users: (data || []).map(u => {
           const roleDisplay = toDisplayRole(u.role);
           return {
             id: u.user_id,
@@ -118,8 +119,8 @@ const userModel = {
         .eq('user_id', id)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data || null;
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
     } catch (error) {
       console.error('Error fetching user by ID:', error);
       throw error;
@@ -172,7 +173,7 @@ const userModel = {
   const { data, error } = await supabase
         .from('users')
         .insert(payload)
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
+  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -271,7 +272,7 @@ const userModel = {
         .from('users')
         .update(filtered)
         .eq('user_id', id)
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
+  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -371,10 +372,12 @@ const userModel = {
   // Assign role to user
   assignRole: async (userId, role) => {
     try {
+      // Normalize incoming role to stored token
+      const normalized = mapIncomingRoleToStored(role);
       const { data, error } = await supabase
         .from('users')
         .update({ 
-          role: role
+          role: normalized
         })
         .eq('user_id', userId)
         .select()

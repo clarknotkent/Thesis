@@ -1,9 +1,14 @@
-const supabase = require('../db');
+const serviceSupabase = require('../db');
+
+function withClient(client) {
+  return client || serviceSupabase;
+}
 
 const patientModel = {
   // Fetch all patients with optional filters and pagination (reads from patients_view)
-  getAllPatients: async (filters = {}, page = 1, limit = 10) => {
+  getAllPatients: async (filters = {}, page = 1, limit = 10, client) => {
     try {
+      const supabase = withClient(client);
       let query = supabase
         .from('patients_view')
         .select('*', { count: 'exact' });
@@ -47,12 +52,24 @@ const patientModel = {
       const offset = (page - 1) * limit;
       const { data, error, count } = await query
         .range(offset, offset + limit - 1)
-  .order('patient_id', { ascending: false });
+        .order('patient_id', { ascending: true });
 
       if (error) throw error;
 
+      // Compute age months/days for each patient
+      const withAge = (data || []).map(p => {
+        const birth = p.date_of_birth ? new Date(p.date_of_birth) : null;
+        if (!birth) return { ...p, age_months: null, age_days: null };
+        const today = new Date();
+        let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+        if (today.getDate() < birth.getDate()) months--;
+        const ref = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+        const days = (today.getDate() >= birth.getDate()) ? (today.getDate() - birth.getDate()) : (ref - birth.getDate() + today.getDate());
+        return { ...p, age_months: Math.max(0, months), age_days: Math.max(0, days) };
+      });
+
       return {
-        patients: data || [],
+        patients: withAge,
         totalCount: count || 0,
         page: parseInt(page),
         limit: parseInt(limit),
@@ -65,8 +82,9 @@ const patientModel = {
   },
 
   // Get patient by ID (reads from patients_view)
-  getPatientById: async (id) => {
+  getPatientById: async (id, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patients_view')
         .select('*')
@@ -130,8 +148,9 @@ const patientModel = {
   },
 
   // Create a new patient
-  createPatient: async (patientData) => {
+  createPatient: async (patientData, client) => {
     try {
+      const supabase = withClient(client);
       // Validate guardian identifier if provided. The frontend may send either
       // the guardians.guardian_id (primary key) or the guardians.user_id
       // (the linked users.user_id). Normalize to the guardian primary key.
@@ -183,7 +202,8 @@ const patientModel = {
         father_contact_number: patientData.father_contact_number,
         family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
         tags: null, // Force null for tags due to database constraint
-        created_by: patientData.created_by || null
+        created_by: patientData.created_by || null,
+        updated_by: patientData.created_by || patientData.updated_by || null
       };
 
       console.log('Creating patient:', {
@@ -206,8 +226,9 @@ const patientModel = {
   },
 
   // Update a patient
-  updatePatient: async (id, patientData) => {
+  updatePatient: async (id, patientData, client) => {
     try {
+      const supabase = withClient(client);
       const updateData = { ...patientData };
       // Remove fields that don't exist in patients table
       delete updateData.birth_weight;
@@ -268,8 +289,9 @@ const patientModel = {
   },
 
   // Soft delete a patient
-  deletePatient: async (id, deletedBy) => {
+  deletePatient: async (id, deletedBy, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patients')
         .update({ 
@@ -290,8 +312,9 @@ const patientModel = {
   },
 
   // Get patient vaccination schedule (reads from patientschedule_view)
-  getPatientVaccinationSchedule: async (patientId) => {
+  getPatientVaccinationSchedule: async (patientId, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patientschedule_view')
         .select('*')
@@ -307,8 +330,9 @@ const patientModel = {
   },
 
   // Update patient tag(s)
-  updatePatientTag: async (patientId, tag) => {
+  updatePatientTag: async (patientId, tag, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patients')
         .update({ 
@@ -328,8 +352,9 @@ const patientModel = {
   },
 
   // Get patient birth history (from birthhistory table)
-  getPatientBirthHistory: async (patientId) => {
+  getPatientBirthHistory: async (patientId, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('birthhistory')
         .select(`
@@ -360,8 +385,9 @@ const patientModel = {
   },
 
   // Upsert patient birth history
-  updatePatientBirthHistory: async (patientId, birthData) => {
+  updatePatientBirthHistory: async (patientId, birthData, client) => {
     try {
+      const supabase = withClient(client);
       const payload = {
         patient_id: patientId,
         birth_weight: birthData.birth_weight,
@@ -375,7 +401,9 @@ const patientModel = {
         hearing_test_date: birthData.hearing_test_date,
         newborn_screening_date: birthData.newborn_screening_date,
         newborn_screening_result: birthData.newborn_screening_result,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        created_by: birthData.created_by || null,
+        updated_by: birthData.updated_by || null,
       };
       console.debug('updatePatientBirthHistory payload:', JSON.stringify(payload));
       // Try the straightforward upsert first
@@ -450,8 +478,9 @@ const patientModel = {
   },
 
   // Get patient vitals (latest)
-  getPatientVitals: async (patientId) => {
+  getPatientVitals: async (patientId, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('vitalsigns')
         .select('*')
@@ -469,8 +498,9 @@ const patientModel = {
   },
 
   // Add new patient vitals record
-  updatePatientVitals: async (patientId, vitalsData) => {
+  updatePatientVitals: async (patientId, vitalsData, client) => {
     try {
+      const supabase = withClient(client);
       const { data, error } = await supabase
         .from('vitalsigns')
         .insert({
@@ -494,9 +524,10 @@ const patientModel = {
   },
 
   // Update patient schedule statuses using database function
-  updatePatientSchedules: async (patientId) => {
+  updatePatientSchedules: async (patientId, client) => {
     try {
       // Call the database function to update schedule statuses for this patient
+      const supabase = withClient(client);
       const result = await supabase.rpc('update_patient_schedule_statuses');
 
       return { data: result, error: null };

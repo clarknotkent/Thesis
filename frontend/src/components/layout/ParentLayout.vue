@@ -35,31 +35,63 @@
           <i class="bi bi-house d-block fs-5"></i>
           <small>Dashboard</small>
         </router-link>
-        <router-link 
-          to="/parent/child-info" 
+        <a 
+          href="#" 
           class="nav-item flex-fill text-center p-3"
-          :class="{ 'active': $route.path === '/parent/child-info' }"
+          :class="{ 'disabled': !hasChildId }"
+          @click="navigateToChildInfo"
         >
           <i class="bi bi-person d-block fs-5"></i>
           <small>My Child</small>
-        </router-link>
-        <router-link 
-          to="/parent/vaccination-schedule" 
+        </a>
+        <a 
+          href="#" 
           class="nav-item flex-fill text-center p-3"
-          :class="{ 'active': $route.path === '/parent/vaccination-schedule' }"
+          :class="{ 'disabled': !hasChildId }"
+          @click="navigateToVaccinationSchedule"
         >
           <i class="bi bi-calendar-check d-block fs-5"></i>
           <small>Schedule</small>
-        </router-link>
+        </a>
       </div>
     </nav>
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+// Check if current route has childId parameter
+const hasChildId = computed(() => {
+  return route.params.childId
+})
+
+// Get current childId from route
+const currentChildId = computed(() => {
+  return route.params.childId
+})
+
+const navigateToChildInfo = () => {
+  if (hasChildId.value) {
+    router.push(`/parent/child-info/${currentChildId.value}`)
+  } else {
+    // If no child selected, go back to dashboard
+    router.push('/parent/dashboard')
+  }
+}
+
+const navigateToVaccinationSchedule = () => {
+  if (hasChildId.value) {
+    router.push(`/parent/vaccination-schedule/${currentChildId.value}`)
+  } else {
+    // If no child selected, go back to dashboard
+    router.push('/parent/dashboard')
+  }
+}
 
 const logout = () => {
   // Handle logout logic
@@ -105,6 +137,14 @@ const logout = () => {
   background-color: #e3f2fd;
 }
 
-.nav-item small {
-  font-size: 0.75rem;
+.nav-item.disabled {
+  color: #adb5bd !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.nav-item.disabled:hover {
+  color: #adb5bd !important;
+  background-color: transparent !important;
+}
 <!-- Styles moved to src/assets/styles/parent.css for consistency -->

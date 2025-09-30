@@ -332,7 +332,15 @@ export default {
     }
 
     const formatDate = (date) => {
-      return new Date(date).toLocaleString()
+      if (!date) return ''
+      return new Date(date).toLocaleString('en-PH', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
 
     // Event listeners

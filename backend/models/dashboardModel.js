@@ -62,7 +62,7 @@ const fetchDashboardMetrics = async () => {
     }
     
     // Get recent vaccinations (simplified - handle table if it exists)
-    let recentVaccinations = [];
+  let recentVaccinations = [];
     try {
       const { data, error } = await supabase
         .from('immunizations')
@@ -105,19 +105,24 @@ const fetchDashboardMetrics = async () => {
       status: vacc.status || 'completed'
     })) || [];
     
-    // Return enhanced dashboard data
+    // Return enhanced dashboard data with frontend-compatible field names
     return {
       stats: {
-        ...dashboardData,
+        vaccinationsToday: dashboardData.total_vaccinations_today || 0,
+        totalPatients: dashboardData.total_patients || 0,
+        activeHealthWorkers: (dashboardData.total_healthworkers || 0) + (dashboardData.total_nurses || 0) + (dashboardData.total_nutritionists || 0),
+        pendingAppointments: dashboardData.total_due_soon || 0,
         totalVaccineTypes: totalVaccineTypes,
         totalInventoryItems: inventoryCount,
         totalAvailableDoses: totalAvailableDoses,
         lowStockItems: lowStockCount,
-        expiringSoon: expiringSoonCount
+        expiringSoon: expiringSoonCount,
+        totalDefaulters: dashboardData.total_defaulters || 0,
+        totalGuardians: dashboardData.total_guardians || 0
       },
       inventoryItems: displayItems || [],
       recentVaccinations: formattedVaccinations,
-      chartData: [] // Placeholder for chart data
+      chartData: [] // Placeholder for chart data - can be enhanced later
     };
   } catch (error) {
     console.error('Error in fetchDashboardMetrics:', error);

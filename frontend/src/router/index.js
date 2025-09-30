@@ -181,7 +181,7 @@ const routes = [
     }
   },
   {
-    path: '/parent/child-info',
+    path: '/parent/child-info/:childId',
     name: 'ChildInfo',
     component: ChildInfo,
     meta: {
@@ -191,7 +191,7 @@ const routes = [
     }
   },
   {
-    path: '/parent/vaccination-schedule',
+    path: '/parent/vaccination-schedule/:childId',
     name: 'VaccinationSchedule',
     component: VaccinationSchedule,
     meta: {

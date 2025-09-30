@@ -24,7 +24,11 @@ const activityRoutes = require('./routes/activityRoutes');
 const visitRoutes = require('./routes/visitRoutes');
 const conversationRoutes = require('./routes/conversationRoutes');
 const guardianRoutes = require('./routes/guardianRoutes');
+const parentRoutes = require('./routes/parentRoutes');
 const immunizationRoutes = require('./routes/immunizationRoutes');
+const dewormingRoutes = require('./routes/dewormingRoutes');
+const vitaminaRoutes = require('./routes/vitaminaRoutes');
+const vitalsRoutes = require('./routes/vitalsRoutes');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
@@ -38,7 +42,11 @@ app.use('/api/activity-logs', activityRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/guardians', guardianRoutes);
+app.use('/api/parent', parentRoutes);
 app.use('/api/immunizations', immunizationRoutes);
+app.use('/api/deworming', dewormingRoutes);
+app.use('/api/vitamina', vitaminaRoutes);
+app.use('/api/vitals', vitalsRoutes);
 // Alias route for vaccination-records (used by frontend)
 app.use('/api/vaccination-records', immunizationRoutes);
 

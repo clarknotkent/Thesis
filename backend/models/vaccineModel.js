@@ -247,7 +247,9 @@ const vaccineModel = {
         manufacturer: vaccineData.manufacturer,
         vaccine_type: vaccineData.vaccine_type,
         category: vaccineData.category,
-        created_by: actorId || null
+        created_by: actorId || null,
+        // Also stamp updated_by on create so audit fields are never null
+        updated_by: actorId || null
       };
       const { data, error } = await supabase.from('vaccinemaster').insert(insertPayload).select().single();
       if (error) throw error;
@@ -276,8 +278,8 @@ const vaccineModel = {
       await logActivitySafely({ action_type: 'VACCINE_UPDATE', description: `Updated vaccine ${id}`, user_id: actorId || null, entity_type: 'vaccine', entity_id: id, old_value: { antigen_name: before.antigen_name, brand_name: before.brand_name }, new_value: { antigen_name: data.antigen_name, brand_name: data.brand_name } });
       return mapVaccineDTO(data);
     } catch (error) {
-  console.debug('[vaccineModel.updateVaccine] id:', id, 'payload:', vaccineData, 'actor:', actorId);
-  console.error('Error updating vaccine:', error);
+      console.debug('[vaccineModel.updateVaccine] id:', id, 'payload:', updates, 'actor:', actorId);
+      console.error('Error updating vaccine:', error);
       throw error;
     }
   },
@@ -388,6 +390,43 @@ const vaccineModel = {
     }
   },
 
+  // Apply a single inventory transaction to one inventory row; rely on DB trigger for stock change
+  applyInventoryTransaction: async (inventory_id, type, quantity, actorId, note) => {
+    try {
+      // Validate inventory exists
+      const { data: inv } = await supabase.from('inventory').select('inventory_id').eq('inventory_id', inventory_id).eq('is_deleted', false).maybeSingle();
+      if (!inv) { const e = new Error('Inventory item not found'); e.status = 404; throw e; }
+      // Insert a ledger row; DB trigger updates stock and sets balance_after
+      const { data, error } = await supabase.from('inventorytransactions').insert({
+        inventory_id,
+        transaction_type: type,
+        quantity,
+        performed_by: actorId || null,
+        created_by: actorId || null,
+        remarks: note || null,
+        date: new Date().toISOString()
+      }).select().single();
+      if (error) throw error;
+      // Refetch inventory
+      const { data: refreshed, error: selErr } = await supabase.from('inventory').select(`
+        *,
+        vaccinemaster!inventory_vaccine_id_fkey (
+          vaccine_id,
+          antigen_name,
+          brand_name,
+          manufacturer,
+          vaccine_type,
+          category
+        )
+      `).eq('inventory_id', inventory_id).single();
+      if (selErr) throw selErr;
+      return mapInventoryDTO({ ...refreshed, vaccinemaster: refreshed.vaccinemaster });
+    } catch (error) {
+      console.error('[vaccineModel.applyInventoryTransaction] error:', error);
+      throw error;
+    }
+  },
+
   // Create new inventory item
   createInventoryItem: async (inventoryData, actorId) => {
     try {
@@ -398,17 +437,66 @@ const vaccineModel = {
       if (qty < 0) { const e = new Error('current_stock_level cannot be negative'); e.status=400; throw e; }
       const exp = new Date(inventoryData.expiration_date);
       if (isNaN(exp.getTime())) { const e = new Error('Invalid expiration_date'); e.status=400; throw e; }
-      // Insert
+      // Upsert behavior: if an active row exists with same (vaccine_id, lot_number, expiration_date, storage_location), just add stock to it
+      // Find an active row with same identity (vaccine_id, lot_number, expiration_date, storage_location normalized)
+      let query = supabase
+        .from('inventory')
+        .select('*')
+        .eq('vaccine_id', inventoryData.vaccine_id)
+        .eq('lot_number', inventoryData.lot_number)
+        .eq('expiration_date', inventoryData.expiration_date)
+        .eq('is_deleted', false);
+      if (inventoryData.storage_location == null || inventoryData.storage_location === '') {
+        query = query.is('storage_location', null);
+      } else {
+        query = query.eq('storage_location', inventoryData.storage_location);
+      }
+      const { data: existing, error: findErr } = await query.limit(1).maybeSingle();
+      if (findErr && findErr.code !== 'PGRST116') throw findErr;
+
+      if (existing) {
+        // Only insert a RECEIVE transaction; the DB trigger will update stock and activity
+        const addQty = qty;
+        if (addQty > 0) {
+          await insertLedgerIfExists({
+            inventory_id: existing.inventory_id,
+            transaction_type: 'RECEIVE',
+            quantity_delta: addQty,
+            balance_after: (existing.current_stock_level || 0) + addQty,
+            performed_by: actorId,
+            note: 'Stock added to existing lot'
+          });
+        }
+        // Return refreshed DTO
+        const { data, error } = await supabase.from('inventory').select(`
+          *,
+          vaccinemaster!inventory_vaccine_id_fkey (
+            vaccine_id,
+            antigen_name,
+            brand_name,
+            manufacturer,
+            vaccine_type,
+            category
+          )
+        `).eq('inventory_id', existing.inventory_id).single();
+        if (error) throw error;
+        return mapInventoryDTO({ ...data, vaccinemaster: data.vaccinemaster });
+      }
+
+      // Insert new inventory row (initial stock will be applied by an accompanying RECEIVE transaction)
       const { data: insertedData, error: insertError } = await supabase.from('inventory').insert({
         vaccine_id: inventoryData.vaccine_id,
         lot_number: inventoryData.lot_number,
         expiration_date: inventoryData.expiration_date,
-        current_stock_level: qty,
+        current_stock_level: 0, // start at 0; let transaction trigger set actual stock
         storage_location: inventoryData.storage_location || null,
-        created_by: actorId || null
+        created_by: actorId || null,
+        updated_by: actorId || null
       }).select().single();
       if (insertError) throw insertError;
-  await insertLedgerIfExists({ inventory_id: insertedData.inventory_id, transaction_type: 'RECEIVE', quantity_delta: qty, balance_after: qty, performed_by: actorId, note: 'Initial stock' });
+      if (qty > 0) {
+        await insertLedgerIfExists({ inventory_id: insertedData.inventory_id, transaction_type: 'RECEIVE', quantity_delta: qty, balance_after: qty, performed_by: actorId, note: 'Initial stock' });
+      }
       await logActivitySafely({ action_type: 'INVENTORY_CREATE', description: `Added inventory ${insertedData.inventory_id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: insertedData.inventory_id, new_value: { lot_number: insertedData.lot_number, qty } });
       const { data, error } = await supabase.from('inventory').select(`
         *,
@@ -464,6 +552,7 @@ const vaccineModel = {
     try {
       const { data: before } = await supabase.from('inventory').select('*').eq('inventory_id', id).single();
       if (!before) return null;
+      // Prepare metadata patch (exclude stock; stock will be adjusted via transactions to avoid double entries)
       const patch = {
         vaccine_id: inventoryData.vaccine_id,
         lot_number: inventoryData.lot_number,
@@ -472,10 +561,32 @@ const vaccineModel = {
         updated_by: actorId || null,
         updated_at: new Date().toISOString()
       };
-      const newQty = Number(inventoryData.current_stock_level);
-      if (isNaN(newQty) || newQty < 0) { const e = new Error('Invalid current_stock_level'); e.status=400; throw e; }
-      patch.current_stock_level = newQty;
-      const { data, error } = await supabase.from('inventory').update(patch).eq('inventory_id', id).select(`
+
+      // Apply metadata update first
+      const { error: updErr } = await supabase.from('inventory').update(patch).eq('inventory_id', id);
+      if (updErr) throw updErr;
+
+      // Handle stock change through a single transaction insert to avoid doubling
+      let didStockChange = false;
+      if (inventoryData.current_stock_level != null) {
+        const newQty = Number(inventoryData.current_stock_level);
+        if (isNaN(newQty) || newQty < 0) { const e = new Error('Invalid current_stock_level'); e.status=400; throw e; }
+        const delta = newQty - (before.current_stock_level || 0);
+        if (delta !== 0) {
+          didStockChange = true;
+          await insertLedgerIfExists({
+            inventory_id: id,
+            transaction_type: delta > 0 ? 'RECEIVE' : 'ISSUE',
+            quantity_delta: Math.abs(delta),
+            balance_after: newQty,
+            performed_by: actorId,
+            note: 'Manual adjustment'
+          });
+        }
+      }
+
+      // Refetch updated row (stock level should now reflect the trigger-applied value if a transaction was inserted)
+      const { data, error } = await supabase.from('inventory').select(`
         *,
         vaccinemaster!inventory_vaccine_id_fkey (
           vaccine_id,
@@ -485,13 +596,20 @@ const vaccineModel = {
           vaccine_type,
           category
         )
-      `).single();
+      `).eq('inventory_id', id).single();
       if (error) throw error;
-      const delta = newQty - (before.current_stock_level || 0);
-      if (delta !== 0) {
-    await insertLedgerIfExists({ inventory_id: id, transaction_type: delta>0?'RECEIVE':'ISSUE', quantity_delta: delta, balance_after: newQty, performed_by: actorId, note: 'Manual adjustment' });
+
+      // Log an inventory update activity only when non-stock fields changed
+      const nonStockChanged = (
+        before.vaccine_id !== patch.vaccine_id ||
+        before.lot_number !== patch.lot_number ||
+        String(before.expiration_date) !== String(patch.expiration_date) ||
+        (before.storage_location || null) !== (patch.storage_location || null)
+      );
+      if (nonStockChanged) {
+        await logActivitySafely({ action_type: 'INVENTORY_UPDATE', description: `Updated inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { lot: before.lot_number }, new_value: { lot: patch.lot_number } });
       }
-      await logActivitySafely({ action_type: 'INVENTORY_UPDATE', description: `Updated inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { qty: before.current_stock_level }, new_value: { qty: newQty } });
+
       return mapInventoryDTO({ ...data, vaccinemaster: data.vaccinemaster });
     } catch (error) {
   console.debug('[vaccineModel.updateInventoryItem] id:', id, 'payload:', inventoryData, 'actor:', actorId);
@@ -508,7 +626,7 @@ const vaccineModel = {
       const { data, error } = await supabase.from('inventory').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null }).eq('inventory_id', id).select('*').single();
       if (error) throw error;
       if ((before.current_stock_level || 0) > 0) {
-  await insertLedgerIfExists({ inventory_id: id, transaction_type: 'ADJUST', quantity_delta: -(before.current_stock_level||0), balance_after: 0, performed_by: actorId, note: 'Deletion correction' });
+        await insertLedgerIfExists({ inventory_id: id, transaction_type: 'ADJUST', quantity_delta: 0, balance_after: 0, performed_by: actorId, note: 'Deletion correction' });
       }
       await logActivitySafely({ action_type: 'INVENTORY_DELETE', description: `Deleted inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { qty: before.current_stock_level } });
       return mapInventoryDTO(data);

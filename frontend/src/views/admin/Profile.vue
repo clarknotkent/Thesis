@@ -194,28 +194,8 @@
             </div>
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Birthdate:</label>
-              <div v-if="editMode" class="input-group">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  v-model="profileForm.birthdate" 
-                  placeholder="MM/DD/YYYY"
-                  @blur="validateAndFormatDate('birthdate')"
-                />
-                <button 
-                  class="btn btn-outline-secondary" 
-                  type="button"
-                  @click="openDatePicker('birthdate')"
-                  title="Select date"
-                >
-                  <i class="bi bi-calendar3"></i>
-                </button>
-                <input 
-                  type="date" 
-                  ref="datePickerBirthdate"
-                  style="position: absolute; visibility: hidden; pointer-events: none;"
-                  @change="onDatePickerChange('birthdate', $event)"
-                />
+              <div v-if="editMode">
+                <DateInput v-model="profileForm.birthdate" />
               </div>
               <input 
                 v-else
@@ -426,6 +406,7 @@
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import api from '@/services/api'
+import DateInput from '@/components/common/DateInput.vue'
 
 // Reactive data
 const loading = ref(true)
@@ -434,8 +415,7 @@ const changingPassword = ref(false)
 const editMode = ref(false)
 const showPasswordModal = ref(false)
 
-// Date picker ref
-const datePickerBirthdate = ref(null)
+// DateInput handles date selection; no native date refs needed
 
 // Profile data
 const profile = ref({
@@ -681,7 +661,8 @@ const convertToISODate = (mmddyyyy) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Never'
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -690,7 +671,8 @@ const formatDate = (dateString) => {
 
 const formatMemberSince = (dateString) => {
   if (!dateString) return 'Unknown'
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short'
   })
@@ -706,7 +688,7 @@ const formatLastLogin = (dateString) => {
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Yesterday'
   if (diffDays < 30) return `${diffDays} days ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' })
 }
 
 const getRoleDisplayName = (role) => {

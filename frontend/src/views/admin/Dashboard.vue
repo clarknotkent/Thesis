@@ -196,7 +196,20 @@ const recentVaccinations = ref([])
 const vaccineChartData = ref([])
 
 const lastUpdated = computed(() => {
-  return new Date().toLocaleString()
+  try {
+    return new Date().toLocaleString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date().toLocaleString()
+  }
 })
 
 // Methods
@@ -233,11 +246,17 @@ const refreshData = async () => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString()
+  }
 }
 
 // Lifecycle

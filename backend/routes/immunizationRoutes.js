@@ -8,15 +8,16 @@ const {
   updateImmunizationRecord,
   deleteImmunizationRecord,
   scheduleImmunization,
-  enforceVaccineInterval
-  , updatePatientSchedule
+  enforceVaccineInterval,
+  updatePatientSchedule,
+  manualReschedulePatientSchedule
 } = require('../controllers/immunizationController');
 
 // GET /api/immunizations - Get all immunizations
-router.get('/', listImmunizations);
+router.get('/', authenticateRequest, checkUserMapping, listImmunizations);
 
 // GET /api/immunizations/:id - Get immunization details
-router.get('/:id', getImmunizationRecord);
+router.get('/:id', authenticateRequest, checkUserMapping, getImmunizationRecord);
 
 // POST /api/immunizations - Create a new immunization
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), createImmunizationRecord);
@@ -35,5 +36,8 @@ router.post('/enforce-interval', authenticateRequest, checkUserMapping, authoriz
 
 // PUT /api/immunizations/schedule/:id - Update a scheduled appointment (manual edit)
 router.put('/schedule/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), updatePatientSchedule);
+
+// POST /api/immunizations/manual-reschedule - Manual reschedule with status update
+router.post('/manual-reschedule', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), manualReschedulePatientSchedule);
 
 module.exports = router;

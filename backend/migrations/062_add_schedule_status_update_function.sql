@@ -10,24 +10,24 @@ DECLARE
     v_actor bigint := NULLIF(current_setting('app.user_id', true),'')::bigint;
 BEGIN
     -- Update schedules that are past due but not yet completed
+    -- Preserve 'Rescheduled' status - don't change it to 'Pending'
     UPDATE patientschedule
     SET
         status = CASE
-            WHEN scheduled_date < CURRENT_DATE THEN 'overdue'
-            WHEN scheduled_date = CURRENT_DATE THEN 'due'
-            ELSE 'pending'
+            WHEN status = 'Rescheduled' AND scheduled_date >= CURRENT_DATE THEN status  -- Keep Rescheduled
+            WHEN scheduled_date < CURRENT_DATE THEN 'Missed'
+            ELSE 'Pending'
         END,
         updated_at = CURRENT_TIMESTAMP,
         updated_by = v_actor
     WHERE
-        status NOT IN ('completed', 'administered', 'given')  -- Don't update completed schedules
+        status NOT IN ('Completed')  -- Don't update completed schedules
         AND is_deleted = false
         AND scheduled_date <= CURRENT_DATE;
 
     -- Log the status update operation
-    INSERT INTO activitylogs(action_type, actor_user_id, target_table, entity_id, details)
-    VALUES ('SCHEDULE_STATUS_UPDATE', v_actor, 'patientschedule', NULL,
-           jsonb_build_object('operation', 'automatic_status_update', 'updated_at', CURRENT_TIMESTAMP));
+    INSERT INTO activitylogs(action_type, user_id, entity_type, entity_id, description)
+    VALUES ('SCHEDULE_UPDATE', v_actor, 'patientschedule', NULL, 'System updated Schedule Statuses');
 END;
 $function$;
 

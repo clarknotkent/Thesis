@@ -16,16 +16,16 @@ const {
 } = require('../controllers/userController');
 
 // GET /api/users - Get all users with pagination and filtering
-router.get('/', listUsers);
+router.get('/', authenticateRequest, checkUserMapping, listUsers);
 
 // GET /api/users/:id - Get user by ID
-router.get('/:id', getUser);
+router.get('/:id', authenticateRequest, checkUserMapping, getUser);
 
 // GET /api/users/:id/profile - Get user profile
-router.get('/:id/profile', getUserProfile);
+router.get('/:id/profile', authenticateRequest, checkUserMapping, getUserProfile);
 
 // GET /api/users/:id/activity - Get user activity logs
-router.get('/:id/activity', getUserActivityLogs);
+router.get('/:id/activity', authenticateRequest, checkUserMapping, getUserActivityLogs);
 
 // POST /api/users - Create new user
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createUser);

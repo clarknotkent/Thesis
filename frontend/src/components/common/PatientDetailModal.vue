@@ -247,6 +247,7 @@
                       <th width="15%">Scheduled Date</th>
                       <th width="10%">Dose Number</th>
                       <th width="10%">Status</th>
+                      <th width="10%">Days Overdue</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
@@ -264,6 +265,10 @@
                         }">
                           {{ vaccine.status }}
                         </span>
+                      </td>
+                      <td class="text-center">
+                        <span v-if="computeDaysOverdue(vaccine) > 0" class="text-danger fw-semibold">{{ computeDaysOverdue(vaccine) }}</span>
+                        <span v-else class="text-muted">—</span>
                       </td>
                       <td><small class="text-muted">{{ vaccine.notes || '' }}</small></td>
                     </tr>
@@ -304,6 +309,7 @@
     :patient-id="patientId" 
     @close="showVaccinationEditor = false"
     @update="fetchPatientData"
+    @open-add-patient-record="onOpenAddPatientRecord"
   />
 
   <!-- Schedule Editor Modal -->
@@ -341,7 +347,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'open-add-patient-record'])
 
 const loading = ref(false)
 const patientData = ref(null)
@@ -397,8 +403,8 @@ const fetchPatientData = async () => {
     // Normalize schedule array and map vaccine names where possible
     const scheduleArr = Array.isArray(schedule) ? schedule : (schedule.data || [])
     const computeScheduleStatus = (s) => {
-      // If backend already provided a definitive status, trust it for Completed/Missed
-      if (s.status && ['Completed', 'Missed'].includes(s.status)) return s.status
+      // If backend already provided a definitive status, trust it for Completed/Missed/Rescheduled
+      if (s.status && ['Completed', 'Missed', 'Rescheduled'].includes(s.status)) return s.status
 
       const scheduled = s.scheduled_date || s.scheduledDate || s.date || null
       if (!scheduled) return s.status || 'Scheduled'
@@ -519,10 +525,14 @@ const closeModal = () => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  if (!dateString) return '—'
+  return new Date(dateString).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -535,6 +545,20 @@ const formatDateMDY = (dateString) => {
   return `${mm}/${dd}/${yyyy}`
 }
 
+// Compute days overdue given a schedule row. Uses scheduledDate and optional grace (grace_period/dose_grace_days)
+const computeDaysOverdue = (s) => {
+  const scheduled = s.scheduledDate || s.scheduled_date || s.date || null
+  if (!scheduled) return 0
+  const grace = parseInt(s.grace_period || s.gracePeriod || s.dose_grace_days || 0, 10) || 0
+  const scheduledDate = new Date(scheduled)
+  const deadline = new Date(scheduledDate)
+  deadline.setDate(deadline.getDate() + grace)
+  const now = new Date()
+  if (now <= deadline) return 0
+  const diffMs = now.getTime() - deadline.getTime()
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24))
+}
+
 // Watch for show prop changes to fetch data when modal opens
 watch(() => props.show, (newVal) => {
   if (newVal && props.patientId) {
@@ -543,6 +567,10 @@ watch(() => props.show, (newVal) => {
 })
 
 // Watch for patientId changes
+const onOpenAddPatientRecord = (data) => {
+  emit('open-add-patient-record', data)
+}
+
 watch(() => props.patientId, (newVal) => {
   if (props.show && newVal) {
     fetchPatientData()

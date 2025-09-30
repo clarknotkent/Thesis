@@ -1,6 +1,66 @@
 <template>
   <ParentLayout>
     <div class="vaccination-schedule">
+      <!-- Child Header -->
+      <div class="child-header mb-4">
+        <AppCard class="parent-card">
+          <div class="d-flex align-items-center">
+            <div class="child-avatar me-3">
+              <i class="bi bi-person-circle text-primary" style="font-size: 3rem;"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h4 class="mb-1">{{ childInfo.name }}</h4>
+              <p class="text-muted mb-2">{{ childInfo.ageDisplay }} • {{ childInfo.gender }}</p>
+              <div class="vaccination-progress">
+                <div class="progress mb-2" style="height: 8px;">
+                  <div
+                    class="progress-bar bg-success"
+                    :style="{ width: scheduleStats.percentage + '%' }"
+                  ></div>
+                </div>
+                <small class="text-muted">
+                  {{ scheduleStats.completed }} of {{ scheduleStats.total }} vaccinations completed
+                </small>
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="fs-2 fw-bold text-success">{{ scheduleStats.percentage }}%</div>
+              <small class="text-muted">Complete</small>
+            </div>
+          </div>
+        </AppCard>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions-bar mb-4">
+        <div class="row g-2">
+          <div class="col-6 col-md-3">
+            <button class="action-btn" @click="downloadSchedule">
+              <i class="bi bi-download"></i>
+              <span>Download</span>
+            </button>
+          </div>
+          <div class="col-6 col-md-3">
+            <button class="action-btn" @click="scheduleAppointment">
+              <i class="bi bi-calendar-plus"></i>
+              <span>Book Visit</span>
+            </button>
+          </div>
+          <div class="col-6 col-md-3">
+            <button class="action-btn" @click="contactDoctor">
+              <i class="bi bi-chat-dots"></i>
+              <span>Ask Doctor</span>
+            </button>
+          </div>
+          <div class="col-6 col-md-3">
+            <button class="action-btn" @click="viewReminders">
+              <i class="bi bi-bell"></i>
+              <span>Reminders</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Schedule Overview -->
       <div class="schedule-overview mb-4">
         <AppCard class="parent-card">
@@ -12,21 +72,21 @@
           </template>
           <div class="row g-3 text-center">
             <div class="col-4">
-              <div class="parent-stat-card bg-success">
-                <span class="parent-stat-number">{{ scheduleStats.completed }}</span>
-                <span class="parent-stat-label">Completed</span>
+              <div class="stat-card bg-success">
+                <div class="stat-number">{{ scheduleStats.completed }}</div>
+                <div class="stat-label">Completed</div>
               </div>
             </div>
             <div class="col-4">
-              <div class="parent-stat-card bg-warning">
-                <span class="parent-stat-number">{{ scheduleStats.upcoming }}</span>
-                <span class="parent-stat-label">Upcoming</span>
+              <div class="stat-card bg-warning">
+                <div class="stat-number">{{ scheduleStats.upcoming }}</div>
+                <div class="stat-label">Upcoming</div>
               </div>
             </div>
             <div class="col-4">
-              <div class="parent-stat-card bg-danger">
-                <span class="parent-stat-number">{{ scheduleStats.overdue }}</span>
-                <span class="parent-stat-label">Overdue</span>
+              <div class="stat-card bg-danger">
+                <div class="stat-number">{{ scheduleStats.overdue }}</div>
+                <div class="stat-label">Overdue</div>
               </div>
             </div>
           </div>
@@ -52,94 +112,99 @@
 
       <!-- Vaccination Timeline -->
       <div class="vaccination-timeline">
-        <div class="parent-timeline">
-          <div 
-            v-for="vaccine in filteredVaccinations" 
+        <div class="timeline-container">
+          <div
+            v-for="(vaccine, index) in filteredVaccinations"
             :key="vaccine.id"
-            class="parent-timeline-item"
+            class="timeline-item"
             :class="vaccine.status"
           >
-            <AppCard class="parent-card">
-              <div class="d-flex align-items-start">
-                <div class="vaccine-icon me-3">
-                  <i 
-                    :class="getVaccineIcon(vaccine.status)" 
-                    :style="{ color: getStatusColor(vaccine.status) }"
-                    style="font-size: 1.5rem;"
-                  ></i>
-                </div>
-                <div class="flex-grow-1">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="fw-bold mb-0">{{ vaccine.name }}</h6>
-                    <span :class="getStatusBadgeClass(vaccine.status)">
-                      {{ vaccine.status.charAt(0).toUpperCase() + vaccine.status.slice(1) }}
-                    </span>
+            <div class="timeline-marker">
+              <i :class="getVaccineIcon(vaccine.status)"></i>
+            </div>
+            <div class="timeline-content">
+              <AppCard class="vaccine-card">
+                <div class="d-flex align-items-start">
+                  <div class="vaccine-icon me-3">
+                    <i
+                      :class="getVaccineIcon(vaccine.status)"
+                      :style="{ color: getStatusColor(vaccine.status) }"
+                      style="font-size: 1.5rem;"
+                    ></i>
                   </div>
-                  
-                  <div class="vaccine-details">
-                    <div class="row g-2 mb-2">
-                      <div class="col-6">
-                        <small class="text-muted">Recommended Age:</small>
-                        <div class="fw-semibold">{{ vaccine.recommendedAge }}</div>
-                      </div>
-                      <div class="col-6">
-                        <small class="text-muted">{{ vaccine.status === 'completed' ? 'Date Given:' : 'Due Date:' }}</small>
-                        <div class="fw-semibold">{{ vaccine.date }}</div>
-                      </div>
+                  <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <h6 class="fw-bold mb-0">{{ vaccine.name }}</h6>
+                      <span :class="getStatusBadgeClass(vaccine.status)">
+                        {{ vaccine.status.charAt(0).toUpperCase() + vaccine.status.slice(1) }}
+                      </span>
                     </div>
-                    
-                    <div v-if="vaccine.status === 'completed'" class="completion-info">
-                      <div class="row g-2">
+
+                    <div class="vaccine-details">
+                      <div class="row g-2 mb-2">
                         <div class="col-6">
-                          <small class="text-muted">Batch Number:</small>
-                          <div class="fw-semibold">{{ vaccine.batchNumber }}</div>
+                          <small class="text-muted">Recommended Age:</small>
+                          <div class="fw-semibold">{{ vaccine.recommendedAge }}</div>
                         </div>
                         <div class="col-6">
-                          <small class="text-muted">Health Worker:</small>
-                          <div class="fw-semibold">{{ vaccine.healthWorker }}</div>
+                          <small class="text-muted">{{ vaccine.status === 'completed' ? 'Date Given:' : 'Due Date:' }}</small>
+                          <div class="fw-semibold">{{ vaccine.date }}</div>
                         </div>
                       </div>
-                      <div v-if="vaccine.notes" class="mt-2">
-                        <small class="text-muted">Notes:</small>
-                        <div class="fw-semibold">{{ vaccine.notes }}</div>
-                      </div>
-                    </div>
-                    
-                    <div v-else-if="vaccine.status === 'upcoming'" class="upcoming-info">
-                      <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                          <small class="text-muted">{{ getDaysUntilDue(vaccine.date) }}</small>
+
+                      <div v-if="vaccine.status === 'completed'" class="completion-info">
+                        <div class="row g-2">
+                          <div class="col-6">
+                            <small class="text-muted">Batch Number:</small>
+                            <div class="fw-semibold">{{ vaccine.batchNumber }}</div>
+                          </div>
+                          <div class="col-6">
+                            <small class="text-muted">Health Worker:</small>
+                            <div class="fw-semibold">{{ vaccine.healthWorker }}</div>
+                          </div>
                         </div>
-                        <AppButton
-                          size="sm"
-                          variant="outline-primary"
-                          @click="scheduleAppointment(vaccine)"
-                          icon="bi bi-calendar-plus"
-                        >
-                          Schedule
-                        </AppButton>
-                      </div>
-                    </div>
-                    
-                    <div v-else-if="vaccine.status === 'overdue'" class="overdue-info">
-                      <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                          <small class="text-danger">{{ getDaysOverdue(vaccine.date) }}</small>
+                        <div v-if="vaccine.notes" class="mt-2">
+                          <small class="text-muted">Notes:</small>
+                          <div class="fw-semibold">{{ vaccine.notes }}</div>
                         </div>
-                        <AppButton
-                          size="sm"
-                          variant="danger"
-                          @click="scheduleUrgent(vaccine)"
-                          icon="bi bi-exclamation-triangle"
-                        >
-                          Schedule Now
-                        </AppButton>
+                      </div>
+
+                      <div v-else-if="vaccine.status === 'upcoming'" class="upcoming-info">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <small class="text-muted">{{ getDaysUntilDue(vaccine.date) }}</small>
+                          </div>
+                          <AppButton
+                            size="sm"
+                            variant="outline-primary"
+                            @click="scheduleAppointment(vaccine)"
+                            icon="bi bi-calendar-plus"
+                          >
+                            Schedule
+                          </AppButton>
+                        </div>
+                      </div>
+
+                      <div v-else-if="vaccine.status === 'overdue'" class="overdue-info">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <small class="text-danger fw-semibold">{{ getDaysOverdue(vaccine.date) }}</small>
+                          </div>
+                          <AppButton
+                            size="sm"
+                            variant="danger"
+                            @click="scheduleUrgent(vaccine)"
+                            icon="bi bi-exclamation-triangle"
+                          >
+                            Schedule Now
+                          </AppButton>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </AppCard>
+              </AppCard>
+            </div>
           </div>
         </div>
       </div>
@@ -177,20 +242,64 @@
         </AppCard>
       </div>
 
+      <!-- Educational Resources -->
+      <div class="educational-resources mb-4">
+        <AppCard class="parent-card">
+          <template #header>
+            <div class="bg-info text-white">
+              <i class="bi bi-book me-2"></i>
+              Vaccination Information
+            </div>
+          </template>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="resource-item">
+                <i class="bi bi-shield-check text-info fs-3 mb-2"></i>
+                <h6>Why Vaccinate?</h6>
+                <p class="small text-muted">Learn about the importance of vaccines in protecting your child from serious diseases.</p>
+                <AppButton variant="outline-info" size="sm" @click="learnMore('importance')">
+                  Learn More
+                </AppButton>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="resource-item">
+                <i class="bi bi-question-circle text-success fs-3 mb-2"></i>
+                <h6>Common Questions</h6>
+                <p class="small text-muted">Find answers to frequently asked questions about vaccinations.</p>
+                <AppButton variant="outline-success" size="sm" @click="learnMore('faq')">
+                  View FAQ
+                </AppButton>
+              </div>
+            </div>
+          </div>
+        </AppCard>
+      </div>
+
       <!-- Emergency Contact -->
       <div class="emergency-contact">
         <AppCard class="parent-emergency-card text-center">
-          <i class="bi bi-question-circle-fill fs-3 mb-2"></i>
+          <i class="bi bi-question-circle-fill fs-3 mb-2 text-warning"></i>
           <h6 class="mb-2">Have Questions About Vaccinations?</h6>
-          <p class="mb-3">Contact our health center for guidance</p>
-          <AppButton
-            variant="light"
-            size="sm"
-            href="tel:+639171234567"
-            icon="bi bi-telephone"
-          >
-            Call Health Center
-          </AppButton>
+          <p class="mb-3">Contact our health center for guidance and support</p>
+          <div class="d-flex gap-2 justify-content-center">
+            <AppButton
+              variant="light"
+              size="sm"
+              href="tel:+639171234567"
+              icon="bi bi-telephone"
+            >
+              Call Health Center
+            </AppButton>
+            <AppButton
+              variant="outline-primary"
+              size="sm"
+              @click="contactDoctor"
+              icon="bi bi-chat-dots"
+            >
+              Message Doctor
+            </AppButton>
+          </div>
         </AppCard>
       </div>
     </div>
@@ -198,78 +307,141 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import api from '@/services/api'
 
+// Reactive data
+const loading = ref(true)
 const activeFilter = ref('all')
-
+const childInfo = ref({
+  name: '',
+  ageDisplay: '',
+  gender: ''
+})
 const scheduleStats = ref({
-  completed: 8,
-  upcoming: 2,
-  overdue: 0
+  completed: 0,
+  upcoming: 0,
+  overdue: 0,
+  total: 0,
+  percentage: 0
 })
+const nextAppointment = ref(null)
+const vaccinations = ref([])
 
-const nextAppointment = ref({
-  vaccine: 'COVID-19 Booster',
-  date: 'August 25, 2025',
-  time: '10:00 AM',
-  location: 'Manila Health Center'
-})
+// Route
+const route = useRoute()
+const router = useRouter()
+const childId = route.params.childId
 
-const vaccinations = ref([
-  {
-    id: 1,
-    name: 'COVID-19 Vaccine (1st Dose)',
-    status: 'completed',
-    recommendedAge: '5+ years',
-    date: 'Jul 10, 2025',
-    batchNumber: 'PF20250710',
-    healthWorker: 'Nurse Ana Santos',
-    notes: 'No adverse reactions observed'
-  },
-  {
-    id: 2,
-    name: 'Influenza Vaccine',
-    status: 'completed',
-    recommendedAge: '6 months+',
-    date: 'Jun 15, 2025',
-    batchNumber: 'SF20250615',
-    healthWorker: 'Dr. Juan dela Cruz'
-  },
-  {
-    id: 3,
-    name: 'COVID-19 Booster',
-    status: 'upcoming',
-    recommendedAge: '5+ years',
-    date: 'Aug 25, 2025'
-  },
-  {
-    id: 4,
-    name: 'MMR Vaccine',
-    status: 'completed',
-    recommendedAge: '12-15 months',
-    date: 'May 20, 2025',
-    batchNumber: 'MK20250520',
-    healthWorker: 'Nurse Maria Lopez'
-  },
-  {
-    id: 5,
-    name: 'Varicella Vaccine',
-    status: 'upcoming',
-    recommendedAge: '12-18 months',
-    date: 'Sep 5, 2025'
+// Check if childId is available
+onMounted(() => {
+  if (!childId) {
+    router.push('/parent/dashboard')
+  } else {
+    fetchVaccinationSchedule()
   }
-])
+})
 
+// Computed
 const filteredVaccinations = computed(() => {
   if (activeFilter.value === 'all') {
     return vaccinations.value
   }
   return vaccinations.value.filter(vaccine => vaccine.status === activeFilter.value)
 })
+
+// Methods
+const fetchVaccinationSchedule = async () => {
+  try {
+    loading.value = true
+
+    // Fetch child info first
+    const childResponse = await api.get(`/parent/children/${childId}`)
+    const childData = childResponse.data.data
+    childInfo.value = {
+      name: childData.name || 'Child',
+      ageDisplay: childData.ageDisplay || childData.age ? `${childData.age} years old` : 'Age not available',
+      gender: childData.gender || childData.sex || 'Not specified'
+    }
+
+    // Fetch vaccination schedule
+    const response = await api.get(`/parent/children/${childId}/schedule`)
+    const data = response.data.data
+
+    // Update stats with percentage calculation
+    const stats = data.stats || { completed: 0, upcoming: 0, overdue: 0 }
+    const total = stats.completed + stats.upcoming + stats.overdue
+    const percentage = total > 0 ? Math.round((stats.completed / total) * 100) : 0
+
+    scheduleStats.value = {
+      ...stats,
+      total,
+      percentage
+    }
+
+    // Process vaccinations
+    vaccinations.value = data.schedule?.map(item => ({
+      id: item.id,
+      name: item.name,
+      status: item.status,
+      recommendedAge: item.recommendedAge,
+      date: new Date(item.date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }),
+      scheduledDate: item.scheduledDate,
+      actualDate: item.actualDate,
+      vaccineId: item.vaccineId,
+      doseNumber: item.doseNumber,
+      batchNumber: item.actualDate ? `Batch-${String(item.id).slice(-4)}` : null,
+      healthWorker: item.actualDate ? 'Health Worker' : null,
+      notes: item.actualDate ? 'Vaccination completed successfully' : null
+    })) || []
+
+    // Set next appointment (first upcoming vaccination)
+    const upcomingVaccinations = vaccinations.value.filter(v => v.status === 'upcoming')
+    if (upcomingVaccinations.length > 0) {
+      const nextVacc = upcomingVaccinations[0]
+      nextAppointment.value = {
+        vaccine: nextVacc.name,
+        date: nextVacc.date,
+        time: '9:00 AM', // Default time
+        location: 'Local Health Center'
+      }
+    } else {
+      nextAppointment.value = null
+    }
+
+  } catch (error) {
+    console.error('Error fetching vaccination schedule:', error)
+    const { addToast } = useToast()
+    addToast({ title: 'Error', message: 'Failed to load vaccination schedule', type: 'error' })
+
+    // Fallback data
+    childInfo.value = {
+      name: 'Child',
+      ageDisplay: 'Age not available',
+      gender: 'Not specified'
+    }
+    scheduleStats.value = {
+      completed: 0,
+      upcoming: 0,
+      overdue: 0,
+      total: 0,
+      percentage: 0
+    }
+    vaccinations.value = []
+    nextAppointment.value = null
+  } finally {
+    loading.value = false
+  }
+}
 
 const getVaccineIcon = (status) => {
   const icons = {
@@ -299,11 +471,12 @@ const getStatusBadgeClass = (status) => {
 }
 
 const getDaysUntilDue = (dueDate) => {
+  if (!dueDate) return 'Date not set'
   const due = new Date(dueDate)
   const today = new Date()
   const diffTime = due - today
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
+
   if (diffDays === 0) return 'Due today'
   if (diffDays === 1) return 'Due tomorrow'
   if (diffDays > 0) return `Due in ${diffDays} days`
@@ -311,11 +484,12 @@ const getDaysUntilDue = (dueDate) => {
 }
 
 const getDaysOverdue = (dueDate) => {
+  if (!dueDate) return 'Date not set'
   const due = new Date(dueDate)
   const today = new Date()
   const diffTime = today - due
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
+
   if (diffDays === 1) return 'Overdue by 1 day'
   return `Overdue by ${diffDays} days`
 }
@@ -323,23 +497,64 @@ const getDaysOverdue = (dueDate) => {
 const { addToast } = useToast()
 
 const scheduleAppointment = (vaccine) => {
-  addToast({ title: 'Info', message: `Scheduling appointment for ${vaccine.name}...`, type: 'info' })
+  addToast({
+    title: 'Info',
+    message: `Contact health center to schedule appointment for ${vaccine.name}`,
+    type: 'info'
+  })
 }
 
 const scheduleUrgent = (vaccine) => {
-  addToast({ title: 'Info', message: `Scheduling urgent appointment for ${vaccine.name}...`, type: 'info' })
+  addToast({
+    title: 'Urgent',
+    message: `Please contact health center immediately for ${vaccine.name}`,
+    type: 'warning'
+  })
 }
 
 const reschedule = () => {
-  addToast({ title: 'Info', message: 'Rescheduling appointment...', type: 'info' })
+  addToast({ title: 'Info', message: 'Contact health center to reschedule appointment', type: 'info' })
 }
 
 const cancelAppointment = () => {
-  if (confirm('Are you sure you want to cancel this appointment?')) {
-    nextAppointment.value = null
-    addToast({ title: 'Cancelled', message: 'Appointment cancelled', type: 'success' })
-  }
+  addToast({ title: 'Info', message: 'Contact health center to cancel appointment', type: 'info' })
 }
+
+// New action methods
+const downloadSchedule = () => {
+  const { addToast } = useToast()
+  addToast({ title: 'Info', message: 'Vaccination schedule download feature coming soon', type: 'info' })
+}
+
+const contactDoctor = () => {
+  const { addToast } = useToast()
+  addToast({ title: 'Info', message: 'Direct messaging with healthcare workers coming soon', type: 'info' })
+}
+
+const viewReminders = () => {
+  const { addToast } = useToast()
+  addToast({ title: 'Info', message: 'Vaccination reminders feature coming soon', type: 'info' })
+}
+
+const learnMore = (topic) => {
+  const { addToast } = useToast()
+  const messages = {
+    importance: 'Learn about vaccine importance and disease prevention',
+    faq: 'Find answers to common vaccination questions'
+  }
+  addToast({ title: 'Info', message: messages[topic] || 'Educational content coming soon', type: 'info' })
+}
+
+// Lifecycle
+onMounted(() => {
+  if (childId) {
+    fetchVaccinationSchedule()
+  } else {
+    const { addToast } = useToast()
+    addToast({ title: 'Error', message: 'No child selected', type: 'error' })
+    loading.value = false
+  }
+})
 </script>
 
 <!-- Styles moved to src/assets/styles/parent.css for consistency -->

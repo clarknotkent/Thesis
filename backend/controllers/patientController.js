@@ -1,4 +1,5 @@
 const patientModel = require('../models/patientModel');
+const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const immunizationModel = require('../models/immunizationModel');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
@@ -41,7 +42,8 @@ const getAllPatients = async (req, res) => {
     } = req.query;
     
     const filters = { search, sex: gender, status, age_group, barangay };
-    const patients = await patientModel.getAllPatients(filters, page, limit);
+  const supabase = getSupabaseForRequest(req);
+  const patients = await patientModel.getAllPatients(filters, page, limit, supabase);
     
     res.json({ 
       success: true, 
@@ -83,7 +85,38 @@ const createPatient = async (req, res) => {
       });
     }
 
-    const newPatient = await patientModel.createPatient(patientData);
+  const supabase = getSupabaseForRequest(req);
+  // Autofill mother/father fields if relationship_to_guardian is Mother/Father
+  try {
+    const rel = (patientData.relationship_to_guardian || '').toLowerCase();
+    if ((rel === 'mother' || rel === 'father') && patientData.guardian_id) {
+      const { data: g, error: gErr } = await supabase
+        .from('guardians')
+        .select('surname, firstname, middlename, occupation, contact_number')
+        .eq('guardian_id', patientData.guardian_id)
+        .eq('is_deleted', false)
+        .single();
+      if (!gErr && g) {
+        const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
+        if (rel === 'mother') {
+          patientData.mother_name = patientData.mother_name || motherFullName;
+          patientData.mother_occupation = patientData.mother_occupation || g.occupation || null;
+          patientData.mother_contact_number = patientData.mother_contact_number || g.contact_number || null;
+        } else if (rel === 'father') {
+          patientData.father_name = patientData.father_name || motherFullName;
+          patientData.father_occupation = patientData.father_occupation || g.occupation || null;
+          patientData.father_contact_number = patientData.father_contact_number || g.contact_number || null;
+        }
+      }
+    }
+  } catch ( autofillErr ) {
+    console.warn('Autofill mother fields failed (non-blocking):', autofillErr.message);
+  }
+
+  // Ensure created_by / updated_by defaults
+  if (!patientData.updated_by && patientData.created_by) patientData.updated_by = patientData.created_by;
+
+  const newPatient = await patientModel.createPatient(patientData, supabase);
 
     // Log the patient creation
     await logActivity({
@@ -124,7 +157,7 @@ const createPatient = async (req, res) => {
     }
 
     // Return enriched patient data and schedule from views
-    const patientView = await patientModel.getPatientById(newPatient.patient_id);
+  const patientView = await patientModel.getPatientById(newPatient.patient_id, getSupabaseForRequest(req));
     // If birth history payload was provided, persist it to birthhistory table
     if (birthHistoryPayload) {
       try {
@@ -167,11 +200,78 @@ const createPatient = async (req, res) => {
   }
 };
 
+// Parents dropdown (mother/father) with name/occupation/numbers
+const listParentsOptions = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req);
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('user_id, surname, firstname, middlename, contact_number, address, role, guardians:guardians!guardians_user_id_fkey(guardian_id, occupation, contact_number, is_deleted)')
+      .in('role', ['Guardian'])
+      .eq('is_deleted', false)
+      .order('surname', { ascending: true });
+    if (error) throw error;
+
+    const options = (users || []).map(u => {
+      const g = Array.isArray(u.guardians) ? u.guardians.find(x => x && x.is_deleted === false) || u.guardians[0] : null;
+      return {
+        user_id: u.user_id,
+        guardian_id: g?.guardian_id || null,
+        full_name: `${u.surname}, ${u.firstname} ${u.middlename || ''}`.trim(),
+        occupation: g?.occupation || null,
+        contact_number: g?.contact_number || u.contact_number || null,
+        role: u.role,
+      };
+    });
+    res.json({ success: true, data: options });
+  } catch (error) {
+    console.error('Error fetching parents options:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch parents options', error: error.message });
+  }
+};
+
+// Smart dose options: available dose_numbers for a patient and vaccine
+const getSmartDoseOptions = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req);
+    const patientId = req.params.id;
+    const vaccineId = req.query.vaccine_id || req.query.vaccineId;
+    if (!vaccineId) return res.status(400).json({ success:false, message:'vaccine_id is required' });
+
+    // Fetch schedule doses via schedule_master for this vaccine
+    const { data: sm, error: smErr } = await supabase
+      .from('schedule_master')
+      .select('id, schedule_doses(dose_number)')
+      .eq('vaccine_id', vaccineId)
+      .eq('is_deleted', false)
+      .maybeSingle();
+    if (smErr) throw smErr;
+    const allDoseNumbers = Array.isArray(sm?.schedule_doses) ? sm.schedule_doses.map(d => d.dose_number).filter(n => n != null).sort((a,b)=>a-b) : [];
+
+    const { data: taken, error: tErr } = await supabase
+      .from('immunizations')
+      .select('dose_number')
+      .eq('patient_id', patientId)
+      .eq('vaccine_id', vaccineId)
+      .eq('is_deleted', false);
+    if (tErr) throw tErr;
+    const completedSet = new Set((taken || []).map(x => x.dose_number));
+
+  const remaining = allDoseNumbers.filter(n => !completedSet.has(n));
+  const autoSelect = remaining.length === 1 ? remaining[0] : null;
+
+  res.json({ success: true, data: { available_doses: remaining, all_doses: allDoseNumbers, completed_doses: Array.from(completedSet), auto_select: autoSelect } });
+  } catch (error) {
+    console.error('Error computing smart dose options:', error);
+    res.status(500).json({ success:false, message:'Failed to compute smart dose options', error: error.message });
+  }
+};
+
 // Get a specific patient by ID
 const getPatientById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const patient = await patientModel.getPatientById(id);
+  const { id } = req.params;
+  const patient = await patientModel.getPatientById(id, getSupabaseForRequest(req));
     
     if (!patient) {
       return res.status(404).json({ 
@@ -182,17 +282,17 @@ const getPatientById = async (req, res) => {
     
     // Fetch birth history and attach as medical_history for backward compatibility with frontend
     try {
-      const birthHistory = await patientModel.getPatientBirthHistory(id).catch(() => null);
+  const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req)).catch(() => null);
       const payload = { ...patient };
       if (birthHistory) payload.medical_history = birthHistory;
       
       // Fetch vaccination history
       const immunizationModel = require('../models/immunizationModel');
-      const vaccinationHistory = await immunizationModel.listImmunizations({ patient_id: id });
+  const vaccinationHistory = await immunizationModel.listImmunizations({ patient_id: id }, getSupabaseForRequest(req));
       payload.vaccinationHistory = vaccinationHistory || [];
       
       // Fetch next scheduled vaccinations
-      const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id);
+  const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
       payload.nextScheduledVaccinations = nextScheduledVaccinations || [];
       
       res.json({ success: true, data: payload });
@@ -217,8 +317,35 @@ const updatePatient = async (req, res) => {
   const updates = mapPatientPayload(req.body);
   // Record who updated the patient for audit/triggers
   if (req.user && req.user.user_id) updates.updated_by = req.user.user_id;
+  // Autofill mother/father fields if relationship_to_guardian is Mother/Father and fields are blank
+  try {
+    const rel = (updates.relationship_to_guardian || '').toLowerCase();
+    if ((rel === 'mother' || rel === 'father') && updates.guardian_id) {
+      const supabase = getSupabaseForRequest(req);
+      const { data: g, error: gErr } = await supabase
+        .from('guardians')
+        .select('surname, firstname, middlename, occupation, contact_number')
+        .eq('guardian_id', updates.guardian_id)
+        .eq('is_deleted', false)
+        .single();
+      if (!gErr && g) {
+        const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
+        if (rel === 'mother') {
+          updates.mother_name = updates.mother_name || motherFullName;
+          updates.mother_occupation = updates.mother_occupation || g.occupation || null;
+          updates.mother_contact_number = updates.mother_contact_number || g.contact_number || null;
+        } else if (rel === 'father') {
+          updates.father_name = updates.father_name || motherFullName;
+          updates.father_occupation = updates.father_occupation || g.occupation || null;
+          updates.father_contact_number = updates.father_contact_number || g.contact_number || null;
+        }
+      }
+    }
+  } catch (autofillErr) {
+    console.warn('Autofill mother fields on update failed (non-blocking):', autofillErr.message);
+  }
     
-    const updatedPatient = await patientModel.updatePatient(id, updates);
+  const updatedPatient = await patientModel.updatePatient(id, updates, getSupabaseForRequest(req));
 
     if (!updatedPatient) {
       return res.status(404).json({ 
@@ -245,7 +372,7 @@ const updatePatient = async (req, res) => {
           newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
           updated_by: req.user?.user_id || null
         };
-        await patientModel.updatePatientBirthHistory(id, upsertPayload);
+  await patientModel.updatePatientBirthHistory(id, upsertPayload, getSupabaseForRequest(req));
       } catch (err) {
         console.error('Failed to persist birth history for patient update:', err);
       }
@@ -281,7 +408,7 @@ const deletePatient = async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.user_id; // From checkUserMapping middleware
     
-  const result = await patientModel.deletePatient(id, userId);
+  const result = await patientModel.deletePatient(id, userId, getSupabaseForRequest(req));
     
     if (!result) {
       return res.status(404).json({ 
@@ -308,7 +435,7 @@ const deletePatient = async (req, res) => {
 const getPatientSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const schedule = await patientModel.getPatientVaccinationSchedule(id);
+  const schedule = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
     if (!schedule) {
       return res.status(404).json({ message: 'Patient schedule not found' });
     }
@@ -329,7 +456,7 @@ const updatePatientTag = async (req, res) => {
       return res.status(400).json({ message: 'Tag is required' });
     }
 
-    const updatedPatient = await patientModel.updatePatientTag(id, tag);
+  const updatedPatient = await patientModel.updatePatientTag(id, tag, getSupabaseForRequest(req));
     if (!updatedPatient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
@@ -344,7 +471,7 @@ const updatePatientTag = async (req, res) => {
 const getBirthHistory = async (req, res) => {
   try {
     const { id } = req.params;
-    const birthHistory = await patientModel.getPatientBirthHistory(id);
+  const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req));
     if (!birthHistory) {
       return res.status(404).json({ message: 'Birth history not found' });
     }
@@ -361,7 +488,7 @@ const updateBirthHistory = async (req, res) => {
     const { id } = req.params;
     const birthData = req.body;
     
-    const updatedHistory = await patientModel.updatePatientBirthHistory(id, birthData);
+  const updatedHistory = await patientModel.updatePatientBirthHistory(id, birthData, getSupabaseForRequest(req));
     if (!updatedHistory) {
       return res.status(404).json({ message: 'Patient not found' });
     }
@@ -376,7 +503,7 @@ const updateBirthHistory = async (req, res) => {
 const getVitals = async (req, res) => {
   try {
     const { id } = req.params;
-    const vitals = await patientModel.getPatientVitals(id);
+  return res.status(410).json({ message: 'Deprecated: use visit or service-specific endpoints to manage vitals' });
     if (!vitals) {
       return res.status(404).json({ message: 'Patient vitals not found' });
     }
@@ -393,11 +520,7 @@ const updateVitals = async (req, res) => {
     const { id } = req.params;
     const vitalsData = req.body;
     
-    const updatedVitals = await patientModel.updatePatientVitals(id, vitalsData);
-    if (!updatedVitals) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    res.json(updatedVitals);
+    return res.status(410).json({ message: 'Deprecated: use visit or outside service endpoints to create vitals' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to update patient vitals', error });
@@ -442,4 +565,6 @@ module.exports = {
   getVitals,
   updateVitals,
   updatePatientSchedules,
+  listParentsOptions,
+  getSmartDoseOptions,
 };

@@ -238,7 +238,8 @@ const breadcrumbs = [
 ]
 
 const lastUpdated = computed(() => {
-  return new Date().toLocaleDateString('en-US', {
+  return new Date().toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -296,7 +297,9 @@ const fetchStats = async () => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short',
     day: 'numeric'

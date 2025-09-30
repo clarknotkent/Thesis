@@ -198,9 +198,9 @@ BEGIN
                       updated_by = p_user_id
                 WHERE patient_schedule_id = v_sched.patient_schedule_id;
 
-                INSERT INTO activitylogs(action_type, actor_user_id, target_table, target_id, details)
-                VALUES ('SCHEDULE_ADJUSTED_USER', v_actor, 'patientschedule', v_sched.patient_schedule_id,
-                        jsonb_build_object('adjust_reason','recalc_enhanced','from', v_sched.scheduled_date, 'to', v_new_sched));
+                INSERT INTO activitylogs(action_type, user_id, entity_type, entity_id, description)
+                VALUES ('SCHEDULE_ADJUSTED_USER', p_user_id, 'patientschedule', v_sched.patient_schedule_id,
+                        'Schedule adjusted from ' || v_sched.scheduled_date || ' to ' || v_new_sched || ' (recalc_enhanced)');
             END IF;
         END IF;
 
@@ -245,15 +245,15 @@ BEGIN
 
     -- Warn if scheduled_date is earlier than DOB + due_after_days
     IF rec.scheduled_date < v_due_date THEN
-        INSERT INTO activitylogs(action_type, actor_user_id, target_table, target_id, details)
-        VALUES ('SCHEDULE_EDIT_WARNING', p_user_id, 'patientschedule', rec.patient_schedule_id, v_details || jsonb_build_object('warning','scheduled before due date'));
+        INSERT INTO activitylogs(action_type, user_id, entity_type, entity_id, description)
+        VALUES ('SCHEDULE_EDIT_WARNING', p_user_id, 'patientschedule', rec.patient_schedule_id, 'Scheduled before due date - patient_id: ' || rec.patient_id || ', vaccine_id: ' || rec.vaccine_id || ', dose: ' || rec.dose_number || ', scheduled: ' || rec.scheduled_date || ', due: ' || v_due_date);
     END IF;
 
     -- Warn if concurrency disallowed and min_interval_other_vax violated
     IF v_min_other IS NOT NULL AND v_last_other IS NOT NULL THEN
         IF rec.scheduled_date < (v_last_other + (v_min_other * INTERVAL '1 day'))::date THEN
-            INSERT INTO activitylogs(action_type, actor_user_id, target_table, target_id, details)
-            VALUES ('SCHEDULE_EDIT_WARNING', p_user_id, 'patientschedule', rec.patient_schedule_id, v_details || jsonb_build_object('warning','violates min_interval_other_vax','min_interval_days', v_min_other, 'last_other', v_last_other));
+            INSERT INTO activitylogs(action_type, user_id, entity_type, entity_id, description)
+            VALUES ('SCHEDULE_EDIT_WARNING', p_user_id, 'patientschedule', rec.patient_schedule_id, 'Violates min_interval_other_vax - patient_id: ' || rec.patient_id || ', vaccine_id: ' || rec.vaccine_id || ', dose: ' || rec.dose_number || ', scheduled: ' || rec.scheduled_date || ', min_interval_days: ' || v_min_other || ', last_other: ' || v_last_other);
         END IF;
     END IF;
 
@@ -342,14 +342,24 @@ BEGIN
 END;
 $function$;
 
--- 7) update_patient_tag_on_patientschedule_update: set Defaulter/None tags
+-- 7) update_patient_tag_on_patientschedule_update: set Defaulter/None tags (but don't override FIC/CIC)
 CREATE OR REPLACE FUNCTION public.update_patient_tag_on_patientschedule_update()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_missed_count INTEGER;
+    v_current_tags TEXT;
 BEGIN
+    -- Check current tags - don't override FIC/CIC status
+    SELECT tags INTO v_current_tags FROM patients WHERE patient_id = NEW.patient_id;
+
+    -- If patient already has FIC or CIC status, don't change it
+    IF v_current_tags IN ('FIC', 'CIC') THEN
+        RETURN NEW;
+    END IF;
+
+    -- Otherwise, set Defaulter or None based on missed doses
     SELECT COUNT(*) INTO v_missed_count
     FROM patientschedule ps
     WHERE ps.patient_id = NEW.patient_id AND ps.status = 'Missed' AND ps.is_deleted = FALSE;
@@ -361,6 +371,48 @@ BEGIN
     END IF;
 
     RETURN NEW;
+END;
+$function$;
+
+-- Function to handle manual rescheduling of patient schedules
+CREATE OR REPLACE FUNCTION public.manual_reschedule_patient_schedule(
+    p_patient_schedule_id bigint, 
+    p_new_scheduled_date date, 
+    p_user_id bigint
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_old_date date;
+    v_patient_id bigint;
+BEGIN
+    -- Get current schedule info
+    SELECT scheduled_date, patient_id INTO v_old_date, v_patient_id
+    FROM patientschedule 
+    WHERE patient_schedule_id = p_patient_schedule_id AND is_deleted = FALSE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Patient schedule not found';
+    END IF;
+
+    -- Update the schedule with new date and set status to Rescheduled
+    UPDATE patientschedule
+    SET 
+        scheduled_date = p_new_scheduled_date,
+        eligible_date = p_new_scheduled_date,
+        status = 'Rescheduled',
+        updated_at = now(),
+        updated_by = p_user_id
+    WHERE patient_schedule_id = p_patient_schedule_id;
+
+    -- Log the manual rescheduling
+    INSERT INTO activitylogs(action_type, user_id, entity_type, entity_id, description)
+    VALUES ('SCHEDULE_RESCHEDULED', p_user_id, 'patientschedule', p_patient_schedule_id,
+            'Manual reschedule from ' || v_old_date || ' to ' || p_new_scheduled_date);
+
+    -- Validate the manual edit (log warnings if any)
+    PERFORM validate_manual_schedule_edit(p_patient_schedule_id, p_user_id);
 END;
 $function$;
 

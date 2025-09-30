@@ -140,7 +140,17 @@ const selectVisit = async (v) => {
   }
 }
 
-const formatDate = (d) => { if (!d) return ''; return new Date(d).toLocaleString() }
+const formatDate = (d) => {
+  if (!d) return ''
+  return new Date(d).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 const hasVitalSigns = (visit) => {
   if (!visit) return false

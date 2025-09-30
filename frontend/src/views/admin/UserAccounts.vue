@@ -161,7 +161,7 @@
                       {{ user.status }}
                     </span>
                   </td>
-                  <td>{{ formatDate(user.lastLogin) }}</td>
+                  <td>{{ user.lastLoginDisplay }}</td>
                   <td>
                     <div class="btn-group btn-group-sm">
                       <button class="btn btn-outline-primary" @click="editUser(user)" title="Edit">
@@ -280,29 +280,7 @@
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Birthdate:</label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            v-model="userForm.birthdate" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('birthdate')"
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('birthdate')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerBirthdate"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('birthdate', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="userForm.birthdate" />
                       </div>
                       <div class="col-xl-9 col-lg-8 col-md-6">
                         <label class="form-label">Address:</label>
@@ -485,6 +463,7 @@ import AppPagination from '@/components/common/AppPagination.vue'
 import AppModal from '@/components/common/AppModal.vue'
 import api from '@/services/api'
 import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
+import DateInput from '@/components/common/DateInput.vue'
 
 // Backend-driven; remove mock data
 
@@ -571,15 +550,20 @@ const fetchUsers = async () => {
       role,
       status
     })
-    users.value = rows.map(u => ({
-      id: u.id,
-      name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
-      email: u.email,
-      role: mapBackendRoleToOption(u.role),
-      hwType: u.hw_type || '',
-      status: u.status || 'active',
-      lastLogin: u.lastLogin || u.last_login || null
-    }))
+    users.value = rows.map(u => {
+      const rawLast = u.lastLogin || u.last_login || null
+      return {
+        id: u.id,
+        name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
+        email: u.email,
+        role: mapBackendRoleToOption(u.role),
+        hwType: u.hw_type || '',
+        status: u.status || 'active',
+        lastLogin: rawLast,
+        // Frontend-controlled PH timezone display for last login
+        lastLoginDisplay: rawLast ? formatDatePH(rawLast) : 'Never'
+      }
+    })
     totalItems.value = pagination?.totalItems || rows.length
     totalPages.value = pagination?.totalPages || Math.ceil(totalItems.value / itemsPerPage)
   } catch (error) {
@@ -598,6 +582,8 @@ const fetchRecentActivity = async () => {
     recentActivity.value = (data.items || []).map(r => ({
       id: r.log_id || r.id,
       timestamp: r.timestamp,
+      // Provide a frontend PH-formatted string for direct binding if desired
+      timestampDisplay: r.timestamp ? formatDatePH(r.timestamp) : 'Never',
       userFullName: r.display_user_name || r.user_fullname || r.username || r.user_id,
       action: r.display_action || r.description || r.action_type,
       ipAddress: r.ip_address || ''
@@ -869,18 +855,6 @@ const getRoleDisplayName = (role) => {
 
 const formatDate = (date) => {
   if (!date) return 'Never'
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// Explicit PH timezone formatting for activity logs (Asia/Manila)
-const formatDatePH = (date) => {
-  if (!date) return 'Never'
   try {
     return new Date(date).toLocaleString('en-PH', {
       year: 'numeric',
@@ -893,7 +867,35 @@ const formatDatePH = (date) => {
       timeZone: 'Asia/Manila'
     })
   } catch (e) {
-    return formatDate(date)
+    return new Date(date).toLocaleString()
+  }
+}
+
+// Explicit PH timezone formatting for activity logs (Asia/Manila)
+const formatDatePH = (date) => {
+  if (!date) return 'Never'
+  try {
+    let d = date
+    if (typeof date === 'string') {
+      // Normalize timezone-less timestamps like 'YYYY-MM-DD HH:mm:ss' to UTC
+      const tzLess = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})(?:\.\d+)?$/
+      const hasTZ = /Z|[+-]\d{2}:?\d{2}$/.test(date)
+      if (tzLess.test(date) && !hasTZ) {
+        d = date.replace(' ', 'T') + 'Z'
+      }
+    }
+    return new Date(d).toLocaleString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    })
+  } catch (e) {
+    return new Date(date).toLocaleString()
   }
 }
 

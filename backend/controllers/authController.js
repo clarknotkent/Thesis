@@ -175,13 +175,16 @@ const registerUser = async (req, res) => {
           surname: newUser.surname,
           firstname: newUser.firstname,
           middlename: newUser.middlename || null,
-          birthdate: newUser.birthdate || null,
+          // Prefer birthdate from request body; fallback to stored user if included
+          birthdate: birthdate || newUser.birthdate || null,
           address: newUser.address || null,
           occupation: null,
           contact_number: newUser.contact_number || normalizedContact,
           alternative_contact_number: null,
           email: newUser.email || null,
-          user_id: newUser.user_id
+          user_id: newUser.user_id,
+          created_by: actorId || newUser.created_by || newUser.user_id,
+          updated_by: actorId || newUser.updated_by || newUser.user_id
         });
         console.log('[registerUser] DEBUG: Guardian record created');
       } catch (gErr) {

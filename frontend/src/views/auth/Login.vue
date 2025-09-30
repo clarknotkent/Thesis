@@ -86,6 +86,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import { login as loginApi } from '@/services/auth'
 
 const router = useRouter()
@@ -111,7 +112,11 @@ const handleLogin = async () => {
     }
 
     // Call backend login; identifier can be phone/email/username
-    const { user } = await loginApi({ identifier: form.identifier, password: form.password })
+    const { user, token } = await loginApi({ identifier: form.identifier, password: form.password })
+
+    // Use auth composable to store auth data
+    const { login } = useAuth()
+    login(token, user.role, user)
 
     // Navigate based on user role from backend
     const role = (user.role || '').toLowerCase()
@@ -119,7 +124,7 @@ const handleLogin = async () => {
       router.push('/admin/dashboard')
     } else if (role === 'healthworker' || role === 'health-worker') {
       router.push('/healthworker/dashboard')
-    } else if (role === 'parent') {
+    } else if (role === 'guardian') {
       router.push('/parent/dashboard')
     } else {
       throw new Error('Unknown user role. Please contact support.')

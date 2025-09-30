@@ -490,17 +490,27 @@ const fetchGuardians = async () => {
 }
 
 const calculateAge = (birthDate) => {
+  if (!birthDate) return '—'
   const birth = new Date(birthDate)
   const today = new Date()
-  const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
-  
-  if (ageInMonths < 12) {
-    return `${ageInMonths} months`
-  } else {
-    const years = Math.floor(ageInMonths / 12)
-    const months = ageInMonths % 12
-    return months > 0 ? `${years}y ${months}m` : `${years} years`
+  if (isNaN(birth.getTime())) return '—'
+
+  // Compute months and days difference
+  let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
+  let days = today.getDate() - birth.getDate()
+
+  if (days < 0) {
+    months -= 1
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0) // last day of previous month
+    days += prevMonth.getDate()
   }
+
+  if (months < 0) months = 0
+  if (days < 0) days = 0
+
+  const monthsPart = `${months}m`
+  const daysPart = `${days}d`
+  return `${monthsPart} ${daysPart}`
 }
 
 const getPatientStatus = (patient) => {
@@ -530,7 +540,8 @@ const getLastVaccination = (patient) => {
   }
   
   const lastVaccination = patient.vaccinationHistory[patient.vaccinationHistory.length - 1]
-  const date = new Date(lastVaccination.dateAdministered).toLocaleDateString('en-US', {
+  const date = new Date(lastVaccination.dateAdministered).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
     month: 'short',
     day: 'numeric',
     year: 'numeric'

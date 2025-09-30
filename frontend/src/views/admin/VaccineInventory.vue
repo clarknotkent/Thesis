@@ -25,50 +25,47 @@
 
       <!-- Inventory Summary -->
       <div v-if="!loading" class="row g-3 mb-4">
+        <!-- Total Types -->
         <div class="col-md-3">
           <div class="card border-start border-primary border-4 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
-                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
-                    Total Vaccine Types
-                  </div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Types</div>
                   <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalTypes }}</div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-list-check text-primary" style="font-size: 2rem;"></i>
+                  <i class="bi bi-collection text-primary" style="font-size: 2rem;"></i>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Total Doses -->
         <div class="col-md-3">
           <div class="card border-start border-success border-4 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
-                    Available Doses
-                  </div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Total Doses</div>
                   <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalDoses }}</div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-shield-check text-success" style="font-size: 2rem;"></i>
+                  <i class="bi bi-capsule text-success" style="font-size: 2rem;"></i>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Low Stock -->
         <div class="col-md-3">
           <div class="card border-start border-warning border-4 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
-                    Low Stock Items
-                  </div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">Low Stock</div>
                   <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.lowStock }}</div>
                 </div>
                 <div class="col-auto">
@@ -79,14 +76,13 @@
           </div>
         </div>
 
+        <!-- Expiring Soon -->
         <div class="col-md-3">
           <div class="card border-start border-danger border-4 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
-                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">
-                    Expiring Soon
-                  </div>
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Expiring Soon</div>
                   <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.expiringSoon }}</div>
                 </div>
                 <div class="col-auto">
@@ -154,6 +150,20 @@
                         title="Edit"
                       >
                         <i class="bi bi-pencil"></i>
+                      </button>
+                      <button 
+                        class="btn btn-outline-secondary"
+                        @click="openAdjustModal(vaccine)"
+                        title="Adjust Stock"
+                      >
+                        <i class="bi bi-arrow-left-right"></i>
+                      </button>
+                      <button
+                        class="btn btn-outline-info"
+                        @click="editVaccineType(vaccine)"
+                        title="Edit Vaccine Type"
+                      >
+                        <i class="bi bi-gear"></i>
                       </button>
                       <button 
                         class="btn btn-outline-danger" 
@@ -236,7 +246,7 @@
             <div class="modal-header">
               <h5 class="modal-title">
                 <i class="bi bi-plus-circle me-2"></i>
-                {{ isEditing ? 'Edit Vaccine Stock' : 'Add New Stock' }}
+                {{ isEditing ? 'Edit Inventory Details' : 'Add New Stock' }}
               </h5>
               <button type="button" class="btn-close" @click="closeModal"></button>
             </div>
@@ -286,7 +296,7 @@
                           placeholder="e.g., Pfizer Inc., Moderna Inc."
                         >
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6">
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="!isEditing">
                         <label for="quantity" class="form-label">Stock Quantity: <span class="text-danger">*</span></label>
                         <input 
                           type="number" 
@@ -322,31 +332,7 @@
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label for="expirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            id="expirationDate"
-                            v-model="form.expirationDate" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('expirationDate')"
-                            required
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('expirationDate')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerStock"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('expirationDate', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="form.expirationDate" />
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label for="storageLocation" class="form-label">Storage Location:</label>
@@ -377,23 +363,24 @@
         </div>
       </div>
 
-      <!-- Add New Vaccine Type Modal -->
+      <!-- Add / Edit Vaccine Type Modal -->
       <div class="modal fade" :class="{ show: showAddVaccineModal }" :style="{ display: showAddVaccineModal ? 'block' : 'none' }" tabindex="-1">
         <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-plus-square me-2"></i>
-                Add New Vaccine Type
+                <i v-if="!isEditingVaccineType" class="bi bi-plus-square me-2"></i>
+                <i v-else class="bi bi-pencil-square me-2"></i>
+                {{ isEditingVaccineType ? 'Edit Vaccine Type' : 'Add New Vaccine Type' }}
               </h5>
               <button type="button" class="btn-close" @click="closeVaccineModal"></button>
             </div>
             <div class="modal-body px-4">
-              <div class="alert alert-info mb-4">
+              <div v-if="!isEditingVaccineType" class="alert alert-info mb-4">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>Note:</strong> This creates a new vaccine type. Each combination of Antigen Name + Brand Name must be unique.
               </div>
-              <form id="vaccine-form" @submit.prevent="saveNewVaccine">
+              <form id="vaccine-form" @submit.prevent="saveVaccineType">
                 <!-- Vaccine Information -->
                 <div class="row mb-4">
                   <div class="col-12">
@@ -487,8 +474,8 @@
                   </div>
                 </div>
 
-                <!-- Initial Stock Information -->
-                <div class="row mb-4">
+                <!-- Initial Stock Information (only when creating new type) -->
+                <div v-if="!isEditingVaccineType" class="row mb-4">
                   <div class="col-12">
                     <h6 class="text-primary fw-bold mb-3">
                       <i class="bi bi-archive me-2"></i>Initial Stock Information
@@ -507,31 +494,7 @@
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label for="newExpirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                          <input 
-                            type="text" 
-                            class="form-control" 
-                            id="newExpirationDate"
-                            v-model="vaccineForm.expiration_date" 
-                            placeholder="MM/DD/YYYY"
-                            @blur="validateAndFormatDate('expiration_date')"
-                            required
-                          />
-                          <button 
-                            class="btn btn-outline-secondary" 
-                            type="button"
-                            @click="openDatePicker('expiration_date')"
-                            title="Select date"
-                          >
-                            <i class="bi bi-calendar3"></i>
-                          </button>
-                          <input 
-                            type="date" 
-                            ref="datePickerVaccine"
-                            style="position: absolute; visibility: hidden; pointer-events: none;"
-                            @change="onDatePickerChange('expiration_date', $event)"
-                          />
-                        </div>
+                        <DateInput v-model="vaccineForm.expiration_date" />
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label for="newStockLevel" class="form-label">Initial Stock Level: <span class="text-danger">*</span></label>
@@ -567,7 +530,49 @@
               <button type="submit" class="btn btn-success" :disabled="saving" form="vaccine-form">
                 <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                 <i v-else class="bi bi-check-circle me-2"></i>
-                Add Vaccine Type
+                {{ isEditingVaccineType ? 'Save Changes' : 'Add Vaccine Type' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adjust Stock Modal -->
+      <div class="modal fade" :class="{ show: showAdjustModal }" :style="{ display: showAdjustModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog" style="max-width: 520px; width: 520px;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-arrow-left-right me-2"></i>
+                Adjust Stock
+              </h5>
+              <button type="button" class="btn-close" @click="closeAdjustModal"></button>
+            </div>
+            <div class="modal-body px-4">
+              <form id="adjust-form" @submit.prevent="submitAdjust">
+                <div class="mb-3">
+                  <label class="form-label">Transaction Type</label>
+                  <select class="form-select" v-model="adjustForm.type" required>
+                    <option v-for="t in adjustTypes" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                  <div class="form-text" v-if="adjustForm.type==='ADJUST'">ADJUST sets the stock to the exact quantity you enter.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Quantity</label>
+                  <input type="number" min="0" class="form-control" v-model.number="adjustForm.quantity" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Note (optional)</label>
+                  <textarea class="form-control" rows="2" v-model="adjustForm.note" placeholder="Reason or remarks"></textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeAdjustModal">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="submittingAdjust" form="adjust-form">
+                <span v-if="submittingAdjust" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check-circle me-2"></i>
+                Apply
               </button>
             </div>
           </div>
@@ -770,6 +775,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
+import DateInput from '@/components/common/DateInput.vue'
 import api from '@/services/api'
 import { usePagination } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
@@ -782,9 +788,6 @@ const saving = ref(false)
 const vaccines = ref([])
 const existingVaccines = ref([])
 const schedules = ref([])
-// Date picker refs
-const datePickerStock = ref(null)
-const datePickerVaccine = ref(null)
 const stats = ref({
   totalTypes: 0,
   totalDoses: 0,
@@ -796,6 +799,8 @@ const stats = ref({
 const searchTerm = ref('')
 const showAddModal = ref(false)
 const showAddStockModal = ref(false)
+const showAdjustModal = ref(false)
+const submittingAdjust = ref(false)
 const showAddVaccineModal = ref(false)
 const showScheduleModal = ref(false)
 const scheduleReadOnly = ref(false)
@@ -1081,16 +1086,21 @@ const fetchVaccines = async () => {
     loading.value = true
     const response = await api.get('/vaccines/inventory')
     const items = response.data?.data || response.data || []
-    vaccines.value = items.map(v => ({
-      id: v.inventory_id || v.id,
-      vaccineName: v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || '',
-      manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
-      category: v.vaccinemaster?.category || v.category || '',
-      batchNo: v.lot_number || v.batch_number || '',
-      expiryDate: v.expiration_date || v.expiry_date || '',
-      quantity: v.current_stock_level || v.quantity || 0,
-      status: v.status || (v.current_stock_level > 0 ? (v.current_stock_level < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
-    }))
+    vaccines.value = items.map(v => {
+      const qty = (v.current_stock_level ?? v.quantity ?? 0)
+      const status = v.status || (qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
+      return {
+        id: v.inventory_id || v.id,
+        vaccine_id: v.vaccinemaster?.vaccine_id || v.vaccine_id || v.vaccine?.vaccine_id,
+        vaccineName: v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || '',
+        manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
+        category: v.vaccinemaster?.category || v.category || '',
+        batchNo: v.lot_number || v.batch_number || '',
+        expiryDate: v.expiration_date || v.expiry_date || '',
+        quantity: qty,
+        status
+      }
+    })
     console.debug('[fetchVaccines] fetched', items.length, 'inventory items, mapped', vaccines.value.length, 'for table')
   } catch (error) {
     console.error('Error fetching vaccines:', error)
@@ -1160,8 +1170,11 @@ const saveVaccine = async () => {
       vaccine_id: form.value.vaccine_id,
       lot_number: form.value.lotNumber,
       expiration_date: convertToISODate(form.value.expirationDate) || form.value.expirationDate,
-      current_stock_level: form.value.quantity,
       storage_location: form.value.storageLocation || null
+    }
+    if (!isEditing.value) {
+      // Only on create do we set initial quantity; on edit, use Adjust Stock modal
+      payload.current_stock_level = form.value.quantity
     }
     if (!payload.vaccine_id) {
       addToast({ title: 'Validation', message: 'Please select a vaccine type first.', type: 'warning' })
@@ -1226,6 +1239,64 @@ const closeModal = () => {
   }
 }
 
+// Adjust Stock handlers
+const adjustTypes = ['ADJUST','RECEIVE','RETURN','EXPIRED']
+const adjustForm = ref({ id: null, type: 'ADJUST', quantity: 0, note: '' })
+
+function openAdjustModal(vaccine) {
+  adjustForm.value = { id: vaccine.id, type: 'ADJUST', quantity: 0, note: '' }
+  showAdjustModal.value = true
+}
+
+async function submitAdjust() {
+  try {
+    submittingAdjust.value = true
+    const { id, type, quantity, note } = adjustForm.value
+    if (!id) return
+    await api.post(`/vaccines/inventory/${id}/adjust`, { type, quantity, note })
+    showAdjustModal.value = false
+    await fetchVaccines()
+    await fetchStats()
+  } catch (e) {
+    console.error('[submitAdjust] error', e)
+    addToast({ title: 'Error', message: 'Failed to apply stock adjustment', type: 'error' })
+  } finally {
+    submittingAdjust.value = false
+  }
+}
+
+function closeAdjustModal() { showAdjustModal.value = false }
+
+// Edit Vaccine Type handlers (reuse New Vaccine modal in edit mode)
+const isEditingVaccineType = ref(false)
+async function editVaccineType(v) {
+  try {
+    isEditingVaccineType.value = true
+    showAddVaccineModal.value = true
+    // Load vaccine type details
+    const vid = v.vaccine_id
+    if (!vid) return
+    const res = await api.get(`/vaccines/${vid}`)
+    const d = res.data?.data || res.data
+    vaccineForm.value = {
+      id: d.vaccine_id || d.id,
+      antigen_name: d.antigen_name || '',
+      brand_name: d.brand_name || '',
+      manufacturer: d.manufacturer || '',
+      disease_prevented: d.disease_prevented || '',
+      vaccine_type: d.vaccine_type || 'inactivated',
+      category: d.category || 'VACCINE',
+      lot_number: '',
+      expiration_date: '',
+      stock_level: 0,
+      storage_location: ''
+    }
+  } catch (e) {
+    console.error('Error loading vaccine type for edit', e)
+    addToast({ title: 'Error', message: 'Failed to load vaccine type', type: 'error' })
+  }
+}
+
 const onVaccineSelect = () => {
   if (form.value.vaccine_id) {
     const selectedVaccine = existingVaccines.value.find(v => v.id === form.value.vaccine_id)
@@ -1239,6 +1310,7 @@ const onVaccineSelect = () => {
 
 const closeVaccineModal = () => {
   showAddVaccineModal.value = false
+  isEditingVaccineType.value = false
   vaccineForm.value = {
     id: null,
     antigen_name: '',
@@ -1254,11 +1326,11 @@ const closeVaccineModal = () => {
   }
 }
 
-const saveNewVaccine = async () => {
+const saveVaccineType = async () => {
   try {
     saving.value = true
     
-    // First create the vaccine type
+    // Build payload for vaccine type
     const vaccinePayload = {
       antigen_name: vaccineForm.value.antigen_name,
       brand_name: vaccineForm.value.brand_name,
@@ -1267,28 +1339,33 @@ const saveNewVaccine = async () => {
       vaccine_type: vaccineForm.value.vaccine_type,
       category: vaccineForm.value.category
     }
-    
-    const vaccineResponse = await api.post('/vaccines', vaccinePayload)
-    const vaccineId = vaccineResponse.data?.data?.vaccine_id
-    
-    // Then create the initial inventory
-    if (vaccineId && vaccineForm.value.stock_level > 0) {
-      const inventoryPayload = {
-        vaccine_id: vaccineId,
-        lot_number: vaccineForm.value.lot_number,
-        expiration_date: convertToISODate(vaccineForm.value.expiration_date) || vaccineForm.value.expiration_date,
-        current_stock_level: vaccineForm.value.stock_level,
-        storage_location: vaccineForm.value.storage_location || null
+
+    let vaccineId = vaccineForm.value.id
+    if (isEditingVaccineType.value && vaccineId) {
+      await api.put(`/vaccines/${vaccineId}`, vaccinePayload)
+      addToast({ title: 'Saved', message: 'Vaccine type updated.', type: 'success' })
+    } else {
+      const vaccineResponse = await api.post('/vaccines', vaccinePayload)
+      vaccineId = vaccineResponse.data?.data?.vaccine_id || vaccineResponse.data?.vaccine_id || vaccineResponse.data?.id
+      // Then create the initial inventory (optional)
+      if (vaccineId && vaccineForm.value.stock_level > 0) {
+        const inventoryPayload = {
+          vaccine_id: vaccineId,
+          lot_number: vaccineForm.value.lot_number,
+          expiration_date: convertToISODate(vaccineForm.value.expiration_date) || vaccineForm.value.expiration_date,
+          current_stock_level: vaccineForm.value.stock_level,
+          storage_location: vaccineForm.value.storage_location || null
+        }
+        await api.post('/vaccines/inventory', inventoryPayload)
       }
-      await api.post('/vaccines/inventory', inventoryPayload)
+      addToast({ title: 'Success', message: 'Vaccine type added successfully!', type: 'success' })
     }
-    
-  closeVaccineModal()
-  // Refresh inventory and vaccine type lists. Refresh existing types first so stats.totalTypes updates correctly.
-  await fetchVaccines()
-  await fetchExistingVaccines()
-  await fetchStats()
-    addToast({ title: 'Success', message: 'Vaccine type added successfully!', type: 'success' })
+
+    closeVaccineModal()
+    // Refresh inventory and vaccine type lists. Refresh existing types first so stats.totalTypes updates correctly.
+    await fetchVaccines()
+    await fetchExistingVaccines()
+    await fetchStats()
   } catch (error) {
     console.error('Error saving vaccine:', error)
     
@@ -1342,7 +1419,8 @@ async function submitSchedule() {
 // Format date to short locale string
 const formatDate = (dateString) => {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short',
     day: 'numeric'

@@ -36,12 +36,15 @@
                           v-model="item._editedDate" 
                           placeholder="MM/DD/YYYY"
                           @blur="validateAndFormatDate(item)"
+                          :readonly="item.status === 'Completed'"
+                          :class="{ 'bg-light': item.status === 'Completed' }"
                           :id="`date-input-${item.patient_schedule_id}`"
                         />
                         <button 
                           class="btn btn-outline-secondary btn-sm" 
                           type="button"
                           @click="openDatePicker(item)"
+                          :disabled="item.status === 'Completed'"
                           title="Select date"
                         >
                           <i class="bi bi-calendar3"></i>
@@ -56,16 +59,16 @@
                     </td>
                     <td>{{ item.dose_number || item.doseNumber }}</td>
                     <td>
-                      <select class="form-select form-select-sm" v-model="item._editedStatus">
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Missed">Missed</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Rescheduled">Rescheduled</option>
-                      </select>
+                      <span class="badge" :class="getStatusBadgeClass(item.status)">{{ item.status }}</span>
                     </td>
                     <td>
-                      <button class="btn btn-sm btn-primary me-2" @click="saveEdit(item)">Save</button>
+                      <button 
+                        class="btn btn-sm btn-primary me-2" 
+                        @click="saveEdit(item)"
+                        :disabled="item.status === 'Completed'"
+                      >
+                        Save
+                      </button>
                       <button class="btn btn-sm btn-outline-secondary" @click="resetItem(item)">Reset</button>
                     </td>
                   </tr>
@@ -228,8 +231,34 @@ const onDatePickerChange = (item, event) => {
   }
 }
 
+const validateScheduleDate = (item, newDate) => {
+  // Basic validation: date should be in the future for pending schedules
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const scheduleDate = new Date(newDate)
+  
+  if (item.status === 'Pending' && scheduleDate < today) {
+    return 'Cannot schedule doses in the past'
+  }
+  
+  // Check minimum interval from previous dose (basic client-side check)
+  const prevDose = scheduleData.value.find(s => 
+    s.vaccine_id === item.vaccine_id && 
+    s.dose_number === item.dose_number - 1
+  )
+  
+  if (prevDose) {
+    const prevDate = new Date(prevDose.scheduledDate || prevDose.scheduled_date)
+    const daysDiff = Math.floor((scheduleDate - prevDate) / (1000 * 60 * 60 * 24))
+    if (daysDiff < 7) { // Minimum 7 days
+      return `Minimum 7 days required after previous dose. Current gap: ${daysDiff} days.`
+    }
+  }
+  
+  return null // Valid
+}
+
 const saveEdit = async (item) => {
-  // send PUT to backend route for updating patientschedule row
   try {
     const isoDate = convertToISODate(item._editedDate)
     if (!isoDate) {
@@ -237,17 +266,51 @@ const saveEdit = async (item) => {
       return
     }
     
-    const payload = { 
-      scheduled_date: isoDate, 
-      status: item._editedStatus,
-      updated_by: localStorage.getItem('userId') 
+    // Client-side validation
+    const validationError = validateScheduleDate(item, isoDate)
+    if (validationError) {
+      addToast({ title: 'Error', message: validationError, type: 'error' })
+      return
     }
-    await api.put(`/immunizations/schedule/${item.patient_schedule_id}`, payload)
+    
+    // Use manual reschedule function to set status to 'Rescheduled'
+    const payload = { 
+      p_patient_schedule_id: item.patient_schedule_id,
+      p_new_scheduled_date: isoDate, 
+      p_user_id: localStorage.getItem('userId') 
+    }
+    
+    const response = await api.post('/immunizations/manual-reschedule', payload)
+    
+    // Update the local item with the new data from the response
+    if (response.data && response.data.data && response.data.data.length > 0) {
+      const updatedSchedule = response.data.data[0]
+      Object.assign(item, updatedSchedule)
+      item._editedDate = formatForInput(updatedSchedule.scheduled_date)
+      // Update the displayed status
+      item.status = updatedSchedule.status
+    }
+    
+    addToast({ 
+      title: 'Success', 
+      message: 'Schedule rescheduled successfully. Subsequent doses may have been auto-adjusted to maintain minimum intervals.', 
+      type: 'success' 
+    })
     // emit update to parent and refresh local copy
     emit('updated')
   } catch (err) {
     console.error('Failed to save schedule edit', err)
     addToast({ title: 'Error', message: 'Failed to save schedule edit. See console for details.', type: 'error' })
+  }
+}
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'Completed': return 'bg-success'
+    case 'Pending': return 'bg-warning text-dark'
+    case 'Missed': return 'bg-danger'
+    case 'Rescheduled': return 'bg-info'
+    default: return 'bg-secondary'
   }
 }
 </script>

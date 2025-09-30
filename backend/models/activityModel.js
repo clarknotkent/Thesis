@@ -17,7 +17,7 @@ const listActivityLogs = async (page = 1, limit = 20, filters = {}) => {
   if (error) throw error;
   const enriched = (data || []).map(r => ({
     ...r,
-    display_user_name: r.user_fullname || r.username || r.user_id || null,
+    display_user_name: r.user_fullname || r.username || (r.user_id == null ? 'System' : String(r.user_id)),
     display_action: r.description || r.action_type
   }));
   return {

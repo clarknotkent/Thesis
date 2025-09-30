@@ -300,11 +300,11 @@
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Start Date</label>
-                    <input type="date" class="form-control" v-model="generateForm.startDate">
+                    <DateInput v-model="generateForm.startDate" />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">End Date</label>
-                    <input type="date" class="form-control" v-model="generateForm.endDate">
+                    <DateInput v-model="generateForm.endDate" />
                   </div>
                   <div class="col-12">
                     <div class="form-check">
@@ -338,6 +338,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import DateInput from '@/components/common/DateInput.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
@@ -380,77 +381,125 @@ const reportStats = ref({
 const fetchReports = async () => {
   try {
     loading.value = true
-    const params = {
-      page: currentPage.value,
-      limit: itemsPerPage.value
+    
+    // Fetch different types of reports based on filters
+    const reportPromises = []
+    
+    if (!selectedType.value || selectedType.value === 'vaccination') {
+      // Fetch monthly report for current month
+      const now = new Date()
+      reportPromises.push(
+        api.get(`/reports/monthly?month=${now.getMonth() + 1}&year=${now.getFullYear()}`)
+          .then(response => ({
+            id: `monthly-${now.getFullYear()}-${now.getMonth() + 1}`,
+            name: `Monthly Vaccination Report - ${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+            description: 'Monthly vaccination statistics and summary',
+            type: 'vaccination',
+            status: 'completed',
+            createdAt: new Date().toISOString(),
+            generatedBy: 'System',
+            data: response.data.data
+          }))
+          .catch(() => null)
+      )
     }
     
-    if (selectedType.value) params.type = selectedType.value
-    if (selectedStatus.value) params.status = selectedStatus.value
-    if (selectedDateRange.value !== 'custom') params.dateRange = selectedDateRange.value
-
-    // For now, using mock data since we don't have a reports endpoint yet
-    const mockReports = [
-      {
-        id: 1,
-        name: 'Monthly Vaccination Summary - August 2025',
-        description: 'Comprehensive vaccination data for August 2025',
-        type: 'vaccination',
-        status: 'completed',
-        createdAt: '2025-08-15T10:30:00Z',
-        generatedBy: 'Admin User',
-        fileSize: '2.4 MB',
-        downloadCount: 5
-      },
-      {
-        id: 2,
-        name: 'Inventory Status Report',
-        description: 'Current vaccine inventory levels and alerts',
-        type: 'inventory',
-        status: 'completed',
-        createdAt: '2025-08-14T14:20:00Z',
-        generatedBy: 'System Admin',
-        fileSize: '1.8 MB',
-        downloadCount: 3
-      },
-      {
-        id: 3,
-        name: 'Patient Demographics Analysis',
-        description: 'Statistical analysis of patient demographics',
-        type: 'analytics',
-        status: 'generating',
-        createdAt: '2025-08-14T16:45:00Z',
-        generatedBy: 'Health Worker',
-        fileSize: null,
-        downloadCount: 0
-      }
-    ]
-
-    const mockActivity = [
-      {
-        id: 1,
-        description: 'Monthly report generated successfully',
-        icon: 'bi bi-file-text',
-        timestamp: '2025-08-15T10:30:00Z'
-      },
-      {
-        id: 2,
-        description: 'Inventory report downloaded by Admin',
-        icon: 'bi bi-download',
-        timestamp: '2025-08-14T15:20:00Z'
-      }
-    ]
-
-    reports.value = mockReports
-    recentActivity.value = mockActivity
-    totalReports.value = mockReports.length
+    if (!selectedType.value || selectedType.value === 'inventory') {
+      // Fetch inventory low stock report
+      reportPromises.push(
+        api.get('/reports/low-stock')
+          .then(response => ({
+            id: 'inventory-low-stock',
+            name: 'Inventory Low Stock Alert',
+            description: 'Vaccines with low stock levels requiring attention',
+            type: 'inventory',
+            status: 'completed',
+            createdAt: new Date().toISOString(),
+            generatedBy: 'System',
+            data: response.data.data
+          }))
+          .catch(() => null)
+      )
+    }
+    
+    if (!selectedType.value || selectedType.value === 'patient') {
+      // Fetch defaulters report
+      reportPromises.push(
+        api.get('/reports/defaulters')
+          .then(response => ({
+            id: 'defaulters-report',
+            name: 'Defaulters Report',
+            description: 'Patients who have missed their vaccination schedules',
+            type: 'patient',
+            status: 'completed',
+            createdAt: new Date().toISOString(),
+            generatedBy: 'System',
+            data: response.data.data
+          }))
+          .catch(() => null)
+      )
+      
+      // Fetch due soon report
+      reportPromises.push(
+        api.get('/reports/due-soon')
+          .then(response => ({
+            id: 'due-soon-report',
+            name: 'Due Soon Report',
+            description: 'Patients with upcoming vaccination schedules',
+            type: 'patient',
+            status: 'completed',
+            createdAt: new Date().toISOString(),
+            generatedBy: 'System',
+            data: response.data.data
+          }))
+          .catch(() => null)
+      )
+    }
+    
+    if (!selectedType.value || selectedType.value === 'analytics') {
+      // Fetch TCL report
+      reportPromises.push(
+        api.get('/reports/tcl')
+          .then(response => ({
+            id: 'tcl-report',
+            name: 'Target Client List',
+            description: 'Complete list of patients eligible for vaccination programs',
+            type: 'analytics',
+            status: 'completed',
+            createdAt: new Date().toISOString(),
+            generatedBy: 'System',
+            data: response.data.data
+          }))
+          .catch(() => null)
+      )
+    }
+    
+    const reportResults = await Promise.all(reportPromises)
+    const validReports = reportResults.filter(report => report !== null)
+    
+    reports.value = validReports
+    totalReports.value = validReports.length
     totalPages.value = Math.ceil(totalReports.value / itemsPerPage.value)
     
+    // Update report statistics
     reportStats.value = {
-      totalGenerated: 28,
-      thisMonth: 8,
-      avgGenerationTime: '2.5s',
-      mostUsedType: 'Vaccination'
+      totalGenerated: validReports.length,
+      thisMonth: validReports.length,
+      avgGenerationTime: '1.2s',
+      mostUsedType: 'vaccination'
+    }
+    
+    // Fetch recent activity from activity logs
+    try {
+      const activityResponse = await api.get('/activity-logs?limit=5')
+      recentActivity.value = activityResponse.data.data?.map(activity => ({
+        id: activity.log_id,
+        description: activity.description,
+        icon: getActivityIcon(activity.action_type),
+        timestamp: activity.timestamp
+      })) || []
+    } catch {
+      recentActivity.value = []
     }
 
   } catch (error) {
@@ -464,48 +513,123 @@ const fetchReports = async () => {
 }
 
 const generateQuickReport = async (type) => {
-  const reportNames = {
-    vaccination_summary: 'Vaccination Summary Report',
-    inventory_status: 'Inventory Status Report',
-    patient_stats: 'Patient Statistics Report',
-    monthly_report: 'Monthly Activity Report',
-    compliance_report: 'Compliance Report'
+  try {
+    generating.value = true
+    
+    let endpoint = ''
+    let reportName = ''
+    let description = ''
+    
+    switch (type) {
+      case 'vaccination_summary':
+        endpoint = '/reports/monthly'
+        const now = new Date()
+        endpoint += `?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+        reportName = `Vaccination Summary Report - ${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        description = 'Current month vaccination statistics and summary'
+        break
+      case 'inventory_status':
+        endpoint = '/reports/low-stock'
+        reportName = 'Inventory Status Report'
+        description = 'Current vaccine inventory levels and low stock alerts'
+        break
+      case 'patient_stats':
+        endpoint = '/reports/defaulters'
+        reportName = 'Patient Statistics Report'
+        description = 'Patient vaccination compliance and defaulter analysis'
+        break
+      case 'monthly_report':
+        endpoint = '/reports/monthly'
+        const currentMonth = new Date()
+        endpoint += `?month=${currentMonth.getMonth() + 1}&year=${currentMonth.getFullYear()}`
+        reportName = `Monthly Activity Report - ${currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        description = 'Comprehensive monthly vaccination and activity report'
+        break
+      case 'compliance_report':
+        endpoint = '/reports/due-soon'
+        reportName = 'Compliance Report'
+        description = 'Upcoming vaccinations and compliance tracking'
+        break
+      default:
+        throw new Error('Unknown report type')
+    }
+    
+    const response = await api.get(endpoint)
+    
+    const newReport = {
+      id: `${type}-${Date.now()}`,
+      name: reportName,
+      description: description,
+      type: type.split('_')[0],
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+      generatedBy: 'Current User',
+      data: response.data.data
+    }
+    
+    reports.value.unshift(newReport)
+    totalReports.value++
+    
+    const { addToast } = useToast()
+    addToast({ title: 'Success', message: 'Report generated successfully', type: 'success' })
+    
+  } catch (error) {
+    console.error('Error generating quick report:', error)
+    const { addToast } = useToast()
+    addToast({ title: 'Error', message: 'Failed to generate report', type: 'error' })
+  } finally {
+    generating.value = false
   }
-
-  generateForm.value = {
-    type: type.split('_')[0],
-    name: reportNames[type],
-    description: `Auto-generated ${reportNames[type].toLowerCase()}`,
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    includeCharts: true
-  }
-
-  await generateReport()
 }
 
 const generateReport = async () => {
   try {
     generating.value = true
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // Map frontend report types to backend endpoints
+    let endpoint = ''
+    const params = {}
     
-    // Add new report to the list
+    switch (generateForm.value.type) {
+      case 'vaccination':
+        endpoint = '/reports/monthly'
+        const now = new Date()
+        params.month = now.getMonth() + 1
+        params.year = now.getFullYear()
+        break
+      case 'inventory':
+        endpoint = '/reports/low-stock'
+        break
+      case 'patient':
+        endpoint = '/reports/defaulters'
+        break
+      case 'analytics':
+        endpoint = '/reports/tcl'
+        break
+      default:
+        throw new Error('Unsupported report type')
+    }
+    
+    const response = await api.get(endpoint, { params })
+    
     const newReport = {
-      id: Date.now(),
-      ...generateForm.value,
+      id: `custom-${Date.now()}`,
+      name: generateForm.value.name,
+      description: generateForm.value.description,
+      type: generateForm.value.type,
       status: 'completed',
       createdAt: new Date().toISOString(),
       generatedBy: 'Current User',
-      fileSize: '1.2 MB',
-      downloadCount: 0
+      data: response.data.data
     }
     
     reports.value.unshift(newReport)
     totalReports.value++
     
     closeGenerateModal()
+    
+    const { addToast } = useToast()
+    addToast({ title: 'Success', message: 'Report generated successfully', type: 'success' })
     
   } catch (error) {
     console.error('Error generating report:', error)
@@ -551,13 +675,43 @@ const closeGenerateModal = () => {
 }
 
 const downloadReport = (report) => {
-  console.log('Downloading report:', report.name)
-  // Implement download functionality
+  try {
+    // Convert report data to CSV format
+    if (report.data && Array.isArray(report.data)) {
+      const csvContent = convertToCSV(report.data)
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `${report.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+      
+      const { addToast } = useToast()
+      addToast({ title: 'Success', message: 'Report downloaded successfully', type: 'success' })
+    } else {
+      throw new Error('No data available for download')
+    }
+  } catch (error) {
+    console.error('Error downloading report:', error)
+    const { addToast } = useToast()
+    addToast({ title: 'Error', message: 'Failed to download report', type: 'error' })
+  }
 }
 
 const viewReport = (report) => {
-  console.log('Viewing report:', report.name)
-  // Implement view functionality
+  // For now, show the data in a modal or console
+  console.log('Report Data:', report)
+  
+  // You could implement a modal to show the report data here
+  // For now, we'll just show a toast
+  const { addToast } = useToast()
+  addToast({ title: 'Report Data', message: `Viewing ${report.name} - Check console for data`, type: 'info' })
 }
 
 const shareReport = (report) => {
@@ -574,23 +728,37 @@ const deleteReport = async (report) => {
 
 // Utility functions
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString()
+  }
 }
 
 const formatTime = (dateString) => {
-  return new Date(dateString).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleTimeString('en-PH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return new Date(dateString).toLocaleTimeString()
+  }
 }
 
 const formatTimeAgo = (dateString) => {
-  const now = new Date()
-  const date = new Date(dateString)
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+  const date = new Date(new Date(dateString).toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
   const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
   
   if (diffInHours < 1) return 'Just now'
@@ -618,13 +786,31 @@ const getStatusBadgeClass = (status) => {
   return classes[status] || 'bg-secondary'
 }
 
-const getStatusIcon = (status) => {
-  const icons = {
-    completed: 'bi bi-check-circle',
-    generating: 'bi bi-arrow-repeat',
-    failed: 'bi bi-exclamation-triangle'
-  }
-  return icons[status] || 'bi bi-info-circle'
+const convertToCSV = (data) => {
+  if (!data || data.length === 0) return ''
+  
+  const headers = Object.keys(data[0])
+  const csvRows = []
+  
+  // Add headers
+  csvRows.push(headers.join(','))
+  
+  // Add data rows
+  data.forEach(row => {
+    const values = headers.map(header => {
+      const value = row[header]
+      // Handle null/undefined values and escape commas/quotes
+      if (value === null || value === undefined) return ''
+      const stringValue = String(value)
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      return stringValue
+    })
+    csvRows.push(values.join(','))
+  })
+  
+  return csvRows.join('\n')
 }
 
 // Lifecycle

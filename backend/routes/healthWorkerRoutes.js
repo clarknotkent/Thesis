@@ -11,10 +11,10 @@ const {
 } = require('../controllers/healthWorkerController');
 
 // GET /api/health-workers - List all health workers
-router.get('/', listHealthWorkers);
+router.get('/', authenticateRequest, checkUserMapping, listHealthWorkers);
 
 // GET /api/health-workers/:id - Get health worker by ID
-router.get('/:id', getHealthWorker);
+router.get('/:id', authenticateRequest, checkUserMapping, getHealthWorker);
 
 // POST /api/health-workers - Create health worker
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createHealthWorker);
@@ -26,6 +26,6 @@ router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin'
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteHealthWorker);
 
 // GET /api/health-workers/:id/progress - Get health worker progress
-router.get('/:id/progress', getHealthWorkerProgress);
+router.get('/:id/progress', authenticateRequest, checkUserMapping, getHealthWorkerProgress);
 
 module.exports = router;
