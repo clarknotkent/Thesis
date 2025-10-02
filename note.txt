@@ -32,4 +32,8 @@
 - Fix the Patients List (last vaccination must be displayed)
 - Make all dropdowns to accept inputs too (for searching through options)
 - Make the Dashboard work
+<<<<<<< Updated upstream
 - In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
+=======
+- In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
+>>>>>>> Stashed changes
