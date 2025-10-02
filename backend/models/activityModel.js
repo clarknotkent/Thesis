@@ -1,7 +1,11 @@
 const supabase = require('../db');
 
-const listActivityLogs = async (page = 1, limit = 20, filters = {}) => {
-  const offset = (page - 1) * limit;
+const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
+  // Ensure reasonable limits to prevent memory issues
+  const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
+  const safePage = Math.max(parseInt(page) || 1, 1);
+  const offset = (safePage - 1) * safeLimit;
+  
   let query = supabase
     .from('activitylogs_view')
     .select('*', { count: 'exact' });
@@ -13,7 +17,7 @@ const listActivityLogs = async (page = 1, limit = 20, filters = {}) => {
 
   const { data, error, count } = await query
     .order('timestamp', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + safeLimit - 1);
   if (error) throw error;
   const enriched = (data || []).map(r => ({
     ...r,
@@ -23,9 +27,9 @@ const listActivityLogs = async (page = 1, limit = 20, filters = {}) => {
   return {
     items: enriched,
     totalCount: count || 0,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    totalPages: Math.ceil((count || 0) / limit)
+    page: safePage,
+    limit: safeLimit,
+    totalPages: Math.ceil((count || 0) / safeLimit)
   };
 };
 

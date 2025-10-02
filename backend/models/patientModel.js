@@ -6,9 +6,13 @@ function withClient(client) {
 
 const patientModel = {
   // Fetch all patients with optional filters and pagination (reads from patients_view)
-  getAllPatients: async (filters = {}, page = 1, limit = 10, client) => {
+  getAllPatients: async (filters = {}, page = 1, limit = 5, client) => {
     try {
       const supabase = withClient(client);
+      // Ensure reasonable limits to prevent memory issues - max 50 for patients
+      const safeLimit = Math.min(Math.max(parseInt(limit) || 5, 1), 50);
+      const safePage = Math.max(parseInt(page) || 1, 1);
+      
       let query = supabase
         .from('patients_view')
         .select('*', { count: 'exact' });
@@ -49,9 +53,9 @@ const patientModel = {
       }
 
       // Apply pagination
-      const offset = (page - 1) * limit;
+      const offset = (safePage - 1) * safeLimit;
       const { data, error, count } = await query
-        .range(offset, offset + limit - 1)
+        .range(offset, offset + safeLimit - 1)
         .order('patient_id', { ascending: true });
 
       if (error) throw error;
@@ -71,9 +75,9 @@ const patientModel = {
       return {
         patients: withAge,
         totalCount: count || 0,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil((count || 0) / limit)
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil((count || 0) / safeLimit)
       };
     } catch (error) {
       console.error('Error fetching patients:', error);

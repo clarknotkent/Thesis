@@ -71,7 +71,12 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 fw-bold text-primary">Patient List</h6>
           <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">{{ totalItems }} patients</small>
+            <small class="text-muted">
+              {{ totalItems }} total patients
+              <span v-if="totalPages > 1">
+                (Page {{ currentPage }} of {{ totalPages }})
+              </span>
+            </small>
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-primary" @click="exportData" title="Export">
                 <i class="bi bi-download"></i>
@@ -168,7 +173,7 @@
             :total-pages="totalPages"
             :total-items="totalItems"
             :items-per-page="itemsPerPage"
-            @page-change="changePage"
+            @page-changed="changePage"
           />
         </div>
       </div>
@@ -499,7 +504,7 @@ const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedGender = ref('')
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(5) // Set to 5 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 
@@ -644,8 +649,10 @@ const formatDate = (dateString) => {
 }
 
 const changePage = (page) => {
-  currentPage.value = page
-  fetchPatients()
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    currentPage.value = page
+    fetchPatients()
+  }
 }
 
 const applyFilters = () => {

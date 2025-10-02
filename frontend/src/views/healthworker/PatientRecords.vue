@@ -394,7 +394,7 @@ const selectedGuardianName = ref('')
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(5) // Set to 5 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 

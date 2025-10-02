@@ -158,7 +158,12 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 fw-bold text-primary">Activity History</h6>
           <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">{{ totalItems }} logs</small>
+            <small class="text-muted">
+              {{ totalItems }} total logs 
+              <span v-if="totalPages > 1">
+                (Page {{ currentPage }} of {{ totalPages }})
+              </span>
+            </small>
             <button class="btn btn-outline-primary btn-sm" @click="refreshLogs" title="Refresh">
               <i class="bi bi-arrow-clockwise"></i>
             </button>
@@ -236,7 +241,7 @@
             :total-pages="totalPages"
             :total-items="totalItems"
             :items-per-page="itemsPerPage"
-            @page-change="changePage"
+            @page-changed="changePage"
           />
         </div>
       </div>
@@ -360,7 +365,7 @@ const logs = ref([])
 const selectedLog = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(10) // Set to 10 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 
@@ -432,25 +437,49 @@ const fetchLogs = async () => {
     }
 
     const response = await api.get('/activity-logs', { params })
-    const data = response.data?.data || response.data || []
+    const result = response.data.data || response.data
     
-    logs.value = (Array.isArray(data) ? data : data.items || []).map(log => ({
-      id: log.log_id || log.id,
-      timestamp: log.timestamp,
-      userId: log.user_id,
-      userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
-      userRole: log.user_role || 'Unknown',
-      action: log.display_action || log.description || log.action_type || 'Unknown Action',
-      resource: log.resource || log.table_name || 'System',
-      ipAddress: log.ip_address || 'N/A',
-      status: log.status || (log.success ? 'success' : 'failed'),
-      userAgent: log.user_agent,
-      description: log.full_description || log.details,
-      metadata: log.metadata || log.additional_data
-    }))
+    // Handle the backend response structure properly
+    if (result.items) {
+      // Backend returns { items: [], totalCount: number, page: number, limit: number, totalPages: number }
+      logs.value = result.items.map(log => ({
+        id: log.log_id || log.id,
+        timestamp: log.timestamp,
+        userId: log.user_id,
+        userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
+        userRole: log.user_role || 'Unknown',
+        action: log.display_action || log.description || log.action_type || 'Unknown Action',
+        resource: log.resource || log.table_name || 'System',
+        ipAddress: log.ip_address || 'N/A',
+        status: log.status || (log.success ? 'success' : 'failed'),
+        userAgent: log.user_agent,
+        description: log.full_description || log.details,
+        metadata: log.metadata || log.additional_data
+      }))
 
-    totalItems.value = response.data?.pagination?.totalItems || response.data?.total || logs.value.length
-    totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
+      totalItems.value = result.totalCount
+      totalPages.value = result.totalPages
+    } else {
+      // Fallback for other response formats
+      const logsArray = Array.isArray(result) ? result : result.data || []
+      logs.value = logsArray.map(log => ({
+        id: log.log_id || log.id,
+        timestamp: log.timestamp,
+        userId: log.user_id,
+        userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
+        userRole: log.user_role || 'Unknown',
+        action: log.display_action || log.description || log.action_type || 'Unknown Action',
+        resource: log.resource || log.table_name || 'System',
+        ipAddress: log.ip_address || 'N/A',
+        status: log.status || (log.success ? 'success' : 'failed'),
+        userAgent: log.user_agent,
+        description: log.full_description || log.details,
+        metadata: log.metadata || log.additional_data
+      }))
+
+      totalItems.value = result.totalCount || result.total || logs.value.length
+      totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
+    }
 
   } catch (error) {
     console.error('Error fetching activity logs:', error)
@@ -482,8 +511,10 @@ const debouncedSearch = () => {
 }
 
 const changePage = (page) => {
-  currentPage.value = page
-  fetchLogs()
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    currentPage.value = page
+    fetchLogs()
+  }
 }
 
 const viewLogDetails = (log) => {
@@ -568,6 +599,13 @@ const formatDatePH = (date) => {
   } catch (e) {
     return d.toLocaleString()
   }
+}
+
+const convertToISODate = (dateValue) => {
+  if (!dateValue) return ''
+  const date = new Date(dateValue)
+  if (isNaN(date.getTime())) return ''
+  return date.toISOString().split('T')[0]
 }
 
 // DateInput handles formatting and picker; we'll watch for changes to apply filters

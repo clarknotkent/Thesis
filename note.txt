@@ -1,28 +1,25 @@
-- Soft Deleting Users then Restoring them, changes their UUID in user_mapping
 - Must Finalize/Maximize Activity Logging
-- If Patient Relationship with Guardian is Mother, Mother Field should be autofilled
-- Can have a function in the Backend to gather all list of Mother and Father Full Name, to have a Dropdown upon Patient Creation
-- Apply the Toast in Everything
-- Apply Smart Dose Dropdown (must be derived from the schedule_doses)
-- Findings and Service Rendered must be automatically filled after event creation (vaccine admnistration/deworm/vitamin a),
-  it is not visible to the frontend but it is in the database
-- Apply Logic to Add Vaccination Record to accept Null Visit ID (for Vaccinations outside Center)
-- Apply Logic to Add Vacination Record to select a Visit Date (if Record Creation done in Patient List)
-- Implement Deworm & Vitamin
-- Vaccination Records must show to the Patient's Edit Vaccinations
-- Improve View Visit
-- List must be in Ascending Order (patient_id)
-- Must have list of all functions and triggers to analyze which ones overlap, unnecessary, duplicated, or missing
 - Must always update schema overview.txt
 - Make sure all buttons and CRUDs are working perfectly
-- In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
 - make sure all created_by and updated_by is being inserted
-- age in display in patients list must be in months and days
-- 
+
+- Implement Vax to Other Vax Rule (Especially in Rescheduling)
+- Repopulate Everything (with decent examples)
+- Try all CRUDs
+- Get/Utilize All necessary Views
+- Fix Time Fields (for Immunization Records)
+- Make Complex Functions Work (Defaulter Filtering/All Filtering)
+- Clarify the use of Grace Period and Eligible Date
+- Make Constraint to Only Have 1 Schedule per Vaccine Type
+- View Visit Should Include Whether Transaction was Outside or Not
+- Added Record per Visit Should be Editable (Optional)
+
+
+---- FRONTEND ----
 
 - If Patient Relationship with Guardian is Mother, Mother Field should be autofilled
 - Can have a function in the Backend to gather all list of Mother and Father Full Name, to have a Dropdown upon Patient Creation
-- Apply the Toast in Everything
+- Apply the Toast in Everything (remove the prompts--sytem-like notifications)
 - Apply Smart Dose Dropdown (must be derived from the schedule_doses)
 - Findings and Service Rendered must be automatically filled after event creation (vaccine admnistration/deworm/vitamin a),
   it is not visible to the frontend but it is in the database
@@ -33,4 +30,6 @@
 - Make sure that all fields are well-mapped (must prefill/occupy/populate necessary fields)
 - Make all Filter/Search Functions work
 - Fix the Patients List (last vaccination must be displayed)
-- 
+- Make all dropdowns to accept inputs too (for searching through options)
+- Make the Dashboard work
+- In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
