@@ -16,9 +16,48 @@
       </template>
     </AppPageHeader>
 
-    <!-- Search Section -->
+    <!-- Mobile-First Search Section -->
     <AppCard class="hw-search-section mb-4">
-      <div class="d-flex align-items-center gap-2">
+      <!-- Mobile Layout -->
+      <div class="d-block d-md-none">
+        <div class="mb-3">
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="bi bi-search"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Search patients..."
+              v-model="searchQuery"
+              @input="debouncedSearch"
+            >
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <select class="form-select" v-model="selectedStatus" @change="applyFilters">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <AppButton
+              variant="info"
+              icon="bi bi-qr-code-scan"
+              @click="openQrScanner"
+              class="w-100"
+            >
+              Scan QR
+            </AppButton>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Layout -->
+      <div class="d-none d-md-flex align-items-center gap-2">
         <div class="flex-grow-1">
           <div class="input-group">
             <span class="input-group-text">
@@ -56,17 +95,17 @@
       </div>
     </div>
 
-    <!-- Patient List -->
+    <!-- Mobile-First Patient List -->
     <div v-else class="row g-3">
-      <div class="col-lg-6" v-for="patient in patients" :key="patient.id">
+      <div class="col-12 col-md-6 col-xl-4" v-for="patient in patients" :key="patient.id">
         <AppCard class="hw-patient-card h-100">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-3">
+            <div class="mb-2 mb-sm-0">
               <h5 class="card-title mb-1 fw-bold">
                 {{ patient.childInfo.name }}
                 <span class="badge bg-info ms-2">Child</span>
               </h5>
-              <p class="text-muted mb-0">ID: {{ patient.id }}</p>
+              <p class="text-muted mb-0 small">ID: {{ patient.id }}</p>
             </div>
             <span :class="getStatusBadgeClass(getPatientStatus(patient))">
               {{ getPatientStatus(patient) }}
@@ -76,7 +115,7 @@
           <div class="row g-2 mb-3">
             <div class="col-6">
               <small class="text-muted">Age:</small>
-              <div class="fw-semibold">{{ calculateAge(patient.childInfo.birthDate) }}</div>
+              <div class="fw-semibold">{{ calculateAge(patient.childInfo.birthDate, patient) }}</div>
             </div>
             <div class="col-6">
               <small class="text-muted">Sex:</small>
@@ -85,13 +124,13 @@
           </div>
 
           <div class="row g-2 mb-3">
-            <div class="col-6">
-              <small class="text-muted">Parent:</small>
-              <div class="fw-semibold">{{ patient.motherInfo.name }}</div>
+            <div class="col-12 col-sm-6">
+              <small class="text-muted">Guardian:</small>
+              <div class="fw-semibold">{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</div>
             </div>
-            <div class="col-6">
+            <div class="col-12 col-sm-6">
               <small class="text-muted">Contact:</small>
-              <div class="fw-semibold">{{ getContact(patient) }}</div>
+              <div class="fw-semibold small">{{ getContact(patient) }}</div>
             </div>
           </div>
 
@@ -100,31 +139,95 @@
             <div class="fw-semibold">{{ getLastVaccination(patient) }}</div>
           </div>
 
-          <div class="d-grid gap-2 d-md-flex">
-            <AppButton
-              variant="primary"
-              @click="viewPatient(patient)"
-              icon="bi bi-eye"
-              class="flex-fill"
-            >
-              View Details
-            </AppButton>
-            <AppButton
-              variant="success"
-              @click="editPatient(patient)"
-              icon="bi bi-pencil"
-              class="flex-fill"
-            >
-              Edit
-            </AppButton>
-            <AppButton
-              variant="outline-danger"
-              @click="deletePatient(patient)"
-              icon="bi bi-trash"
-              class="flex-fill"
-            >
-              Delete
-            </AppButton>
+          <!-- Mobile-First Action Buttons -->
+          <div class="d-grid gap-2">
+            <!-- Mobile: Stack all buttons vertically -->
+            <div class="d-block d-sm-none">
+              <AppButton
+                variant="primary"
+                @click="viewPatient(patient)"
+                icon="bi bi-eye"
+                class="w-100 mb-2"
+                size="sm"
+              >
+                View Details
+              </AppButton>
+              <div class="row g-2">
+                <div class="col-4">
+                  <AppButton
+                    variant="success"
+                    @click="editPatient(patient)"
+                    icon="bi bi-pencil"
+                    class="w-100"
+                    size="sm"
+                  >
+                    Edit
+                  </AppButton>
+                </div>
+                <div class="col-4">
+                  <AppButton
+                    variant="info"
+                    @click="administerVaccine(patient)"
+                    icon="bi bi-syringe"
+                    class="w-100"
+                    size="sm"
+                  >
+                    Vaccine
+                  </AppButton>
+                </div>
+                <div class="col-4">
+                  <AppButton
+                    variant="outline-danger"
+                    @click="deletePatient(patient)"
+                    icon="bi bi-trash"
+                    class="w-100"
+                    size="sm"
+                  >
+                    Delete
+                  </AppButton>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tablet and up: Horizontal layout -->
+            <div class="d-none d-sm-flex gap-2">
+              <AppButton
+                variant="primary"
+                @click="viewPatient(patient)"
+                icon="bi bi-eye"
+                class="flex-fill"
+                size="sm"
+              >
+                View
+              </AppButton>
+              <AppButton
+                variant="success"
+                @click="editPatient(patient)"
+                icon="bi bi-pencil"
+                class="flex-fill"
+                size="sm"
+              >
+                Edit
+              </AppButton>
+              <AppButton
+                variant="info"
+                @click="administerVaccine(patient)"
+                icon="bi bi-syringe"
+                class="flex-fill"
+                size="sm"
+              >
+                Vaccine
+              </AppButton>
+              <AppButton
+                variant="outline-danger"
+                @click="deletePatient(patient)"
+                icon="bi bi-trash"
+                class="flex-fill"
+                size="sm"
+              >
+                Delete
+              </AppButton>
+            </div>
           </div>
         </AppCard>
       </div>
@@ -459,11 +562,52 @@ const fetchPatients = async () => {
     if (selectedStatus.value) params.status = selectedStatus.value
 
     const response = await api.get('/patients', { params })
-    patients.value = response.data.data || []
+    
+    // Map backend data structure to frontend format
+    const patientsData = response.data.data?.patients || response.data.data || []
+    patients.value = patientsData.map(patient => ({
+      id: patient.patient_id,
+      patient_id: patient.patient_id,
+      childInfo: {
+        name: patient.full_name || `${patient.firstname} ${patient.surname}`.trim(),
+        firstName: patient.firstname,
+        middleName: patient.middlename,
+        lastName: patient.surname,
+        birthDate: patient.date_of_birth,
+        sex: patient.sex,
+        address: patient.address,
+        barangay: patient.barangay,
+        phoneNumber: patient.guardian_contact_number
+      },
+      motherInfo: {
+        name: patient.mother_name,
+        occupation: patient.mother_occupation,
+        phone: patient.mother_contact_number
+      },
+      fatherInfo: {
+        name: patient.father_name,
+        occupation: patient.father_occupation,
+        phone: patient.father_contact_number
+      },
+      guardianInfo: {
+        id: patient.guardian_id,
+        name: `${patient.guardian_firstname || ''} ${patient.guardian_surname || ''}`.trim(),
+        contact_number: patient.guardian_contact_number,
+        family_number: patient.guardian_family_number,
+        relationship: patient.relationship_to_guardian
+      },
+      // Initialize empty vaccination history - will be populated by separate API call if needed
+      vaccinationHistory: [],
+      tags: patient.tags,
+      dateRegistered: patient.date_registered,
+      age_months: patient.age_months,
+      age_days: patient.age_days
+    }))
 
-    if (response.data.pagination) {
-      totalItems.value = response.data.pagination.totalItems
-      totalPages.value = response.data.pagination.totalPages
+    // Handle pagination data
+    if (response.data.data && typeof response.data.data === 'object' && response.data.data.totalCount !== undefined) {
+      totalItems.value = response.data.data.totalCount
+      totalPages.value = response.data.data.totalPages
     } else {
       totalItems.value = patients.value.length
       totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
@@ -482,14 +626,22 @@ const fetchPatients = async () => {
 const fetchGuardians = async () => {
   try {
     const response = await api.get('/guardians')
-    guardians.value = response.data.data || []
+    guardians.value = response.data.data || response.data || []
   } catch (error) {
     console.error('Error fetching guardians:', error)
     guardians.value = []
   }
 }
 
-const calculateAge = (birthDate) => {
+const calculateAge = (birthDate, patient = null) => {
+  // If patient object has pre-computed age from backend, use that
+  if (patient && patient.age_months !== undefined && patient.age_days !== undefined) {
+    const months = patient.age_months || 0
+    const days = patient.age_days || 0
+    return `${months}m ${days}d`
+  }
+  
+  // Fallback to client-side calculation
   if (!birthDate) return '—'
   const birth = new Date(birthDate)
   const today = new Date()
@@ -550,12 +702,12 @@ const getLastVaccination = (patient) => {
 }
 
 const getContact = (patient) => {
-  // Prefer guardian contact if available in patient payload
+  // Prefer guardian contact if available
   if (patient.guardianInfo && patient.guardianInfo.contact_number) return patient.guardianInfo.contact_number
   if (patient.motherInfo && patient.motherInfo.phone) return patient.motherInfo.phone
   if (patient.fatherInfo && patient.fatherInfo.phone) return patient.fatherInfo.phone
   // Fallback to child phone or empty
-  return patient.childInfo?.phoneNumber || ''
+  return patient.childInfo?.phoneNumber || 'N/A'
 }
 
 const changePage = (page) => {
@@ -579,23 +731,60 @@ const debouncedSearch = () => {
 }
 
 const viewPatient = (patient) => {
-  selectedPatientId.value = patient.id
+  selectedPatientId.value = patient.patient_id
   showViewModal.value = true
 }
 
 const editPatient = (patient) => {
-  form.value = { ...patient }
+  form.value = {
+    id: patient.id,
+    patient_id: patient.patient_id,
+    surname: patient.childInfo.lastName,
+    firstname: patient.childInfo.firstName,
+    middlename: patient.childInfo.middleName,
+    sex: patient.childInfo.sex,
+    date_of_birth: patient.childInfo.birthDate,
+    address: patient.childInfo.address,
+    barangay: patient.childInfo.barangay,
+    health_center: '', // Not included in patient view
+    mother_name: patient.motherInfo.name,
+    mother_occupation: patient.motherInfo.occupation,
+    mother_contact_number: patient.motherInfo.phone,
+    father_name: patient.fatherInfo.name,
+    father_occupation: patient.fatherInfo.occupation,
+    father_contact_number: patient.fatherInfo.phone,
+    guardian_id: patient.guardianInfo.id,
+    family_number: patient.guardianInfo.family_number,
+    tags: patient.tags,
+    // Birth history fields - would need separate API call to populate
+    birth_weight: null,
+    birth_length: null,
+    place_of_birth: null,
+    address_at_birth: null,
+    time_of_birth: null,
+    attendant_at_birth: null,
+    type_of_delivery: null,
+    ballards_score: null,
+    hearing_test_date: null,
+    newborn_screening_date: null,
+    newborn_screening_result: null
+  }
+  
+  // Set guardian name for display
+  selectedGuardianName.value = patient.guardianInfo.name
+  
   showEditModal.value = true
 }
 
 const deletePatient = async (patient) => {
   if (confirm(`Are you sure you want to delete patient record for ${patient.childInfo.name}?`)) {
     try {
-      await api.delete(`/patients/${patient.id}`)
+      await api.delete(`/patients/${patient.patient_id}`)
       await fetchPatients()
     } catch (error) {
       console.error('Error deleting patient:', error)
-      alert('Error deleting patient')
+      const errorMessage = error.response?.data?.message || 'Error deleting patient'
+      alert(errorMessage)
     }
   }
 }
@@ -604,30 +793,48 @@ const savePatient = async () => {
   try {
     saving.value = true
     
-    if (showEditModal.value) {
-      await api.put(`/patients/${form.value.id}`, form.value)
-    } else {
-      // Prepare payload: include birthhistory nested object for onboarding
-      const payload = { ...form.value }
-      // Ensure place_of_birth defaults to date_of_birth when not provided
-      const placeOfBirth = form.value.place_of_birth || form.value.date_of_birth || null
+    // Prepare payload in backend-expected format
+    const payload = {
+      firstname: form.value.firstname,
+      surname: form.value.surname,
+      middlename: form.value.middlename,
+      sex: form.value.sex,
+      date_of_birth: form.value.date_of_birth,
+      address: form.value.address,
+      barangay: form.value.barangay,
+      health_center: form.value.health_center,
+      guardian_id: form.value.guardian_id,
+      relationship_to_guardian: 'Child', // Default relationship
+      mother_name: form.value.mother_name,
+      mother_occupation: form.value.mother_occupation,
+      mother_contact_number: form.value.mother_contact_number,
+      father_name: form.value.father_name,
+      father_occupation: form.value.father_occupation,
+      father_contact_number: form.value.father_contact_number,
+      family_number: form.value.family_number,
+      tags: form.value.tags
+    }
+
+    // Include birth history for new patients
+    if (!showEditModal.value) {
       payload.birthhistory = {
         birth_weight: form.value.birth_weight,
         birth_length: form.value.birth_length,
-        place_of_birth: placeOfBirth,
+        place_of_birth: form.value.place_of_birth || form.value.date_of_birth,
         address_at_birth: form.value.address_at_birth,
-        time_of_birth: form.value.time_of_birth,
-        attendant_at_birth: form.value.attendant_at_birth,
-        type_of_delivery: form.value.type_of_delivery,
+        time_of_birth: form.value.time_of_birth || '00:00', // Required field
+        attendant_at_birth: form.value.attendant_at_birth || 'Midwife', // Required field
+        type_of_delivery: form.value.type_of_delivery || 'Normal', // Required field
         ballards_score: form.value.ballards_score,
         hearing_test_date: form.value.hearing_test_date,
         newborn_screening_date: form.value.newborn_screening_date,
         newborn_screening_result: form.value.newborn_screening_result
       }
-
-      // If front-end knows current user id (optional global), include created_by for audit
-      if (window?.APP_USER_ID) payload.birthhistory.created_by = window.APP_USER_ID
-
+    }
+    
+    if (showEditModal.value) {
+      await api.put(`/patients/${form.value.patient_id}`, payload)
+    } else {
       await api.post('/patients', payload)
     }
     
@@ -635,7 +842,8 @@ const savePatient = async () => {
     await fetchPatients()
   } catch (error) {
     console.error('Error saving patient:', error)
-    alert('Error saving patient')
+    const errorMessage = error.response?.data?.message || 'Error saving patient'
+    alert(errorMessage)
   } finally {
     saving.value = false
   }
@@ -685,6 +893,13 @@ const closeModal = () => {
 
 const openQrScanner = () => {
   alert('QR Code Scanner opened! (Implement modal or scanner component here)')
+}
+
+const administerVaccine = (patient) => {
+  // Open vaccine administration modal or inline form
+  // For now, we'll show an alert with patient info
+  alert(`Administer vaccine for: ${patient.childInfo.name} (ID: ${patient.patient_id})`)
+  // TODO: Implement vaccine administration modal/form here
 }
 
 const getStatusBadgeClass = (status) => {

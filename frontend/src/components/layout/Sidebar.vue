@@ -41,7 +41,6 @@ const menuItems = computed(() => {
     healthworker: [
       { name: 'dashboard', path: '/healthworker/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
       { name: 'patients', path: '/healthworker/patients', label: 'Patient Records', icon: 'bi bi-people' },
-      { name: 'administer', path: '/healthworker/administer', label: 'Administer Vaccine', icon: 'bi bi-syringe' },
       { name: 'inventory', path: '/healthworker/inventory', label: 'Vaccine Stock', icon: 'bi bi-box-seam' }
     ],
     parent: [
