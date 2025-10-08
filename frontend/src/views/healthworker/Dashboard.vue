@@ -6,9 +6,9 @@
       :breadcrumbs="breadcrumbs"
     />
 
-    <!-- Quick Stats -->
+    <!-- Quick Stats - Mobile First Grid -->
     <div class="row g-3 mb-4">
-      <div class="col-md-4">
+      <div class="col-12 col-sm-6 col-lg-4">
         <AppCard class="hw-stat-card bg-info text-white h-100">
           <div class="text-center">
             <i class="bi bi-people-fill hw-stat-icon"></i>
@@ -17,7 +17,7 @@
           </div>
         </AppCard>
       </div>
-      <div class="col-md-4">
+      <div class="col-12 col-sm-6 col-lg-4">
         <AppCard class="hw-stat-card bg-success text-white h-100">
           <div class="text-center">
             <i class="bi bi-syringe hw-stat-icon"></i>
@@ -26,7 +26,7 @@
           </div>
         </AppCard>
       </div>
-      <div class="col-md-4">
+      <div class="col-12 col-lg-4">
         <AppCard class="hw-stat-card bg-warning text-white h-100">
           <div class="text-center">
             <i class="bi bi-calendar-check hw-stat-icon"></i>
@@ -37,9 +37,9 @@
       </div>
     </div>
 
-    <!-- Main Actions -->
+    <!-- Main Actions - Mobile First Grid -->
     <div class="row g-3 mb-4">
-      <div class="col-lg-6">
+      <div class="col-12 col-md-6">
         <AppCard class="hw-action-card h-100">
           <template #header>
             <div class="bg-primary text-white">
@@ -70,7 +70,7 @@
           </div>
         </AppCard>
       </div>
-      <div class="col-lg-6">
+      <div class="col-12 col-md-6">
         <AppCard class="hw-action-card h-100">
           <template #header>
             <div class="bg-success text-white">
@@ -84,11 +84,11 @@
             <AppButton
               variant="success"
               size="lg"
-              :to="'/healthworker/administer'"
-              icon="bi bi-plus-circle"
+              :to="'/healthworker/patients'"
+              icon="bi bi-syringe"
               class="btn-hw-primary"
             >
-              Administer Vaccine
+              Manage Patients & Vaccines
             </AppButton>
             <AppButton
               variant="outline-success"

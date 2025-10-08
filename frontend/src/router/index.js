@@ -157,9 +157,6 @@ const routes = [
     }
   },
   {
-    // VaccineAdministration route removed (view deleted)
-  },
-  {
     path: '/healthworker/inventory',
     name: 'VaccineInventoryReadOnly',
     component: VaccineInventoryReadOnly,
