@@ -1257,29 +1257,41 @@ async function fetchSchedule(vaccineId) {
       return
     }
 
+    // Prefer schedule_doses (API shape) but support doses[] as fallback
+    const rawDoses = Array.isArray(payload.schedule_doses)
+      ? payload.schedule_doses
+      : (Array.isArray(payload.doses) ? payload.doses : [])
+
+    const mappedDoses = rawDoses
+      .map((d, i) => ({
+        dose_number: d?.dose_number != null ? Number(d.dose_number) : (i + 1),
+        due_after_days: d?.due_after_days == null ? '' : Number(d.due_after_days),
+        min_interval_days: d?.min_interval_days == null ? '' : Number(d.min_interval_days),
+        max_interval_days: d?.max_interval_days == null ? '' : Number(d.max_interval_days),
+        min_interval_other_vax: d?.min_interval_other_vax == null ? '' : Number(d.min_interval_other_vax),
+        requires_previous: !!d?.requires_previous,
+        skippable: !!d?.skippable,
+        grace_period_days: d?.grace_period_days == null ? '' : Number(d.grace_period_days),
+        // absolute_latest_days may not exist in newer schema; keep for backward compat
+        absolute_latest_days: d?.absolute_latest_days == null ? '' : Number(d.absolute_latest_days),
+        notes: d?.notes || ''
+      }))
+      .sort((a, b) => (a.dose_number || 0) - (b.dose_number || 0))
+
     schedulingFields.value = {
       name: payload.name || '',
       code: payload.code || '',
-      total_doses: Number(payload.total_doses) || (Array.isArray(payload.doses) ? payload.doses.length : 1),
+      total_doses: Number(payload.total_doses) || mappedDoses.length || 1,
       concurrent_allowed: !!payload.concurrent_allowed,
       catchup_strategy: payload.catchup_strategy || '',
       min_age_days: payload.min_age_days != null ? Number(payload.min_age_days) : 0,
       max_age_days: payload.max_age_days != null ? Number(payload.max_age_days) : null,
       created_by: payload.created_by || null,
       notes: payload.notes || '',
-      doses: Array.isArray(payload.doses) ? payload.doses.map((d, i) => ({
-        dose_number: Number(d.dose_number) || (i + 1),
-        due_after_days: d.due_after_days == null ? '' : Number(d.due_after_days),
-        min_interval_days: d.min_interval_days == null ? '' : Number(d.min_interval_days),
-        max_interval_days: d.max_interval_days == null ? '' : Number(d.max_interval_days),
-        min_interval_other_vax: d.min_interval_other_vax == null ? '' : Number(d.min_interval_other_vax),
-        requires_previous: !!d.requires_previous,
-        skippable: !!d.skippable,
-        grace_period_days: d.grace_period_days == null ? '' : Number(d.grace_period_days),
-        absolute_latest_days: d.absolute_latest_days == null ? '' : Number(d.absolute_latest_days),
-        notes: d.notes || ''
-      })) : []
+      doses: mappedDoses
     }
+
+    currentDoseIndex.value = 0
 
     ensureDosesCount(schedulingFields.value.total_doses)
   } catch (e) {
@@ -2222,8 +2234,13 @@ const viewSchedule = (s) => {
   // Open modal in read-only/view mode and load schedule for the vaccine
   scheduleReadOnly.value = true
   const vaccineId = s.vaccine?.vaccine_id || s.vaccine_id || null
-  if (vaccineId) selectedVaccine.value = vaccineId
-  schedulingFields.value = { ...s }
+  if (vaccineId) {
+    selectedVaccine.value = vaccineId
+    fetchSchedule(vaccineId)
+  } else {
+    schedulingFields.value = { ...s }
+    currentDoseIndex.value = 0
+  }
   showScheduleModal.value = true
 }
 
