@@ -339,6 +339,7 @@ import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import api from '@/services/api'
+import { formatPHDate } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)
@@ -410,11 +411,7 @@ const fetchChildData = async () => {
     childInfo.value = {
       id: childData.id,
       name: childData.name || 'Not available',
-      dateOfBirth: childData.dateOfBirth ? new Date(childData.dateOfBirth).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }) : 'Not available',
+      dateOfBirth: childData.dateOfBirth ? formatPHDate(childData.dateOfBirth, 'MMMM DD, YYYY') : 'Not available',
       ageDisplay: childData.ageDisplay || childData.age ? `${childData.age} years old` : 'Age not available',
       gender: childData.gender || childData.sex || 'Not specified',
       bloodType: childData.bloodType || childData.blood_type || 'Not specified',

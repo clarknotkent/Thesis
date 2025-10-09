@@ -32,6 +32,11 @@ const { listSchedules } = require('../controllers/vaccineController');
 // GET /api/vaccines/schedules - list all schedules
 router.get('/schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin']), listSchedules);
 
+// Manual run of scheduled tasks (admin only)
+const { runExpiryCheck, runScheduleStatusUpdate } = require('../controllers/vaccineController');
+router.post('/tasks/run-expiry-check', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runExpiryCheck);
+router.post('/tasks/run-schedule-status-update', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runScheduleStatusUpdate);
+
 // Vaccine Type Management Routes
 // POST /api/vaccines - Add a new vaccine type
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin']), addVaccine);

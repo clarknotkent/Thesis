@@ -314,6 +314,7 @@ import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import api from '@/services/api'
+import { formatPHDate, utcToPH, nowPH } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)
@@ -390,11 +391,7 @@ const fetchVaccinationSchedule = async () => {
       name: item.name,
       status: item.status,
       recommendedAge: item.recommendedAge,
-      date: new Date(item.date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }),
+      date: formatPHDate(item.date),
       scheduledDate: item.scheduledDate,
       actualDate: item.actualDate,
       vaccineId: item.vaccineId,
@@ -472,10 +469,9 @@ const getStatusBadgeClass = (status) => {
 
 const getDaysUntilDue = (dueDate) => {
   if (!dueDate) return 'Date not set'
-  const due = new Date(dueDate)
-  const today = new Date()
-  const diffTime = due - today
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const due = utcToPH(dueDate)
+  const today = nowPH()
+  const diffDays = due.diff(today, 'days')
 
   if (diffDays === 0) return 'Due today'
   if (diffDays === 1) return 'Due tomorrow'
@@ -485,10 +481,9 @@ const getDaysUntilDue = (dueDate) => {
 
 const getDaysOverdue = (dueDate) => {
   if (!dueDate) return 'Date not set'
-  const due = new Date(dueDate)
-  const today = new Date()
-  const diffTime = today - due
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const due = utcToPH(dueDate)
+  const today = nowPH()
+  const diffDays = today.diff(due, 'days')
 
   if (diffDays === 1) return 'Overdue by 1 day'
   return `Overdue by ${diffDays} days`

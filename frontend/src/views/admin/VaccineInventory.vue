@@ -7,12 +7,18 @@
           <p class="text-muted mb-0">Manage vaccine types and track vaccine stock levels</p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-primary" @click="showAddStockModal = true">
-            <i class="bi bi-plus-circle me-2"></i>Add New Stock
-          </button>
-          <button class="btn btn-success" @click="showAddVaccineModal = true">
-            <i class="bi bi-plus-square me-2"></i>Add New Vaccine
-          </button>
+          <router-link class="btn btn-primary" to="/admin/receiving-reports">
+            <i class="bi bi-truck me-2"></i>Receiving Reports
+          </router-link>
+          <!-- Legacy flows hidden; enable by setting showLegacyInventoryActions -->
+          <template v-if="showLegacyInventoryActions">
+            <button class="btn btn-outline-primary" @click="showAddStockModal = true">
+              <i class="bi bi-plus-circle me-2"></i>Add New Stock
+            </button>
+            <button class="btn btn-outline-success" @click="showAddVaccineModal = true">
+              <i class="bi bi-plus-square me-2"></i>Add New Vaccine
+            </button>
+          </template>
         </div>
       </div>
 
@@ -98,17 +104,22 @@
       <div v-if="!loading" class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 fw-bold text-primary">Vaccine Stock</h6>
-          <div class="input-group w-25">
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="Search vaccines..." 
-              v-model="searchTerm"
-              aria-label="Search"
-              @input="watchSearchTerm"
-            >
-            <button class="btn btn-outline-primary" type="button">
-              <i class="bi bi-search"></i>
+          <div class="d-flex gap-2 align-items-center">
+            <div class="input-group w-25">
+              <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Search vaccines..." 
+                v-model="searchTerm"
+                aria-label="Search"
+                @input="watchSearchTerm"
+              >
+              <button class="btn btn-outline-primary" type="button">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline-secondary" type="button" @click="openEditVaccineWizard">
+              <i class="bi bi-pencil me-2"></i>Edit Vaccine
             </button>
           </div>
         </div>
@@ -118,8 +129,8 @@
               <thead class="table-light">
                 <tr>
                   <th>Vaccine Name</th>
+                  <th>Brand Name</th>
                   <th>Manufacturer</th>
-                  <th>Batch No.</th>
                   <th>Expiry Date</th>
                   <th>Quantity</th>
                   <th>Status</th>
@@ -129,8 +140,8 @@
               <tbody>
                 <tr v-for="vaccine in paginatedVaccines" :key="vaccine.id">
                   <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
+                  <td>{{ vaccine.brandName }}</td>
                   <td>{{ vaccine.manufacturer }}</td>
-                  <td><code>{{ vaccine.batchNo }}</code></td>
                   <td>{{ formatDate(vaccine.expiryDate) }}</td>
                   <td>
                     <span class="fw-bold" :class="getQuantityClass(vaccine.quantity)">
@@ -145,26 +156,27 @@
                   <td>
                     <div class="btn-group btn-group-sm">
                       <button 
+                        class="btn btn-outline-secondary" 
+                        @click="openInventoryDetails(vaccine)"
+                        title="View Details"
+                      >
+                        <i class="bi bi-eye"></i>
+                      </button>
+                      <button 
                         class="btn btn-outline-primary" 
                         @click="editVaccine(vaccine)"
                         title="Edit"
                       >
                         <i class="bi bi-pencil"></i>
                       </button>
-                      <button 
-                        class="btn btn-outline-secondary"
-                        @click="openAdjustModal(vaccine)"
-                        title="Adjust Stock"
-                      >
-                        <i class="bi bi-arrow-left-right"></i>
-                      </button>
                       <button
-                        class="btn btn-outline-info"
-                        @click="editVaccineType(vaccine)"
-                        title="Edit Vaccine Type"
+                        class="btn btn-outline-warning"
+                        @click="viewInventoryHistory(vaccine)"
+                        title="View History"
                       >
-                        <i class="bi bi-gear"></i>
+                        <i class="bi bi-clock-history"></i>
                       </button>
+                      
                       <button 
                         class="btn btn-outline-danger" 
                         @click="deleteVaccine(vaccine)"
@@ -293,8 +305,12 @@
                           id="manufacturer"
                           v-model="form.manufacturer" 
                           required
+                          list="manufacturerOptionsList"
                           placeholder="e.g., Pfizer Inc., Moderna Inc."
                         >
+                        <datalist id="manufacturerOptionsList">
+                          <option v-for="m in manufacturerOptions" :key="m" :value="m"></option>
+                        </datalist>
                       </div>
                       <div class="col-xl-6 col-lg-6 col-md-6" v-if="!isEditing">
                         <label for="quantity" class="form-label">Stock Quantity: <span class="text-danger">*</span></label>
@@ -307,6 +323,63 @@
                           required
                           placeholder="Number of doses"
                         >
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="isEditing">
+                        <label for="currentQuantity" class="form-label">Current Stock Quantity:</label>
+                        <input 
+                          type="number" 
+                          class="form-control bg-light" 
+                          id="currentQuantity"
+                          v-model="form.quantity" 
+                          readonly
+                          placeholder="Current stock level"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Stock Adjustment (only when editing) -->
+                <div class="row mb-4" v-if="isEditing">
+                  <div class="col-12">
+                    <h6 class="text-primary fw-bold mb-3">
+                      <i class="bi bi-arrow-left-right me-2"></i>Stock Adjustment
+                    </h6>
+                    <div class="row g-4">
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="adjustType" class="form-label">Transaction Type:</label>
+                        <select 
+                          class="form-select" 
+                          id="adjustType"
+                          v-model="adjustForm.type"
+                        >
+                          <option value="ADJUST">ADJUST (Set to exact quantity)</option>
+                          <option value="RETURN">RETURN (Remove from stock)</option>
+                          <option value="EXPIRED">EXPIRED (Mark as expired)</option>
+                        </select>
+                        <small class="text-muted">ADJUST sets stock to the exact quantity you enter. Others modify current stock.</small>
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="adjustQuantity" class="form-label">Adjust Quantity:</label>
+                        <input 
+                          type="number" 
+                          class="form-control" 
+                          id="adjustQuantity"
+                          v-model.number="adjustForm.quantity"
+                          min="0"
+                          placeholder="0"
+                        >
+                        <small class="text-muted">Leave at 0 for no adjustment</small>
+                      </div>
+                      <div class="col-12">
+                        <label for="adjustNote" class="form-label">Adjustment Note:</label>
+                        <textarea 
+                          class="form-control" 
+                          id="adjustNote"
+                          v-model="adjustForm.note"
+                          rows="2"
+                          placeholder="Reason for adjustment (optional)"
+                        ></textarea>
                       </div>
                     </div>
                   </div>
@@ -341,8 +414,12 @@
                           class="form-control"
                           id="storageLocation"
                           v-model="form.storageLocation"
+                          list="storageLocations"
                           placeholder="e.g., Cold Room A, Refrigerator 1"
                         >
+                        <datalist id="storageLocations">
+                          <option v-for="opt in storageLocationOptions" :key="opt" :value="opt">{{ opt }}</option>
+                        </datalist>
                       </div>
                     </div>
                   </div>
@@ -358,6 +435,84 @@
                 <i v-else class="bi bi-check-circle me-2"></i>
                 {{ isEditing ? 'Update' : 'Add' }} Stock
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory Details Modal -->
+      <div class="modal fade" :class="{ show: showDetailsModal }" :style="{ display: showDetailsModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 700px; width: 700px;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-eye me-2"></i>
+                Inventory Details
+              </h5>
+              <button type="button" class="btn-close" @click="closeDetailsModal"></button>
+            </div>
+            <div class="modal-body px-4" v-if="selectedInventory">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="form-text">Vaccine</div>
+                  <div class="fw-semibold">{{ selectedInventory.vaccineName }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Manufacturer</div>
+                  <div class="fw-semibold">{{ selectedInventory.manufacturer || '-' }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Brand</div>
+                  <div class="fw-semibold">{{ selectedInventory.brandName || '-' }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Lot Number</div>
+                  <div class="fw-semibold">{{ selectedInventory.batchNo || selectedInventory.lotNumber || '-' }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Expiration Date</div>
+                  <div class="fw-semibold">{{ formatDate(selectedInventory.expiryDate) }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Storage Location</div>
+                  <div class="fw-semibold">{{ selectedInventory.storageLocation || '-' }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Quantity</div>
+                  <div class="fw-semibold">{{ selectedInventory.quantity }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-text">Status</div>
+                  <span class="badge" :class="getStatusBadgeClass(selectedInventory.status)">{{ selectedInventory.status }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeDetailsModal">
+                <i class="bi bi-x-circle me-2"></i>Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expires Today Notice Modal -->
+      <div class="modal fade" :class="{ show: showExpiresTodayModal }" :style="{ display: showExpiresTodayModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title text-danger">
+                <i class="bi bi-exclamation-octagon me-2"></i>
+                Lot Expires Today
+              </h5>
+              <button type="button" class="btn-close" @click="showExpiresTodayModal = false"></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-2">The lot you just saved has an expiration date of <strong>{{ formatDate(savedLot?.expiration_date || savedLot?.expiryDate) }}</strong>, which is today.</p>
+              <p class="mb-0 small text-muted">This stock will be treated as expired by the system after today (or when the expiry check runs). You may use it only if local policy allows same-day use before end of day.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" @click="showExpiresTodayModal = false">OK</button>
             </div>
           </div>
         </div>
@@ -390,47 +545,111 @@
                     <div class="row g-4">
                       <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newAntigenName" class="form-label">Antigen Name: <span class="text-danger">*</span></label>
-                        <input 
-                          type="text" 
-                          class="form-control" 
-                          id="newAntigenName"
-                          v-model="vaccineForm.antigen_name" 
-                          required
-                          placeholder="e.g., COVID-19, Rotavirus, Measles"
-                        >
+                        <div class="input-group">
+                          <select
+                            class="form-select"
+                            id="antigenDropdown"
+                            v-model="selectedAntigen"
+                            @change="onAntigenSelect"
+                            :disabled="isEditingVaccineType"
+                          >
+                            <option value="">-- Select or type antigen --</option>
+                            <option v-for="antigen in antigenOptions" :key="antigen" :value="antigen">
+                              {{ antigen }}
+                            </option>
+                          </select>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="newAntigenName"
+                            v-model="vaccineForm.antigen_name"
+                            @input="onAntigenInput"
+                            placeholder="e.g., COVID-19, Rotavirus, Measles"
+                            required
+                            :readonly="isEditingVaccineType"
+                          >
+                        </div>
+                        <small class="text-muted">Select from dropdown or type manually to add new antigen</small>
                       </div>
                       <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newBrandName" class="form-label">Brand Name: <span class="text-danger">*</span></label>
-                        <input 
-                          type="text" 
-                          class="form-control" 
-                          id="newBrandName"
-                          v-model="vaccineForm.brand_name" 
-                          required
-                          placeholder="e.g., Pfizer, Moderna, Sinovac"
-                        >
+                        <div class="input-group">
+                          <select
+                            class="form-select"
+                            id="brandDropdown"
+                            v-model="selectedBrand"
+                            @change="onBrandSelect"
+                            :disabled="isEditingVaccineType"
+                          >
+                            <option value="">-- Select or type brand --</option>
+                            <option v-for="brand in brandOptions" :key="brand" :value="brand">
+                              {{ brand }}
+                            </option>
+                          </select>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="newBrandName"
+                            v-model="vaccineForm.brand_name"
+                            @input="onBrandInput"
+                            placeholder="e.g., Pfizer, Moderna, Sinovac"
+                            required
+                            :readonly="isEditingVaccineType"
+                          >
+                        </div>
+                        <small class="text-muted">Select from dropdown or type manually to add new brand</small>
                       </div>
                       <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newManufacturer" class="form-label">Manufacturer: <span class="text-danger">*</span></label>
-                        <input 
-                          type="text" 
-                          class="form-control" 
-                          id="newManufacturer"
-                          v-model="vaccineForm.manufacturer" 
-                          required
-                          placeholder="e.g., Pfizer Inc., Moderna Inc."
-                        >
+                        <div class="input-group">
+                          <select
+                            class="form-select"
+                            id="manufacturerDropdown"
+                            v-model="selectedManufacturer"
+                            @change="onManufacturerSelect"
+                          >
+                            <option value="">-- Select or type manufacturer --</option>
+                            <option v-for="manufacturer in manufacturerOptions" :key="manufacturer" :value="manufacturer">
+                              {{ manufacturer }}
+                            </option>
+                          </select>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="newManufacturer"
+                            v-model="vaccineForm.manufacturer"
+                            @input="onManufacturerInput"
+                            placeholder="e.g., Pfizer Inc., Moderna Inc."
+                            required
+                          >
+                        </div>
+                        <small class="text-muted">Select from dropdown or type manually to add new manufacturer</small>
                       </div>
                       <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newDiseasePrevented" class="form-label">Disease Prevented: <span class="text-danger">*</span></label>
-                        <input
-                          type="text"
-                          class="form-control"
-                          id="newDiseasePrevented"
-                          v-model="vaccineForm.disease_prevented"
-                          required
-                          placeholder="e.g., Tuberculosis, Measles, COVID-19"
-                        />
+                        <div class="input-group">
+                          <select
+                            class="form-select"
+                            id="diseaseDropdown"
+                            v-model="selectedDisease"
+                            @change="onDiseaseSelect"
+                          >
+                            <option value="">-- Select or type disease --</option>
+                            <option v-for="disease in diseaseOptions" :key="disease" :value="disease">
+                              {{ disease }}
+                            </option>
+                          </select>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="newDiseasePrevented"
+                            v-model="vaccineForm.disease_prevented"
+                            @input="onDiseaseInput"
+                            placeholder="e.g., Tuberculosis, Measles, COVID-19"
+                            required
+                          >
+                        </div>
+                        <small class="text-muted">Select from dropdown or type manually to add new disease</small>
                       </div>
                     </div>
                   </div>
@@ -444,24 +663,12 @@
                     </h6>
                     <div class="row g-4">
                       <div class="col-xl-6 col-lg-6 col-md-6">
-                        <label for="newVaccineType" class="form-label">Vaccine Type: <span class="text-danger">*</span></label>
-                        <select 
-                          class="form-select" 
-                          id="newVaccineType"
-                          v-model="vaccineForm.vaccine_type" 
-                          required
-                        >
-                          <option value="">-- Select Type --</option>
-                          <option value="live">Live Attenuated</option>
-                          <option value="inactivated">Inactivated/Killed</option>
-                        </select>
-                      </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newCategory" class="form-label">Category: <span class="text-danger">*</span></label>
                         <select
                           class="form-select"
                           id="newCategory"
                           v-model="vaccineForm.category"
+                          @change="onCategoryChange"
                           required
                         >
                           <option value="">-- Select Category --</option>
@@ -469,6 +676,21 @@
                           <option value="DEWORMING">Deworming</option>
                           <option value="VITAMIN_A">Vitamin A Supplement</option>
                         </select>
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <label for="newVaccineType" class="form-label">Vaccine Type: <span class="text-danger" v-if="vaccineForm.category === 'VACCINE'">*</span></label>
+                        <select 
+                          class="form-select" 
+                          id="newVaccineType"
+                          v-model="vaccineForm.vaccine_type"
+                          :required="vaccineForm.category === 'VACCINE'"
+                          :disabled="vaccineForm.category !== 'VACCINE'"
+                        >
+                          <option value="">-- Select Type --</option>
+                          <option value="live">Live Attenuated</option>
+                          <option value="inactivated">Inactivated/Killed</option>
+                        </select>
+                        <small v-if="vaccineForm.category !== 'VACCINE'" class="text-muted">Not applicable for this category</small>
                       </div>
                     </div>
                   </div>
@@ -579,6 +801,64 @@
         </div>
       </div>
 
+      <!-- Inventory History Modal -->
+      <div class="modal fade" :class="{ show: showHistoryModal }" :style="{ display: showHistoryModal ? 'block' : 'none' }" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 900px; width: 900px;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-clock-history me-2"></i>
+                Inventory Transaction History
+              </h5>
+              <button type="button" class="btn-close" @click="closeHistoryModal"></button>
+            </div>
+            <div class="modal-body px-4">
+              <div v-if="inventoryHistory.length === 0" class="text-center py-4">
+                <i class="bi bi-info-circle text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-2">No transaction history found for this inventory item.</p>
+              </div>
+              <div v-else class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Date</th>
+                      <th>Transaction Type</th>
+                      <th>Quantity Change</th>
+                      <th>Balance After</th>
+                      <th>Note</th>
+                      <th>Performed By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="transaction in inventoryHistory" :key="transaction.transaction_id">
+                      <td>{{ formatDate(transaction.created_at) }}</td>
+                      <td>
+                        <span class="badge" :class="getTransactionTypeClass(transaction.transaction_type)">
+                          {{ transaction.transaction_type }}
+                        </span>
+                      </td>
+                      <td>
+                        <span :class="getQuantityChangeClass(transaction.quantity_delta)">
+                          {{ transaction.quantity_delta > 0 ? '+' : '' }}{{ transaction.quantity_delta }}
+                        </span>
+                      </td>
+                      <td class="fw-bold">{{ transaction.balance_after }}</td>
+                      <td>{{ transaction.note || transaction.remarks || '-' }}</td>
+                      <td>{{ transaction.performed_by || 'SYSTEM' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" @click="closeHistoryModal">
+                <i class="bi bi-x-circle me-2"></i>Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Scheduling Modal -->
       <div v-if="showScheduleModal" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);">
         <div class="modal-dialog modal-lg">
@@ -657,13 +937,13 @@
                         <div class="text-muted">Use Prev/Next or pick a dose below to navigate</div>
                       </div>
                       <div>
-                        <button class="btn btn-sm btn-outline-secondary me-2" @click="prevDose" :disabled="scheduleReadOnly || currentDoseIndex === 0">&laquo; Prev</button>
-                        <button class="btn btn-sm btn-outline-secondary" @click="nextDose" :disabled="scheduleReadOnly || currentDoseIndex >= (Number(schedulingFields.total_doses) - 1)">Next &raquo;</button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" @click="prevDose" :disabled="currentDoseIndex === 0">&laquo; Prev</button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="nextDose" :disabled="currentDoseIndex >= (Number(schedulingFields.total_doses) - 1)">Next &raquo;</button>
                       </div>
                     </div>
                     <div class="mb-2">
                       <div class="btn-group" role="group" aria-label="Dose picker">
-                        <button v-for="n in Number(schedulingFields.total_doses || 0)" :key="n" type="button" class="btn btn-sm" :class="{'btn-outline-secondary': currentDoseIndex !== (n-1), 'btn-primary': currentDoseIndex === (n-1)}" @click="!scheduleReadOnly && goToDose(n-1)">Dose {{ n }}</button>
+                        <button v-for="n in Number(schedulingFields.total_doses || 0)" :key="n" type="button" class="btn btn-sm" :class="{'btn-outline-secondary': currentDoseIndex !== (n-1), 'btn-primary': currentDoseIndex === (n-1)}" @click="goToDose(n-1)">Dose {{ n }}</button>
                       </div>
                     </div>
                     <div class="row g-3">
@@ -765,8 +1045,82 @@
         </div>
       </div>
 
+      <!-- Edit Vaccine Modal (two-phase inline like New Schedule) -->
+      <div v-if="showEditVaccineWizard" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Edit Vaccine</h5>
+              <button type="button" class="btn-close" @click="closeEditVaccineWizard"></button>
+            </div>
+            <div class="modal-body">
+              <form @submit.prevent="submitEditVaccineWizard">
+                <div class="mb-3">
+                  <label class="form-label">Select Vaccine Type *</label>
+                  <select v-model="editWizard.selectedVaccineId" class="form-select" @change="onEditVaccineSelect" required>
+                    <option value="">-- Select Vaccine --</option>
+                    <option v-for="v in existingVaccines" :key="v.id" :value="v.id">
+                      {{ v.antigen_name }} ({{ v.brand_name }})
+                    </option>
+                  </select>
+                </div>
+                <div v-if="editWizard.selectedVaccineId">
+                  <!-- Reuse vaccine type form fields -->
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Antigen Name *</label>
+                      <input class="form-control" v-model="vaccineForm.antigen_name" required />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Brand Name *</label>
+                      <input class="form-control" v-model="vaccineForm.brand_name" required />
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Manufacturer *</label>
+                      <input class="form-control" v-model="vaccineForm.manufacturer" required />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Disease Prevented *</label>
+                      <input class="form-control" v-model="vaccineForm.disease_prevented" required />
+                    </div>
+                  </div>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Category *</label>
+                      <select class="form-select" v-model="vaccineForm.category" @change="onCategoryChange" required>
+                        <option value="">-- Select Category --</option>
+                        <option value="VACCINE">Vaccine</option>
+                        <option value="DEWORMING">Deworming</option>
+                        <option value="VITAMIN_A">Vitamin A Supplement</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Vaccine Type</label>
+                      <select class="form-select" v-model="vaccineForm.vaccine_type" :disabled="vaccineForm.category !== 'VACCINE'">
+                        <option value="">-- Select Type --</option>
+                        <option value="live">Live Attenuated</option>
+                        <option value="inactivated">Inactivated/Killed</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeEditVaccineWizard" :disabled="saving">Close</button>
+              <button class="btn btn-success" :disabled="saving || !editWizard.selectedVaccineId" @click="submitEditVaccineWizard">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal Backdrop -->
-      <div v-if="showAddModal || showAddStockModal || showAddVaccineModal || showScheduleModal" class="modal-backdrop fade show"></div>
+  <div v-if="showAddModal || showAddStockModal || showAddVaccineModal || showScheduleModal || showEditVaccineWizard" class="modal-backdrop fade show"></div>
     </div>
   </AdminLayout>
 </template>
@@ -802,10 +1156,23 @@ const showAddStockModal = ref(false)
 const showAdjustModal = ref(false)
 const submittingAdjust = ref(false)
 const showAddVaccineModal = ref(false)
+// Hide legacy add flows by default; Receiving Reports is the canonical path
+const showLegacyInventoryActions = ref(false)
 const showScheduleModal = ref(false)
 const scheduleReadOnly = ref(false)
 const isEditing = ref(false)
+const isEditingVaccineType = ref(false)
 const selectedVaccine = ref('')
+const showHistoryModal = ref(false)
+const inventoryHistory = ref([])
+// New UI state
+const showDetailsModal = ref(false)
+const selectedInventory = ref(null)
+const showExpiresTodayModal = ref(false)
+const savedLot = ref(null)
+const storageLocationOptions = ref([
+  'Cold Room A', 'Cold Room B', 'Refrigerator 1', 'Refrigerator 2', 'Freezer -20C', 'Freezer -80C'
+])
 const schedulingFields = ref({
   // schedule_master fields
   name: '',
@@ -821,6 +1188,16 @@ const schedulingFields = ref({
   doses: []
 })
 const currentDoseIndex = ref(0)
+
+// Disease management
+const diseaseOptions = ref([])
+const selectedDisease = ref('')
+const antigenOptions = ref([])
+const selectedAntigen = ref('')
+const brandOptions = ref([])
+const selectedBrand = ref('')
+const manufacturerOptions = ref([])
+const selectedManufacturer = ref('')
 
 // Ensure schedulingFields.doses length matches schedulingFields.total_doses
 function ensureDosesCount(count) {
@@ -976,6 +1353,74 @@ function validateSchedule() {
 const showPreviewModal = ref(false)
 const previewPayload = ref(null)
 
+// Edit Vaccine Wizard State
+const showEditVaccineWizard = ref(false)
+const editWizard = ref({ selectedVaccineId: '' })
+
+function openEditVaccineWizard() {
+  editWizard.value = { selectedVaccineId: '' }
+  showEditVaccineWizard.value = true
+}
+
+function closeEditVaccineWizard() {
+  showEditVaccineWizard.value = false
+  editWizard.value = { selectedVaccineId: '' }
+}
+
+async function onEditVaccineSelect() {
+  try {
+    const vid = editWizard.value.selectedVaccineId
+    if (!vid) return
+    const res = await api.get(`/vaccines/${vid}`)
+    const d = res.data?.data || res.data
+    isEditingVaccineType.value = true
+    vaccineForm.value = {
+      id: d.vaccine_id || d.id,
+      antigen_name: d.antigen_name || '',
+      brand_name: d.brand_name || '',
+      manufacturer: d.manufacturer || '',
+      disease_prevented: d.disease_prevented || '',
+      vaccine_type: d.vaccine_type || '',
+      category: d.category || 'VACCINE',
+      lot_number: '',
+      expiration_date: '',
+      stock_level: 0,
+      storage_location: ''
+    }
+  } catch (e) {
+    console.error('Error loading vaccine for edit', e)
+    addToast({ title: 'Error', message: 'Failed to load vaccine type', type: 'error' })
+  }
+}
+
+async function submitEditVaccineWizard() {
+  try {
+    saving.value = true
+    const vaccineId = vaccineForm.value.id
+    const vaccinePayload = {
+      antigen_name: vaccineForm.value.antigen_name,
+      brand_name: vaccineForm.value.brand_name,
+      disease_prevented: vaccineForm.value.disease_prevented,
+      manufacturer: vaccineForm.value.manufacturer,
+      vaccine_type: (vaccineForm.value.category === 'DEWORMING' || vaccineForm.value.category === 'VITAMIN_A')
+        ? null
+        : vaccineForm.value.vaccine_type,
+      category: vaccineForm.value.category
+    }
+    await api.put(`/vaccines/${vaccineId}`, vaccinePayload)
+    addToast({ title: 'Saved', message: 'Vaccine type updated.', type: 'success' })
+    closeEditVaccineWizard()
+    await fetchVaccines()
+    await fetchExistingVaccines()
+    await fetchStats()
+  } catch (error) {
+    console.error('Error updating vaccine:', error)
+    addToast({ title: 'Error', message: 'Error saving vaccine type.', type: 'error' })
+  } finally {
+    saving.value = false
+  }
+}
+
 function buildPayload() {
   const sf = schedulingFields.value
   const payload = {
@@ -1085,18 +1530,34 @@ const fetchVaccines = async () => {
   try {
     loading.value = true
     const response = await api.get('/vaccines/inventory')
-    const items = response.data?.data || response.data || []
-    vaccines.value = items.map(v => {
+  const items = response.data?.data || response.data || []
+  // Defensive: filter out any soft-deleted items if backend ever returns them
+  const activeItems = Array.isArray(items) ? items.filter(v => v && v.is_deleted !== true) : []
+  vaccines.value = activeItems.map(v => {
       const qty = (v.current_stock_level ?? v.quantity ?? 0)
-      const status = v.status || (qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
+      // Derive status considering expiry first, then quantity
+      const exp = v.expiration_date || v.expiry_date || null
+      const now = new Date()
+      let status = v.status || null
+      if (exp) {
+        const d = new Date(exp)
+        if (!isNaN(d)) {
+          const in30 = new Date(now.getTime() + 30*24*60*60*1000)
+          if (d < now) status = 'Expired'
+          else if (d >= now && d <= in30) status = 'Expiring Soon'
+        }
+      }
+      if (!status) status = (qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
       return {
         id: v.inventory_id || v.id,
         vaccine_id: v.vaccinemaster?.vaccine_id || v.vaccine_id || v.vaccine?.vaccine_id,
         vaccineName: v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || '',
+        brandName: v.vaccinemaster?.brand_name || v.vaccine?.brand_name || v.brand_name || '',
         manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
         category: v.vaccinemaster?.category || v.category || '',
         batchNo: v.lot_number || v.batch_number || '',
         expiryDate: v.expiration_date || v.expiry_date || '',
+        storageLocation: v.storage_location || v.storageLocation || '',
         quantity: qty,
         status
       }
@@ -1114,11 +1575,12 @@ const fetchVaccines = async () => {
 const fetchStats = async () => {
   try {
     // Use existingVaccines for unique vaccine types
+    const activeVaccines = vaccines.value.filter(v => !v.is_deleted)
     const totalTypes = new Set(existingVaccines.value.map(v => v.antigen_name + '|' + v.brand_name)).size;
-    // Use vaccines.value for inventory-based stats
-    const totalDoses = vaccines.value.reduce((sum, v) => sum + (v.quantity || 0), 0);
-    const lowStock = vaccines.value.filter(v => (v.quantity || 0) > 0 && (v.quantity || 0) < 10).length;
-    const expiringSoon = vaccines.value.filter(v => {
+    // Use activeVaccines for inventory-based stats
+    const totalDoses = activeVaccines.reduce((sum, v) => sum + (v.quantity || 0), 0);
+    const lowStock = activeVaccines.filter(v => (v.quantity || 0) > 0 && (v.quantity || 0) < 10).length;
+    const expiringSoon = activeVaccines.filter(v => {
       if (!v.expiryDate) return false;
       const d = new Date(v.expiryDate);
       const now = new Date();
@@ -1172,20 +1634,64 @@ const saveVaccine = async () => {
       expiration_date: convertToISODate(form.value.expirationDate) || form.value.expirationDate,
       storage_location: form.value.storageLocation || null
     }
-    if (!isEditing.value) {
+    // Prefill safety (ensure edit modal shows existing lot/storage)
+    if (isEditing.value) {
+      // No-op: form is already populated by editVaccine(); just ensure storage/lot are mapped
+      if (!form.value.lotNumber && form.value.batchNo) form.value.lotNumber = form.value.batchNo
+      if (!form.value.storageLocation && form.value.storageLocation == null && typeof form.value.storage_location !== 'undefined') {
+        form.value.storageLocation = form.value.storage_location
+      }
+    } else {
       // Only on create do we set initial quantity; on edit, use Adjust Stock modal
       payload.current_stock_level = form.value.quantity
+    }
+
+    // Validate expiry rules
+    const expDate = new Date(payload.expiration_date || form.value.expirationDate)
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const in30 = new Date(today.getTime() + 30*24*60*60*1000)
+    if (!isNaN(expDate)) {
+      if (expDate < today) {
+        addToast({ title: 'Invalid Expiration', message: 'The selected expiration date is in the past. Expired stock cannot be added.', type: 'error' })
+        return
+      }
+      if (expDate >= today && expDate <= in30) {
+        addToast({ title: 'Near Expiry', message: 'This lot is expiring within 30 days. It will be added but flagged as Expiring Soon.', type: 'warning' })
+      }
     }
     if (!payload.vaccine_id) {
       addToast({ title: 'Validation', message: 'Please select a vaccine type first.', type: 'warning' })
       return
     }
     
+    let resp
     if (isEditing.value) {
-      await api.put(`/vaccines/inventory/${form.value.id}`, payload)
+      resp = await api.put(`/vaccines/inventory/${form.value.id}`, payload)
+      // Apply stock adjustment if quantity > 0
+      if (adjustForm.value.quantity > 0) {
+        await api.post(`/vaccines/inventory/${form.value.id}/adjust`, {
+          type: adjustForm.value.type,
+          quantity: adjustForm.value.quantity,
+          note: adjustForm.value.note || 'Manual adjustment during edit'
+        })
+      }
     } else {
-      await api.post('/vaccines/inventory', payload)
+      resp = await api.post('/vaccines/inventory', payload)
     }
+    // Show expires-today notice after successful save
+    try {
+      const exp = new Date(payload.expiration_date || form.value.expirationDate)
+      const today = new Date(); today.setHours(0,0,0,0)
+      const expD = new Date(exp); expD.setHours(0,0,0,0)
+      if (!isNaN(expD) && expD.getTime() === today.getTime()) {
+        savedLot.value = {
+          ...(resp?.data?.data || {}),
+          expiration_date: payload.expiration_date || form.value.expirationDate
+        }
+        showExpiresTodayModal.value = true
+      }
+    } catch {}
     
     closeModal()
     await fetchVaccines()
@@ -1202,7 +1708,10 @@ const saveVaccine = async () => {
 const editVaccine = (vaccine) => {
   form.value = { 
     ...vaccine,
-    expirationDate: formatForInput(vaccine.expiryDate || vaccine.expirationDate)
+    // Prefill all fields, including lot and storage
+    expirationDate: formatForInput(vaccine.expiryDate || vaccine.expirationDate),
+    lotNumber: vaccine.batchNo || vaccine.lotNumber || '',
+    storageLocation: vaccine.storageLocation || ''
   }
   isEditing.value = true
   showAddStockModal.value = true
@@ -1237,10 +1746,11 @@ const closeModal = () => {
     expirationDate: '',
     storageLocation: ''
   }
+  adjustForm.value = { id: null, type: 'ADJUST', quantity: 0, note: '' }
 }
 
 // Adjust Stock handlers
-const adjustTypes = ['ADJUST','RECEIVE','RETURN','EXPIRED']
+const adjustTypes = ['ADJUST','RETURN','EXPIRED']
 const adjustForm = ref({ id: null, type: 'ADJUST', quantity: 0, note: '' })
 
 function openAdjustModal(vaccine) {
@@ -1267,8 +1777,31 @@ async function submitAdjust() {
 
 function closeAdjustModal() { showAdjustModal.value = false }
 
+async function viewInventoryHistory(vaccine) {
+  try {
+    const response = await api.get(`/vaccines/transactions?inventory_id=${vaccine.id}`)
+    // Normalize: backend returns { success, transactions, ... }
+    inventoryHistory.value = response.data?.transactions || response.data?.data?.transactions || []
+    showHistoryModal.value = true
+  } catch (error) {
+    console.error('Error fetching inventory history:', error)
+    addToast({ title: 'Error', message: 'Failed to load inventory history', type: 'error' })
+  }
+}
+
+function closeHistoryModal() { showHistoryModal.value = false }
+
+// Inventory details modal handlers
+function openInventoryDetails(vaccine) {
+  selectedInventory.value = vaccine
+  showDetailsModal.value = true
+}
+function closeDetailsModal() {
+  showDetailsModal.value = false
+  selectedInventory.value = null
+}
+
 // Edit Vaccine Type handlers (reuse New Vaccine modal in edit mode)
-const isEditingVaccineType = ref(false)
 async function editVaccineType(v) {
   try {
     isEditingVaccineType.value = true
@@ -1336,7 +1869,9 @@ const saveVaccineType = async () => {
       brand_name: vaccineForm.value.brand_name,
       disease_prevented: vaccineForm.value.disease_prevented,
       manufacturer: vaccineForm.value.manufacturer,
-      vaccine_type: vaccineForm.value.vaccine_type,
+      vaccine_type: (vaccineForm.value.category === 'DEWORMING' || vaccineForm.value.category === 'VITAMIN_A') 
+        ? null 
+        : vaccineForm.value.vaccine_type,
       category: vaccineForm.value.category
     }
 
@@ -1546,13 +2081,118 @@ const getStatusBadgeClass = (status) => {
   }
 };
 
+const getTransactionTypeClass = (type) => {
+  switch (type) {
+    case 'RECEIVE': return 'bg-success';
+    case 'ADJUST': return 'bg-primary';
+    case 'RETURN': return 'bg-warning text-dark';
+    case 'EXPIRED': return 'bg-danger';
+    default: return 'bg-secondary';
+  }
+};
+
+const getQuantityChangeClass = (delta) => {
+  if (delta > 0) return 'text-success fw-bold';
+  if (delta < 0) return 'text-danger fw-bold';
+  return 'text-muted';
+};
+
+// Edit vaccine type from dropdown
+const editVaccineTypeFromDropdown = (vaccine) => {
+  isEditingVaccineType.value = true
+  vaccineForm.value = {
+    id: vaccine.vaccine_id || vaccine.id,
+    antigen_name: vaccine.antigen_name || '',
+    brand_name: vaccine.brand_name || '',
+    manufacturer: vaccine.manufacturer || '',
+    disease_prevented: vaccine.disease_prevented || '',
+    vaccine_type: vaccine.vaccine_type || '',
+    category: vaccine.category || '',
+    lot_number: '',
+    expiration_date: '',
+    stock_level: 0,
+    storage_location: ''
+  }
+  showAddVaccineModal.value = true
+}
+
 // Lifecycle
 onMounted(async () => {
   await fetchVaccines();
   await fetchExistingVaccines();
   await fetchStats();
   await fetchSchedules();
+  await fetchDiseaseOptions(); // Add this line
 })
+
+// Category change handler - set vaccine_type to null for Deworming/Vitamin A
+const onCategoryChange = () => {
+  if (vaccineForm.value.category === 'DEWORMING' || vaccineForm.value.category === 'VITAMIN_A') {
+    vaccineForm.value.vaccine_type = null
+  }
+}
+
+// Disease management methods
+const fetchDiseaseOptions = async () => {
+  try {
+    // Get unique values from existing vaccines
+    const response = await api.get('/vaccines')
+    const vaccines = response.data?.data || response.data || []
+    
+    // Extract unique values for each field
+    diseaseOptions.value = [...new Set(vaccines.map(v => v.disease_prevented).filter(d => d && d.trim()))].sort()
+    antigenOptions.value = [...new Set(vaccines.map(v => v.antigen_name).filter(d => d && d.trim()))].sort()
+    brandOptions.value = [...new Set(vaccines.map(v => v.brand_name).filter(d => d && d.trim()))].sort()
+    manufacturerOptions.value = [...new Set(vaccines.map(v => v.manufacturer).filter(d => d && d.trim()))].sort()
+  } catch (error) {
+    console.error('Error fetching options:', error)
+    diseaseOptions.value = []
+    antigenOptions.value = []
+    brandOptions.value = []
+    manufacturerOptions.value = []
+  }
+}
+
+const onDiseaseSelect = () => {
+  if (selectedDisease.value) {
+    vaccineForm.value.disease_prevented = selectedDisease.value
+  }
+}
+
+const onDiseaseInput = () => {
+  // Clear dropdown selection when user types manually
+  selectedDisease.value = ''
+}
+
+const onAntigenSelect = () => {
+  if (selectedAntigen.value) {
+    vaccineForm.value.antigen_name = selectedAntigen.value
+  }
+}
+
+const onAntigenInput = () => {
+  selectedAntigen.value = ''
+}
+
+const onBrandSelect = () => {
+  if (selectedBrand.value) {
+    vaccineForm.value.brand_name = selectedBrand.value
+  }
+}
+
+const onBrandInput = () => {
+  selectedBrand.value = ''
+}
+
+const onManufacturerSelect = () => {
+  if (selectedManufacturer.value) {
+    vaccineForm.value.manufacturer = selectedManufacturer.value
+  }
+}
+
+const onManufacturerInput = () => {
+  selectedManufacturer.value = ''
+}
 
 const fetchSchedules = async () => {
   try {
@@ -1569,7 +2209,12 @@ const editSchedule = (s) => {
   // Open modal for editing
   scheduleReadOnly.value = false
   const vaccineId = s.vaccine?.vaccine_id || s.vaccine_id || null
-  if (vaccineId) selectedVaccine.value = vaccineId
+  if (vaccineId) {
+    selectedVaccine.value = vaccineId
+    fetchSchedule(vaccineId)
+  } else {
+    schedulingFields.value = { ...s }
+  }
   showScheduleModal.value = true
 }
 
@@ -1578,6 +2223,7 @@ const viewSchedule = (s) => {
   scheduleReadOnly.value = true
   const vaccineId = s.vaccine?.vaccine_id || s.vaccine_id || null
   if (vaccineId) selectedVaccine.value = vaccineId
+  schedulingFields.value = { ...s }
   showScheduleModal.value = true
 }
 

@@ -1,4 +1,5 @@
 const vaccineModel = require('../models/vaccineModel');
+const { ACTIVITY } = require('../constants/activityTypes');
 
 // Helper to send standardized error
 function sendError(res, error, fallback) {
@@ -141,6 +142,19 @@ const adjustInventoryStock = async (req, res) => {
     if (!Number.isFinite(qty) || qty <= 0) {
       return res.status(400).json({ success:false, message:'Quantity must be a positive number' });
     }
+    // Block receiving into an expired lot
+    if (type === 'RECEIVE') {
+      try {
+        const inv = await vaccineModel.getInventoryById(id);
+        if (inv && inv.expiration_date) {
+          const exp = new Date(inv.expiration_date);
+          const today = new Date(); today.setHours(0,0,0,0);
+          if (!isNaN(exp) && exp < today) {
+            return res.status(400).json({ success:false, message:'Cannot receive stock into an expired lot' });
+          }
+        }
+      } catch (_) { /* fall through; model handles not found later */ }
+    }
     const result = await vaccineModel.applyInventoryTransaction(id, type, qty, actorId, note || 'Manual adjustment');
     return res.json({ success:true, message:'Inventory adjusted', data: result });
   } catch (error) {
@@ -160,6 +174,14 @@ const addInventory = async (req, res) => {
       current_stock_level: req.body.current_stock_level,
       storage_location: req.body.storage_location
     };
+    // Validate expiration: block expired stock
+    if (payload.expiration_date) {
+      const exp = new Date(payload.expiration_date);
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (!isNaN(exp) && exp < today) {
+        return res.status(400).json({ success:false, message:'Cannot add expired stock (expiration_date is in the past)' });
+      }
+    }
     const dto = await vaccineModel.createInventoryItem(payload, actorId);
     return res.status(201).json({ success:true, message:'Inventory item created', data: dto });
   } catch (error) {
@@ -195,6 +217,14 @@ const updateInventory = async (req, res) => {
       current_stock_level: req.body.current_stock_level,
       storage_location: req.body.storage_location
     };
+    // Validate expiration change: block setting past expiration
+    if (updates.expiration_date) {
+      const exp = new Date(updates.expiration_date);
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (!isNaN(exp) && exp < today) {
+        return res.status(400).json({ success:false, message:'Cannot set expiration_date in the past' });
+      }
+    }
     const dto = await vaccineModel.updateInventoryItem(id, updates, actorId);
     if (!dto) return res.status(404).json({ success:false, message:'Inventory item not found' });
     return res.json({ success:true, message:'Inventory item updated', data: dto });
@@ -297,7 +327,7 @@ const getInventoryTransactions = async (req, res) => {
     const result = await vaccineModel.getAllInventoryTransactions(filters, Number(page), Number(limit));
     return res.json({ success:true, ...result });
   } catch (error) {
-  console.debug('[vaccineController.getInventoryTransactions] inventory_id:', req.params.inventory_id);
+  console.debug('[vaccineController.getInventoryTransactions] inventory_id (query):', req.query?.inventory_id);
   console.error('getInventoryTransactions error:', error);
     return sendError(res, error, 'Failed to fetch inventory transactions');
   }
@@ -334,5 +364,26 @@ module.exports = {
   getInventoryTransactions,
   manageScheduling,
   getScheduleForVaccine,
-  listSchedules
+  listSchedules,
+  // Manual tasks
+  runExpiryCheck: async (req, res) => {
+    try {
+      const actorId = req.user?.user_id || null;
+      const result = await vaccineModel.runExpiryCheckTask(actorId);
+      return res.json({ success: true, message: 'Expiry check executed', data: result });
+    } catch (error) {
+      console.error('[vaccineController.runExpiryCheck] error:', error);
+      return sendError(res, error, 'Failed to run expiry check');
+    }
+  },
+  runScheduleStatusUpdate: async (req, res) => {
+    try {
+      const actorId = req.user?.user_id || null;
+      const result = await vaccineModel.runScheduleStatusUpdateTask(actorId);
+      return res.json({ success: true, message: 'Schedule status update executed', data: result });
+    } catch (error) {
+      console.error('[vaccineController.runScheduleStatusUpdate] error:', error);
+      return sendError(res, error, 'Failed to run schedule status update');
+    }
+  }
 };

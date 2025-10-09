@@ -54,19 +54,19 @@
   }
 }
 
-/* Main Content Mobile-First */
-.main-content {
+/* Main Content Mobile-First (scoped to health worker layout only) */
+.health-worker-layout .main-content {
   /* Mobile default - no sidebar margin */
-  margin-top: 60px; /* Height of navbar */
+  margin-top: var(--navbar-height);
   margin-left: 0;
   transition: margin-left 0.3s ease;
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - var(--navbar-height));
 }
 
-/* Desktop only - add sidebar margin */
+/* Desktop only - add sidebar margin when sidebar is open (scoped) */
 @media (min-width: 992px) {
-  .sidebar-open .main-content {
-    margin-left: 250px;
+  .health-worker-layout.sidebar-open .main-content {
+    margin-left: var(--sidebar-width);
   }
 }
 

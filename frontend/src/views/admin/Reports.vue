@@ -342,6 +342,7 @@ import DateInput from '@/components/common/DateInput.vue'
 import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
+import { nowPH, formatPHDate, formatPHDateTime, utcToPH, getCurrentPHISO } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)
@@ -387,16 +388,16 @@ const fetchReports = async () => {
     
     if (!selectedType.value || selectedType.value === 'vaccination') {
       // Fetch monthly report for current month
-      const now = new Date()
+      const now = nowPH()
       reportPromises.push(
-        api.get(`/reports/monthly?month=${now.getMonth() + 1}&year=${now.getFullYear()}`)
+        api.get(`/reports/monthly?month=${now.month() + 1}&year=${now.year()}`)
           .then(response => ({
-            id: `monthly-${now.getFullYear()}-${now.getMonth() + 1}`,
-            name: `Monthly Vaccination Report - ${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+            id: `monthly-${now.year()}-${now.month() + 1}`,
+            name: `Monthly Vaccination Report - ${now.format('MMMM YYYY')}`,
             description: 'Monthly vaccination statistics and summary',
             type: 'vaccination',
             status: 'completed',
-            createdAt: new Date().toISOString(),
+            createdAt: getCurrentPHISO(),
             generatedBy: 'System',
             data: response.data.data
           }))
@@ -414,7 +415,7 @@ const fetchReports = async () => {
             description: 'Vaccines with low stock levels requiring attention',
             type: 'inventory',
             status: 'completed',
-            createdAt: new Date().toISOString(),
+            createdAt: getCurrentPHISO(),
             generatedBy: 'System',
             data: response.data.data
           }))
@@ -523,9 +524,9 @@ const generateQuickReport = async (type) => {
     switch (type) {
       case 'vaccination_summary':
         endpoint = '/reports/monthly'
-        const now = new Date()
-        endpoint += `?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
-        reportName = `Vaccination Summary Report - ${now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        const now = nowPH()
+        endpoint += `?month=${now.month() + 1}&year=${now.year()}`
+        reportName = `Vaccination Summary Report - ${now.format('MMMM YYYY')}`
         description = 'Current month vaccination statistics and summary'
         break
       case 'inventory_status':
@@ -540,9 +541,9 @@ const generateQuickReport = async (type) => {
         break
       case 'monthly_report':
         endpoint = '/reports/monthly'
-        const currentMonth = new Date()
-        endpoint += `?month=${currentMonth.getMonth() + 1}&year=${currentMonth.getFullYear()}`
-        reportName = `Monthly Activity Report - ${currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        const currentMonth = nowPH()
+        endpoint += `?month=${currentMonth.month() + 1}&year=${currentMonth.year()}`
+        reportName = `Monthly Activity Report - ${currentMonth.format('MMMM YYYY')}`
         description = 'Comprehensive monthly vaccination and activity report'
         break
       case 'compliance_report':
@@ -557,12 +558,12 @@ const generateQuickReport = async (type) => {
     const response = await api.get(endpoint)
     
     const newReport = {
-      id: `${type}-${Date.now()}`,
+      id: `${type}-${nowPH().valueOf()}`,
       name: reportName,
       description: description,
       type: type.split('_')[0],
       status: 'completed',
-      createdAt: new Date().toISOString(),
+      createdAt: getCurrentPHISO(),
       generatedBy: 'Current User',
       data: response.data.data
     }
@@ -593,9 +594,9 @@ const generateReport = async () => {
     switch (generateForm.value.type) {
       case 'vaccination':
         endpoint = '/reports/monthly'
-        const now = new Date()
-        params.month = now.getMonth() + 1
-        params.year = now.getFullYear()
+        const now = nowPH()
+        params.month = now.month() + 1
+        params.year = now.year()
         break
       case 'inventory':
         endpoint = '/reports/low-stock'
@@ -613,12 +614,12 @@ const generateReport = async () => {
     const response = await api.get(endpoint, { params })
     
     const newReport = {
-      id: `custom-${Date.now()}`,
+      id: `custom-${nowPH().valueOf()}`,
       name: generateForm.value.name,
       description: generateForm.value.description,
       type: generateForm.value.type,
       status: 'completed',
-      createdAt: new Date().toISOString(),
+      createdAt: getCurrentPHISO(),
       generatedBy: 'Current User',
       data: response.data.data
     }
@@ -729,38 +730,20 @@ const deleteReport = async (report) => {
 // Utility functions
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleDateString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'Asia/Manila'
-    })
-  } catch {
-    return new Date(dateString).toLocaleDateString()
-  }
+  return formatPHDate(dateString)
 }
 
 const formatTime = (dateString) => {
   if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleTimeString('en-PH', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-  } catch {
-    return new Date(dateString).toLocaleTimeString()
-  }
+  return formatPHDateTime(dateString, 'hh:mm A')
 }
 
 const formatTimeAgo = (dateString) => {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
-  const date = new Date(new Date(dateString).toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
-  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
-  
+  if (!dateString) return ''
+  const now = nowPH()
+  const date = utcToPH(dateString)
+  const diffInHours = now.diff(date, 'hours')
+
   if (diffInHours < 1) return 'Just now'
   if (diffInHours < 24) return `${diffInHours}h ago`
   const diffInDays = Math.floor(diffInHours / 24)

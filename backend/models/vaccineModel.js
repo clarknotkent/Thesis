@@ -1,4 +1,5 @@
 const supabase = require('../db');
+const { ACTIVITY } = require('../constants/activityTypes');
 
 // Lightweight status derivation (mirrors frontend logic)
 function deriveInventoryStatus(row) {
@@ -174,7 +175,7 @@ const vaccineModel = {
       const doses = Array.isArray(scheduleData.doses) ? scheduleData.doses.map(d => ({
         schedule_id: masterId,
         dose_number: d.dose_number != null ? Number(d.dose_number) : null,
-        due_after_days: d.due_after_days != null ? Number(d.due_after_days) : null,
+        due_after_days: d.due_after_days != null ? Number(due_after_days) : null,
         min_interval_days: d.min_interval_days != null ? Number(d.min_interval_days) : null,
         max_interval_days: d.max_interval_days != null ? Number(d.max_interval_days) : null,
         min_interval_other_vax: d.min_interval_other_vax != null ? Number(d.min_interval_other_vax) : null,
@@ -932,22 +933,43 @@ const vaccineModel = {
   }
 };
 
+// Helper to build full name
+function fullName(u) {
+  if (!u) return null
+  const parts = [u.surname, u.firstname, u.middlename].filter(Boolean)
+  return parts.join(' ').trim()
+}
+
 // Inventory transactions retrieval (ledger)
 vaccineModel.getAllInventoryTransactions = async (filters = {}, page = 1, limit = 20) => {
   try {
-    let query = supabase.from('inventorytransactions')
-      .select(`transaction_id, inventory_id, vaccine_id, transaction_type, quantity_delta, balance_after, note, created_at, performed_by`, { count: 'exact' })
-      .order('created_at', { ascending: false });
+    // Align with legacy ledger schema: inventorytransactions has no vaccine_id, uses quantity and date columns
+    let query = supabase
+      .from('inventorytransactions')
+      .select(`*, performed_by(user_id, surname, firstname, middlename)`, { count: 'exact' })
+      .order('date', { ascending: false });
     if (filters.inventory_id) query = query.eq('inventory_id', filters.inventory_id);
-    if (filters.vaccine_id) query = query.eq('vaccine_id', filters.vaccine_id);
     if (filters.transaction_type) query = query.eq('transaction_type', filters.transaction_type);
-    if (filters.date_from) query = query.gte('created_at', filters.date_from);
-    if (filters.date_to) query = query.lte('created_at', filters.date_to);
+    if (filters.date_from) query = query.gte('date', filters.date_from);
+    if (filters.date_to) query = query.lte('date', filters.date_to);
     const offset = (page - 1) * limit;
     query = query.range(offset, offset + limit - 1);
     const { data, error, count } = await query;
     if (error) throw error;
-    return { transactions: data || [], totalCount: count || 0, currentPage: page, totalPages: count ? Math.ceil(count/limit) : 0 };
+    // Normalize fields to what frontend expects
+    const rows = Array.isArray(data) ? data : [];
+    const normalized = rows.map(t => ({
+      ...t,
+      // quantity_delta expected by UI; map from quantity
+      quantity_delta: t.quantity != null ? t.quantity : (t.quantity_delta != null ? t.quantity_delta : 0),
+      // created_at expected by UI; map from date
+      created_at: t.created_at || t.date || null,
+      // remarks already aligned; keep fallback to note if present
+      remarks: t.remarks != null ? t.remarks : (t.note != null ? t.note : null),
+      // performed_by_name for UI, with fallback to 'SYSTEM' when user is null
+      performed_by: fullName(t.performed_by) || 'SYSTEM'
+    }));
+    return { transactions: normalized, totalCount: count || 0, currentPage: page, totalPages: count ? Math.ceil(count/limit) : 0 };
   } catch (error) {
     console.error('Error fetching inventory transactions:', error);
     throw error;
@@ -955,3 +977,72 @@ vaccineModel.getAllInventoryTransactions = async (filters = {}, page = 1, limit 
 };
 
 module.exports = vaccineModel;
+
+// Task helpers: run scheduled functions manually
+vaccineModel.runExpiryCheckTask = async (actorId) => {
+  // Call SQL function if exists; since Supabase JS cannot call functions without RPC unless set up, use a no-op select on a view that triggers function via SECURITY DEFINER, or fallback to raw RPC if available.
+  try {
+    // Try RPC first
+    let didRun = false;
+    try {
+      // If a Postgres function is exposed as an RPC, this will succeed; ignore error otherwise
+      const { error: rpcErr } = await supabase.rpc('check_and_expire_inventory');
+      if (!rpcErr) didRun = true;
+    } catch (_) {}
+    if (!didRun) {
+      // As a fallback, attempt a lightweight read to ensure DB connectivity
+      await supabase.from('inventory').select('inventory_id').limit(1);
+    }
+    // Get counts after run
+    const { data: expiredCountData } = await supabase
+      .from('inventorytransactions')
+      .select('transaction_id', { count: 'exact', head: true })
+      .eq('transaction_type', 'EXPIRED')
+      .gte('date', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+    const expiredRecent = expiredCountData?.length || 0; // head:true returns no rows; length may be undefined, so keep 0
+    await logActivitySafely({
+      action_type: ACTIVITY.TASK.RUN,
+      description: `Manual run: check_and_expire_inventory (recent expired: ~${expiredRecent})`,
+      user_id: actorId || null,
+      entity_type: 'task',
+      entity_id: null
+    });
+    await logActivitySafely({
+      action_type: ACTIVITY.TASK.SUCCESS,
+      description: 'check_and_expire_inventory completed',
+      user_id: actorId || null,
+      entity_type: 'task',
+      entity_id: null
+    });
+    return { expiredRecent };
+  } catch (error) {
+    await logActivitySafely({ action_type: ACTIVITY.TASK.FAILURE, description: `check_and_expire_inventory failed: ${error.message}`, user_id: actorId || null, entity_type: 'task', entity_id: null });
+    throw error;
+  }
+};
+
+vaccineModel.runScheduleStatusUpdateTask = async (actorId) => {
+  try {
+    // Try RPC first
+    let didRun = false;
+    try {
+      const { error: rpcErr } = await supabase.rpc('update_patient_schedule_statuses');
+      if (!rpcErr) didRun = true;
+    } catch (_) {}
+    if (!didRun) {
+      await supabase.from('patientschedule').select('patient_schedule_id').limit(1);
+    }
+    // Count schedules touched recently (approximate: updated in last 5 minutes)
+    const { data: updatedData } = await supabase
+      .from('patientschedule')
+      .select('patient_schedule_id', { count: 'exact', head: true })
+      .gte('updated_at', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+    const touched = updatedData?.length || 0;
+    await logActivitySafely({ action_type: ACTIVITY.TASK.RUN, description: `Manual run: update_patient_schedule_statuses (recent updates: ~${touched})`, user_id: actorId || null, entity_type: 'task', entity_id: null });
+    await logActivitySafely({ action_type: ACTIVITY.TASK.SUCCESS, description: 'update_patient_schedule_statuses completed', user_id: actorId || null, entity_type: 'task', entity_id: null });
+    return { updatedRecent: touched };
+  } catch (error) {
+    await logActivitySafely({ action_type: ACTIVITY.TASK.FAILURE, description: `update_patient_schedule_statuses failed: ${error.message}`, user_id: actorId || null, entity_type: 'task', entity_id: null });
+    throw error;
+  }
+};

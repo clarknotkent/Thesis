@@ -208,34 +208,7 @@
         </div>
       </div>
 
-      <!-- User Activity Log -->
-      <div class="card shadow">
-        <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Date & Time</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>IP Address</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="activity in recentActivity" :key="activity.id">
-                  <td>{{ formatDatePH(activity.timestamp) }}</td>
-                  <td>{{ activity.userFullName }}</td>
-                  <td>{{ activity.action }}</td>
-                  <td>{{ activity.ipAddress }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <!-- Recent Activity table removed as requested -->
 
       <!-- User Modal -->
       <div class="modal fade" :class="{ show: showUserModal }" :style="{ display: showUserModal ? 'block' : 'none' }" tabindex="-1">
@@ -464,6 +437,7 @@ import AppModal from '@/components/common/AppModal.vue'
 import api from '@/services/api'
 import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 import DateInput from '@/components/common/DateInput.vue'
+import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
 
 // Backend-driven; remove mock data
 
@@ -855,48 +829,13 @@ const getRoleDisplayName = (role) => {
 
 const formatDate = (date) => {
   if (!date) return 'Never'
-  try {
-    return new Date(date).toLocaleString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-  } catch (e) {
-    return new Date(date).toLocaleString()
-  }
+  return formatPHDateTime(date)
 }
 
 // Explicit PH timezone formatting for activity logs (Asia/Manila)
 const formatDatePH = (date) => {
   if (!date) return 'Never'
-  try {
-    let d = date
-    if (typeof date === 'string') {
-      // Normalize timezone-less timestamps like 'YYYY-MM-DD HH:mm:ss' to UTC
-      const tzLess = /^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})(?:\.\d+)?$/
-      const hasTZ = /Z|[+-]\d{2}:?\d{2}$/.test(date)
-      if (tzLess.test(date) && !hasTZ) {
-        d = date.replace(' ', 'T') + 'Z'
-      }
-    }
-    return new Date(d).toLocaleString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-  } catch (e) {
-    return new Date(date).toLocaleString()
-  }
+  return formatPHDateTime(date)
 }
 
 // Date formatting and validation methods
@@ -960,10 +899,10 @@ const onDatePickerChange = (fieldName, event) => {
   const isoDate = event.target.value
   if (isoDate) {
     // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
-    const date = new Date(isoDate)
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
+    const phDate = utcToPH(isoDate + 'T00:00:00Z')
+    const mm = String(phDate.month() + 1).padStart(2, '0')
+    const dd = String(phDate.date()).padStart(2, '0')
+    const yyyy = phDate.year()
     userForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
   }
 }

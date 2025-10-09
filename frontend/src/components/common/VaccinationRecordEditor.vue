@@ -361,6 +361,7 @@ import { ref, watch, onMounted, computed } from 'vue';
 import VisitEditor from '@/components/common/VisitEditor.vue'
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast'
+import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
 
 console.log('API service imported:', api);
 
@@ -424,7 +425,7 @@ const vaccinationForm = ref({
   vaccineName: '',
   diseasePrevented: '',
   doseNumber: '',
-  dateAdministered: new Date().toISOString().split('T')[0], // Default to today
+  dateAdministered: getCurrentPHDate(), // Default to today in PH timezone
   ageAtAdministration: '',
   vaccineManufacturer: '',
   lotNumber: '',
@@ -502,7 +503,7 @@ const initVaccinationForm = () => {
     vaccineName: '',
     diseasePrevented: '',
     doseNumber: '',
-    dateAdministered: new Date().toISOString().split('T')[0],
+    dateAdministered: getCurrentPHDate(),
     ageAtAdministration: '',
     vaccineManufacturer: '',
     lotNumber: '',
@@ -891,8 +892,7 @@ const editVaccinationRecord = async (index) => {
   
   // Format date for input
   if (record.dateAdministered) {
-    vaccinationForm.value.dateAdministered = new Date(record.dateAdministered)
-      .toISOString().split('T')[0];
+    vaccinationForm.value.dateAdministered = utcToPH(record.dateAdministered);
   }
   
   currentEditIndex.value = index;

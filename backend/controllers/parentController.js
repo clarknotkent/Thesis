@@ -107,7 +107,7 @@ const getParentChildren = async (req, res) => {
 
       // Calculate age
       const dob = new Date(child.date_of_birth);
-      const today = new Date(Date.now());
+      const today = new Date();
       const ageInMs = today - dob;
       const ageInYears = Math.floor(ageInMs / (1000 * 60 * 60 * 24 * 365.25));
 
@@ -198,7 +198,7 @@ const getChildDetails = async (req, res) => {
 
     // Calculate age
     const dob = new Date(patient.date_of_birth);
-    const today = new Date(Date.now());
+    const today = new Date();
     const ageInMs = today - dob;
     const ageInYears = Math.floor(ageInMs / (1000 * 60 * 60 * 24 * 365.25));
     const ageInMonths = Math.floor(ageInMs / (1000 * 60 * 60 * 24 * 30.44));
@@ -296,7 +296,7 @@ const getChildVaccinationSchedule = async (req, res) => {
     // Process schedule data
     const processedSchedule = schedule?.map(item => {
       const scheduledDate = new Date(item.scheduled_date);
-      const today = new Date(Date.now());
+      const today = new Date();
       const daysDiff = Math.ceil((scheduledDate - today) / (1000 * 60 * 60 * 24));
 
       let status = 'upcoming';
@@ -349,7 +349,7 @@ const getChildVaccinationSchedule = async (req, res) => {
 // Helper function to get next vaccine
 const getNextVaccine = (schedules) => {
   const upcoming = schedules
-    .filter(s => !s.actual_date && new Date(s.scheduled_date) > new Date(Date.now()))
+    .filter(s => !s.actual_date && new Date(s.scheduled_date) > new Date())
     .sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
 
   if (upcoming.length > 0) {

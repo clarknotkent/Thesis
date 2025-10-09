@@ -146,24 +146,42 @@
         </div>
 
         <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Findings (auto-filled after interventions)</label>
-          <textarea class="form-control" rows="3" v-model="form.findings" readonly></textarea>
+          <label class="form-label">Findings</label>
+          <textarea class="form-control" rows="3" v-model="form.findings" :readonly="viewOnly || existingVisitMode" placeholder="Enter clinical findings..."></textarea>
+          <small class="text-muted">Auto-filled when services are added, but can be edited</small>
         </div>
 
         <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Service Rendered (auto-filled)</label>
-          <textarea class="form-control" rows="3" v-model="form.service_rendered" readonly></textarea>
+          <label class="form-label">Service Rendered</label>
+          <textarea class="form-control" rows="3" v-model="form.service_rendered" :readonly="viewOnly || existingVisitMode" placeholder="Describe services rendered..."></textarea>
+          <small class="text-muted">Auto-filled when services are added, but can be edited</small>
         </div>
 
+        <!-- Editable Services Section -->
         <div v-if="collectedVaccinations && collectedVaccinations.length > 0" class="mb-3">
-          <label class="form-label">Vaccines to be Administered During Visit</label>
-          <div class="border rounded p-2 bg-light">
-            <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-1">
-              <span><strong>{{ vacc.vaccine_name || 'Unknown Vaccine' }}</strong> - {{ formatDate(vacc.administered_date) }}</span>
-              <span class="badge bg-info">Will be saved with visit</span>
+          <label class="form-label">Services to be Administered During Visit</label>
+          <div class="border rounded p-3 bg-light">
+            <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+              <div class="flex-grow-1">
+                <strong>{{ vacc.vaccine_name || 'Unknown Vaccine' }}</strong>
+                <br>
+                <small class="text-muted">
+                  Date: {{ formatDate(vacc.administered_date) }} |
+                  Dose: {{ vacc.dose_number || 'N/A' }} |
+                  Outside Transaction: {{ vacc.outside ? 'Yes' : 'No' }}
+                </small>
+              </div>
+              <div class="d-flex gap-1" v-if="!viewOnly && !existingVisitMode">
+                <button class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </div>
           </div>
-          <small class="text-muted">These vaccines will be administered and recorded when you save the visit.</small>
+          <small class="text-muted">These services will be administered and recorded when you save the visit. You can edit or remove them before saving.</small>
         </div>
 
         <div class="text-end">
@@ -293,6 +311,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
 const { addToast } = useToast()
 
 const props = defineProps({
@@ -334,10 +353,43 @@ const collectedVaccinations = computed(() => props.collectedVaccinations?.value 
 
 const isSaveDisabled = computed(() => existingVisitMode.value && (!collectedVaccinations.value || collectedVaccinations.value.length === 0))
 
+// Auto-fill findings and service_rendered based on collected services
+const autoFilledFindings = computed(() => {
+  if (!collectedVaccinations.value || collectedVaccinations.value.length === 0) return ''
+  
+  const services = collectedVaccinations.value
+  const vaccineCount = services.filter(s => s.inventory_id || s.vaccine_id).length
+  const dewormingCount = services.filter(s => s.deworming_type).length
+  const vitaminACount = services.filter(s => s.vitamin_a_type).length
+  
+  let findings = []
+  if (vaccineCount > 0) findings.push(`${vaccineCount} vaccine${vaccineCount > 1 ? 's' : ''} administered`)
+  if (dewormingCount > 0) findings.push(`${dewormingCount} deworming treatment${dewormingCount > 1 ? 's' : ''} given`)
+  if (vitaminACount > 0) findings.push(`${vitaminACount} vitamin A supplement${vitaminACount > 1 ? 's' : ''} provided`)
+  
+  return findings.join(', ')
+})
+
+const autoFilledServiceRendered = computed(() => {
+  if (!collectedVaccinations.value || collectedVaccinations.value.length === 0) return ''
+  
+  const services = collectedVaccinations.value
+  const vaccineCount = services.filter(s => s.inventory_id || s.vaccine_id).length
+  const dewormingCount = services.filter(s => s.deworming_type).length
+  const vitaminACount = services.filter(s => s.vitamin_a_type).length
+  
+  let servicesRendered = []
+  if (vaccineCount > 0) servicesRendered.push(`Vaccination (${vaccineCount} dose${vaccineCount > 1 ? 's' : ''})`)
+  if (dewormingCount > 0) servicesRendered.push(`Deworming (${dewormingCount} treatment${dewormingCount > 1 ? 's' : ''})`)
+  if (vitaminACount > 0) servicesRendered.push(`Vitamin A supplementation (${vitaminACount} dose${vitaminACount > 1 ? 's' : ''})`)
+  
+  return servicesRendered.join(', ')
+})
+
 const form = ref({
   patient_id: '',
   recorded_by: '',
-  visit_date: new Date().toISOString().split('T')[0],
+  visit_date: getCurrentPHDate(),
   vitals: {
     temperature: '',
     muac: '',
@@ -355,7 +407,7 @@ const vaccinationForm = ref({
   vaccineName: '',
   diseasePrevented: '',
   doseNumber: '',
-  dateAdministered: new Date().toISOString().split('T')[0],
+  dateAdministered: getCurrentPHDate(),
   ageAtAdministration: '',
   vaccineManufacturer: '',
   lotNumber: '',
@@ -520,7 +572,7 @@ const openVaccinationModal = async (patientId = null) => {
     vaccineName: '',
     diseasePrevented: '',
     doseNumber: '',
-    dateAdministered: new Date().toISOString().split('T')[0],
+    dateAdministered: getCurrentPHDate(),
     ageAtAdministration: '',
     vaccineManufacturer: '',
     lotNumber: '',
@@ -702,11 +754,22 @@ const saveVaccination = async () => {
       console.log('🔄 [VISIT_VACCINATION] Adding vaccination to visit collection:', vaccinationData)
       // Add to collected vaccinations (will be saved with visit)
       const collectedVaccinationsArray = [...collectedVaccinations.value]
-      collectedVaccinationsArray.push(vaccinationData)
-      console.log('🔄 [VISIT_VACCINATION] New collectedVaccinationsArray:', collectedVaccinationsArray)
+
+      // Check if we're editing an existing service
+      if (vaccinationForm.value.editingIndex !== undefined) {
+        // Update existing service
+        collectedVaccinationsArray[vaccinationForm.value.editingIndex] = vaccinationData
+        console.log('🔄 [VISIT_VACCINATION] Updated service at index:', vaccinationForm.value.editingIndex)
+        addToast({ title: 'Success', message: 'Service updated successfully.', type: 'success' })
+      } else {
+        // Add new service
+        collectedVaccinationsArray.push(vaccinationData)
+        console.log('🔄 [VISIT_VACCINATION] New collectedVaccinationsArray:', collectedVaccinationsArray)
+        addToast({ title: 'Success', message: 'Vaccine added to visit. Will be administered when you save the visit.', type: 'success' })
+      }
+
       // Emit the updated collected vaccinations to parent
       emit('update-collected-vaccinations', collectedVaccinationsArray)
-      addToast({ title: 'Success', message: 'Vaccine added to visit. Will be administered when you save the visit.', type: 'success' })
       closeVaccinationModal()
     }
   } catch (err) {
@@ -734,14 +797,52 @@ const closeVaccinationModal = () => {
     vaccineName: '',
     diseasePrevented: '',
     doseNumber: '',
-    dateAdministered: new Date().toISOString().split('T')[0],
+    dateAdministered: getCurrentPHDate(),
     ageAtAdministration: '',
     vaccineManufacturer: '',
     lotNumber: '',
     siteOfAdministration: '',
     healthWorkerId: '',
     facilityName: '',
-    remarks: ''
+    remarks: '',
+    editingIndex: undefined // Clear editing state
+  }
+}
+
+const editService = (index) => {
+  const service = collectedVaccinations.value[index]
+  if (!service) return
+
+  // Populate vaccination form with service data for editing
+  vaccinationForm.value = {
+    inventoryId: service.inventory_id || '',
+    vaccineId: service.vaccine_id || '',
+    vaccineName: service.vaccine_name || '',
+    diseasePrevented: service.disease_prevented || '',
+    doseNumber: service.dose_number || '',
+    dateAdministered: service.administered_date || getCurrentPHDate(),
+    ageAtAdministration: service.age_at_administration || '',
+    vaccineManufacturer: service.vaccine_manufacturer || '',
+    lotNumber: service.lot_number || '',
+    siteOfAdministration: service.site_of_administration || '',
+    healthWorkerId: service.administered_by || '',
+    facilityName: service.facility_name || '',
+    remarks: service.remarks || ''
+  }
+
+  // Open modal for editing
+  showVaccinationModal.value = true
+
+  // Store the index being edited for later update
+  vaccinationForm.value.editingIndex = index
+}
+
+const removeService = (index) => {
+  if (confirm('Are you sure you want to remove this service from the visit?')) {
+    const collectedVaccinationsArray = [...collectedVaccinations.value]
+    collectedVaccinationsArray.splice(index, 1)
+    emit('update-collected-vaccinations', collectedVaccinationsArray)
+    addToast({ title: 'Removed', message: 'Service removed from visit', type: 'info' })
   }
 }
 
@@ -940,7 +1041,7 @@ const fetchExistingVisit = async (visitId) => {
         console.warn('Could not find health worker with name:', data.recorded_by)
       }
     }
-    form.value.visit_date = data.visit_date ? new Date(data.visit_date).toISOString().split('T')[0] : form.value.visit_date
+    form.value.visit_date = data.visit_date ? utcToPH(data.visit_date).format('YYYY-MM-DD') : form.value.visit_date
     form.value.findings = data.findings || ''
     form.value.service_rendered = data.service_rendered || ''
     
@@ -1013,6 +1114,19 @@ watch(() => props.recordMode, (isOutside) => {
     fetchVaccineOptions()
   }
 })
+
+// Watch for collected vaccinations changes to auto-fill findings and service_rendered
+watch(collectedVaccinations, (newServices) => {
+  if (newServices && newServices.length > 0) {
+    // Only auto-fill if fields are empty or contain default values
+    if (!form.value.findings || form.value.findings.trim() === '') {
+      form.value.findings = autoFilledFindings.value
+    }
+    if (!form.value.service_rendered || form.value.service_rendered.trim() === '') {
+      form.value.service_rendered = autoFilledServiceRendered.value
+    }
+  }
+}, { deep: true })
 
 // Watch for initialPatientId changes to ensure patient options are loaded
 watch(() => props.initialPatientId, (newPatientId, oldPatientId) => {

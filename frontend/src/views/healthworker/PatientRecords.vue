@@ -88,6 +88,65 @@
       </div>
     </AppCard>
 
+    <!-- View Toggle -->
+    <AppCard class="mb-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <small class="text-muted">View Mode:</small>
+        </div>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" id="cardView" v-model="viewMode" value="card">
+          <label class="btn btn-outline-primary" for="cardView">
+            <i class="bi bi-grid"></i> Cards
+          </label>
+          <input type="radio" class="btn-check" id="tableView" v-model="viewMode" value="table">
+          <label class="btn btn-outline-primary" for="tableView">
+            <i class="bi bi-table"></i> Table
+          </label>
+        </div>
+      </div>
+    </AppCard>
+
+    <!-- Filters Section (Table View Only) -->
+    <AppCard v-if="viewMode === 'table'" class="mb-3">
+      <div class="row g-3">
+        <div class="col-12 col-md-3">
+          <label class="form-label">Sex</label>
+          <select class="form-select" v-model="filterSex" @change="applyFilters">
+            <option value="">All</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Due Today</label>
+          <select class="form-select" v-model="filterDueToday" @change="applyFilters">
+            <option value="">All</option>
+            <option value="true">Due Today</option>
+            <option value="false">Not Due Today</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Defaulters</label>
+          <select class="form-select" v-model="filterDefaulters" @change="applyFilters">
+            <option value="">All</option>
+            <option value="true">Defaulters Only</option>
+            <option value="false">Non-Defaulters</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Search</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            placeholder="Search patients..."
+            v-model="searchQuery"
+            @input="debouncedSearch"
+          >
+        </div>
+      </div>
+    </AppCard>
+
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -232,6 +291,67 @@
         </AppCard>
       </div>
     </div>
+
+    <!-- Table View -->
+    <AppCard v-if="viewMode === 'table' && !loading && patients.length > 0">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Age</th>
+              <th>Sex</th>
+              <th>Guardian</th>
+              <th>Last Vaccination</th>
+              <th>Status</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="patient in filteredPatients" :key="patient.id">
+              <td>
+                <div class="fw-semibold">{{ patient.childInfo.name }}</div>
+                <small class="text-muted">ID: {{ patient.id }}</small>
+              </td>
+              <td>{{ calculateAge(patient.childInfo.birthDate, patient) }}</td>
+              <td>{{ patient.childInfo.sex }}</td>
+              <td>{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</td>
+              <td>{{ getLastVaccination(patient) }}</td>
+              <td>
+                <span :class="getStatusBadgeClass(getPatientStatus(patient))">
+                  {{ getPatientStatusText(getPatientStatus(patient)) }}
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm">
+                  <AppButton
+                    variant="outline-primary"
+                    @click="viewPatient(patient)"
+                    icon="bi bi-eye"
+                    size="sm"
+                    title="View Details"
+                  />
+                  <AppButton
+                    variant="outline-success"
+                    @click="editPatient(patient)"
+                    icon="bi bi-pencil"
+                    size="sm"
+                    title="Edit"
+                  />
+                  <AppButton
+                    variant="outline-info"
+                    @click="administerVaccine(patient)"
+                    icon="bi bi-syringe"
+                    size="sm"
+                    title="Administer Vaccine"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AppCard>
 
     <!-- Empty State -->
     <div v-if="!loading && patients.length === 0" class="text-center py-5">
@@ -387,6 +507,22 @@
                     Auto-populated from selected guardian
                   </div>
                 </div>
+                <div class="col-md-6">
+                  <label for="guardian_relationship" class="form-label">Relationship to Guardian</label>
+                  <select class="form-select" id="guardian_relationship" v-model="form.guardian_relationship">
+                    <option value="">Select relationship</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Father">Father</option>
+                    <option value="Grandparent">Grandparent</option>
+                    <option value="Aunt/Uncle">Aunt/Uncle</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <div class="form-text text-info">
+                    <i class="bi bi-info-circle"></i>
+                    Selecting "Mother" will auto-fill mother's information from guardian data
+                  </div>
+                </div>
               </div>
 
               <!-- Parent Information -->
@@ -501,6 +637,12 @@ const itemsPerPage = ref(5) // Set to 5 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 
+// View mode and filters
+const viewMode = ref('card') // 'card' or 'table'
+const filterSex = ref('')
+const filterDueToday = ref('')
+const filterDefaulters = ref('')
+
 // Modal states
 const showAddModal = ref(false)
 const showEditModal = ref(false)
@@ -526,6 +668,7 @@ const form = ref({
   father_occupation: '',
   father_contact_number: '',
   guardian_id: null,
+  guardian_relationship: '', // New field for relationship
   family_number: '',
   tags: '',
   // Birth history (optional onboarding fields)
@@ -638,7 +781,14 @@ const calculateAge = (birthDate, patient = null) => {
   if (patient && patient.age_months !== undefined && patient.age_days !== undefined) {
     const months = patient.age_months || 0
     const days = patient.age_days || 0
-    return `${months}m ${days}d`
+    
+    // FIXED: Show age in years if >= 36 months, otherwise months and days
+    if (months >= 36) {
+      const years = Math.floor(months / 12)
+      return `${years} year${years !== 1 ? 's' : ''}`
+    } else {
+      return `${months}m ${days}d`
+    }
   }
   
   // Fallback to client-side calculation
@@ -660,9 +810,15 @@ const calculateAge = (birthDate, patient = null) => {
   if (months < 0) months = 0
   if (days < 0) days = 0
 
-  const monthsPart = `${months}m`
-  const daysPart = `${days}d`
-  return `${monthsPart} ${daysPart}`
+  // FIXED: Show age in years if >= 36 months, otherwise months and days
+  if (months >= 36) {
+    const years = Math.floor(months / 12)
+    return `${years} year${years !== 1 ? 's' : ''}`
+  } else {
+    const monthsPart = `${months}m`
+    const daysPart = `${days}d`
+    return `${monthsPart} ${daysPart}`
+  }
 }
 
 const getPatientStatus = (patient) => {
@@ -719,6 +875,43 @@ const applyFilters = () => {
   currentPage.value = 1
   fetchPatients()
 }
+
+// Computed property for table filtering (local filtering, no API calls)
+const filteredPatients = computed(() => {
+  let filtered = patients.value
+
+  // Filter by sex
+  if (filterSex.value) {
+    filtered = filtered.filter(patient => patient.childInfo.sex === filterSex.value)
+  }
+
+  // Filter by due today
+  if (filterDueToday.value) {
+    const dueToday = filterDueToday.value === 'true'
+    filtered = filtered.filter(patient => isDueToday(patient) === dueToday)
+  }
+
+  // Filter by defaulters
+  if (filterDefaulters.value) {
+    const isDefaulterFilter = filterDefaulters.value === 'true'
+    filtered = filtered.filter(patient => isDefaulter(patient) === isDefaulterFilter)
+  }
+
+  // Filter by search text (for table view)
+  if (searchQuery.value && viewMode.value === 'table') {
+    const searchTerm = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(patient => {
+      return (
+        patient.childInfo.name?.toLowerCase().includes(searchTerm) ||
+        patient.id?.toString().includes(searchTerm) ||
+        patient.guardianInfo?.name?.toLowerCase().includes(searchTerm) ||
+        patient.motherInfo?.name?.toLowerCase().includes(searchTerm)
+      )
+    })
+  }
+
+  return filtered
+})
 
 // Debounced search
 let searchTimeout
@@ -911,6 +1104,47 @@ const getStatusBadgeClass = (status) => {
   return classes[status] || 'badge bg-secondary'
 }
 
+const getPatientStatusText = (status) => {
+  const statusTexts = {
+    active: 'Active',
+    pending: 'Pending',
+    completed: 'Completed'
+  }
+  return statusTexts[status] || 'Unknown'
+}
+
+const isDefaulter = (patient) => {
+  // Check if patient has overdue schedules (missed vaccinations)
+  if (!patient.patientSchedules || patient.patientSchedules.length === 0) {
+    return false
+  }
+  
+  const today = new Date()
+  return patient.patientSchedules.some(schedule => {
+    if (schedule.status === 'Missed' || schedule.status === 'Overdue') {
+      return true
+    }
+    // Check if scheduled date is in the past and not completed
+    if (schedule.scheduled_date && schedule.status !== 'Completed') {
+      const scheduledDate = new Date(schedule.scheduled_date)
+      return scheduledDate < today
+    }
+    return false
+  })
+}
+
+const isDueToday = (patient) => {
+  // Check if patient has schedules due today
+  if (!patient.patientSchedules || patient.patientSchedules.length === 0) {
+    return false
+  }
+  
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+  return patient.patientSchedules.some(schedule => {
+    return schedule.scheduled_date === today && schedule.status !== 'Completed'
+  })
+}
+
 // Guardian search computed property
 const filteredGuardians = computed(() => {
   if (!guardianSearchTerm.value) {
@@ -941,6 +1175,12 @@ const selectGuardian = (guardian) => {
   if (guardian.family_number) {
     form.value.family_number = guardian.family_number
   }
+
+  // Auto-fill mother fields if relationship is "Mother"
+  if (form.value.guardian_relationship === 'Mother') {
+    form.value.mother_name = guardian.full_name
+    form.value.mother_contact_number = guardian.contact_number
+  }
 }
 
 const hideGuardianDropdown = () => {
@@ -956,9 +1196,35 @@ watch(() => form.value.guardian_id, (newGuardianId) => {
     if (selectedGuardian && selectedGuardian.family_number) {
       form.value.family_number = selectedGuardian.family_number
     }
+    
+    // Auto-fill mother fields if relationship is "Mother"
+    if (form.value.guardian_relationship === 'Mother' && selectedGuardian) {
+      form.value.mother_name = selectedGuardian.full_name
+      form.value.mother_contact_number = selectedGuardian.contact_number
+    }
   } else {
     // Clear family number if no guardian selected
     form.value.family_number = ''
+  }
+})
+
+// Watch for guardian relationship changes to handle auto-fill
+watch(() => form.value.guardian_relationship, (newRelationship, oldRelationship) => {
+  if (newRelationship === 'Mother' && form.value.guardian_id) {
+    // Auto-fill mother fields when relationship changes to "Mother"
+    const selectedGuardian = guardians.value.find(g => g.guardian_id === form.value.guardian_id)
+    if (selectedGuardian) {
+      form.value.mother_name = selectedGuardian.full_name
+      form.value.mother_contact_number = selectedGuardian.contact_number
+    }
+  } else if (oldRelationship === 'Mother' && newRelationship !== 'Mother') {
+    // Clear auto-filled mother fields when relationship changes away from "Mother"
+    // Only clear if they were auto-filled (guardian name matches)
+    const selectedGuardian = guardians.value.find(g => g.guardian_id === form.value.guardian_id)
+    if (selectedGuardian && form.value.mother_name === selectedGuardian.full_name) {
+      form.value.mother_name = ''
+      form.value.mother_contact_number = ''
+    }
   }
 })
 

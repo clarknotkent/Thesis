@@ -357,6 +357,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
 import DateInput from '@/components/common/DateInput.vue'
+import { formatPHDate, formatPHDateTime, utcToPH, nowPH, getPHDateKey } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)
@@ -401,17 +402,12 @@ const toDateAssumingUTCIfMissingTZ = (val) => {
 }
 
 // Helper: get YYYY-MM-DD string in Asia/Manila for day comparisons
-const getPHDateKey = (val) => {
-  const d = toDateAssumingUTCIfMissingTZ(val)
-  if (!d || isNaN(d.getTime())) return ''
-  // en-CA yields YYYY-MM-DD
-  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
-}
+// Note: getPHDateKey is now imported from dateUtils
 
 const stats = computed(() => ({
   totalLogs: totalItems.value,
   todayLogs: logs.value.filter(log => {
-    const todayPH = getPHDateKey(new Date())
+    const todayPH = getPHDateKey(nowPH().toDate())
     return getPHDateKey(log.timestamp) === todayPH
   }).length,
   activeUsers: new Set(logs.value.map(log => log.userId)).size,
@@ -570,7 +566,7 @@ const exportLogs = async () => {
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `activity-logs-${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `activity-logs-${formatPHDate(nowPH().toDate(), 'YYYY-MM-DD')}.csv`)
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -583,29 +579,12 @@ const exportLogs = async () => {
 // Date formatting methods
 const formatDatePH = (date) => {
   if (!date) return 'Never'
-  const d = toDateAssumingUTCIfMissingTZ(date)
-  if (!d || isNaN(d.getTime())) return 'Invalid date'
-  try {
-    return d.toLocaleString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-  } catch (e) {
-    return d.toLocaleString()
-  }
+  return formatPHDateTime(date)
 }
 
 const convertToISODate = (dateValue) => {
   if (!dateValue) return ''
-  const date = new Date(dateValue)
-  if (isNaN(date.getTime())) return ''
-  return date.toISOString().split('T')[0]
+  return formatPHDate(dateValue, 'YYYY-MM-DD')
 }
 
 // DateInput handles formatting and picker; we'll watch for changes to apply filters

@@ -1,28 +1,23 @@
 - Must Finalize/Maximize Activity Logging
 - Must always update schema overview.txt
 - Make sure all buttons and CRUDs are working perfectly
-- make sure all created_by and updated_by is being inserted
+- Make sure all created_by and updated_by is being inserted
 
-- Implement Vax to Other Vax Rule (Especially in Rescheduling)
-- Repopulate Everything (with decent examples)
 - Try all CRUDs
 - Get/Utilize All necessary Views
-- Fix Time Fields (for Immunization Records)
+- Repopulate Everything (with decent examples)
+
+- Fix Time Fields (for Immunization Records, must use current time if administered date is current day)
 - Make Complex Functions Work (Defaulter Filtering/All Filtering)
-- Clarify the use of Grace Period and Eligible Date
-- Make Constraint to Only Have 1 Schedule per Vaccine Type
-- View Visit Should Include Whether Transaction was Outside or Not
-- Added Record per Visit Should be Editable (Optional)
+- Implement Vax to Other Vax Rule (Especially in Rescheduling)
 
 
 ---- FRONTEND ----
 
 - If Patient Relationship with Guardian is Mother, Mother Field should be autofilled
-- Can have a function in the Backend to gather all list of Mother and Father Full Name, to have a Dropdown upon Patient Creation
-- Apply the Toast in Everything (remove the prompts--sytem-like notifications)
+- Apply the Toast in Everything (remove the prompts--sytem-like notifications--in deleting too)
 - Apply Smart Dose Dropdown (must be derived from the schedule_doses)
-- Findings and Service Rendered must be automatically filled after event creation (vaccine admnistration/deworm/vitamin a),
-  it is not visible to the frontend but it is in the database
+- Findings and Service Rendered must be automatically filled after adding services (vaccine admnistration/deworm/vitamin a), it is not visible to the frontend but it is in the database
 - Implement Deworm & Vitamin
 - Age displayed in Patients List must be in months and days (if 36 months or more, use years??)
 - Fix the Date Fields
@@ -32,8 +27,45 @@
 - Fix the Patients List (last vaccination must be displayed)
 - Make all dropdowns to accept inputs too (for searching through options)
 - Make the Dashboard work
-<<<<<<< Updated upstream
 - In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
-=======
-- In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
->>>>>>> Stashed changes
+
+- Added Record per Visit Should be Editable (Optional)
+- View Visit Should Include Whether Transaction was Outside or Not
+- In Adding New Vaccine, Category must be first before Vaccine Types (Vaccine Types should be Null if Category is Deworming or Vitamin A)
+- Disease Prevented should be a Dropdown that shows all Disease Prevented list, then can also accept Input for new Disease Prevented or to search the list (must also be applied to Antigen Name, Brand Name, Manufacturer, and Storage Location, also the Mother and Father full name in adding Patients)
+- Edit Inventory Details should already prefill all fields and the antigen and brand name must be readonly
+- In Adjusting Stock Manually, it should already be included in the Edit Inventory Details with a prefilled field (readonly), and have an input for Adjust Quantity (default at 0) and a dropdown beside it for the Transaction Type (when the Update Stock button is clicked, and the Adjust Quantity is 0, then Quantity Stock won't need a change)
+- Once Inventory Stock is deleted, should I be able to restore it? (or no need for restoration?)
+- Should be able to view the Inventory History per Inventory
+- In Vaccine Stock Display List, Brand Name must also be shown, remove the Batch No??
+- Editing Vaccines should not be implemented by line, maybe have a button beside Search Vaccines, and it will show a dropdown to select which vaccine, once selected, all necessary prefilled fields will appear (just like how adding new schedule works)
+- View and Edit Vaccine Schedules should properly fetch all necessary data (schedule doses fields are not being prefilled)
+
+- In database, there should be a function to check if the vaccine is expired already, if yes, then it will automatically create inventory transaction EXPIRED (ask for best practice)
+- Why is the Inventory History not being updated each time inventory changes (like updates on stock--its name, brands, quantity, etc)?
+- Can I have a trigger every 7AM and 5PM to call the function to update schedule statuses (instead of every after log in), also the function to check expiry too will be called
+
+---- FRONTEND ----
+
+- View Visit Should Include Whether Transaction was Outside or Not
+- Added Record per Visit Should be Editable (in adding patient record, if a service was added it should still be editable before saving the visit)
+- Fix Time Fields (for Immunization Records, must use current time if administered date is current day)
+- Make Complex Functions Work (Defaulter Filtering/All Filtering) (the filtering in patients list or all list. there should also be filter for those tagged as defaulter (no need for API, since filtering basically is based on the details included on the table))
+- If Patient Relationship with Guardian is Mother, Mother Field should be autofilled based on the Full Name and Contact Number of the Guardian
+- Apply the Toast in Everything (remove the prompts--sytem-like notifications--in deleting too)
+- Apply Smart Dose Dropdown (must be derived from the schedule_doses)
+- Findings and Service Rendered must be automatically filled after adding services (vaccine admnistration/deworm/vitamin a), it is not visible to the frontend but it is in the database (in frontend, in adding patient record, when service is added, the field for service rendered and findings should also be updated.)
+- Implement Deworm & Vitamin
+- Age displayed in Patients List must be in months and days (if 36 months or more, use years??)
+- Make all Filter/Search Functions work (frontend can just base it on whats needed (example, for patient's sex, or those who have due today, or those defaulters---all of these are details that can be extracted by the frontend from the data given by the backend))
+- Fix the Patients List (last vaccination must be displayed)
+- Make all dropdowns to accept inputs too (for searching through options)--implement whats best solution
+- In Adding New Vaccine, Category must be first before Vaccine Types (Vaccine Types should be Null if Category is Deworming or Vitamin A)
+- Disease Prevented should be a Dropdown that shows all Disease Prevented list, then can also accept Input for new Disease Prevented or to search the list (this must also be applied to Antigen Name, Brand Name, Manufacturer, and Storage Location, also the Mother and Father full name in adding Patients)
+- Edit Inventory Details should already prefill all fields and the antigen and brand name must be readonly
+- In Adjusting Stock Manually, it should already be included in the Edit Inventory Details with a prefilled field (readonly), and have an input for Adjust Quantity (default at 0) and a dropdown beside it for the Transaction Type (when the Update Stock button is clicked, and the Adjust Quantity is 0, then Quantity Stock won't need a change)
+- Once Inventory Stock is deleted, i should be able to restore it too (remove the adjust update to 0 stock in vaccinemodel)
+- Should be able to view the Inventory History per Inventory
+- In Vaccine Stock Display List, Brand Name must also be shown, remove the Batch No??
+- Editing Vaccines should not be implemented by line, maybe have a button beside Search Vaccines, and it will show a dropdown to select which vaccine, once selected, all necessary prefilled fields will appear (just like how adding new schedule works)
+- View and Edit Vaccine Schedules should properly fetch all necessary data (schedule doses fields are not being prefilled)

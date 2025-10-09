@@ -7,7 +7,11 @@
           <div class="d-flex align-items-center justify-content-between">
             <div class="flex-grow-1">
               <h4 class="mb-1">👋 Welcome back, {{ parentName }}!</h4>
-              <p class="mb-2 opacity-85">Keeping your {{ children.length }} little one{{ children.length > 1 ? 's' : '' }} healthy and protected</p>
+              <p class="mb-2 opacity-85">Keeping your     // Get recent vaccinations
+    recentVaccinations.value = childData.recentVaccinations?.slice(0, 5).map(vacc => ({
+      id: vacc.id,
+      name: vacc.name,
+      date: formatPHDate(vacc.date),en.length }} little one{{ children.length > 1 ? 's' : '' }} healthy and protected</p>
               <div class="d-flex align-items-center">
                 <small class="opacity-75 me-3">
                   <i class="bi bi-shield-check me-1"></i>
@@ -382,6 +386,7 @@ import ParentLayout from '@/components/layout/ParentLayout.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import api from '@/services/api'
+import { formatPHDate } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)

@@ -6,24 +6,25 @@ function withClient(client) {
 
 const patientModel = {
   // Fetch all patients with optional filters and pagination (reads from patients_view)
-  getAllPatients: async (filters = {}, page = 1, limit = 5, client) => {
+  getAllPatients: async (filters = {}, page = 1, limit = 10, client) => {
     try {
       const supabase = withClient(client);
-      // Ensure reasonable limits to prevent memory issues - max 50 for patients
-      const safeLimit = Math.min(Math.max(parseInt(limit) || 5, 1), 50);
-      const safePage = Math.max(parseInt(page) || 1, 1);
-      
       let query = supabase
         .from('patients_view')
         .select('*', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
-        query = query.ilike('patient_name', `%${filters.search}%`);
+        // patients_view exposes 'full_name' rather than 'patient_name'
+        query = query.ilike('full_name', `%${filters.search}%`);
       }
 
       if (filters.sex) {
         query = query.eq('sex', filters.sex);
+      }
+
+      if (filters.barangay) {
+        query = query.eq('barangay', filters.barangay);
       }
 
       if (filters.age_group) {
@@ -52,10 +53,23 @@ const patientModel = {
         }
       }
 
+      // Additional tag/status filters
+      if (filters.status) {
+        // Map friendly status to view columns or derived logic if present
+        // FIC: Fully Immunized Child (example heuristic: tags = 'FIC' or up-to-date)
+        if (filters.status.toLowerCase() === 'fic') {
+          query = query.ilike('tags', '%FIC%');
+        } else if (filters.status.toLowerCase() === 'cic') {
+          query = query.ilike('tags', '%CIC%');
+        } else if (filters.status.toLowerCase() === 'defaulter') {
+          query = query.ilike('tags', '%Defaulter%');
+        }
+      }
+
       // Apply pagination
-      const offset = (safePage - 1) * safeLimit;
+      const offset = (page - 1) * limit;
       const { data, error, count } = await query
-        .range(offset, offset + safeLimit - 1)
+        .range(offset, offset + limit - 1)
         .order('patient_id', { ascending: true });
 
       if (error) throw error;
@@ -75,9 +89,9 @@ const patientModel = {
       return {
         patients: withAge,
         totalCount: count || 0,
-        page: safePage,
-        limit: safeLimit,
-        totalPages: Math.ceil((count || 0) / safeLimit)
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil((count || 0) / limit)
       };
     } catch (error) {
       console.error('Error fetching patients:', error);

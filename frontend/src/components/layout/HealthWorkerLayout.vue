@@ -1,5 +1,5 @@
 <template>
-  <div class="health-worker-layout">
+  <div class="health-worker-layout" :class="{ 'sidebar-open': sidebarOpen }">
     <Navbar 
       user-role="Health Worker" 
       user-name="Dr. Sarah Wilson"

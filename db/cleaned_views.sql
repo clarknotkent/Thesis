@@ -375,6 +375,13 @@ SELECT
   timezone('Asia/Manila', p.updated_at::timestamptz) AS updated_at,
   p.updated_by,
   p.full_name,
+  (
+    SELECT timezone('Asia/Manila', MAX(COALESCE(im.administered_date, v.visit_date))::timestamptz)
+    FROM immunizations im
+    LEFT JOIN visits v ON v.visit_id = im.visit_id
+    WHERE COALESCE(im.is_deleted, false) = false
+      AND COALESCE(im.patient_id, v.patient_id) = p.patient_id
+  ) AS last_vaccination_date,
   b.birthhistory_id,
   b.birth_weight,
   b.birth_length,

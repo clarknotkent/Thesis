@@ -11,6 +11,7 @@ import PatientRecords from '@/views/admin/PatientRecords.vue'
 import VaccineInventory from '@/views/admin/VaccineInventory.vue'
 import SMSLogs from '@/views/admin/SMSLogs.vue'
 import Reports from '@/views/admin/Reports.vue'
+import ReceivingReports from '@/views/admin/ReceivingReports.vue'
 import UserAccounts from '@/views/admin/UserAccounts.vue'
 import ActivityLogs from '@/views/admin/ActivityLogs.vue'
 import Profile from '@/views/admin/Profile.vue'
@@ -91,6 +92,16 @@ const routes = [
     component: Reports,
     meta: {
       title: 'Reports - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/receiving-reports',
+    name: 'ReceivingReports',
+    component: ReceivingReports,
+    meta: {
+      title: 'Receiving Reports - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }

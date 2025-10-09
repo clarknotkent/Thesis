@@ -445,7 +445,7 @@ const fetchPatientData = async () => {
         barangay: p.barangay || '',
         health_center: p.health_center || p.clinic || '',
         relationship_to_guardian: p.relationship_to_guardian || '',
-        family_number: p.family_number || '',
+        family_number: p.guardian_family_number || p.family_number || '',
         tags: Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || '')
       },
       childInfo: {

@@ -15,11 +15,6 @@ if (!process.env.SUPABASE_SERVICE_KEY && process.env.SUPABASE_KEY) {
 
 const supabase = createClient(url, serviceKey);
 
-// Add timezone logging
-console.log('Backend local timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
-console.log('Current date in local timezone:', new Date().toString());
-console.log('Current date in UTC:', new Date().toISOString());
-
 // Test database connectivity with a lightweight call
 supabase
   .from('users')
@@ -39,22 +34,6 @@ supabase
   })
   .catch((err) => {
     console.error('Database connection error:', err);
-  });
-
-// Query database timezone and current time
-supabase
-  .from('users')
-  .select('NOW() as db_time')
-  .limit(1)
-  .then(({ data, error }) => {
-    if (error) {
-      console.error('Error querying database time:', error);
-    } else {
-      console.log('Database current time (in DB timezone):', data[0]?.db_time);
-    }
-  })
-  .catch((err) => {
-    console.error('Error querying database time:', err);
   });
 
 module.exports = supabase;

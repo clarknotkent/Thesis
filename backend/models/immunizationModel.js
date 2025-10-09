@@ -10,6 +10,19 @@ const createImmunization = async (immunizationData, client) => {
   const supabase = withClient(client);
   // Derive fields and defaults
   const payload = { ...immunizationData };
+  // If administered_date is today, stamp current time-related fields
+  try {
+    if (payload.administered_date) {
+      const today = new Date();
+      const toISODate = (d) => new Date(d).toISOString().split('T')[0];
+      const nowIso = new Date().toISOString();
+      if (toISODate(payload.administered_date) === toISODate(today)) {
+        // Immunizations table includes created_at/updated_at (timestamps). Stamp them with current time when administering today.
+        payload.created_at = payload.created_at || nowIso;
+        payload.updated_at = payload.updated_at || nowIso;
+      }
+    }
+  } catch(_) {}
   
   // Resolve vaccine_id from inventory_id if present
   if (!payload.vaccine_id && payload.inventory_id) {

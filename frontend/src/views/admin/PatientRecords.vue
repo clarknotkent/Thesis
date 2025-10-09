@@ -41,6 +41,9 @@
                 <option value="inactive">Inactive</option>
                 <option value="due">Vaccination Due</option>
                 <option value="completed">Up to Date</option>
+                <option value="fic">FIC (Fully Immunized Child)</option>
+                <option value="cic">CIC (Completely Immunized Child)</option>
+                <option value="defaulter">Defaulter</option>
               </select>
             </div>
             <div class="col-md-3">
@@ -325,7 +328,7 @@
                       <div class="row g-3">
                         <div class="col-12">
                           <label class="form-label">Name: <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" v-model="form.mother_name" required>
+                          <input type="text" class="form-control" v-model="form.mother_name" list="parentNames" placeholder="Type to search existing guardians..." required @change="onParentNameSelected('mother')">
                         </div>
                         <div class="col-12">
                           <label class="form-label">Occupation:</label>
@@ -344,7 +347,7 @@
                       <div class="row g-3">
                         <div class="col-12">
                           <label class="form-label">Name:</label>
-                          <input type="text" class="form-control" v-model="form.father_name">
+                          <input type="text" class="form-control" v-model="form.father_name" list="parentNames" placeholder="Type to search existing guardians..." @change="onParentNameSelected('father')">
                         </div>
                         <div class="col-12">
                           <label class="form-label">Occupation:</label>
@@ -358,6 +361,10 @@
                     </div>
                   </div>
                 </div>
+                <!-- Shared datalist for parent names -->
+                <datalist id="parentNames">
+                  <option v-for="g in guardians" :key="g.guardian_id" :value="g.full_name"></option>
+                </datalist>
 
                 <!-- Birth History -->
                 <div class="row mb-4">
@@ -590,6 +597,7 @@ const fetchPatients = async () => {
         name: p.mother_name || '',
       },
       guardian_contact_number: p.guardian_contact_number || p.guardian?.contact_number || '',
+      family_number: p.guardian_family_number || p.family_number || '',
       lastVaccination: p.last_vaccination_date || null
     }))
 
@@ -631,6 +639,12 @@ const calculateAge = (birthDate) => {
   }
   if (months < 0) months = 0
   if (days < 0) days = 0
+  // Show years if 36 months or more
+  if (months >= 36) {
+    const years = Math.floor(months / 12)
+    const remMonths = months % 12
+    return remMonths > 0 ? `${years}y ${remMonths}m` : `${years}y`
+  }
   return `${months}m ${days}d`
 }
 
@@ -792,6 +806,22 @@ const editPatient = async (patient) => {
       newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
       address_at_birth: (p.medical_history && (p.medical_history.address_at_birth || p.medical_history.addressAtBirth)) || p.address_at_birth || ''
     }
+    // If guardian exists on record, fetch guardian to display name and family number
+    if (form.value.guardian_id) {
+      try {
+        const gRes = await api.get(`/guardians/${form.value.guardian_id}`)
+        const g = gRes.data?.data
+        if (g) {
+          const fullName = [g.surname, g.firstname, g.middlename].filter(Boolean).join(', ').replace(', ', ', ').trim()
+          selectedGuardianName.value = fullName || selectedGuardianName.value
+          if (g.family_number) form.value.family_number = g.family_number
+        }
+      } catch (e) {
+        // non-fatal if guardian fetch fails
+        console.warn('Could not fetch guardian details for edit:', e?.message || e)
+      }
+    }
+
     showEditModal.value = true;
   } catch (error) {
     console.error('Error fetching full patient details for edit:', error);
@@ -1072,12 +1102,41 @@ const selectGuardian = (guardian) => {
   if (guardian.family_number) {
     form.value.family_number = guardian.family_number
   }
+
+  // If relationship is already chosen, auto-fill parent fields accordingly
+  const rel = (form.value.relationship_to_guardian || '').toLowerCase()
+  if (rel === 'mother') {
+    form.value.mother_name = guardian.full_name || form.value.mother_name
+    if (guardian.contact_number) form.value.mother_contact_number = guardian.contact_number
+  } else if (rel === 'father') {
+    form.value.father_name = guardian.full_name || form.value.father_name
+    if (guardian.contact_number) form.value.father_contact_number = guardian.contact_number
+  }
 }
 
 const hideGuardianDropdown = () => {
   setTimeout(() => {
     showGuardianDropdown.value = false
   }, 200) // Small delay to allow click events on dropdown items
+}
+
+// When selecting a parent name from datalist, auto-fill contact and link guardian if exact match
+const onParentNameSelected = (which) => {
+  const name = which === 'mother' ? (form.value.mother_name || '').trim() : (form.value.father_name || '').trim()
+  if (!name) return
+  // Find exact match by full_name
+  const match = guardians.value.find(g => (g.full_name || '').toLowerCase() === name.toLowerCase())
+  if (match) {
+    if (which === 'mother') {
+      if (match.contact_number) form.value.mother_contact_number = match.contact_number
+    } else if (which === 'father') {
+      if (match.contact_number) form.value.father_contact_number = match.contact_number
+    }
+    // If no guardian selected yet, set this guardian
+    if (!form.value.guardian_id) {
+      selectGuardian(match)
+    }
+  }
 }
 
 // Watch for guardian selection to auto-populate family number
@@ -1093,10 +1152,44 @@ watch(() => form.value.guardian_id, (newGuardianId) => {
   }
 })
 
+// Watch relationship changes to auto-fill respective parent details from guardian
+watch(() => form.value.relationship_to_guardian, (newRel) => {
+  const rel = (newRel || '').toLowerCase()
+  if (!form.value.guardian_id) return
+  const g = guardians.value.find(x => x.guardian_id === form.value.guardian_id)
+  if (!g) return
+  if (rel === 'mother') {
+    form.value.mother_name = g.full_name || form.value.mother_name
+    if (g.contact_number) form.value.mother_contact_number = g.contact_number
+  } else if (rel === 'father') {
+    form.value.father_name = g.full_name || form.value.father_name
+    if (g.contact_number) form.value.father_contact_number = g.contact_number
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   fetchPatients()
   fetchGuardians()
+  // If editing and guardian_id is present, try to set the visible name and family number
+  setTimeout(() => {
+    if (form.value.guardian_id && Array.isArray(guardians.value) && guardians.value.length) {
+      const g = guardians.value.find(x => x.guardian_id === form.value.guardian_id)
+      if (g) {
+        selectedGuardianName.value = g.full_name
+        if (g.family_number) form.value.family_number = g.family_number
+        // Also auto-fill parent fields based on relationship
+        const rel = (form.value.relationship_to_guardian || '').toLowerCase()
+        if (rel === 'mother') {
+          form.value.mother_name = g.full_name || form.value.mother_name
+          if (g.contact_number) form.value.mother_contact_number = g.contact_number
+        } else if (rel === 'father') {
+          form.value.father_name = g.full_name || form.value.father_name
+          if (g.contact_number) form.value.father_contact_number = g.contact_number
+        }
+      }
+    }
+  }, 0)
 })
 </script>
 
