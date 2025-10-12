@@ -32,6 +32,8 @@ BEGIN
     UPDATE patientschedule
     SET status = CASE
         WHEN actual_date IS NOT NULL THEN 'Completed'::schedule_status_enum
+        -- Preserve explicit Rescheduled marking for future-dated schedules
+        WHEN status = 'Rescheduled' AND scheduled_date >= CURRENT_DATE THEN 'Rescheduled'::schedule_status_enum
         WHEN scheduled_date < CURRENT_DATE - INTERVAL '30 days' THEN 'Missed'::schedule_status_enum
         ELSE 'Pending'::schedule_status_enum
     END,

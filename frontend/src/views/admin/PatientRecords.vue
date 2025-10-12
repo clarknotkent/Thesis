@@ -601,9 +601,10 @@ const fetchPatients = async () => {
       lastVaccination: p.last_vaccination_date || null
     }))
 
-    const totalCount = payload.totalCount || response.data?.total || patients.value.length
-    totalItems.value = totalCount
-    totalPages.value = Math.ceil(totalCount / itemsPerPage.value)
+  // Prefer server-provided totalCount/totalPages. Only fallback to local count as last resort.
+  const totalCount = (payload && (payload.totalCount ?? response.data?.total)) ?? patients.value.length
+  totalItems.value = Number(totalCount)
+  totalPages.value = Math.ceil((Number(totalCount) || 0) / Number(itemsPerPage.value))
 
   } catch (error) {
     console.error('Error fetching patients:', error)

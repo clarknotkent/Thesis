@@ -30,7 +30,10 @@ BEGIN
     ELSIF v_sched_date IS NULL THEN
         v_new_status := 'Pending';
     ELSE
-        IF (v_sched_date + (COALESCE(v_grace,0) * INTERVAL '1 day'))::date < CURRENT_DATE THEN
+        -- Preserve explicit Rescheduled marking for future-dated schedules
+        IF v_rec.status = 'Rescheduled' AND v_sched_date >= CURRENT_DATE THEN
+            v_new_status := 'Rescheduled';
+        ELSIF (v_sched_date + (COALESCE(v_grace,0) * INTERVAL '1 day'))::date < CURRENT_DATE THEN
             v_new_status := 'Missed';
         ELSIF v_sched_date <= CURRENT_DATE THEN
             v_new_status := 'Due';

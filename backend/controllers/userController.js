@@ -289,6 +289,11 @@ const updateUserRole = async (req, res) => {
       console.warn('[users:updateUserRole] ensureGuardianForUser failed (non-fatal):', e && e.message);
     }
     res.json({ message: 'User role updated successfully', user: updatedUser });
+    try {
+      const notificationsModel = require('../models/notificationsModel');
+      const message = `Your account role has been changed to ${updatedUser.role}`;
+      await notificationsModel.insertNotification({ channel: 'in_app', recipient_user_id: updatedUser.user_id, recipient_email: updatedUser.email, template_code: 'role_changed', message_body: message, related_entity_type: 'user', related_entity_id: updatedUser.user_id }, req.user?.user_id || null);
+    } catch (nerr) { console.warn('Failed to queue role change notification', nerr && nerr.message); }
   } catch (error) {
   console.error(error);
     res.status(500).json({ message: 'Failed to update user role', error });
@@ -462,6 +467,13 @@ const resetPassword = async (req, res) => {
       await logActivity({ action_type: ACTIVITY.USER.PASSWORD_RESET, description: `Password reset for user ${id} by ${acting}`, user_id: acting || null, entity_id: id, entity_type: 'user' });
     } catch (e) { console.debug('[resetPassword] activity log failed', e); }
 
+      // Notify user about password reset
+      try {
+        const notificationsModel = require('../models/notificationsModel');
+        const profileUser = profile || {};
+        const message = `Your account password was reset${acting && acting !== id ? ' by an administrator' : ''}. If this was not you, contact support.`;
+        await notificationsModel.insertNotification({ channel: 'in_app', recipient_user_id: profileUser.user_id, recipient_email: profileUser.email, template_code: 'password_reset', message_body: message, related_entity_type: 'user', related_entity_id: profileUser.user_id }, acting || null);
+      } catch (nerr) { console.warn('Failed to queue password reset notification', nerr && nerr.message); }
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error(error);

@@ -1,4 +1,6 @@
 const guardianModel = require('../models/guardianModel');
+const { createNotification } = require('../models/notificationModel');
+const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
 // Get all guardians for dropdown
 const getAllGuardians = async (req, res) => {
@@ -61,6 +63,26 @@ const createGuardian = async (req, res) => {
 
     const newGuardian = await guardianModel.createGuardian(guardianData);
 
+    // Create a welcome notification for the guardian (in-app + optional SMS/email)
+    try {
+      const supabase = getSupabaseForRequest(req);
+      const payload = {
+        channel: 'in-app',
+        recipient_user_id: newGuardian.user_id || null,
+        recipient_phone: newGuardian.contact_number || guardianData.contact_number || null,
+        recipient_email: newGuardian.email || guardianData.email || null,
+        template_code: 'WELCOME_GUARDIAN',
+        message_body: `Welcome ${newGuardian.firstname} ${newGuardian.surname} — your account has been created.`,
+        related_entity_type: 'guardian',
+        related_entity_id: newGuardian.guardian_id,
+        scheduled_at: new Date().toISOString(),
+        status: 'scheduled',
+        created_by: req.user?.user_id || null
+      };
+      await createNotification(payload, supabase);
+    } catch (notifyErr) {
+      console.warn('[guardian.create] failed to enqueue welcome notification:', notifyErr.message || notifyErr);
+    }
     res.status(201).json({ 
       success: true,
       message: 'Guardian created successfully', 

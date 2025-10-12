@@ -46,6 +46,7 @@ const addVaccine = async (req, res) => {
       manufacturer: req.body.manufacturer,
       vaccine_type: req.body.vaccine_type,
       category: req.body.category,
+      is_nip: req.body.is_nip === true || req.body.is_nip === 'true' || false,
       description: req.body.description
     };
     if (payload.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(payload.category)) {
@@ -86,6 +87,7 @@ const updateVaccine = async (req, res) => {
       manufacturer: req.body.manufacturer,
       vaccine_type: req.body.vaccine_type,
       category: req.body.category,
+      is_nip: req.body.is_nip === true || req.body.is_nip === 'true' || false,
       description: req.body.description
     };
     if (updates.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(updates.category)) {
@@ -117,10 +119,13 @@ const deleteVaccine = async (req, res) => {
 };
 
 // List vaccines (model has getAllVaccines existing)
-const listVaccines = async (_req, res) => {
+const listVaccines = async (req, res) => {
   try {
-    const result = await vaccineModel.getAllVaccines();
-    return res.json({ success:true, data: result.vaccines });
+    const { page = 1, limit = 50, search, vaccine_type, is_nip } = req.query;
+    const filters = { search, vaccine_type };
+    if (is_nip !== undefined) filters.is_nip = (is_nip === 'true' || is_nip === true);
+    const result = await vaccineModel.getAllVaccines(filters, parseInt(page,10)||1, parseInt(limit,10)||50);
+    return res.json({ success:true, data: result });
   } catch (error) {
   console.debug('[vaccineController.listVaccines] error occurred while listing vaccines');
   console.error('listVaccines error:', error);
@@ -254,7 +259,11 @@ const deleteInventory = async (req, res) => {
 const listInventory = async (req, res) => {
   try {
     console.debug('[vaccineController.listInventory] Fetching inventory for table...');
-    const list = await vaccineModel.getAllInventory();
+    const { is_nip, vaccine_id } = req.query;
+    const filters = {};
+    if (vaccine_id) filters.vaccine_id = Number(vaccine_id);
+    if (is_nip !== undefined) filters.is_nip = (is_nip === 'true' || is_nip === true);
+    const list = await vaccineModel.getAllInventory(filters);
     console.debug('[vaccineController.listInventory] Returning', Array.isArray(list) ? list.length : 0, 'inventory items');
     return res.json({ success:true, data: list });
   } catch (error) {

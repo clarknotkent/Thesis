@@ -337,10 +337,32 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
   const patch = { ...updateData };
   // Never allow status override at the model level
   if (Object.prototype.hasOwnProperty.call(patch, 'status')) delete patch.status;
-  // If scheduled_date changed, set status to 'rescheduled' (DB may further adjust)
-  if (patch.scheduled_date && current.scheduled_date && new Date(patch.scheduled_date).toISOString() !== new Date(current.scheduled_date).toISOString()) {
-    patch.status = 'rescheduled';
+
+  // If date change requested, use SMART RPC that validates min/max age and cascades
+  if (patch.scheduled_date && current.scheduled_date && new Date(patch.scheduled_date).toDateString() !== new Date(current.scheduled_date).toDateString()) {
+    const userId = updateData.updated_by || null;
+    const { data: res, error: rpcErr } = await supabase.rpc('smart_reschedule_patientschedule', {
+      p_patient_schedule_id: patientScheduleId,
+      p_new_date: patch.scheduled_date,
+      p_user_id: userId,
+      p_force_override: !!updateData.force_override,
+      p_cascade: !!updateData.cascade,
+    });
+    if (rpcErr) throw rpcErr;
+    // Return the main row (current id) if found, else first; include warning if present
+    const normalizeId = (r) => (r?.out_patient_schedule_id ?? r?.patient_schedule_id);
+    const main = Array.isArray(res) ? (res.find(r => normalizeId(r) === patientScheduleId) || res[0]) : res;
+    // Also run validator for visibility
+    try {
+      const mainId = normalizeId(main) ?? patientScheduleId;
+      await supabase.rpc('validate_manual_schedule_edit', { p_patient_schedule_id: mainId, p_user_id: userId });
+    } catch (e) {
+      console.error('[updatePatientSchedule] validate_manual_schedule_edit RPC failed:', e);
+    }
+    return main;
   }
+
+  // Otherwise, do a simple patch (non-date fields)
   const { data, error } = await supabase
     .from('patientschedule')
     .update(patch)
@@ -361,6 +383,20 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
   return data;
 };
 
+// Convenience: reschedule API to call directly
+const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, client) => {
+  const supabase = withClient(client);
+  const { data, error } = await supabase.rpc('reschedule_patientschedule', {
+    p_patient_schedule_id: patientScheduleId,
+    p_new_date: newDate,
+    p_user_id: userId || null,
+    p_do_cascade: true,
+    p_do_group: true,
+  });
+  if (error) throw error;
+  return data;
+};
+
 module.exports = {
   createImmunization,
   getImmunizationById,
@@ -371,4 +407,5 @@ module.exports = {
   scheduleImmunization,
   enforceVaccineInterval,
   updatePatientSchedule,
+  reschedulePatientSchedule,
 };

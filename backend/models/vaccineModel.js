@@ -25,6 +25,7 @@ function mapInventoryDTO(row) {
     disease_prevented: v.disease_prevented || null,
     vaccine_type: v.vaccine_type,
     category: v.category,
+    is_nip: !!v.is_nip,
     lot_number: row.lot_number,
     expiration_date: row.expiration_date,
     current_stock_level: row.current_stock_level,
@@ -45,6 +46,7 @@ function mapVaccineDTO(row) {
     disease_prevented: row.disease_prevented || null,
     vaccine_type: row.vaccine_type,
     category: row.category,
+    is_nip: !!row.is_nip,
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
     is_deleted: row.is_deleted || false
@@ -95,6 +97,11 @@ const vaccineModel = {
       // Apply filters
       if (filters.vaccine_type) {
         query = query.eq('vaccine_type', filters.vaccine_type);
+      }
+      if (filters.is_nip !== undefined && filters.is_nip !== null) {
+        // allow filters.is_nip to be boolean or string 'true'/'false'
+        const b = (typeof filters.is_nip === 'string') ? (filters.is_nip === 'true') : Boolean(filters.is_nip)
+        query = query.eq('is_nip', b);
       }
       
       if (filters.age_group) {
@@ -247,6 +254,7 @@ const vaccineModel = {
         disease_prevented: vaccineData.disease_prevented || null,
         manufacturer: vaccineData.manufacturer,
         vaccine_type: vaccineData.vaccine_type,
+        is_nip: vaccineData.is_nip === true || vaccineData.is_nip === 'true' || false,
         category: vaccineData.category,
         created_by: actorId || null,
         // Also stamp updated_by on create so audit fields are never null
@@ -268,9 +276,15 @@ const vaccineModel = {
     try {
       const { data: before } = await supabase.from('vaccinemaster').select('*').eq('vaccine_id', id).single();
       if (!before) return null;
-  const allowed = ['antigen_name','brand_name','manufacturer','vaccine_type','category','disease_prevented'];
+  const allowed = ['antigen_name','brand_name','manufacturer','vaccine_type','category','disease_prevented','is_nip'];
       const patch = {};
-  for (const k of allowed) { if (k in updates) patch[k] = updates[k]; }
+  for (const k of allowed) {
+    if (k in updates) {
+      // Coerce boolean for is_nip
+      if (k === 'is_nip') patch[k] = (updates[k] === true || updates[k] === 'true');
+      else patch[k] = updates[k];
+    }
+  }
       if (patch.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(patch.category)) { const e = new Error('Invalid category'); e.status=400; throw e; }
       patch.updated_at = new Date().toISOString();
       patch.updated_by = actorId || null;
@@ -361,10 +375,10 @@ const vaccineModel = {
   },
 
   // Get all inventory items with vaccine details
-  getAllInventory: async () => {
+  getAllInventory: async (filters = {}) => {
     try {
       console.debug('[vaccineModel.getAllInventory] Querying inventory with joined vaccinemaster');
-      const { data, error } = await supabase
+      let query = supabase
         .from('inventory')
         .select(`
           *,
@@ -375,11 +389,24 @@ const vaccineModel = {
             manufacturer,
             vaccine_type,
             category,
-            disease_prevented
+            disease_prevented,
+            is_nip
           )
         `)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
+
+      // Apply server-side filters
+      if (filters.vaccine_id) {
+        query = query.eq('vaccine_id', filters.vaccine_id);
+      }
+      if (filters.is_nip !== undefined && filters.is_nip !== null) {
+        // Supabase/PostgREST: to filter on joined table, use vaccinemaster->> is handled by dot-notation in select alias; using .filter on the joined field should work via PostgREST filters
+        // Use eq on the path: vaccinemaster.is_nip
+        query = query.eq('vaccinemaster.is_nip', filters.is_nip);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       console.debug('[vaccineModel.getAllInventory] fetched', Array.isArray(data) ? data.length : 0, 'rows');

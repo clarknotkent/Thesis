@@ -9,11 +9,15 @@
         <div class="modal-body">
           <form @submit.prevent="saveVisit">
             <div class="mb-3">
-              <label class="form-label">Patient *</label>
-              <select class="form-select" v-model="form.patient_id" :disabled="lockPatientEffective || viewOnly || existingVisitMode" required>
-                <option value="">Select patient</option>
-                <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.childInfo.name }}</option>
-              </select>
+                      <label class="form-label">Patient *</label>
+                      <div class="input-group mb-2">
+                        <input type="search" class="form-control" placeholder="Search patients by name" v-model="patientSearch" @input="onPatientSearchInput" :disabled="lockPatientEffective || viewOnly || existingVisitMode">
+                        <button class="btn btn-outline-secondary" type="button" @click="clearPatientSearch">Clear</button>
+                      </div>
+                      <select class="form-select" v-model="form.patient_id" :disabled="lockPatientEffective || viewOnly || existingVisitMode" required>
+                        <option value="">Select patient</option>
+                        <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.childInfo.name }}</option>
+                      </select>
             </div>
 
             <div class="mb-3" v-if="!recordMode">
@@ -209,8 +213,14 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Vaccine *</label>
-                <!-- In-facility (inside): choose from inventory stocks -->
-                <select v-if="!recordMode" class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" required>
+                  <!-- In-facility (inside): choose from inventory stocks -->
+                  <div class="d-flex align-items-center mb-2">
+                    <div class="form-check form-switch ms-auto">
+                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="fetchVaccineOptions">
+                      <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
+                    </div>
+                  </div>
+                  <select v-if="!recordMode" class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" required>
                   <option value="">Select a vaccine stock</option>
                   <option v-for="v in vaccineOptions" :key="v.inventory_id" :value="v.inventory_id">
                     {{ v.display_name }}
@@ -337,6 +347,7 @@ const existingVisitMode = computed(() => !!props.existingVisitId)
 const lockPatientEffective = computed(() => props.lockPatient || !!props.existingVisitId)
 
 const patients = ref([])
+const patientSearch = ref('')
 const healthWorkers = ref([]) // BHW for visit recording
 const nurses = ref([]) // Nurses for vaccination administration
 const loading = ref(false)
@@ -345,6 +356,7 @@ const showVaccinationModal = ref(false)
 const savingVaccination = ref(false)
 const vaccineOptions = ref([])
 const vaccineCatalog = ref([])
+const showNipOnly = ref(false)
 const availableDoses = ref([1, 2, 3, 4, 5]) // Default doses, can be made dynamic later
 const autoSelectHint = ref('')
 
@@ -419,7 +431,11 @@ const vaccinationForm = ref({
 
 const fetchPatients = async () => {
   try {
-    const res = await api.get('/patients')
+    const params = {}
+    // For dropdowns, fetch a larger page of results; allow server-side search
+    params.limit = 100
+    if (patientSearch.value && patientSearch.value.trim() !== '') params.search = patientSearch.value.trim()
+    const res = await api.get('/patients', { params })
     const payload = res.data?.data || {}
     const list = payload.patients || payload.items || payload || []
     patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
@@ -427,6 +443,16 @@ const fetchPatients = async () => {
     console.error('Failed to load patients for visit editor', err)
     patients.value = []
   }
+}
+
+const onPatientSearchInput = () => {
+  // debounce can be added later; for now fetch on input
+  fetchPatients()
+}
+
+const clearPatientSearch = () => {
+  patientSearch.value = ''
+  fetchPatients()
 }
 
 const fetchHealthWorkers = async () => {
@@ -491,7 +517,9 @@ const fetchHealthWorkers = async () => {
 const fetchVaccineOptions = async () => {
   try {
     console.log('🔄 [VisitEditor] Fetching vaccine options...')
-    const res = await api.get('/vaccines/inventory')
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const res = await api.get('/vaccines/inventory', { params })
     console.log('✅ [VisitEditor] Vaccine inventory API response:', res.data)
     const payload = res.data?.data || []
     console.log('💉 [VisitEditor] Vaccine inventory list:', payload)

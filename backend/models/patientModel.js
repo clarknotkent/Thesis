@@ -6,7 +6,7 @@ function withClient(client) {
 
 const patientModel = {
   // Fetch all patients with optional filters and pagination (reads from patients_view)
-  getAllPatients: async (filters = {}, page = 1, limit = 10, client) => {
+  getAllPatients: async (filters = {}, page = 1, limit = 5, client) => {
     try {
       const supabase = withClient(client);
       let query = supabase

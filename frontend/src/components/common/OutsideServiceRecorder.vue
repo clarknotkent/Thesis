@@ -4,6 +4,10 @@
       <!-- Patient selection -->
       <div class="mb-3">
         <label class="form-label">Patient *</label>
+        <div class="input-group mb-2">
+          <input type="search" class="form-control" placeholder="Search patients by name" v-model="patientSearch" @input="onPatientSearchInput" :disabled="lockPatient">
+          <button class="btn btn-outline-secondary" type="button" @click="clearPatientSearch">Clear</button>
+        </div>
         <select class="form-select" v-model="patientId" :disabled="lockPatient" required>
           <option value="">Select patient</option>
           <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.childInfo.name }}</option>
@@ -79,6 +83,12 @@
             <form @submit.prevent="addVaccineToBuffer">
               <div class="mb-3">
                 <label class="form-label">Vaccine *</label>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="nipOnlyOutside" v-model="showNipOnly" @change="fetchVaccineCatalog">
+                    <label class="form-check-label small" for="nipOnlyOutside">Show NIP only</label>
+                  </div>
+                </div>
                 <select class="form-select" v-model="vaccForm.vaccineId" @change="onCatalogSelect" required>
                   <option value="">Select a vaccine</option>
                   <option v-for="v in vaccineCatalog" :key="v.vaccine_id" :value="v.vaccine_id">{{ v.antigen_name }}</option>
@@ -208,8 +218,10 @@ const props = defineProps({
 const emit = defineEmits(['saved', 'close'])
 
 const patients = ref([])
+const patientSearch = ref('')
 const nurses = ref([])
 const vaccineCatalog = ref([])
+const showNipOnly = ref(false)
 const availableDoses = ref([1,2,3,4,5])
 const autoSelectHint = ref('')
 
@@ -230,13 +242,24 @@ const vitAForm = ref({ date: new Date().toISOString().split('T')[0], healthWorke
 
 const fetchPatients = async () => {
   try {
-    const res = await api.get('/patients')
+    const params = { limit: 100 }
+    if (patientSearch.value && patientSearch.value.trim() !== '') params.search = patientSearch.value.trim()
+    const res = await api.get('/patients', { params })
     const payload = res.data?.data || {}
     const list = payload.patients || payload.items || payload || []
     patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
   } catch (err) {
     patients.value = []
   }
+}
+
+const onPatientSearchInput = () => {
+  fetchPatients()
+}
+
+const clearPatientSearch = () => {
+  patientSearch.value = ''
+  fetchPatients()
 }
 
 const fetchNurses = async () => {
@@ -259,7 +282,9 @@ const fetchNurses = async () => {
 
 const fetchVaccineCatalog = async () => {
   try {
-    const response = await api.get('/vaccines');
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const response = await api.get('/vaccines', { params });
     const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
     vaccineCatalog.value = list.map(v => ({ vaccine_id: v.vaccine_id || v.id, antigen_name: v.antigen_name || v.name || '' }));
   } catch (_) {

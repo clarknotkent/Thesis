@@ -3,6 +3,7 @@ const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
 const { getActorId } = require('../utils/actor');
+const { debugReschedule } = require('../utils/scheduleDebugger');
 
 async function resolveVaccineId(supabase, { inventory_id, vaccine_id }) {
   if (vaccine_id) return vaccine_id;
@@ -161,6 +162,27 @@ const createImmunizationRecord = async (req, res) => {
   const insertData = { ...payload, visit_id, patient_id, vaccine_id: vaccineId, vital_id: visitVital ? visitVital.vital_id : null };
     if (!insertData.vital_id) return res.status(400).json({ success:false, message:'No vitals found for visit' });
     const imm = await immunizationModel.createImmunization(insertData, supabase);
+    // Notify guardian about immunization confirmation
+    try {
+      const { data: patientRow } = await supabase.from('patients_view').select('patient_id, full_name, guardian_contact_number, guardian_email, guardian_user_id').eq('patient_id', imm.patient_id).maybeSingle();
+      const msg = `Confirmation: ${imm.disease_prevented || 'vaccine'} was recorded for ${patientRow?.full_name || imm.patient_id} on ${imm.administered_date}`;
+      const notif = {
+        channel: 'in-app',
+        recipient_user_id: patientRow?.guardian_user_id || null,
+        recipient_phone: patientRow?.guardian_contact_number || null,
+        recipient_email: patientRow?.guardian_email || null,
+        template_code: 'IMMUNIZATION_CONFIRM',
+        message_body: msg,
+        related_entity_type: 'immunization',
+        related_entity_id: imm.immunization_id,
+        scheduled_at: new Date().toISOString(),
+        status: 'scheduled',
+        created_by: req.user?.user_id || null
+      };
+      await createNotification(notif, supabase);
+    } catch (notifErr) {
+      console.warn('[immunization.create] failed to enqueue confirmation notification:', notifErr.message || notifErr);
+    }
 
     return res.status(201).json({ success: true, data: imm });
   } catch (error) {
@@ -284,148 +306,108 @@ const enforceVaccineInterval = async (req, res) => {
   }
 };
 
-// Manual reschedule patient schedule with status update to 'Rescheduled'
+// Manual reschedule patient schedule: delegate to SMART RPC to auto-adjust and cascade
 const manualReschedulePatientSchedule = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
-    const { p_patient_schedule_id, p_new_scheduled_date, p_user_id } = req.body;
+  const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade } = req.body;
 
     if (!p_patient_schedule_id || !p_new_scheduled_date) {
       return res.status(400).json({ message: 'patient_schedule_id and new_scheduled_date are required' });
     }
 
-    // Get current schedule info first
-    const { data: currentSchedule, error: fetchError } = await supabase
-      .from('patientschedule')
-      .select('*, vaccinemaster!inner(vaccine_id, antigen_name)')
-      .eq('patient_schedule_id', p_patient_schedule_id)
-      .eq('is_deleted', false)
-      .single();
-
-    if (fetchError || !currentSchedule) {
-      return res.status(404).json({ message: 'Patient schedule not found' });
-    }
-
-    // Get schedule master and dose information for interval validation
-    const { data: scheduleMaster, error: masterError } = await supabase
-      .from('schedule_master')
-      .select('id')
-      .eq('vaccine_id', currentSchedule.vaccine_id)
-      .single();
-
-    let minInterval = 7; // Default 7 days
-    if (!masterError && scheduleMaster) {
-      const { data: doseInfo, error: doseError } = await supabase
-        .from('schedule_doses')
-        .select('min_interval_days')
-        .eq('schedule_id', scheduleMaster.id)
-        .eq('dose_number', currentSchedule.dose_number)
-        .single();
-
-      if (!doseError && doseInfo?.min_interval_days) {
-        minInterval = doseInfo.min_interval_days;
-      }
-    }
-
-    const newScheduledDate = new Date(p_new_scheduled_date);
-
-    // Validate against previous dose
-    if (currentSchedule.dose_number > 1) {
-      const { data: prevDose, error: prevError } = await supabase
+    // Fetch current row (for logging and to detect no-change)
+    let beforeRow = null;
+    try {
+      const { data: meta } = await supabase
         .from('patientschedule')
-        .select('scheduled_date, actual_date')
-        .eq('patient_id', currentSchedule.patient_id)
-        .eq('vaccine_id', currentSchedule.vaccine_id)
-        .eq('dose_number', currentSchedule.dose_number - 1)
-        .eq('is_deleted', false)
-        .single();
+        .select('patient_id, vaccine_id, dose_number, scheduled_date')
+        .eq('patient_schedule_id', p_patient_schedule_id)
+        .maybeSingle();
+      beforeRow = meta || null;
+      console.info('[manualReschedule] Request:', {
+        patient_schedule_id: p_patient_schedule_id,
+        requested_date: p_new_scheduled_date,
+        user_id: p_user_id || req.user?.user_id || null,
+        meta
+      });
+    } catch (_) {}
 
-      if (!prevError && prevDose) {
-        const prevDate = new Date(prevDose.actual_date || prevDose.scheduled_date);
-        const daysDiff = Math.floor((newScheduledDate - prevDate) / (1000 * 60 * 60 * 24));
-
-        if (daysDiff < minInterval) {
-          return res.status(400).json({
-            message: `Cannot schedule dose ${currentSchedule.dose_number}. Minimum ${minInterval} days required after previous dose. Current gap: ${daysDiff} days.`
-          });
+    // Always run checkpoints debugger and print to console for visibility (read-only; no side effects)
+    try {
+      const { data: checks, error: dbgErr } = await supabase.rpc('debug_reschedule_checkpoints', {
+        p_patient_schedule_id: p_patient_schedule_id,
+        p_new_date: p_new_scheduled_date,
+      });
+      if (dbgErr) {
+        console.warn('[manualReschedule][checkpoints] RPC error:', dbgErr.message);
+      } else {
+        console.info('[manualReschedule][checkpoints] Rule checks for candidate:', p_new_scheduled_date);
+        // Pretty-print each rule result
+        try {
+          // Use console.table when available, fallback to JSON string
+          if (console.table && Array.isArray(checks)) {
+            console.table(checks.map(c => ({ rule: c.rule, passed: c.passed, detail: c.detail })));
+          } else {
+            console.info(JSON.stringify(checks, null, 2));
+          }
+        } catch (ppErr) {
+          console.info(JSON.stringify(checks, null, 2));
         }
       }
+    } catch (dbgEx) {
+      console.warn('[manualReschedule][checkpoints] failed:', dbgEx?.message || dbgEx);
     }
 
-    // Check and auto-adjust next dose if necessary
-    const { data: nextDose, error: nextError } = await supabase
+    // Use the model helper which calls smart_reschedule_patientschedule inside the DB
+    const result = await immunizationModel.updatePatientSchedule(
+      p_patient_schedule_id,
+      { scheduled_date: p_new_scheduled_date, updated_by: p_user_id || req.user?.user_id || null, force_override: !!force_override, cascade: !!cascade },
+      supabase
+    );
+
+    // Fetch the updated schedule row for client convenience
+    const { data: updatedRow, error: fetchErr } = await supabase
       .from('patientschedule')
-      .select('patient_schedule_id, scheduled_date, dose_number')
-      .eq('patient_id', currentSchedule.patient_id)
-      .eq('vaccine_id', currentSchedule.vaccine_id)
-      .eq('dose_number', currentSchedule.dose_number + 1)
-      .eq('is_deleted', false)
+      .select('*')
+      .eq('patient_schedule_id', p_patient_schedule_id)
       .single();
+    if (fetchErr) {
+      return res.status(200).json({ success: true, data: null, warning: result?.warning || null, note: 'Rescheduled, but failed to fetch updated row.' });
+    }
 
-    if (!nextError && nextDose) {
-      const nextDate = new Date(nextDose.scheduled_date);
-      const daysDiff = Math.floor((nextDate - newScheduledDate) / (1000 * 60 * 60 * 24));
+    // Determine if any change happened to scheduled_date
+  const originalDate = beforeRow?.scheduled_date || null;
+  const changed = !originalDate || (new Date(updatedRow.scheduled_date).toDateString() !== new Date(originalDate).toDateString());
 
-      if (daysDiff < minInterval) {
-        // Auto-adjust the next dose to maintain minimum interval
-        const adjustedNextDate = new Date(newScheduledDate);
-        adjustedNextDate.setDate(adjustedNextDate.getDate() + minInterval);
-
-        await supabase
-          .from('patientschedule')
-          .update({
-            scheduled_date: adjustedNextDate.toISOString().split('T')[0],
-            eligible_date: adjustedNextDate.toISOString().split('T')[0],
-            status: 'Rescheduled',
-            updated_at: new Date().toISOString(),
-            updated_by: p_user_id
-          })
-          .eq('patient_schedule_id', nextDose.patient_schedule_id);
-
-        // Log the auto-adjustment
+    // Log only if the date actually changed
+    if (changed) {
+      try {
         await logActivity({
           action_type: 'SCHEDULE_UPDATE',
           entity_type: 'patientschedule',
-          entity_id: nextDose.patient_schedule_id,
-          description: `Auto-adjusted dose ${nextDose.dose_number} schedule due to manual reschedule of dose ${currentSchedule.dose_number}`,
-          user_id: p_user_id,
+          entity_id: p_patient_schedule_id,
+          description: `Manual reschedule to ${updatedRow.scheduled_date} (smart rules applied)`,
+          user_id: p_user_id || req.user?.user_id || null,
           skipValidation: true
         });
-      }
+      } catch (_) {}
     }
 
-    // Update the schedule with new date and set status to Rescheduled
-    const { data, error } = await supabase
-      .from('patientschedule')
-      .update({
-        scheduled_date: p_new_scheduled_date,
-        eligible_date: p_new_scheduled_date,
-        status: 'Rescheduled',
-        updated_at: new Date().toISOString(),
-        updated_by: p_user_id || req.user?.id
-      })
-      .eq('patient_schedule_id', p_patient_schedule_id)
-      .select();
-
-    if (error) {
-      console.error('Manual reschedule error:', error);
-      return res.status(500).json({ message: 'Failed to reschedule patient schedule', error: error.message });
-    }
-
-    // Log the manual rescheduling
-    await logActivity({
-      action_type: 'SCHEDULE_UPDATE',
-      entity_type: 'patientschedule',
-      entity_id: p_patient_schedule_id,
-      description: `Manual reschedule of ${currentSchedule.vaccinemaster?.antigen_name || 'vaccine'} dose ${currentSchedule.dose_number} from ${currentSchedule.scheduled_date} to ${p_new_scheduled_date}`,
-      user_id: p_user_id,
-      skipValidation: true
-    });
-
-    res.json({ message: 'Patient schedule rescheduled successfully', data });
+    return res.status(200).json({ success: true, data: updatedRow, warning: result?.warning || null, noChange: !changed });
   } catch (error) {
     console.error('Manual reschedule error:', error);
-    res.status(500).json({ message: 'Failed to reschedule patient schedule' });
+    // On error, also run checkpoints for visibility
+    try {
+      const { data: checks } = await getSupabaseForRequest(req).rpc('debug_reschedule_checkpoints', {
+        p_patient_schedule_id,
+        p_new_date: p_new_scheduled_date,
+      });
+      console.info('[manualReschedule][checkpoints][onError]', JSON.stringify(checks, null, 2));
+    } catch (_) {}
+    // Propagate DB error details when available
+    const message = error?.message || 'Failed to reschedule patient schedule';
+    return res.status(400).json({ success: false, message, code: error?.code || null, details: error?.details || null, hint: error?.hint || null });
   }
 };
 
@@ -439,4 +421,67 @@ module.exports = {
   enforceVaccineInterval,
   updatePatientSchedule,
   manualReschedulePatientSchedule,
+  // Debug only (non-modifying): traces candidate-date decisions for a reschedule
+  async debugManualReschedule(req, res) {
+    try {
+      const supabase = getSupabaseForRequest(req);
+      const { patient_schedule_id, requested_date } = req.query;
+      if (!patient_schedule_id || !requested_date) {
+        return res.status(400).json({ message: 'patient_schedule_id and requested_date are required' });
+      }
+      const out = await debugReschedule(supabase, Number(patient_schedule_id), requested_date);
+      return res.json({ success: true, data: out });
+    } catch (err) {
+      console.error('[debugManualReschedule] error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+  ,
+  // Debug (DB-level): run the instrumented DB RPC and return its decision trace + changes
+  async debugManualRescheduleDB(req, res) {
+    try {
+      const supabase = getSupabaseForRequest(req);
+      const { patient_schedule_id, new_date } = req.body || {};
+      if (!patient_schedule_id || !new_date) {
+        return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
+      }
+      const actorId = getActorId(req) || null;
+      const { data, error } = await supabase.rpc('debug_reschedule_trace', {
+        p_patient_schedule_id: Number(patient_schedule_id),
+        p_new_date: new_date,
+        p_user_id: actorId,
+      });
+      if (error) {
+        return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
+      }
+      // data is an array with one row { trace, changes }
+      const row = Array.isArray(data) ? data[0] : data;
+      return res.json({ success: true, trace: row?.trace || [], changes: row?.changes || [] });
+    } catch (err) {
+      console.error('[debugManualRescheduleDB] error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+  ,
+  // Debug: subject-first checkpoints — returns pass/fail per rule
+  async debugRescheduleCheckpoints(req, res) {
+    try {
+      const supabase = getSupabaseForRequest(req);
+      const { patient_schedule_id, new_date } = req.body || {};
+      if (!patient_schedule_id || !new_date) {
+        return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
+      }
+      const { data, error } = await supabase.rpc('debug_reschedule_checkpoints', {
+        p_patient_schedule_id: Number(patient_schedule_id),
+        p_new_date: new_date,
+      });
+      if (error) {
+        return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
+      }
+      return res.json({ success: true, checks: data });
+    } catch (err) {
+      console.error('[debugRescheduleCheckpoints] error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
 };

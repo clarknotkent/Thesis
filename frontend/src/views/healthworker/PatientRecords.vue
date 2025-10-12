@@ -747,14 +747,11 @@ const fetchPatients = async () => {
       age_days: patient.age_days
     }))
 
-    // Handle pagination data
-    if (response.data.data && typeof response.data.data === 'object' && response.data.data.totalCount !== undefined) {
-      totalItems.value = response.data.data.totalCount
-      totalPages.value = response.data.data.totalPages
-    } else {
-      totalItems.value = patients.value.length
-      totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
-    }
+    // Prefer server-provided pagination metadata; fallback to local length only if missing
+    const payload = response.data.data || {}
+    const totalCount = (payload.totalCount ?? response.data?.total) ?? patients.value.length
+    totalItems.value = Number(totalCount)
+    totalPages.value = Math.ceil((Number(totalCount) || 0) / Number(itemsPerPage.value))
 
   } catch (error) {
     console.error('Error fetching patients:', error)

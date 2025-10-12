@@ -473,8 +473,9 @@ const fetchLogs = async () => {
         metadata: log.metadata || log.additional_data
       }))
 
-      totalItems.value = result.totalCount || result.total || logs.value.length
-      totalPages.value = Math.ceil(totalItems.value / itemsPerPage.value)
+  const totalCount = (result.totalCount ?? result.total) ?? logs.value.length
+  totalItems.value = Number(totalCount)
+  totalPages.value = Math.ceil((Number(totalCount) || 0) / Number(itemsPerPage.value))
     }
 
   } catch (error) {

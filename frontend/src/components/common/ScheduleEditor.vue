@@ -2,9 +2,15 @@
   <div class="modal fade" :class="{ show: show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header align-items-center">
           <h5 class="modal-title"><i class="bi bi-calendar2-event me-2"></i>Patient Schedule</h5>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="form-check form-switch small">
+              <input class="form-check-input" type="checkbox" id="schedule-debug-toggle" v-model="showDebug">
+              <label class="form-check-label" for="schedule-debug-toggle">Debug</label>
+            </div>
+            <button type="button" class="btn-close" @click="$emit('close')"></button>
+          </div>
         </div>
 
         <div class="modal-body">
@@ -27,7 +33,12 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in scheduleData" :key="item.patient_schedule_id">
-                    <td>{{ item.vaccine_name || item.vaccineName }}</td>
+                    <td>
+                      <div>{{ item.vaccine_name || item.vaccineName }}</div>
+                      <div v-if="showDebug" class="text-muted small">
+                        PS: {{ item.patient_schedule_id }} • V: {{ item.vaccine_id }} • D: {{ item.dose_number || item.doseNumber }}
+                      </div>
+                    </td>
                     <td>
                       <div class="input-group">
                         <input 
@@ -108,6 +119,7 @@ const emit = defineEmits(['close', 'updated'])
 const loading = ref(false)
 const scheduleData = ref([])
 const datePickerRefs = ref({})
+const showDebug = ref(false)
 
 // Initialize vaccine lookup once to resolve vaccine names
 let vaccineLookup = {}
@@ -232,30 +244,16 @@ const onDatePickerChange = (item, event) => {
 }
 
 const validateScheduleDate = (item, newDate) => {
-  // Basic validation: date should be in the future for pending schedules
+  // Client-side sanity checks only; server enforces domain rules (DAD, intervals, concurrency)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const scheduleDate = new Date(newDate)
-  
+
   if (item.status === 'Pending' && scheduleDate < today) {
     return 'Cannot schedule doses in the past'
   }
-  
-  // Check minimum interval from previous dose (basic client-side check)
-  const prevDose = scheduleData.value.find(s => 
-    s.vaccine_id === item.vaccine_id && 
-    s.dose_number === item.dose_number - 1
-  )
-  
-  if (prevDose) {
-    const prevDate = new Date(prevDose.scheduledDate || prevDose.scheduled_date)
-    const daysDiff = Math.floor((scheduleDate - prevDate) / (1000 * 60 * 60 * 24))
-    if (daysDiff < 7) { // Minimum 7 days
-      return `Minimum 7 days required after previous dose. Current gap: ${daysDiff} days.`
-    }
-  }
-  
-  return null // Valid
+
+  return null // Defer interval/concurrency rules to server
 }
 
 const saveEdit = async (item) => {
@@ -273,34 +271,110 @@ const saveEdit = async (item) => {
       return
     }
     
-    // Use manual reschedule function to set status to 'Rescheduled'
+    // Subject-first save: call without cascade first
+    const originalScheduledISO = (item.scheduledDate || item.scheduled_date) || null
     const payload = { 
       p_patient_schedule_id: item.patient_schedule_id,
       p_new_scheduled_date: isoDate, 
-      p_user_id: localStorage.getItem('userId') 
+      p_user_id: localStorage.getItem('userId'),
+      cascade: false,
+      debug: showDebug.value
+    }
+
+    if (showDebug.value) {
+      console.info('[ScheduleEditor] Saving edit:', {
+        patient_schedule_id: item.patient_schedule_id,
+        vaccine_id: item.vaccine_id,
+        dose_number: item.dose_number || item.doseNumber,
+        old_scheduled_date: item.scheduledDate || item.scheduled_date,
+        new_scheduled_date: isoDate,
+      })
     }
     
     const response = await api.post('/immunizations/manual-reschedule', payload)
-    
-    // Update the local item with the new data from the response
-    if (response.data && response.data.data && response.data.data.length > 0) {
-      const updatedSchedule = response.data.data[0]
-      Object.assign(item, updatedSchedule)
-      item._editedDate = formatForInput(updatedSchedule.scheduled_date)
-      // Update the displayed status
-      item.status = updatedSchedule.status
+
+    // Backend returns { success, data, warning }
+    const resp = response?.data || {}
+    const updatedRow = resp?.data || null
+    const warning = resp?.warning || null
+
+    if (updatedRow) {
+      Object.assign(item, updatedRow)
+      item._editedDate = formatForInput(updatedRow.scheduled_date)
+      item.status = updatedRow.status
     }
-    
-    addToast({ 
-      title: 'Success', 
-      message: 'Schedule rescheduled successfully. Subsequent doses may have been auto-adjusted to maintain minimum intervals.', 
-      type: 'success' 
-    })
-    // emit update to parent and refresh local copy
+
+    if (warning) {
+      // Prompt: continue with cascade or cancel (revert)
+      const proceed = window.confirm(
+        `${warning}\n\nClick OK to Continue and cascade related schedule adjustments, or Cancel to revert and keep the original date.`
+      )
+      if (proceed) {
+        // Call again with cascade=true
+        const cascadePayload = { ...payload, cascade: true }
+        const cascadeResp = await api.post('/immunizations/manual-reschedule', cascadePayload)
+        const cascadeData = cascadeResp?.data || {}
+        const cascadeRow = cascadeData?.data || null
+        if (cascadeRow) {
+          Object.assign(item, cascadeRow)
+          item._editedDate = formatForInput(cascadeRow.scheduled_date)
+          item.status = cascadeRow.status
+        }
+        addToast({ title: 'Success', message: 'Schedule rescheduled and related doses adjusted.', type: 'success' })
+        emit('updated')
+      } else if (originalScheduledISO) {
+        // Revert to original date (no cascade)
+        try {
+          const revertPayload = { 
+            p_patient_schedule_id: item.patient_schedule_id,
+            p_new_scheduled_date: originalScheduledISO,
+            p_user_id: localStorage.getItem('userId'),
+            cascade: false
+          }
+          const revertResp = await api.post('/immunizations/manual-reschedule', revertPayload)
+          const revertData = revertResp?.data || {}
+          const revertRow = revertData?.data || null
+          if (revertRow) {
+            Object.assign(item, revertRow)
+            item._editedDate = formatForInput(revertRow.scheduled_date)
+            item.status = revertRow.status
+          } else {
+            // Fallback to original value locally if API shape changes
+            item._editedDate = formatForInput(originalScheduledISO)
+          }
+          addToast({ title: 'Cancelled', message: 'Changes cancelled. Original date restored.', type: 'info' })
+          emit('updated')
+        } catch (revertErr) {
+          console.error('[ScheduleEditor] Revert failed:', revertErr)
+          addToast({ title: 'Warning', message: 'Cancelled cascade, but failed to restore original date automatically. Please retry.', type: 'warning' })
+        }
+      } else {
+        // No known original date; just notify
+        addToast({ title: 'Cancelled', message: 'Changes cancelled.', type: 'info' })
+      }
+      return
+    }
+
+    // No warnings: success and done
+    addToast({ title: 'Success', message: 'Schedule rescheduled successfully.', type: 'success' })
     emit('updated')
   } catch (err) {
+    const backendMsg = err?.response?.data?.message || err?.message || 'Failed to save schedule edit.'
     console.error('Failed to save schedule edit', err)
-    addToast({ title: 'Error', message: 'Failed to save schedule edit. See console for details.', type: 'error' })
+    addToast({ title: 'Error', message: backendMsg, type: 'error' })
+    // Attempt to pull DB trace when debug is enabled
+    if (showDebug.value) {
+      try {
+        const dbg = await api.post('/immunizations/debug-reschedule-db', {
+          patient_schedule_id: item.patient_schedule_id,
+          new_date: convertToISODate(item._editedDate)
+        })
+        console.info('[ScheduleEditor][DB-Trace] trace:', dbg.data?.trace)
+        console.info('[ScheduleEditor][DB-Trace] changes:', dbg.data?.changes)
+      } catch (dbgErr) {
+        console.warn('[ScheduleEditor] Failed to fetch DB trace:', dbgErr)
+      }
+    }
   }
 }
 

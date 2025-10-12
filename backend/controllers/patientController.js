@@ -40,10 +40,14 @@ const getAllPatients = async (req, res) => {
       age_group,
       barangay 
     } = req.query;
-    
+
+    // Coerce pagination params to integers (req.query values are strings)
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 5;
+
     const filters = { search, sex: gender, status, age_group, barangay };
-  const supabase = getSupabaseForRequest(req);
-  const patients = await patientModel.getAllPatients(filters, page, limit, supabase);
+    const supabase = getSupabaseForRequest(req);
+    const patients = await patientModel.getAllPatients(filters, pageNum, limitNum, supabase);
     
     res.json({ 
       success: true, 

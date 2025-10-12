@@ -118,6 +118,10 @@
                 <i class="bi bi-search"></i>
               </button>
             </div>
+            <div class="btn-group btn-group-sm ms-2" role="group" aria-label="NIP Filter">
+              <button type="button" class="btn" :class="{ 'btn-primary': showNipOnly, 'btn-outline-secondary': !showNipOnly }" @click="toggleNipFilter(true)">NIP</button>
+              <button type="button" class="btn" :class="{ 'btn-primary': !showNipOnly, 'btn-outline-secondary': showNipOnly }" @click="toggleNipFilter(false)">All/Other</button>
+            </div>
             <button class="btn btn-outline-secondary" type="button" @click="openEditVaccineWizard">
               <i class="bi bi-pencil me-2"></i>Edit Vaccine
             </button>
@@ -677,7 +681,7 @@
                           <option value="VITAMIN_A">Vitamin A Supplement</option>
                         </select>
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6">
+                        <div class="col-xl-6 col-lg-6 col-md-6">
                         <label for="newVaccineType" class="form-label">Vaccine Type: <span class="text-danger" v-if="vaccineForm.category === 'VACCINE'">*</span></label>
                         <select 
                           class="form-select" 
@@ -691,6 +695,12 @@
                           <option value="inactivated">Inactivated/Killed</option>
                         </select>
                         <small v-if="vaccineForm.category !== 'VACCINE'" class="text-muted">Not applicable for this category</small>
+                      </div>
+                      <div class="col-xl-6 col-lg-6 col-md-6 d-flex align-items-center">
+                        <div class="form-check mt-3">
+                          <input class="form-check-input" type="checkbox" id="isNipCheckbox" v-model="vaccineForm.is_nip">
+                          <label class="form-check-label" for="isNipCheckbox">Part of NIP (National Immunization Program)</label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1087,6 +1097,14 @@
                     </div>
                   </div>
                   <div class="row mb-3">
+                    <div class="col-md-6 d-flex align-items-center">
+                      <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="editIsNip" v-model="vaccineForm.is_nip">
+                        <label class="form-check-label" for="editIsNip">Part of NIP (National Immunization Program)</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Category *</label>
                       <select class="form-select" v-model="vaccineForm.category" @change="onCategoryChange" required>
@@ -1151,6 +1169,13 @@ const stats = ref({
   expiringSoon: 0
 })
 const searchTerm = ref('')
+// Show only NIP vaccines in inventory view
+const showNipOnly = ref(false)
+
+const toggleNipFilter = (val) => {
+  showNipOnly.value = Boolean(val)
+  fetchVaccines()
+}
 const showAddModal = ref(false)
 const showAddStockModal = ref(false)
 const showAdjustModal = ref(false)
@@ -1394,6 +1419,7 @@ async function onEditVaccineSelect() {
       disease_prevented: d.disease_prevented || '',
       vaccine_type: d.vaccine_type || '',
       category: d.category || 'VACCINE',
+      is_nip: d.is_nip === true || d.is_nip === 'true' || false,
       lot_number: '',
       expiration_date: '',
       stock_level: 0,
@@ -1412,6 +1438,7 @@ async function submitEditVaccineWizard() {
     const vaccinePayload = {
       antigen_name: vaccineForm.value.antigen_name,
       brand_name: vaccineForm.value.brand_name,
+      is_nip: !!vaccineForm.value.is_nip,
       disease_prevented: vaccineForm.value.disease_prevented,
       manufacturer: vaccineForm.value.manufacturer,
       vaccine_type: (vaccineForm.value.category === 'DEWORMING' || vaccineForm.value.category === 'VITAMIN_A')
@@ -1509,6 +1536,7 @@ const vaccineForm = ref({
   disease_prevented: '',
   vaccine_type: '',
   category: '',
+  is_nip: false,
   lot_number: '',
   expiration_date: '',
   stock_level: 0,
@@ -1541,11 +1569,13 @@ const {
 const fetchVaccines = async () => {
   try {
     loading.value = true
-    const response = await api.get('/vaccines/inventory')
-  const items = response.data?.data || response.data || []
-  // Defensive: filter out any soft-deleted items if backend ever returns them
-  const activeItems = Array.isArray(items) ? items.filter(v => v && v.is_deleted !== true) : []
-  vaccines.value = activeItems.map(v => {
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const response = await api.get('/vaccines/inventory', { params })
+    const items = response.data?.data || response.data || []
+    // Defensive: filter out any soft-deleted items if backend ever returns them
+    const filteredItems = Array.isArray(items) ? items.filter(v => v && v.is_deleted !== true) : []
+  vaccines.value = filteredItems.map(v => {
       const qty = (v.current_stock_level ?? v.quantity ?? 0)
       // Derive status considering expiry first, then quantity
       const exp = v.expiration_date || v.expiry_date || null
@@ -1864,6 +1894,7 @@ const closeVaccineModal = () => {
     disease_prevented: '',
     vaccine_type: '',
     category: '',
+    is_nip: false,
     lot_number: '',
     expiration_date: '',
     stock_level: 0,
@@ -1885,6 +1916,7 @@ const saveVaccineType = async () => {
         ? null 
         : vaccineForm.value.vaccine_type,
       category: vaccineForm.value.category
+      ,is_nip: vaccineForm.value.is_nip === true
     }
 
     let vaccineId = vaccineForm.value.id
