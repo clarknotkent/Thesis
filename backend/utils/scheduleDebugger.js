@@ -142,7 +142,7 @@ async function debugReschedule(supabase, patientScheduleId, requestedDate) {
     break;
   }
 
-  // Surface in backend logs
+  // Surface in back logs
   try { console.table(trace); } catch { console.log(JSON.stringify(trace, null, 2)); }
 
   return { finalCandidate: toISODate(candidate), trace };

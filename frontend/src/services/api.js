@@ -47,4 +47,25 @@ api.interceptors.response.use(
   }
 )
 
+// Notification API functions
+export const notificationAPI = {
+  // Create notification
+  create: (data) => api.post('/notifications', data),
+
+  // Get user's notifications (inbox)
+  getMyNotifications: (params = {}) => api.get('/notifications', { params }),
+
+  // Mark notification as read
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+
+  // Delete notification
+  delete: (id) => api.delete(`/notifications/${id}`),
+
+  // Get pending notifications (admin)
+  getPending: () => api.get('/notifications/pending'),
+
+  // Update notification status (admin)
+  updateStatus: (id, status, errorMessage) => api.put(`/notifications/${id}/status`, { status, error_message: errorMessage })
+}
+
 export default api

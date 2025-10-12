@@ -30,7 +30,7 @@ const dewormingRoutes = require('./routes/dewormingRoutes');
 const vitaminaRoutes = require('./routes/vitaminaRoutes');
 const vitalsRoutes = require('./routes/vitalsRoutes');
 const receivingReportRoutes = require('./routes/receivingReportRoutes');
-const notificationsRoutes = require('./routes/notificationRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
@@ -50,7 +50,7 @@ app.use('/api/deworming', dewormingRoutes);
 app.use('/api/vitamina', vitaminaRoutes);
 app.use('/api/vitals', vitalsRoutes);
 app.use('/api/receiving-reports', receivingReportRoutes);
-app.use('/api/notifications', notificationsRoutes);
+app.use('/api/notifications', notificationRoutes);
 // Alias route for vaccination-records (used by frontend)
 app.use('/api/vaccination-records', immunizationRoutes);
 

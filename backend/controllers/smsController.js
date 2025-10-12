@@ -31,7 +31,7 @@ const sendSMSNotification = async (req, res) => {
 // Send reminder notifications (placeholder)
 const sendReminderNotifications = async (req, res) => {
   try {
-    res.json({ success: true, message: 'Reminders not implemented in backend. Use scheduler + notifications table.' });
+    res.json({ success: true, message: 'Reminders not implemented in back. Use scheduler + notifications table.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to send reminder notifications', error: error.message });
   }

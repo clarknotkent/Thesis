@@ -39,3 +39,15 @@ export async function resetPassword(id, newPassword) {
   const { data } = await api.post(`/users/${id}/reset-password`, { newPassword })
   return data
 }
+
+// Export usersAPI object for backward compatibility
+export const usersAPI = {
+  getAllUsers: listUsers,
+  listUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  restoreUser,
+  resetPassword
+}

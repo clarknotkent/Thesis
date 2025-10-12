@@ -1,4 +1,4 @@
--- hope/Thesis backend migration
+-- hope/Thesis back migration
 -- 054_fix_triggers_use_correct_pk.sql
 -- Update activity and history triggers/functions to use actual schema column names
 -- Uses column names from `schema overview.txt` in hope/Thesis

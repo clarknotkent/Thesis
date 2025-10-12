@@ -1,46 +1,102 @@
-const { createNotification, listNotifications, markAsSent } = require('../models/notificationModel');
+const notificationModel = require('../models/notificationModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
+// Helper to send standardized error
+function sendError(res, error, fallback) {
+  const status = error.status || 500;
+  return res.status(status).json({ success: false, message: error.status ? error.message : fallback, error: error.message });
+}
+
+// Create notification (admin)
 const create = async (req, res) => {
   try {
-    const supabase = getSupabaseForRequest(req);
-    const payload = { ...req.body, created_by: req.user?.user_id || null };
-    const created = await createNotification(payload, supabase);
-    return res.status(201).json({ success: true, data: created });
-  } catch (err) {
-    console.error('[notification.create] error:', err.message || err);
-    return res.status(500).json({ success: false, message: 'Failed to create notification' });
+    const actorId = req.user?.user_id || null;
+    const notificationData = req.body;
+    const result = await notificationModel.createNotification(notificationData, actorId);
+    return res.status(201).json({ success: true, message: 'Notification created', data: result });
+  } catch (error) {
+    console.error('createNotification error:', error);
+    return sendError(res, error, 'Failed to create notification');
   }
 };
 
+// Get notifications for current user (inbox)
 const list = async (req, res) => {
   try {
-    const supabase = getSupabaseForRequest(req);
-    const { page = 1, limit = 20, status, related_entity_type, related_entity_id } = req.query;
-    const filters = {};
-    if (status) filters.status = status;
-    if (related_entity_type) filters.related_entity_type = related_entity_type;
-    if (related_entity_id) filters.related_entity_id = Number(related_entity_id);
-    if (req.user && req.user.user_id) filters.recipient_user_id = req.user.user_id;
+    const userId = req.user?.user_id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
-    const result = await listNotifications(filters, Number(page), Number(limit), supabase);
-    return res.json({ success: true, data: result.items, meta: { totalCount: result.totalCount, page: result.page, limit: result.limit, totalPages: result.totalPages } });
-  } catch (err) {
-    console.error('[notification.list] error:', err.message || err);
-    return res.status(500).json({ success: false, message: 'Failed to list notifications' });
+    const filters = {
+      status: req.query.status,
+      channel: req.query.channel,
+      unreadOnly: req.query.unreadOnly === 'true',
+      limit: parseInt(req.query.limit) || 20,
+      offset: parseInt(req.query.offset) || 0
+    };
+
+    const notifications = await notificationModel.getNotifications(userId, filters);
+    return res.json({ success: true, data: notifications });
+  } catch (error) {
+    console.error('getMyNotifications error:', error);
+    return sendError(res, error, 'Failed to fetch notifications');
   }
 };
 
-const mark_sent = async (req, res) => {
+// Mark notification as read
+const markAsRead = async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    const supabase = getSupabaseForRequest(req);
-    const updated = await markAsSent(id, new Date().toISOString(), supabase);
-    return res.json({ success: true, data: updated });
-  } catch (err) {
-    console.error('[notification.mark_sent] error:', err.message || err);
-    return res.status(500).json({ success: false, message: 'Failed to mark sent' });
+    const userId = req.user?.user_id;
+    const { id } = req.params;
+    if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const result = await notificationModel.markAsRead(id, userId);
+    return res.json({ success: true, message: 'Notification marked as read', data: result });
+  } catch (error) {
+    console.error('markAsRead error:', error);
+    return sendError(res, error, 'Failed to mark notification as read');
   }
 };
 
-module.exports = { create, list, mark_sent };
+// Delete notification (soft delete)
+const deleteNotification = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id;
+    const { id } = req.params;
+    if (!actorId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const result = await notificationModel.deleteNotification(id, actorId);
+    return res.json({ success: true, message: 'Notification deleted', data: result });
+  } catch (error) {
+    console.error('deleteNotification error:', error);
+    return sendError(res, error, 'Failed to delete notification');
+  }
+};
+
+// Get pending notifications (for sending service)
+const getPendingNotifications = async (req, res) => {
+  try {
+    // This might be restricted to admin or service accounts
+    const notifications = await notificationModel.getPendingNotifications();
+    return res.json({ success: true, data: notifications });
+  } catch (error) {
+    console.error('getPendingNotifications error:', error);
+    return sendError(res, error, 'Failed to fetch pending notifications');
+  }
+};
+
+// Update notification status (for sending service)
+const updateNotificationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, error_message } = req.body;
+    const actorId = req.user?.user_id || null;
+
+    const result = await notificationModel.updateStatus(id, status, error_message, actorId);
+    return res.json({ success: true, message: 'Notification status updated', data: result });
+  } catch (error) {
+    console.error('updateNotificationStatus error:', error);
+    return sendError(res, error, 'Failed to update notification status');
+  }
+};
+
+module.exports = { create, list, markAsRead, deleteNotification, getPendingNotifications, updateNotificationStatus };

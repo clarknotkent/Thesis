@@ -1,4 +1,5 @@
 const patientModel = require('../models/patientModel');
+const notificationModel = require('../models/notificationModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const immunizationModel = require('../models/immunizationModel');
 const { logActivity } = require('../models/activityLogger');
@@ -158,6 +159,23 @@ const createPatient = async (req, res) => {
           status: 'scheduled',
         });
       }
+    }
+
+    // Notify guardian about schedule creation
+    try {
+      const { data: guardianInfo } = await supabase.from('patients_view').select('guardian_user_id, guardian_contact_number, guardian_email, full_name').eq('patient_id', newPatient.patient_id).maybeSingle();
+      if (guardianInfo?.guardian_user_id) {
+        await notificationModel.createNotification({
+          channel: 'in-app',
+          recipient_user_id: guardianInfo.guardian_user_id,
+          template_code: 'schedule_created',
+          message_body: `Vaccination schedule has been created for ${guardianInfo.full_name}.`,
+          related_entity_type: 'patient',
+          related_entity_id: newPatient.patient_id
+        }, req.user?.user_id || null);
+      }
+    } catch (notifError) {
+      console.warn('Failed to send schedule creation notification:', notifError.message);
     }
 
     // Return enriched patient data and schedule from views

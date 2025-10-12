@@ -1,4 +1,5 @@
 const immunizationModel = require('../models/immunizationModel');
+const notificationModel = require('../models/notificationModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
@@ -179,7 +180,7 @@ const createImmunizationRecord = async (req, res) => {
         status: 'scheduled',
         created_by: req.user?.user_id || null
       };
-      await createNotification(notif, supabase);
+      await notificationModel.createNotification(notif, req.user?.user_id || null);
     } catch (notifErr) {
       console.warn('[immunization.create] failed to enqueue confirmation notification:', notifErr.message || notifErr);
     }

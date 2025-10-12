@@ -1,6 +1,6 @@
 # Inventory Ledger Integration
 
-This project uses the pre-existing `inventorytransactions` table as a stock movement ledger. The backend model function `insertLedgerIfExists` maps:
+This project uses the pre-existing `inventorytransactions` table as a stock movement ledger. The back model function `insertLedgerIfExists` maps:
 - `quantity` = change in stock (delta, can be negative)
 - `date` = timestamp of transaction
 - `remarks` = note (e.g., 'Initial stock', 'Manual adjustment', 'Deletion correction')

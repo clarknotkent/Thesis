@@ -14,10 +14,10 @@ import Reports from '@/views/admin/Reports.vue'
 import ReceivingReports from '@/views/admin/ReceivingReports.vue'
 import UserAccounts from '@/views/admin/UserAccounts.vue'
 import ActivityLogs from '@/views/admin/ActivityLogs.vue'
-import NotificationsInbox from '@/views/admin/NotificationsInbox.vue'
-import NotificationsCreate from '@/views/admin/NotificationsCreate.vue'
 import Profile from '@/views/admin/Profile.vue'
 import Settings from '@/views/admin/Settings.vue'
+import CreateNotification from '@/views/admin/CreateNotification.vue'
+import NotificationsInbox from '@/views/admin/NotificationsInbox.vue'
 
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
@@ -129,26 +129,6 @@ const routes = [
     }
   },
   {
-    path: '/admin/notifications',
-    name: 'NotificationsInbox',
-    component: NotificationsInbox,
-    meta: {
-      title: 'Notifications - ImmunizeMe',
-      requiresAuth: true,
-      role: 'admin'
-    }
-  },
-  {
-    path: '/admin/notifications/create',
-    name: 'NotificationsCreate',
-    component: NotificationsCreate,
-    meta: {
-      title: 'Create Notification - ImmunizeMe',
-      requiresAuth: true,
-      role: 'admin'
-    }
-  },
-  {
     path: '/admin/profile',
     name: 'Profile',
     component: Profile,
@@ -164,6 +144,26 @@ const routes = [
     component: Settings,
     meta: {
       title: 'Settings - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/create-notification',
+    name: 'CreateNotification',
+    component: CreateNotification,
+    meta: {
+      title: 'Create Notification - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/notifications-inbox',
+    name: 'NotificationsInbox',
+    component: NotificationsInbox,
+    meta: {
+      title: 'Notifications Inbox - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
