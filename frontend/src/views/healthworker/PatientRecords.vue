@@ -1,26 +1,9 @@
 <template>
   <HealthWorkerLayout>
-    <AppPageHeader
-      title="Patient Records"
-      subtitle="Search and manage patient information"
-      :breadcrumbs="breadcrumbs"
-    >
-      <template #actions>
-        <AppButton
-          variant="primary"
-          @click="showAddModal = true"
-          icon="bi bi-plus-circle"
-        >
-          New Patient
-        </AppButton>
-      </template>
-    </AppPageHeader>
-
-    <!-- Mobile-First Search Section -->
-    <AppCard class="hw-search-section mb-4">
-      <!-- Mobile Layout -->
-      <div class="d-block d-md-none">
-        <div class="mb-3">
+    <!-- Search Bar Section -->
+    <div class="search-section mb-3">
+      <div class="d-flex gap-2 align-items-center">
+        <div class="flex-grow-1">
           <div class="input-group">
             <span class="input-group-text">
               <i class="bi bi-search"></i>
@@ -34,118 +17,32 @@
             >
           </div>
         </div>
-        <div class="row g-2">
-          <div class="col-6">
-            <select class="form-select" v-model="selectedStatus" @change="applyFilters">
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <AppButton
-              variant="info"
-              icon="bi bi-qr-code-scan"
-              @click="openQrScanner"
-              class="w-100"
-            >
-              Scan QR
-            </AppButton>
-          </div>
-        </div>
-      </div>
-
-      <!-- Desktop Layout -->
-      <div class="d-none d-md-flex align-items-center gap-2">
-        <div class="flex-grow-1">
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bi bi-search"></i>
-            </span>
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="Search by child name, ID, or parent details..."
-              v-model="searchQuery"
-              @input="debouncedSearch"
-            >
-          </div>
-        </div>
-        <select class="form-select" style="max-width: 150px;" v-model="selectedStatus" @change="applyFilters">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
-        </select>
+        <AppButton
+          variant="outline-secondary"
+          icon="bi bi-sort-down"
+          @click="toggleSort"
+          class="compact-btn"
+        >
+          Sort
+        </AppButton>
         <AppButton
           variant="info"
-          icon="bi bi-qr-code-scan"
+          icon="bi bi-camera"
           @click="openQrScanner"
+          class="compact-btn"
         >
-          Scan QR
+          Scan
+        </AppButton>
+        <AppButton
+          variant="primary"
+          @click="goToAddPatient"
+          icon="bi bi-plus-circle"
+          class="compact-btn"
+        >
+          + Add
         </AppButton>
       </div>
-    </AppCard>
-
-    <!-- View Toggle -->
-    <AppCard class="mb-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <small class="text-muted">View Mode:</small>
-        </div>
-        <div class="btn-group btn-group-sm" role="group">
-          <input type="radio" class="btn-check" id="cardView" v-model="viewMode" value="card">
-          <label class="btn btn-outline-primary" for="cardView">
-            <i class="bi bi-grid"></i> Cards
-          </label>
-          <input type="radio" class="btn-check" id="tableView" v-model="viewMode" value="table">
-          <label class="btn btn-outline-primary" for="tableView">
-            <i class="bi bi-table"></i> Table
-          </label>
-        </div>
-      </div>
-    </AppCard>
-
-    <!-- Filters Section (Table View Only) -->
-    <AppCard v-if="viewMode === 'table'" class="mb-3">
-      <div class="row g-3">
-        <div class="col-12 col-md-3">
-          <label class="form-label">Sex</label>
-          <select class="form-select" v-model="filterSex" @change="applyFilters">
-            <option value="">All</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="col-12 col-md-3">
-          <label class="form-label">Due Today</label>
-          <select class="form-select" v-model="filterDueToday" @change="applyFilters">
-            <option value="">All</option>
-            <option value="true">Due Today</option>
-            <option value="false">Not Due Today</option>
-          </select>
-        </div>
-        <div class="col-12 col-md-3">
-          <label class="form-label">Defaulters</label>
-          <select class="form-select" v-model="filterDefaulters" @change="applyFilters">
-            <option value="">All</option>
-            <option value="true">Defaulters Only</option>
-            <option value="false">Non-Defaulters</option>
-          </select>
-        </div>
-        <div class="col-12 col-md-3">
-          <label class="form-label">Search</label>
-          <input 
-            type="text" 
-            class="form-control" 
-            placeholder="Search patients..."
-            v-model="searchQuery"
-            @input="debouncedSearch"
-          >
-        </div>
-      </div>
-    </AppCard>
+    </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
@@ -154,472 +51,86 @@
       </div>
     </div>
 
-    <!-- Mobile-First Patient List -->
-    <div v-else class="row g-3">
-      <div class="col-12 col-md-6 col-xl-4" v-for="patient in patients" :key="patient.id">
-        <AppCard class="hw-patient-card h-100">
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start mb-3">
-            <div class="mb-2 mb-sm-0">
-              <h5 class="card-title mb-1 fw-bold">
-                {{ patient.childInfo.name }}
-                <span class="badge bg-info ms-2">Child</span>
-              </h5>
-              <p class="text-muted mb-0 small">ID: {{ patient.id }}</p>
-            </div>
-            <span :class="getStatusBadgeClass(getPatientStatus(patient))">
-              {{ getPatientStatus(patient) }}
-            </span>
-          </div>
-          
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <small class="text-muted">Age:</small>
-              <div class="fw-semibold">{{ calculateAge(patient.childInfo.birthDate, patient) }}</div>
-            </div>
-            <div class="col-6">
-              <small class="text-muted">Sex:</small>
-              <div class="fw-semibold">{{ patient.childInfo.sex }}</div>
-            </div>
-          </div>
-
-          <div class="row g-2 mb-3">
-            <div class="col-12 col-sm-6">
-              <small class="text-muted">Guardian:</small>
-              <div class="fw-semibold">{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</div>
-            </div>
-            <div class="col-12 col-sm-6">
-              <small class="text-muted">Contact:</small>
-              <div class="fw-semibold small">{{ getContact(patient) }}</div>
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <small class="text-muted">Last Vaccine:</small>
-            <div class="fw-semibold">{{ getLastVaccination(patient) }}</div>
-          </div>
-
-          <!-- Mobile-First Action Buttons -->
-          <div class="d-grid gap-2">
-            <!-- Mobile: Stack all buttons vertically -->
-            <div class="d-block d-sm-none">
-              <AppButton
-                variant="primary"
-                @click="viewPatient(patient)"
-                icon="bi bi-eye"
-                class="w-100 mb-2"
-                size="sm"
-              >
-                View Details
-              </AppButton>
-              <div class="row g-2">
-                <div class="col-4">
-                  <AppButton
-                    variant="success"
-                    @click="editPatient(patient)"
-                    icon="bi bi-pencil"
-                    class="w-100"
-                    size="sm"
-                  >
-                    Edit
-                  </AppButton>
-                </div>
-                <div class="col-4">
-                  <AppButton
-                    variant="info"
-                    @click="administerVaccine(patient)"
-                    icon="bi bi-syringe"
-                    class="w-100"
-                    size="sm"
-                  >
-                    Vaccine
-                  </AppButton>
-                </div>
-                <div class="col-4">
-                  <AppButton
-                    variant="outline-danger"
-                    @click="deletePatient(patient)"
-                    icon="bi bi-trash"
-                    class="w-100"
-                    size="sm"
-                  >
-                    Delete
-                  </AppButton>
-                </div>
-              </div>
-            </div>
-
-            <!-- Tablet and up: Horizontal layout -->
-            <div class="d-none d-sm-flex gap-2">
-              <AppButton
-                variant="primary"
-                @click="viewPatient(patient)"
-                icon="bi bi-eye"
-                class="flex-fill"
-                size="sm"
-              >
-                View
-              </AppButton>
-              <AppButton
-                variant="success"
-                @click="editPatient(patient)"
-                icon="bi bi-pencil"
-                class="flex-fill"
-                size="sm"
-              >
-                Edit
-              </AppButton>
-              <AppButton
-                variant="info"
-                @click="administerVaccine(patient)"
-                icon="bi bi-syringe"
-                class="flex-fill"
-                size="sm"
-              >
-                Vaccine
-              </AppButton>
-              <AppButton
-                variant="outline-danger"
-                @click="deletePatient(patient)"
-                icon="bi bi-trash"
-                class="flex-fill"
-                size="sm"
-              >
-                Delete
-              </AppButton>
-            </div>
-          </div>
-        </AppCard>
-      </div>
-    </div>
-
-    <!-- Table View -->
-    <AppCard v-if="viewMode === 'table' && !loading && patients.length > 0">
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Age</th>
-              <th>Sex</th>
-              <th>Guardian</th>
-              <th>Last Vaccination</th>
-              <th>Status</th>
-              <th class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="patient in filteredPatients" :key="patient.id">
-              <td>
-                <div class="fw-semibold">{{ patient.childInfo.name }}</div>
-                <small class="text-muted">ID: {{ patient.id }}</small>
-              </td>
-              <td>{{ calculateAge(patient.childInfo.birthDate, patient) }}</td>
-              <td>{{ patient.childInfo.sex }}</td>
-              <td>{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</td>
-              <td>{{ getLastVaccination(patient) }}</td>
-              <td>
-                <span :class="getStatusBadgeClass(getPatientStatus(patient))">
-                  {{ getPatientStatusText(getPatientStatus(patient)) }}
-                </span>
-              </td>
-              <td class="text-center">
-                <div class="btn-group btn-group-sm">
-                  <AppButton
-                    variant="outline-primary"
-                    @click="viewPatient(patient)"
-                    icon="bi bi-eye"
-                    size="sm"
-                    title="View Details"
-                  />
-                  <AppButton
-                    variant="outline-success"
-                    @click="editPatient(patient)"
-                    icon="bi bi-pencil"
-                    size="sm"
-                    title="Edit"
-                  />
-                  <AppButton
-                    variant="outline-info"
-                    @click="administerVaccine(patient)"
-                    icon="bi bi-syringe"
-                    size="sm"
-                    title="Administer Vaccine"
-                  />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </AppCard>
-
-    <!-- Empty State -->
-    <div v-if="!loading && patients.length === 0" class="text-center py-5">
-      <i class="bi bi-person-x text-muted mb-3" style="font-size: 4rem;"></i>
-      <h4 class="text-muted">No patients found</h4>
-      <p class="text-muted">Try adjusting your search criteria or add a new patient.</p>
-      <AppButton
-        variant="primary"
-        size="lg"
-        @click="showAddModal = true"
-        icon="bi bi-plus-circle"
-        class="btn-hw-primary"
+    <!-- Patient Cards -->
+    <div v-else class="patient-cards">
+      <div 
+        v-for="patient in paginatedPatients" 
+        :key="patient.id"
+        class="patient-card"
+        @click="viewPatientDetail(patient)"
       >
-        Add New Patient
-      </AppButton>
-    </div>
-
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="d-flex justify-content-center mt-4">
-      <AppPagination
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :total-items="totalItems"
-        :items-per-page="itemsPerPage"
-        @page-change="changePage"
-      />
-    </div>
-
-    <!-- Patient Detail Modal -->
-    <PatientDetailModal
-      :show="showViewModal"
-      :patient-id="selectedPatientId"
-      @close="showViewModal = false"
-    />
-
-    <!-- Add/Edit Patient Modal -->
-    <div class="modal fade" :class="{ show: showAddModal || showEditModal }" :style="{ display: (showAddModal || showEditModal) ? 'block' : 'none' }" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
-              {{ showEditModal ? 'Edit Patient' : 'Add New Patient' }}
-            </h5>
-            <button type="button" class="btn-close" @click="closeModal"></button>
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="card-title mb-1">{{ patient.childInfo.name }}</h6>
+              <p class="card-subtitle mb-0">ID: {{ patient.id }}</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span :class="getStatusBadgeClass(getPatientStatus(patient))">
+                {{ getPatientStatus(patient) }}
+              </span>
+              <i class="bi bi-chevron-right text-muted"></i>
+            </div>
           </div>
-          <div class="modal-body">
-            <form @submit.prevent="savePatient">
-              <!-- Patient Basic Information -->
-              <h6 class="text-primary mb-3">Patient Information</h6>
-              <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                  <label for="surname" class="form-label">Surname *</label>
-                  <input type="text" class="form-control" id="surname" v-model="form.surname" required>
-                </div>
-                <div class="col-md-4">
-                  <label for="firstname" class="form-label">First Name *</label>
-                  <input type="text" class="form-control" id="firstname" v-model="form.firstname" required>
-                </div>
-                <div class="col-md-4">
-                  <label for="middlename" class="form-label">Middle Name</label>
-                  <input type="text" class="form-control" id="middlename" v-model="form.middlename">
-                </div>
-                <div class="col-md-6">
-                  <label for="sex" class="form-label">Sex *</label>
-                  <select class="form-select" id="sex" v-model="form.sex" required>
-                    <option value="">Select Sex</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label for="date_of_birth" class="form-label">Date of Birth *</label>
-                  <input type="date" class="form-control" id="date_of_birth" v-model="form.date_of_birth" required>
-                </div>
-                <div class="col-12">
-                  <label for="address" class="form-label">Address *</label>
-                  <textarea class="form-control" id="address" rows="2" v-model="form.address" required></textarea>
-                </div>
-                <div class="col-md-6">
-                  <label for="barangay" class="form-label">Barangay *</label>
-                  <input type="text" class="form-control" id="barangay" v-model="form.barangay" required>
-                </div>
-                <div class="col-md-6">
-                  <label for="health_center" class="form-label">Health Center</label>
-                  <input type="text" class="form-control" id="health_center" v-model="form.health_center">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label" for="guardian_id">Guardian: <span class="text-danger">*</span></label>
-                  <div class="position-relative">
-                    <input
-                      type="text"
-                      class="form-control"
-                      v-model="guardianSearchTerm"
-                      @focus="showGuardianDropdown = true"
-                      @blur="hideGuardianDropdown"
-                      :placeholder="selectedGuardianName || 'Search and select guardian...'"
-                      autocomplete="off"
-                    />
-                    <div
-                      v-if="showGuardianDropdown && filteredGuardians.length > 0"
-                      class="dropdown-menu show w-100 position-absolute"
-                      style="max-height: 300px; overflow-y: auto; z-index: 1000;"
-                    >
-                      <div
-                        v-for="guardian in filteredGuardians"
-                        :key="guardian.guardian_id"
-                        class="dropdown-item cursor-pointer d-flex justify-content-between align-items-center"
-                        @mousedown="selectGuardian(guardian)"
-                      >
-                        <div>
-                          <strong>{{ guardian.full_name }}</strong>
-                          <br>
-                          <small class="text-muted">
-                            📞 {{ guardian.contact_number || 'No contact' }} | 
-                            👥 Family: {{ guardian.family_number || 'N/A' }}
-                          </small>
-                        </div>
-                        <span class="badge bg-primary">Guardian</span>
-                      </div>
-                    </div>
-                    <div
-                      v-if="showGuardianDropdown && guardianSearchTerm && filteredGuardians.length === 0"
-                      class="dropdown-menu show w-100 position-absolute"
-                      style="z-index: 1000;"
-                    >
-                      <div class="dropdown-item-text text-muted text-center py-3">
-                        <i class="bi bi-search"></i>
-                        No guardians found matching "{{ guardianSearchTerm }}"
-                      </div>
-                    </div>
-                  </div>
-                  <input type="hidden" v-model="form.guardian_id" required>
-                </div>
-                <div class="col-md-6">
-                  <label for="family_number" class="form-label">Family Number</label>
-                  <div class="input-group">
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="family_number" 
-                      v-model="form.family_number"
-                      :readonly="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number"
-                    >
-                    <span 
-                      v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number" 
-                      class="input-group-text bg-success text-white"
-                      title="Auto-populated from guardian"
-                    >
-                      <i class="bi bi-check-circle"></i>
-                    </span>
-                  </div>
-                  <div class="form-text text-success" v-if="form.guardian_id && guardians.find(g => g.guardian_id === form.guardian_id)?.family_number">
-                    Auto-populated from selected guardian
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label for="guardian_relationship" class="form-label">Relationship to Guardian</label>
-                  <select class="form-select" id="guardian_relationship" v-model="form.guardian_relationship">
-                    <option value="">Select relationship</option>
-                    <option value="Mother">Mother</option>
-                    <option value="Father">Father</option>
-                    <option value="Grandparent">Grandparent</option>
-                    <option value="Aunt/Uncle">Aunt/Uncle</option>
-                    <option value="Sibling">Sibling</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <div class="form-text text-info">
-                    <i class="bi bi-info-circle"></i>
-                    Selecting "Mother" will auto-fill mother's information from guardian data
-                  </div>
-                </div>
-              </div>
-
-              <!-- Parent Information -->
-              <h6 class="text-primary mb-3">Parent Information</h6>
-              <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                  <label for="mother_name" class="form-label">Mother's Name *</label>
-                  <input type="text" class="form-control" id="mother_name" v-model="form.mother_name" required>
-                </div>
-                <div class="col-md-6">
-                  <label for="mother_occupation" class="form-label">Mother's Occupation</label>
-                  <input type="text" class="form-control" id="mother_occupation" v-model="form.mother_occupation">
-                </div>
-                <div class="col-md-12">
-                  <label for="mother_contact_number" class="form-label">Mother's Contact Number</label>
-                  <input type="tel" class="form-control" id="mother_contact_number" v-model="form.mother_contact_number">
-                </div>
-                <div class="col-md-6">
-                  <label for="father_name" class="form-label">Father's Name</label>
-                  <input type="text" class="form-control" id="father_name" v-model="form.father_name">
-                </div>
-                <div class="col-md-6">
-                  <label for="father_occupation" class="form-label">Father's Occupation</label>
-                  <input type="text" class="form-control" id="father_occupation" v-model="form.father_occupation">
-                </div>
-                <div class="col-md-12">
-                  <label for="father_contact_number" class="form-label">Father's Contact Number</label>
-                  <input type="tel" class="form-control" id="father_contact_number" v-model="form.father_contact_number">
-                </div>
-              </div>
-
-              <!-- Additional Information -->
-              <h6 class="text-primary mb-3">Additional Information</h6>
-              <div class="row g-3 mb-4">
-                <div class="col-12">
-                  <label for="tags" class="form-label">Tags (comma-separated)</label>
-                  <input type="text" class="form-control" id="tags" v-model="form.tags" placeholder="e.g. high-risk, malnourished, etc.">
-                </div>
-              </div>
-
-              <!-- Birth History (optional for newborn onboarding) -->
-              <h6 class="text-primary mb-3">Birth History (optional)</h6>
-              <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                  <label for="time_of_birth" class="form-label">Time of Birth</label>
-                  <input type="time" class="form-control" id="time_of_birth" v-model="form.time_of_birth">
-                </div>
-                <div class="col-md-4">
-                  <label for="attendant_at_birth" class="form-label">Attendant at Birth</label>
-                  <input type="text" class="form-control" id="attendant_at_birth" v-model="form.attendant_at_birth">
-                </div>
-                <div class="col-md-4">
-                  <label for="type_of_delivery" class="form-label">Type of Delivery</label>
-                  <input type="text" class="form-control" id="type_of_delivery" v-model="form.type_of_delivery">
-                </div>
-
-                <div class="col-md-4">
-                  <label for="birth_weight" class="form-label">Birth Weight (kg)</label>
-                  <input type="number" step="0.01" class="form-control" id="birth_weight" v-model="form.birth_weight">
-                </div>
-                <div class="col-md-4">
-                  <label for="birth_length" class="form-label">Birth Length (cm)</label>
-                  <input type="number" step="0.1" class="form-control" id="birth_length" v-model="form.birth_length">
-                </div>
-                <div class="col-md-4">
-                  <label for="place_of_birth" class="form-label">Place of Birth</label>
-                  <input type="text" class="form-control" id="place_of_birth" v-model="form.place_of_birth">
-                </div>
-              </div>
-
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
-                <button type="submit" class="btn btn-primary" :disabled="saving">
-                  <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ showEditModal ? 'Update' : 'Add' }} Patient
-                </button>
-              </div>
-            </form>
+        </div>
+        
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label">Age</span>
+              <span class="info-value">{{ calculateAge(patient.childInfo.birthDate, patient) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Sex</span>
+              <span class="info-value">{{ patient.childInfo.sex }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Guardian</span>
+              <span class="info-value">{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Last Vaccine</span>
+              <span class="info-value">{{ getLastVaccination(patient) }}</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Modal Backdrop -->
-    <div v-if="showAddModal || showEditModal || showViewModal" class="modal-backdrop fade show"></div>
+    <!-- Empty State -->
+    <div v-if="!loading && filteredPatients.length === 0" class="text-center py-5">
+      <i class="bi bi-person-x text-muted mb-3" style="font-size: 4rem;"></i>
+      <h4 class="text-muted">No patients found</h4>
+      <p class="text-muted">Try adjusting your search criteria or add a new patient.</p>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="!loading && totalPages > 1" class="d-flex justify-content-center mt-4">
+      <AppPagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="totalItems"
+        :items-per-page="itemsPerPage"
+        @page-changed="changePage"
+      />
+    </div>
+
+
+
+
   </HealthWorkerLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
-import AppPageHeader from '@/components/common/AppPageHeader.vue'
 import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
-import PatientDetailModal from '@/components/common/PatientDetailModal.vue'
 import api from '@/services/api'
+
+const router = useRouter()
 
 // Reactive data
 const loading = ref(true)
@@ -638,16 +149,35 @@ const totalItems = ref(0)
 const totalPages = ref(0)
 
 // View mode and filters
-const viewMode = ref('card') // 'card' or 'table'
-const filterSex = ref('')
-const filterDueToday = ref('')
-const filterDefaulters = ref('')
+const sortOrder = ref('name') // 'name', 'age', 'date'
+const sortDirection = ref('asc') // 'asc', 'desc'
 
-// Modal states
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-const showViewModal = ref(false)
-const selectedPatientId = ref(null)
+// Remove modal states - we'll navigate to detail page instead
+
+// Computed properties for pagination
+const filteredPatients = computed(() => {
+  let filtered = patients.value
+
+  // Filter by search query
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(patient => 
+      patient.childInfo.name.toLowerCase().includes(query) ||
+      patient.guardianInfo.name.toLowerCase().includes(query) ||
+      patient.id.toString().includes(query)
+    )
+  }
+
+  totalItems.value = filtered.length
+  totalPages.value = Math.ceil(filtered.length / itemsPerPage.value)
+  return filtered
+})
+
+const paginatedPatients = computed(() => {
+  const startIndex = (currentPage.value - 1) * itemsPerPage.value
+  const endIndex = startIndex + itemsPerPage.value
+  return filteredPatients.value.slice(startIndex, endIndex)
+})
 
 // Form data
 const form = ref({
@@ -685,26 +215,16 @@ const form = ref({
   newborn_screening_result: null
 })
 
-
-
-const breadcrumbs = [
-  { text: 'Health Worker', href: '/healthworker/dashboard' },
-  { text: 'Patient Records', active: true }
-]
-
 // Methods
+const goToAddPatient = () => {
+  router.push('/healthworker/patients/add')
+}
+
 const fetchPatients = async () => {
   try {
     loading.value = true
-    const params = {
-      page: currentPage.value,
-      limit: itemsPerPage.value
-    }
-    
-    if (searchQuery.value) params.search = searchQuery.value
-    if (selectedStatus.value) params.status = selectedStatus.value
-
-    const response = await api.get('/patients', { params })
+    // Fetch all patients for client-side pagination and filtering
+    const response = await api.get('/patients')
     
     // Map backend data structure to frontend format
     const patientsData = response.data.data?.patients || response.data.data || []
@@ -747,17 +267,11 @@ const fetchPatients = async () => {
       age_days: patient.age_days
     }))
 
-    // Prefer server-provided pagination metadata; fallback to local length only if missing
-    const payload = response.data.data || {}
-    const totalCount = (payload.totalCount ?? response.data?.total) ?? patients.value.length
-    totalItems.value = Number(totalCount)
-    totalPages.value = Math.ceil((Number(totalCount) || 0) / Number(itemsPerPage.value))
+    // Client-side pagination - totals will be calculated in computed properties
 
   } catch (error) {
     console.error('Error fetching patients:', error)
     patients.value = []
-    totalItems.value = 0
-    totalPages.value = 0
   } finally {
     loading.value = false
   }
@@ -865,7 +379,14 @@ const getContact = (patient) => {
 
 const changePage = (page) => {
   currentPage.value = page
-  fetchPatients()
+}
+
+const viewPatientDetail = (patient) => {
+  router.push(`/healthworker/patients/${patient.patient_id}`)
+}
+
+const resetPagination = () => {
+  currentPage.value = 1
 }
 
 const applyFilters = () => {
@@ -873,98 +394,56 @@ const applyFilters = () => {
   fetchPatients()
 }
 
-// Computed property for table filtering (local filtering, no API calls)
-const filteredPatients = computed(() => {
-  let filtered = patients.value
-
-  // Filter by sex
-  if (filterSex.value) {
-    filtered = filtered.filter(patient => patient.childInfo.sex === filterSex.value)
+const toggleSort = () => {
+  // Cycle through sort options: name -> age -> date -> name (desc) -> age (desc) -> date (desc)
+  if (sortOrder.value === 'name' && sortDirection.value === 'asc') {
+    sortOrder.value = 'age'
+  } else if (sortOrder.value === 'age' && sortDirection.value === 'asc') {
+    sortOrder.value = 'date'
+  } else if (sortOrder.value === 'date' && sortDirection.value === 'asc') {
+    sortOrder.value = 'name'
+    sortDirection.value = 'desc'
+  } else if (sortOrder.value === 'name' && sortDirection.value === 'desc') {
+    sortOrder.value = 'age'
+    sortDirection.value = 'desc'
+  } else if (sortOrder.value === 'age' && sortDirection.value === 'desc') {
+    sortOrder.value = 'date'
+    sortDirection.value = 'desc'
+  } else {
+    sortOrder.value = 'name'
+    sortDirection.value = 'asc'
   }
-
-  // Filter by due today
-  if (filterDueToday.value) {
-    const dueToday = filterDueToday.value === 'true'
-    filtered = filtered.filter(patient => isDueToday(patient) === dueToday)
-  }
-
-  // Filter by defaulters
-  if (filterDefaulters.value) {
-    const isDefaulterFilter = filterDefaulters.value === 'true'
-    filtered = filtered.filter(patient => isDefaulter(patient) === isDefaulterFilter)
-  }
-
-  // Filter by search text (for table view)
-  if (searchQuery.value && viewMode.value === 'table') {
-    const searchTerm = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(patient => {
-      return (
-        patient.childInfo.name?.toLowerCase().includes(searchTerm) ||
-        patient.id?.toString().includes(searchTerm) ||
-        patient.guardianInfo?.name?.toLowerCase().includes(searchTerm) ||
-        patient.motherInfo?.name?.toLowerCase().includes(searchTerm)
-      )
-    })
-  }
-
-  return filtered
-})
+  
+  // Apply sorting
+  patients.value.sort((a, b) => {
+    let comparison = 0
+    
+    if (sortOrder.value === 'name') {
+      comparison = a.childInfo.name.localeCompare(b.childInfo.name)
+    } else if (sortOrder.value === 'age') {
+      const ageA = new Date(a.childInfo.birthDate)
+      const ageB = new Date(b.childInfo.birthDate)
+      comparison = ageB - ageA // Younger first for asc
+    } else if (sortOrder.value === 'date') {
+      const dateA = new Date(a.dateRegistered || 0)
+      const dateB = new Date(b.dateRegistered || 0)
+      comparison = dateB - dateA // Most recent first for asc
+    }
+    
+    return sortDirection.value === 'desc' ? -comparison : comparison
+  })
+}
 
 // Debounced search
 let searchTimeout
 const debouncedSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1
-    fetchPatients()
+    resetPagination()
   }, 500)
 }
 
-const viewPatient = (patient) => {
-  selectedPatientId.value = patient.patient_id
-  showViewModal.value = true
-}
-
-const editPatient = (patient) => {
-  form.value = {
-    id: patient.id,
-    patient_id: patient.patient_id,
-    surname: patient.childInfo.lastName,
-    firstname: patient.childInfo.firstName,
-    middlename: patient.childInfo.middleName,
-    sex: patient.childInfo.sex,
-    date_of_birth: patient.childInfo.birthDate,
-    address: patient.childInfo.address,
-    barangay: patient.childInfo.barangay,
-    health_center: '', // Not included in patient view
-    mother_name: patient.motherInfo.name,
-    mother_occupation: patient.motherInfo.occupation,
-    mother_contact_number: patient.motherInfo.phone,
-    father_name: patient.fatherInfo.name,
-    father_occupation: patient.fatherInfo.occupation,
-    father_contact_number: patient.fatherInfo.phone,
-    guardian_id: patient.guardianInfo.id,
-    family_number: patient.guardianInfo.family_number,
-    tags: patient.tags,
-    // Birth history fields - would need separate API call to populate
-    birth_weight: null,
-    birth_length: null,
-    place_of_birth: null,
-    address_at_birth: null,
-    time_of_birth: null,
-    attendant_at_birth: null,
-    type_of_delivery: null,
-    ballards_score: null,
-    hearing_test_date: null,
-    newborn_screening_date: null,
-    newborn_screening_result: null
-  }
-  
-  // Set guardian name for display
-  selectedGuardianName.value = patient.guardianInfo.name
-  
-  showEditModal.value = true
-}
+// Removed viewPatient and editPatient methods - navigation handled by viewPatientDetail
 
 const deletePatient = async (patient) => {
   if (confirm(`Are you sure you want to delete patient record for ${patient.childInfo.name}?`)) {
@@ -1040,7 +519,6 @@ const savePatient = async () => {
 }
 
 const closeModal = () => {
-  showAddModal.value = false
   showEditModal.value = false
   form.value = {
     id: null,
@@ -1082,7 +560,7 @@ const closeModal = () => {
 }
 
 const openQrScanner = () => {
-  alert('QR Code Scanner opened! (Implement modal or scanner component here)')
+  alert('Camera scanner opened! (Implement camera/QR scanner component here)')
 }
 
 const administerVaccine = (patient) => {
@@ -1233,6 +711,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.search-section {
+  padding: 1rem 0;
+}
+
+.compact-btn {
+  white-space: nowrap;
+  min-width: 70px;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -1240,15 +729,81 @@ onMounted(() => {
 .cursor-pointer:hover {
   background-color: #f8f9fa;
 }
-.hw-patient-card {
-  border: 1px solid #e3e6f0;
-  border-radius: 0.35rem;
-  transition: all 0.3s;
+.patient-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.hw-patient-card:hover {
-  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+.patient-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.patient-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #007bff;
+}
+
+.patient-card:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-title {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.card-subtitle {
+  color: #6c757d;
+  font-size: 0.875rem;
+  margin-bottom: 0;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  color: #2c3e50;
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
 }
 
 .btn-hw-primary {
@@ -1288,22 +843,57 @@ onMounted(() => {
   margin-right: 0;
 }
 
-@media (max-width: 768px) {
-  .col-lg-6 {
-    margin-bottom: 1rem;
+/* Mobile optimizations */
+@media (max-width: 576px) {
+  .search-section .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   
-  .d-md-flex {
-    flex-direction: column;
-  }
-  
-  .flex-fill {
-    width: 100%;
+  .search-section .flex-grow-1 {
+    flex: 1 1 100%;
     margin-bottom: 0.5rem;
   }
   
-  .flex-fill:last-child {
-    margin-bottom: 0;
+  .compact-btn {
+    flex: 1;
+    min-width: 60px;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .card-header,
+  .card-body {
+    padding: 0.875rem;
+  }
+  
+  .patient-card:active {
+    background-color: rgba(0, 123, 255, 0.05);
+  }
+  
+  .card-title {
+    font-size: 0.95rem;
+  }
+  
+  .patient-cards {
+    gap: 0.75rem;
+  }
+  
+  .info-grid {
+    gap: 0.5rem;
+  }
+  
+  .info-label,
+  .info-value {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 768px) and (min-width: 577px) {
+  .compact-btn {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    min-width: 65px;
   }
 }
 </style>

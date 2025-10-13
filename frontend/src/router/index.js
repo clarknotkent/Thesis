@@ -22,7 +22,13 @@ import NotificationsInbox from '@/views/admin/NotificationsInbox.vue'
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
 import HealthWorkerPatients from '@/views/healthworker/PatientRecords.vue'
+import AddPatient from '@/views/healthworker/AddPatient.vue'
+import PatientDetail from '@/views/healthworker/PatientDetail.vue'
 import VaccineInventoryReadOnly from '@/views/healthworker/VaccineInventoryReadOnly.vue'
+import VaccineDetail from '@/views/healthworker/VaccineDetail.vue'
+import HealthWorkerMessages from '@/views/healthworker/Messages.vue'
+import HealthWorkerNotifications from '@/views/healthworker/Notifications.vue'
+import HealthWorkerMenu from '@/views/healthworker/Menu.vue'
 
 // Parent Views
 import ParentDashboard from '@/views/parent/ParentDashboard.vue'
@@ -190,11 +196,71 @@ const routes = [
     }
   },
   {
+    path: '/healthworker/patients/add',
+    name: 'AddPatient',
+    component: AddPatient,
+    meta: {
+      title: 'Add Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/patients/:id',
+    name: 'PatientDetail',
+    component: PatientDetail,
+    meta: {
+      title: 'Patient Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
     path: '/healthworker/inventory',
     name: 'VaccineInventoryReadOnly',
     component: VaccineInventoryReadOnly,
     meta: {
       title: 'Vaccine Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/inventory/:id',
+    name: 'VaccineDetail',
+    component: VaccineDetail,
+    meta: {
+      title: 'Vaccine Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/messages',
+    name: 'HealthWorkerMessages',
+    component: HealthWorkerMessages,
+    meta: {
+      title: 'Messages - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/notifications',
+    name: 'HealthWorkerNotifications',
+    component: HealthWorkerNotifications,
+    meta: {
+      title: 'Notifications - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/menu',
+    name: 'HealthWorkerMenu',
+    component: HealthWorkerMenu,
+    meta: {
+      title: 'Menu - ImmunizeMe',
       requiresAuth: true,
       role: 'healthworker'
     }

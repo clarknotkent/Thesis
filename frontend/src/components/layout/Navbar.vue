@@ -125,10 +125,7 @@ const toggleSidebar = () => {
 }
 
 const getInboxRoute = () => {
-  const role = props.userRole.toLowerCase()
-  if (role === 'admin') return '/admin/notifications-inbox'
-  if (role === 'health_worker') return '/healthworker/notifications-inbox'
-  return '/parent/notifications-inbox'
+  return '/admin/notifications-inbox'
 }
 
 const loadNotifications = async () => {
@@ -169,6 +166,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Desktop-only Admin Navbar */
+.navbar-custom {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  min-height: 70px;
+}
+
 .notification-dropdown {
   width: 350px;
   max-height: 400px;
@@ -181,5 +184,31 @@ onMounted(() => {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+/* Admin navbar is desktop-only - hide on mobile/tablet */
+@media (max-width: 991px) {
+  .navbar {
+    display: none !important;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 992px) {
+  .navbar-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  
+  .nav-link {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+  }
 }
 </style>

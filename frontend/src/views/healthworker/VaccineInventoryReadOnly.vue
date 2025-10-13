@@ -1,18 +1,5 @@
 <template>
   <HealthWorkerLayout>
-    <AppPageHeader
-      title="Vaccine Inventory"
-      subtitle="Check available vaccine stock (Read Only)"
-      :breadcrumbs="breadcrumbs"
-    >
-      <template #actions>
-        <div class="text-end">
-          <small class="d-block text-muted">Last Updated</small>
-          <strong>{{ lastUpdated }}</strong>
-        </div>
-      </template>
-    </AppPageHeader>
-
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -20,233 +7,109 @@
       </div>
     </div>
 
-    <!-- Quick Stock Status -->
-    <div v-if="!loading" class="row g-3 mb-4">
-      <div class="col-md-4">
-        <AppCard class="hw-stat-card bg-success text-white h-100">
-          <div class="text-center">
-            <i class="bi bi-check-circle-fill hw-stat-icon"></i>
-            <h5>Available Types</h5>
-            <h2 class="fw-bold">{{ stats.available }}</h2>
-          </div>
-        </AppCard>
+    <!-- Search Bar and Filters -->
+    <div v-if="!loading" class="search-container mb-4">
+      <div class="input-group mb-3">
+        <span class="input-group-text">
+          <i class="bi bi-search"></i>
+        </span>
+        <input 
+          type="text" 
+          class="form-control" 
+          placeholder="Search vaccines..."
+          v-model="searchQuery"
+          @input="debouncedSearch"
+        >
+        <select class="form-select search-filter" v-model="statusFilter" @change="resetPagination">
+          <option value="">All Status</option>
+          <option value="Available">Available</option>
+          <option value="Low Stock">Low Stock</option>
+          <option value="Out of Stock">Out of Stock</option>
+          <option value="Expiring Soon">Expiring Soon</option>
+          <option value="Expired">Expired</option>
+        </select>
       </div>
-      <div class="col-md-4">
-        <AppCard class="hw-stat-card bg-warning text-white h-100">
-          <div class="text-center">
-            <i class="bi bi-exclamation-triangle-fill hw-stat-icon"></i>
-            <h5>Low Stock</h5>
-            <h2 class="fw-bold">{{ stats.lowStock }}</h2>
-          </div>
-        </AppCard>
-      </div>
-      <div class="col-md-4">
-        <AppCard class="hw-stat-card bg-danger text-white h-100">
-          <div class="text-center">
-            <i class="bi bi-x-circle-fill hw-stat-icon"></i>
-            <h5>Out of Stock</h5>
-            <h2 class="fw-bold">{{ stats.outOfStock }}</h2>
-          </div>
-        </AppCard>
+      
+      <!-- NIP Filter Toggle Button -->
+      <div class="d-flex justify-content-center">
+        <button 
+          class="btn filter-toggle-btn"
+          :class="{
+            'btn-primary': nipFilter === 'nip',
+            'btn-info': nipFilter === 'other', 
+            'btn-outline-secondary': nipFilter === 'all'
+          }"
+          @click="toggleNipFilter"
+        >
+          <i :class="getNipFilterIcon()" class="me-2"></i>
+          {{ getNipFilterText() }}
+          <i class="bi bi-arrow-repeat ms-2"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Search Bar -->
-    <div v-if="!loading" class="card mb-4">
-      <div class="card-body">
-        <div class="row align-items-center">
-          <div class="col-md-8">
-            <div class="input-group">
-              <span class="input-group-text">
-                <i class="bi bi-search"></i>
-              </span>
-              <input 
-                type="text" 
-                class="form-control" 
-                placeholder="Search vaccines by name or manufacturer..."
-                v-model="searchQuery"
-              >
-            </div>
+    <!-- Simple Vaccine List -->
+    <div v-if="!loading && paginatedVaccines.length > 0" class="vaccine-list">
+      <div 
+        v-for="vaccine in paginatedVaccines" 
+        :key="vaccine.id" 
+        class="vaccine-item clickable"
+        @click="viewVaccineDetail(vaccine.id)"
+      >
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="vaccine-info">
+            <h6 class="vaccine-name mb-1">{{ vaccine.vaccineName }}</h6>
+            <p class="vaccine-details mb-0">
+              {{ vaccine.manufacturer }} • {{ vaccine.quantity }} doses
+            </p>
           </div>
-          <div class="col-md-4">
-            <select class="form-select" v-model="statusFilter">
-              <option value="">All Status</option>
-              <option value="Available">Available</option>
-              <option value="Low Stock">Low Stock</option>
-              <option value="Out of Stock">Out of Stock</option>
-              <option value="Expiring Soon">Expiring Soon</option>
-            </select>
+          <div class="d-flex align-items-center">
+            <span class="badge me-2" :class="getStatusBadgeClass(vaccine.status)">
+              {{ vaccine.status }}
+            </span>
+            <i class="bi bi-chevron-right text-muted" style="font-size: 0.9rem;"></i>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Vaccine Cards -->
-    <div v-if="!loading" class="row g-3">
-      <div class="col-lg-6 col-xl-4" v-for="vaccine in filteredVaccines" :key="vaccine.id">
-        <div class="card hw-vaccine-card h-100">
-          <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
-              <h6 class="mb-0 fw-bold">{{ vaccine.vaccineName }}</h6>
-              <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
-                {{ vaccine.status }}
-              </span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="hw-vaccine-info mb-3">
-              <div class="row g-2">
-                <div class="col-12">
-                  <small class="text-muted">Manufacturer:</small>
-                  <div class="fw-semibold">{{ vaccine.manufacturer }}</div>
-                </div>
-                <div class="col-6">
-                  <small class="text-muted">Batch No:</small>
-                  <div><code>{{ vaccine.batchNo }}</code></div>
-                </div>
-                <div class="col-6">
-                  <small class="text-muted">Expiry:</small>
-                  <div>{{ formatDate(vaccine.expiryDate) }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Stock Level Visual -->
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <small class="text-muted">Stock Level</small>
-                <small class="fw-semibold" :class="getQuantityClass(vaccine.quantity)">
-                  {{ vaccine.quantity }} doses
-                </small>
-              </div>
-              <div class="progress" style="height: 8px;">
-                <div 
-                  class="progress-bar"
-                  :class="getProgressBarClass(vaccine.status)"
-                  :style="{ width: getProgressWidth(vaccine.quantity) + '%' }"
-                ></div>
-              </div>
-            </div>
-
-            <!-- Availability for Today -->
-            <div class="hw-availability-check">
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted">Available for administration:</span>
-                <span class="fw-bold" :class="vaccine.quantity > 0 ? 'text-success' : 'text-danger'">
-                  <i :class="vaccine.quantity > 0 ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
-                  {{ vaccine.quantity > 0 ? 'YES' : 'NO' }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Expiry Warning -->
-            <div v-if="vaccine.status === 'Expiring Soon'" class="alert alert-warning mt-2 py-1 px-2 small">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>
-              Expires within 30 days
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Pagination -->
+    <div v-if="!loading && totalPages > 1" class="d-flex justify-content-center mt-4">
+      <AppPagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="totalItems"
+        :items-per-page="itemsPerPage"
+        @page-changed="changePage"
+      />
     </div>
 
     <!-- Empty State -->
     <div v-if="!loading && filteredVaccines.length === 0" class="text-center py-5">
-      <i class="bi bi-box text-muted mb-3" style="font-size: 4rem;"></i>
-      <h4 class="text-muted">No vaccines found</h4>
-      <p class="text-muted">Try adjusting your search criteria.</p>
-    </div>
-
-    <!-- Table View Toggle -->
-    <div v-if="!loading && vaccines.length > 0" class="mt-4">
-      <div class="card">
-        <div class="card-header">
-          <div class="d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">Detailed Vaccine List</h6>
-            <button class="btn btn-outline-primary btn-sm" @click="showTable = !showTable">
-              <i :class="showTable ? 'bi bi-grid-3x3-gap' : 'bi bi-table'"></i>
-              {{ showTable ? 'Card View' : 'Table View' }}
-            </button>
-          </div>
-        </div>
-        <div class="card-body" v-if="showTable">
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead class="table-light">
-                <tr>
-                  <th>Vaccine Name</th>
-                  <th>Manufacturer</th>
-                  <th>Batch No.</th>
-                  <th>Expiry Date</th>
-                  <th>Quantity</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="vaccine in filteredVaccines" :key="vaccine.id">
-                  <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
-                  <td>{{ vaccine.manufacturer }}</td>
-                  <td><code>{{ vaccine.batchNo }}</code></td>
-                  <td>{{ formatDate(vaccine.expiryDate) }}</td>
-                  <td>
-                    <span class="fw-bold" :class="getQuantityClass(vaccine.quantity)">
-                      {{ vaccine.quantity }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
-                      {{ vaccine.status }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Info Notice -->
-    <div class="alert alert-info mt-4">
-      <i class="bi bi-info-circle me-2"></i>
-      <strong>Note:</strong> This is a read-only view. For stock updates or procurement, please contact the administrator.
+      <i class="bi bi-box text-muted mb-3" style="font-size: 3rem;"></i>
+      <h6 class="text-muted">No vaccines found</h6>
+      <p class="text-muted small">Try adjusting your search criteria.</p>
     </div>
   </HealthWorkerLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
-import AppPageHeader from '@/components/common/AppPageHeader.vue'
-import AppCard from '@/components/common/AppCard.vue'
+import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
+
+const router = useRouter()
 
 const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('')
-const showTable = ref(false)
+const nipFilter = ref('all') // 'all', 'nip', 'other'
 const vaccines = ref([])
-const stats = ref({
-  available: 0,
-  lowStock: 0,
-  outOfStock: 0,
-  expiringSoon: 0
-})
-
-const breadcrumbs = [
-  { text: 'Health Worker', href: '/healthworker/dashboard' },
-  { text: 'Vaccine Inventory', active: true }
-]
-
-const lastUpdated = computed(() => {
-  return new Date().toLocaleString('en-PH', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-})
+const currentPage = ref(1)
+const itemsPerPage = ref(5)
+const totalItems = ref(0)
 
 const filteredVaccines = computed(() => {
   let filtered = vaccines.value
@@ -266,44 +129,122 @@ const filteredVaccines = computed(() => {
     filtered = filtered.filter(vaccine => vaccine.status === statusFilter.value)
   }
 
+  // Filter by NIP status
+  if (nipFilter.value === 'nip') {
+    filtered = filtered.filter(vaccine => vaccine.isNip === true)
+  } else if (nipFilter.value === 'other') {
+    filtered = filtered.filter(vaccine => vaccine.isNip === false)
+  }
+
+  totalItems.value = filtered.length
   return filtered
+})
+
+const paginatedVaccines = computed(() => {
+  const startIndex = (currentPage.value - 1) * itemsPerPage.value
+  const endIndex = startIndex + itemsPerPage.value
+  return filteredVaccines.value.slice(startIndex, endIndex)
+})
+
+const totalPages = computed(() => {
+  return Math.ceil(totalItems.value / itemsPerPage.value)
 })
 
 const fetchVaccines = async () => {
   try {
     loading.value = true
-    const response = await api.get('/vaccines/stock')
-    vaccines.value = response.data.data
+    // Try the inventory endpoint first (matches admin structure)
+    let response
+    try {
+      response = await api.get('/vaccines/inventory')
+    } catch (inventoryError) {
+      console.warn('Inventory endpoint failed, trying stock endpoint:', inventoryError)
+      response = await api.get('/vaccines/stock')
+    }
+    
+    const rawData = response.data?.data || response.data || []
+    
+    // Normalize the data structure to ensure consistent IDs and status calculation
+    vaccines.value = rawData.map(vaccine => {
+      const qty = vaccine.quantity || vaccine.current_stock_level || 0
+      
+      // Calculate status based on expiry and quantity (similar to admin logic)
+      const exp = vaccine.expiration_date || vaccine.expiry_date || vaccine.expiryDate || null
+      const now = new Date()
+      let status = vaccine.status || null
+      
+      if (exp) {
+        const d = new Date(exp)
+        if (!isNaN(d)) {
+          const in30 = new Date(now.getTime() + 30*24*60*60*1000)
+          if (d < now) status = 'Expired'
+          else if (d >= now && d <= in30) status = 'Expiring Soon'
+        }
+      }
+      
+      if (!status) {
+        status = qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock'
+      }
+      
+      return {
+        id: vaccine.inventory_id || vaccine.id,
+        vaccine_id: vaccine.vaccine_id || vaccine.vaccine?.vaccine_id,
+        vaccineName: vaccine.vaccineName || vaccine.vaccinemaster?.antigen_name || vaccine.vaccine?.antigen_name || vaccine.antigen_name || 'Unknown Vaccine',
+        brandName: vaccine.brandName || vaccine.vaccinemaster?.brand_name || vaccine.vaccine?.brand_name || vaccine.brand_name || '',
+        manufacturer: vaccine.manufacturer || vaccine.vaccinemaster?.manufacturer || vaccine.vaccine?.manufacturer || 'Not specified',
+        batchNo: vaccine.batchNo || vaccine.lot_number || vaccine.batch_number || '',
+        quantity: qty,
+        status: status,
+        expiryDate: vaccine.expiration_date || vaccine.expiry_date || vaccine.expiryDate || '',
+        storageLocation: vaccine.storage_location || vaccine.storageLocation || '',
+        isNip: vaccine.is_nip || vaccine.vaccinemaster?.is_nip || vaccine.vaccine?.is_nip || false
+      }
+    })
+    
+    // Reset to first page when data changes
+    currentPage.value = 1
   } catch (error) {
     console.error('Error fetching vaccines:', error)
+    vaccines.value = []
   } finally {
     loading.value = false
   }
 }
 
-const fetchStats = async () => {
-  try {
-    const response = await api.get('/vaccines/stock/stats')
-    const data = response.data.data
-    stats.value = {
-      available: data.available,
-      lowStock: data.lowStock,
-      outOfStock: data.outOfStock,
-      expiringSoon: data.expiringSoon
-    }
-  } catch (error) {
-    console.error('Error fetching stats:', error)
+const viewVaccineDetail = (vaccineId) => {
+  router.push(`/healthworker/inventory/${vaccineId}`)
+}
+
+const changePage = (page) => {
+  currentPage.value = page
+}
+
+const toggleNipFilter = () => {
+  // Cycle through: all -> nip -> other -> all
+  if (nipFilter.value === 'all') {
+    nipFilter.value = 'nip'
+  } else if (nipFilter.value === 'nip') {
+    nipFilter.value = 'other'
+  } else {
+    nipFilter.value = 'all'
+  }
+  resetPagination()
+}
+
+const getNipFilterText = () => {
+  switch (nipFilter.value) {
+    case 'nip': return 'NIP Only'
+    case 'other': return 'Other Vaccines'
+    default: return 'All Vaccines'
   }
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleString('en-PH', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+const getNipFilterIcon = () => {
+  switch (nipFilter.value) {
+    case 'nip': return 'bi-shield-check'
+    case 'other': return 'bi-capsule'
+    default: return 'bi-collection'
+  }
 }
 
 const getStatusBadgeClass = (status) => {
@@ -312,81 +253,138 @@ const getStatusBadgeClass = (status) => {
     case 'Low Stock': return 'bg-warning text-dark'
     case 'Out of Stock': return 'bg-danger'
     case 'Expiring Soon': return 'bg-danger'
+    case 'Expired': return 'bg-dark'
     default: return 'bg-secondary'
   }
 }
 
-const getQuantityClass = (quantity) => {
-  if (quantity === 0) return 'text-danger'
-  if (quantity <= 50) return 'text-warning'
-  return 'text-success'
+// Watch for search changes to reset pagination
+const resetPagination = () => {
+  currentPage.value = 1
 }
 
-const getProgressBarClass = (status) => {
-  switch (status) {
-    case 'Available': return 'bg-success'
-    case 'Low Stock': return 'bg-warning'
-    case 'Out of Stock': return 'bg-danger'
-    case 'Expiring Soon': return 'bg-danger'
-    default: return 'bg-secondary'
-  }
-}
-
-const getProgressWidth = (quantity) => {
-  // Simple calculation: assume max stock is 200 for visualization
-  const maxStock = 200
-  return Math.min((quantity / maxStock) * 100, 100)
+// Reset pagination when search query or status filter changes
+const debouncedSearch = () => {
+  resetPagination()
 }
 
 onMounted(() => {
   fetchVaccines()
-  fetchStats()
 })
 </script>
 
 <style scoped>
-.hw-stat-card {
-  border: none;
-  border-radius: 1rem;
+.search-container {
+  padding: 0.5rem 0;
 }
 
-.hw-stat-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+.search-filter {
+  max-width: 140px;
+  border-left: 0;
 }
 
-.hw-vaccine-card {
-  border: none;
-  box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
+.vaccine-list {
+  gap: 0;
 }
 
-.hw-vaccine-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0.25rem 2rem 0 rgba(33, 40, 50, 0.2);
+.vaccine-item {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-bottom: 0;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.hw-vaccine-info {
+.vaccine-item.clickable:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.vaccine-item.clickable:active {
+  background-color: #e9ecef;
+  transform: translateY(0);
+}
+
+.vaccine-item:first-child {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.vaccine-item:last-child {
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.vaccine-item:only-child {
+  border-radius: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.vaccine-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.vaccine-details {
+  color: #6c757d;
   font-size: 0.875rem;
 }
 
-.hw-availability-check {
-  background: #f8f9fa;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid #e9ecef;
-}
-
-.card-header {
-  border-bottom: 1px solid #e9ecef;
-  border-radius: 0.75rem 0.75rem 0 0 !important;
-}
-
-code {
-  background: #e9ecef;
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
+.badge {
   font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.filter-toggle-btn {
+  border-radius: 1.5rem;
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filter-toggle-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.filter-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.filter-toggle-btn i:last-child {
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+/* Mobile touch improvements */
+@media (max-width: 576px) {
+  .search-filter {
+    max-width: 120px;
+  }
+  
+  .vaccine-item {
+    padding: 0.875rem;
+    -webkit-tap-highlight-color: rgba(0, 123, 255, 0.1);
+  }
+  
+  .vaccine-item.clickable:active {
+    background-color: rgba(0, 123, 255, 0.1);
+  }
+  
+  .vaccine-name {
+    font-size: 0.95rem;
+  }
+  
+  .vaccine-details {
+    font-size: 0.8rem;
+  }
+  
+  .filter-toggle-btn {
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 </style>

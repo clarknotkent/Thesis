@@ -2,7 +2,9 @@ import { ref, computed } from 'vue'
 
 const authToken = ref(localStorage.getItem('authToken'))
 const userRole = ref(localStorage.getItem('userRole'))
-const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
+// Check both 'userInfo' and 'authUser' keys for compatibility
+const storedUserInfo = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
+const userInfo = ref(JSON.parse(storedUserInfo || 'null'))
 
 // Authentication utilities
 export const useAuth = () => {
@@ -11,7 +13,7 @@ export const useAuth = () => {
   }
 
   const getRole = () => {
-    return userRole.value
+    return userRole.value || userInfo.value?.role || localStorage.getItem('userRole')
   }
 
   const getUserInfo = () => {
@@ -27,6 +29,7 @@ export const useAuth = () => {
     localStorage.setItem('userRole', role)
     if (info) {
       localStorage.setItem('userInfo', JSON.stringify(info))
+      localStorage.setItem('authUser', JSON.stringify(info)) // For compatibility
     }
   }
 
@@ -38,11 +41,13 @@ export const useAuth = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')
+    localStorage.removeItem('authUser') // Remove both keys
   }
 
   const updateUserInfo = (info) => {
     userInfo.value = info
     localStorage.setItem('userInfo', JSON.stringify(info))
+    localStorage.setItem('authUser', JSON.stringify(info)) // For compatibility
   }
 
   return {
@@ -64,5 +69,18 @@ export const isAuthenticated = () => {
 }
 
 export const getRole = () => {
-  return localStorage.getItem('userRole')
+  const role = localStorage.getItem('userRole')
+  if (role) return role
+  
+  // Fallback to user info
+  const storedUserInfo = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
+  if (storedUserInfo) {
+    try {
+      const userInfo = JSON.parse(storedUserInfo)
+      return userInfo?.role
+    } catch {
+      return null
+    }
+  }
+  return null
 }
