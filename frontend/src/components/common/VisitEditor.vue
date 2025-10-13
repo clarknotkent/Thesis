@@ -216,7 +216,7 @@
                   <!-- In-facility (inside): choose from inventory stocks -->
                   <div class="d-flex align-items-center mb-2">
                     <div class="form-check form-switch ms-auto">
-                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="fetchVaccineOptions">
+                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="onNipToggle">
                       <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
                     </div>
                   </div>
@@ -525,10 +525,11 @@ const fetchVaccineOptions = async () => {
     console.log('💉 [VisitEditor] Vaccine inventory list:', payload)
     vaccineOptions.value = payload.map(v => ({
       inventory_id: v.inventory_id || v.id,
-      display_name: `${v.vaccinemaster?.antigen_name || v.vaccine_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || v.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Exp: ${v.expiration_date ? formatDate(v.expiration_date) : 'N/A'}`,
-      vaccine_name: v.vaccinemaster?.antigen_name || v.vaccine_name,
-      disease_prevented: v.vaccinemaster?.disease_prevented || v.disease_prevented,
-      manufacturer: v.vaccinemaster?.manufacturer || v.manufacturer,
+      vaccine_id: v.vaccine_id,
+      display_name: `${v.vaccinemaster?.antigen_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Exp: ${v.expiration_date ? formatDate(v.expiration_date) : 'N/A'}`,
+      vaccine_name: v.vaccinemaster?.antigen_name || 'Unknown',
+      disease_prevented: v.vaccinemaster?.disease_prevented || 'Unknown',
+      manufacturer: v.vaccinemaster?.manufacturer || 'Unknown',
       lot_number: v.lot_number,
       expiration_date: v.expiration_date
     }))
@@ -541,8 +542,15 @@ const fetchVaccineOptions = async () => {
 
 const fetchVaccineCatalog = async () => {
   try {
-    const res = await api.get('/vaccines')
-    const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const res = await api.get('/vaccines', { params })
+    // Backend returns { success: true, data: { vaccines, totalCount, ... } }
+    const payload = res.data?.data
+    console.log('✅ [VisitEditor] Vaccine catalog API response:', res.data)
+    const list = Array.isArray(payload?.vaccines)
+      ? payload.vaccines
+      : (Array.isArray(res.data?.vaccines) ? res.data.vaccines : (Array.isArray(res.data) ? res.data : []))
     vaccineCatalog.value = list.map(v => ({
       vaccine_id: v.vaccine_id || v.id,
       antigen_name: v.antigen_name || v.name || 'Unknown',
@@ -550,7 +558,17 @@ const fetchVaccineCatalog = async () => {
       manufacturer: v.manufacturer || ''
     }))
   } catch (e) {
+    console.error('❌ [VisitEditor] Failed to load vaccine catalog:', e)
     vaccineCatalog.value = []
+  }
+}
+
+// When NIP filter toggles, refresh the appropriate source (inventory for in-facility, catalog for recordMode)
+const onNipToggle = () => {
+  if (props.recordMode) {
+    fetchVaccineCatalog()
+  } else {
+    fetchVaccineOptions()
   }
 }
 

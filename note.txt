@@ -6,8 +6,6 @@
 - Try all CRUDs
 - Get/Utilize All necessary Views
 - Repopulate Everything (with decent examples)
-
-- Implement Vax to Other Vax Rule (Especially in Rescheduling)
 - Why is the Inventory History not being updated each time inventory changes (like updates on stock--its name, brands, quantity, etc)?
 
 
@@ -34,3 +32,5 @@ can u clean my backend and check if everything is necessary? check if all are st
 (you can list all triggers, functions, and routines, then describe them and did any of them overlapped or contradicted?)
 
 i have functions and triggers already in the database, and in the backend, there are also functions right? are any of them overlaps or contradicts? can u please scan and check everyhting
+
+why do visits dont have created and updated by and recorded_by

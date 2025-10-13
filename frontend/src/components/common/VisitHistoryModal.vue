@@ -16,7 +16,7 @@
             <div v-else class="list-group">
               <button v-for="v in visits" :key="v.visit_id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start" @click="selectVisit(v)">
                 <div>
-                  <div class="fw-semibold">{{ formatDate(v.visit_date) }} - {{ v.visit_type || v.service_rendered || 'Visit' }}</div>
+                  <div class="fw-semibold">{{ formatDate(v.created_at || v.visit_date) }} - {{ v.visit_type || v.service_rendered || 'Visit' }}</div>
                   <div class="text-muted small">Recorded by: {{ v.recorded_by || v.recorded_by_name || v.recorded_by_user || '' }}</div>
                 </div>
                 <small class="text-muted">{{ v.findings ? (v.findings.length > 30 ? v.findings.substring(0,30) + '...' : v.findings) : '' }}</small>
@@ -27,7 +27,7 @@
               <div class="card-body">
                 <h6 class="card-title">Visit Details</h6>
                 <div class="row g-2">
-                  <div class="col-md-4"><strong>Date:</strong><div class="text-muted">{{ formatDate(selected.visit_date) }}</div></div>
+                  <div class="col-md-4"><strong>Date:</strong><div class="text-muted">{{ formatDate(selected.created_at || selected.visit_date) }}</div></div>
                   <div class="col-md-4"><strong>Recorded By:</strong><div class="text-muted">{{ selected.recorded_by_name || selected.recorded_by || '' }}</div></div>
                   <div class="col-md-4"><strong>Service Rendered:</strong><div class="text-muted">{{ selected.service_rendered || selected.visit_type || '' }}</div></div>
                 </div>

@@ -182,7 +182,7 @@ const vaccineModel = {
       const doses = Array.isArray(scheduleData.doses) ? scheduleData.doses.map(d => ({
         schedule_id: masterId,
         dose_number: d.dose_number != null ? Number(d.dose_number) : null,
-        due_after_days: d.due_after_days != null ? Number(due_after_days) : null,
+        due_after_days: d.due_after_days != null ? Number(d.due_after_days) : null,
         min_interval_days: d.min_interval_days != null ? Number(d.min_interval_days) : null,
         max_interval_days: d.max_interval_days != null ? Number(d.max_interval_days) : null,
         min_interval_other_vax: d.min_interval_other_vax != null ? Number(d.min_interval_other_vax) : null,
@@ -192,6 +192,7 @@ const vaccineModel = {
         absolute_latest_days: d.absolute_latest_days != null ? Number(d.absolute_latest_days) : null,
         notes: d.notes || null,
         created_by: actorId || null,
+        updated_by: actorId || null,
         created_at: new Date().toISOString()
       })) : [];
 
@@ -409,8 +410,17 @@ const vaccineModel = {
       const { data, error } = await query;
 
       if (error) throw error;
-      console.debug('[vaccineModel.getAllInventory] fetched', Array.isArray(data) ? data.length : 0, 'rows');
-      return data || [];
+      let rows = data || [];
+      // Fallback filter by NIP if join-path filter isn't honored by PostgREST
+      if (filters.is_nip !== undefined && filters.is_nip !== null) {
+        const want = (typeof filters.is_nip === 'string') ? (filters.is_nip === 'true') : !!filters.is_nip;
+        rows = rows.filter(r => {
+          const vm = r && r.vaccinemaster;
+          return !!(vm && vm.is_nip) === want;
+        });
+      }
+      console.debug('[vaccineModel.getAllInventory] fetched', Array.isArray(rows) ? rows.length : 0, 'rows (after filters)');
+      return rows;
     } catch (error) {
       console.debug('[vaccineModel.getAllInventory] error during fetch');
       console.error('Error fetching inventory:', error);

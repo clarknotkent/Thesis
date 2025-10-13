@@ -262,7 +262,7 @@
                         <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
                         <div class="list-group">
                           <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
-                            <span>{{ formatDateShort(v.visit_date) }}</span>
+                            <span>{{ formatDateShort(v.created_at || v.visit_date) }}</span>
                             <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
                           </button>
                         </div>
@@ -309,7 +309,7 @@
             <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
             <div class="list-group">
               <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
-                <span>{{ formatDateShort(v.visit_date) }}</span>
+                <span>{{ formatDateShort(v.created_at || v.visit_date) }}</span>
                 <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
               </button>
             </div>
