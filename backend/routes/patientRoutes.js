@@ -20,7 +20,7 @@ const {
 
 // NOTE: Define non-parameterized helper routes BEFORE any '/:id' routes to avoid shadowing
 // Optional: compute age detail (months, days) from DOB
-router.get('/helpers/age', authenticateRequest, checkUserMapping, (req, res, next) => {
+router.get('/helpers/age', authenticateRequest, (req, res, next) => {
   try {
     const dob = req.query.date_of_birth || req.query.dob;
     if (!dob) return res.status(400).json({ success:false, message:'date_of_birth is required' });
@@ -37,17 +37,17 @@ router.get('/helpers/age', authenticateRequest, checkUserMapping, (req, res, nex
   }
 });
 
-// GET /api/patients - Get all patients with pagination and filtering
-router.get('/', authenticateRequest, checkUserMapping, getAllPatients);
+// GET /api/patients - Get all patients with pagination and filtering (no user mapping required for reads)
+router.get('/', authenticateRequest, getAllPatients);
 
 // GET /api/patients/parents/options - Parents (mother/father) dropdown (place before param routes)
-router.get('/parents/options', authenticateRequest, checkUserMapping, listParentsOptions);
+router.get('/parents/options', authenticateRequest, listParentsOptions);
 
 // POST /api/patients - Register new patient
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), createPatient);
 
-// GET /api/patients/:id - Get specific patient details
-router.get('/:id', authenticateRequest, checkUserMapping, getPatientById);
+// GET /api/patients/:id - Get specific patient details (no user mapping required for reads)
+router.get('/:id', authenticateRequest, getPatientById);
 
 // PUT /api/patients/:id - Update patient
 router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), updatePatient);

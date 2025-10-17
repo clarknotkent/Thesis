@@ -321,8 +321,11 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+
 const { addToast } = useToast()
+const { confirm } = useConfirm()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -883,12 +886,22 @@ const editService = (index) => {
   vaccinationForm.value.editingIndex = index
 }
 
-const removeService = (index) => {
-  if (confirm('Are you sure you want to remove this service from the visit?')) {
+const removeService = async (index) => {
+  try {
+    await confirm({
+      title: 'Remove Service',
+      message: 'Are you sure you want to remove this service from the visit?',
+      variant: 'warning',
+      confirmText: 'Remove',
+      cancelText: 'Cancel'
+    })
+    
     const collectedVaccinationsArray = [...collectedVaccinations.value]
     collectedVaccinationsArray.splice(index, 1)
     emit('update-collected-vaccinations', collectedVaccinationsArray)
     addToast({ title: 'Removed', message: 'Service removed from visit', type: 'info' })
+  } catch {
+    // User cancelled
   }
 }
 

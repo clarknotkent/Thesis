@@ -129,6 +129,11 @@ import AppCard from '@/components/common/AppCard.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { addToast } = useToast()
+const { confirm } = useConfirm()
 
 const router = useRouter()
 
@@ -446,15 +451,26 @@ const debouncedSearch = () => {
 // Removed viewPatient and editPatient methods - navigation handled by viewPatientDetail
 
 const deletePatient = async (patient) => {
-  if (confirm(`Are you sure you want to delete patient record for ${patient.childInfo.name}?`)) {
+  try {
+    await confirm({
+      title: 'Delete Patient Record',
+      message: `Are you sure you want to delete patient record for ${patient.childInfo.name}? This action cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    })
+    
     try {
       await api.delete(`/patients/${patient.patient_id}`)
       await fetchPatients()
+      addToast({ title: 'Deleted', message: 'Patient record deleted successfully', type: 'success' })
     } catch (error) {
       console.error('Error deleting patient:', error)
       const errorMessage = error.response?.data?.message || 'Error deleting patient'
-      alert(errorMessage)
+      addToast({ title: 'Error', message: errorMessage, type: 'error' })
     }
+  } catch {
+    // User cancelled
   }
 }
 

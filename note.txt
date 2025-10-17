@@ -34,3 +34,261 @@ can u clean my backend and check if everything is necessary? check if all are st
 i have functions and triggers already in the database, and in the backend, there are also functions right? are any of them overlaps or contradicts? can u please scan and check everyhting
 
 why do visits dont have created and updated by and recorded_by
+
+
+
+
+# Database Migration Instructions - Activity Logs Fix
+
+**Date:** October 15, 2025  
+**Priority:** Medium  
+**Estimated Time:** 5 minutes  
+**Impact:** Fixes "Unknown" user role display in Activity Logs page
+
+---
+
+## Problem Statement
+
+The Activity Logs page is currently showing "Unknown" for user roles because the `activitylogs_view` database view does not include the `user_role` column from the `users` table.
+
+## Required Changes
+
+### Update the `activitylogs_view` to include user role information
+
+**Current View Structure:**
+```sql
+-- CURRENT (INCOMPLETE)
+CREATE OR REPLACE VIEW activitylogs_view AS
+SELECT
+  a.log_id,
+  a.user_id,
+  a.action_type,
+  a.entity_type,
+  a.entity_id,
+  a.description,
+  a.old_value,
+  a.new_value,
+  timezone('Asia/Manila', a."timestamp"::timestamptz) AS "timestamp",
+  COALESCE(u.full_name, 'System') AS user_fullname
+FROM activitylogs a
+LEFT JOIN users u ON u.user_id = a.user_id;
+```
+
+**Required View Structure:**
+```sql
+-- NEW (WITH USER ROLE)
+CREATE OR REPLACE VIEW activitylogs_view AS
+SELECT
+  a.log_id,
+  a.user_id,
+  a.action_type,
+  a.entity_type,
+  a.entity_id,
+  a.description,
+  a.old_value,
+  a.new_value,
+  timezone('Asia/Manila', a."timestamp"::timestamptz) AS "timestamp",
+  COALESCE(u.full_name, 'System') AS user_fullname,
+  u.username,
+  u.role AS user_role
+FROM activitylogs a
+LEFT JOIN users u ON u.user_id = a.user_id;
+```
+
+---
+
+## Migration SQL Script
+
+**Please execute the following SQL in the database:**
+
+```sql
+-- ========================================
+-- Migration: Add user role to activitylogs_view
+-- Date: October 15, 2025
+-- Description: Updates activitylogs_view to include user_role and username
+-- ========================================
+
+-- Step 1: Drop the existing view
+DROP VIEW IF EXISTS activitylogs_view CASCADE;
+
+-- Step 2: Recreate the view with user role
+CREATE OR REPLACE VIEW activitylogs_view AS
+SELECT
+  a.log_id,
+  a.user_id,
+  a.action_type,
+  a.entity_type,
+  a.entity_id,
+  a.description,
+  a.old_value,
+  a.new_value,
+  timezone('Asia/Manila', a."timestamp"::timestamptz) AS "timestamp",
+  COALESCE(u.full_name, 'System') AS user_fullname,
+  u.username,
+  u.role AS user_role
+FROM activitylogs a
+LEFT JOIN users u ON u.user_id = a.user_id;
+
+-- Step 3: Grant appropriate permissions
+GRANT SELECT ON activitylogs_view TO authenticated;
+
+-- Step 4: Verification query (optional - for testing)
+SELECT 
+  log_id,
+  user_id,
+  user_fullname,
+  user_role,
+  action_type,
+  description,
+  timestamp
+FROM activitylogs_view
+ORDER BY timestamp DESC
+LIMIT 5;
+```
+
+---
+
+## Verification Steps
+
+After running the migration, please verify:
+
+1. **View exists and has correct columns:**
+   ```sql
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'activitylogs_view'
+   ORDER BY ordinal_position;
+   ```
+
+   **Expected columns:**
+   - log_id
+   - user_id
+   - action_type
+   - entity_type
+   - entity_id
+   - description
+   - old_value
+   - new_value
+   - timestamp
+   - user_fullname
+   - username
+   - user_role ← **NEW**
+
+2. **Data is populated correctly:**
+   ```sql
+   SELECT 
+     user_fullname,
+     user_role,
+     COUNT(*) as log_count
+   FROM activitylogs_view
+   GROUP BY user_fullname, user_role
+   ORDER BY log_count DESC
+   LIMIT 10;
+   ```
+
+   **Expected result:** Should show user names with their roles (admin, health_worker, parent)
+
+3. **System logs handled properly:**
+   ```sql
+   SELECT *
+   FROM activitylogs_view
+   WHERE user_id IS NULL
+   LIMIT 5;
+   ```
+
+   **Expected result:** user_fullname should be 'System', user_role should be NULL
+
+---
+
+## Rollback Plan (if needed)
+
+If issues occur, revert to the original view:
+
+```sql
+DROP VIEW IF EXISTS activitylogs_view CASCADE;
+
+CREATE OR REPLACE VIEW activitylogs_view AS
+SELECT
+  a.log_id,
+  a.user_id,
+  a.action_type,
+  a.entity_type,
+  a.entity_id,
+  a.description,
+  a.old_value,
+  a.new_value,
+  timezone('Asia/Manila', a."timestamp"::timestamptz) AS "timestamp",
+  COALESCE(u.full_name, 'System') AS user_fullname
+FROM activitylogs a
+LEFT JOIN users u ON u.user_id = a.user_id;
+
+GRANT SELECT ON activitylogs_view TO authenticated;
+```
+
+---
+
+## Post-Migration Actions
+
+**After database migration is complete:**
+
+1. ✅ Notify backend team to restart the Node.js server
+2. ✅ Test the Activity Logs page in the frontend
+3. ✅ Verify user roles display correctly with icons:
+   - 🛡️ Admin (Red badge)
+   - 🏥 Health Staff (Blue badge)
+   - ❤️ Parent (Green badge)
+
+---
+
+## Dependencies
+
+**Tables involved:**
+- `activitylogs` (main table)
+- `users` (for user details and role)
+
+**Views affected:**
+- `activitylogs_view` (updated)
+
+**Backend files already updated:**
+- `backend/controllers/activityController.js` ✅
+- `backend/models/activityModel.js` ✅
+
+**Frontend files already updated:**
+- `frontend/src/views/admin/activity-logs/ActivityLogs.vue` ✅
+
+---
+
+## Notes
+
+- This is a **non-breaking change** - only adds columns to an existing view
+- No data migration needed
+- Uses `LEFT JOIN` to preserve system-generated logs (where user_id is NULL)
+- All timestamps remain in `Asia/Manila` timezone
+- The view already had `user_fullname`, we're just adding `username` and `user_role`
+
+---
+
+## Contact
+
+If you encounter any issues or have questions:
+- Check the migration file: `db/2025-10-15_add_user_role_to_activitylogs_view.sql`
+- Refer to updated view definition: `db/cleaned_views.sql` (line 32-47)
+
+---
+
+## Confirmation Checklist
+
+Please confirm after completion:
+
+- [ ] Migration SQL executed successfully
+- [ ] Verification queries run and show expected results
+- [ ] No errors in database logs
+- [ ] View permissions granted correctly
+- [ ] Backend team notified to restart server
+
+**Estimated downtime:** None (view recreation is instant)  
+**Risk level:** Low (read-only view change)
+
+---
+
+**End of Instructions**

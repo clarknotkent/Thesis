@@ -33,11 +33,9 @@ const menuItems = computed(() => {
       { name: 'dashboard', path: '/admin/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
       { name: 'patients', path: '/admin/patients', label: 'Patient Records', icon: 'bi bi-people' },
       { name: 'vaccines', path: '/admin/vaccines', label: 'Vaccine Inventory', icon: 'bi bi-box-seam' },
-      { name: 'receiving-reports', path: '/admin/receiving-reports', label: 'Receiving Reports', icon: 'bi bi-receipt' },
       { name: 'sms', path: '/admin/sms', label: 'SMS Logs', icon: 'bi bi-chat-dots' },
       { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
       { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' },
-      { name: 'create-notification', path: '/admin/create-notification', label: 'Create Notification', icon: 'bi bi-bell-plus' },
       { name: 'notifications-inbox', path: '/admin/notifications-inbox', label: 'Notifications', icon: 'bi bi-bell' },
       { name: 'activity-logs', path: '/admin/activity-logs', label: 'Activity Logs', icon: 'bi bi-activity' }
     ],

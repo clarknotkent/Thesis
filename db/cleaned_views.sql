@@ -41,7 +41,9 @@ SELECT
   a.old_value,
   a.new_value,
   timezone('Asia/Manila', a."timestamp"::timestamptz) AS "timestamp",
-  COALESCE(u.full_name, 'System') AS user_fullname
+  COALESCE(u.full_name, 'System') AS user_fullname,
+  u.username,
+  u.role AS user_role
 FROM activitylogs a
 LEFT JOIN users u ON u.user_id = a.user_id;
 

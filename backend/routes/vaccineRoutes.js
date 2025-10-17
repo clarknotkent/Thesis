@@ -5,6 +5,8 @@ const { manageScheduling, getScheduleForVaccine } = require('../controllers/vacc
 // Scheduling Management Route
 // POST /api/vaccines/:id/schedule - Manage scheduling for a vaccine type
 router.post('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
+// PUT /api/vaccines/:id/schedule - Update scheduling for a vaccine type
+router.put('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
 // GET /api/vaccines/:id/schedule - Retrieve schedule for a vaccine type
 router.get('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleForVaccine);
 const {
@@ -27,10 +29,13 @@ const {
   getStockStats
 } = require('../controllers/vaccineController');
 
-const { listSchedules } = require('../controllers/vaccineController');
+const { listSchedules, getScheduleById } = require('../controllers/vaccineController');
 
 // GET /api/vaccines/schedules - list all schedules
 router.get('/schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin']), listSchedules);
+
+// GET /api/vaccines/schedules/:id - get specific schedule by schedule_id
+router.get('/schedules/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleById);
 
 // Manual run of scheduled tasks (admin only)
 const { runExpiryCheck, runScheduleStatusUpdate } = require('../controllers/vaccineController');

@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const guardianController = require('../controllers/guardianController');
-const { authenticateRequest } = require('../middlewares/authMiddleware');
+const { authenticateRequest, optionalAuthenticate } = require('../middlewares/authMiddleware');
 
-// Apply auth middleware to all routes
+// Apply auth middleware to all routes (but don't require user mapping for reads)
 router.use(authenticateRequest);
 
-// GET /guardians - Get all guardians
+// GET /guardians - Get all guardians (no user mapping required for admins)
 router.get('/', guardianController.getAllGuardians);
 
-// GET /guardians/:id - Get guardian by ID
+// GET /guardians/:id - Get guardian by ID (no user mapping required for admins)
 router.get('/:id', guardianController.getGuardianById);
 
 // POST /guardians - Create new guardian

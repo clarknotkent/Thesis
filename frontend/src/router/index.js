@@ -6,18 +6,17 @@ import Login from '@/views/auth/Login.vue'
 import LandingPage from '@/views/LandingPage.vue'
 
 // Admin Views
-import AdminDashboard from '@/views/admin/Dashboard.vue'
-import PatientRecords from '@/views/admin/PatientRecords.vue'
-import VaccineInventory from '@/views/admin/VaccineInventory.vue'
-import SMSLogs from '@/views/admin/SMSLogs.vue'
-import Reports from '@/views/admin/Reports.vue'
-import ReceivingReports from '@/views/admin/ReceivingReports.vue'
-import UserAccounts from '@/views/admin/UserAccounts.vue'
-import ActivityLogs from '@/views/admin/ActivityLogs.vue'
-import Profile from '@/views/admin/Profile.vue'
-import Settings from '@/views/admin/Settings.vue'
-import CreateNotification from '@/views/admin/CreateNotification.vue'
-import NotificationsInbox from '@/views/admin/NotificationsInbox.vue'
+import AdminDashboard from '@/views/admin/dashboard/Dashboard.vue'
+import PatientRecords from '@/views/admin/patient-records/PatientRecords.vue'
+import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
+import SMSLogs from '@/views/admin/sms/SMSLogs.vue'
+import Reports from '@/views/admin/reports-analytics/Reports.vue'
+import UserAccounts from '@/views/admin/user-accounts/UserAccounts.vue'
+import ActivityLogs from '@/views/admin/activity-logs/ActivityLogs.vue'
+import Profile from '@/views/admin/profile/Profile.vue'
+import Settings from '@/views/admin/settings/Settings.vue'
+import NotificationsInbox from '@/views/admin/notifications/NotificationsInbox.vue'
+import AddNotifications from '@/views/admin/notifications/AddNotifications.vue'
 
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
@@ -75,11 +74,141 @@ const routes = [
     }
   },
   {
+    path: '/admin/patients/add',
+    name: 'AddPatient',
+    component: () => import('@/views/admin/patient-records/AddPatient.vue'),
+    meta: {
+      title: 'Add Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/edit/:id',
+    name: 'EditPatient',
+    component: () => import('@/views/admin/patient-records/EditPatient.vue'),
+    meta: {
+      title: 'Edit Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/view/:id',
+    name: 'ViewPatient',
+    component: () => import('@/views/admin/patient-records/ViewPatient.vue'),
+    meta: {
+      title: 'View Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
     path: '/admin/vaccines',
     name: 'VaccineInventory',
     component: VaccineInventory,
     meta: {
       title: 'Vaccine Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/add-stock',
+    name: 'AddStock',
+    component: () => import('@/views/admin/inventory/AddStock.vue'),
+    meta: {
+      title: 'Add Stock - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/edit-stock/:id',
+    name: 'EditStock',
+    component: () => import('@/views/admin/inventory/EditInventory.vue'),
+    meta: {
+      title: 'Edit Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/add-vaccine',
+    name: 'AddVaccine',
+    component: () => import('@/views/admin/inventory/AddVaccine.vue'),
+    meta: {
+      title: 'Add Vaccine Type - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/edit-vaccine/:id',
+    name: 'EditVaccine',
+    component: () => import('@/views/admin/inventory/EditVaccine.vue'),
+    meta: {
+      title: 'Edit Vaccine Type - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/view/:id',
+    name: 'ViewInventory',
+    component: () => import('@/views/admin/inventory/ViewInventory.vue'),
+    meta: {
+      title: 'View Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/adjust/:id',
+    name: 'AdjustStock',
+    component: () => import('@/views/admin/inventory/AdjustStock.vue'),
+    meta: {
+      title: 'Adjust Stock - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/history/:id',
+    name: 'InventoryHistory',
+    component: () => import('@/views/admin/inventory/InventoryHistory.vue'),
+    meta: {
+      title: 'Transaction History - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/schedules/view/:id',
+    name: 'ViewSchedule',
+    component: () => import('@/views/admin/inventory/ViewSchedule.vue'),
+    meta: {
+      title: 'View Schedule - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/schedules/add',
+    name: 'AddSchedule',
+    component: () => import('@/views/admin/inventory/AddSchedule.vue'),
+    meta: {
+      title: 'Add Schedule - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/vaccines/schedules/edit/:id',
+    name: 'EditSchedule',
+    component: () => import('@/views/admin/inventory/EditSchedule.vue'),
+    meta: {
+      title: 'Edit Schedule - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -105,21 +234,41 @@ const routes = [
     }
   },
   {
-    path: '/admin/receiving-reports',
-    name: 'ReceivingReports',
-    component: ReceivingReports,
-    meta: {
-      title: 'Receiving Reports - ImmunizeMe',
-      requiresAuth: true,
-      role: 'admin'
-    }
-  },
-  {
     path: '/admin/users',
     name: 'UserAccounts',
     component: UserAccounts,
     meta: {
       title: 'User Accounts - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/users/add',
+    name: 'AddUser',
+    component: () => import('@/views/admin/user-accounts/AddUser.vue'),
+    meta: {
+      title: 'Add User - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/users/edit/:id',
+    name: 'EditUser',
+    component: () => import('@/views/admin/user-accounts/EditUser.vue'),
+    meta: {
+      title: 'Edit User - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/users/view/:id',
+    name: 'ViewUser',
+    component: () => import('@/views/admin/user-accounts/ViewUser.vue'),
+    meta: {
+      title: 'View User - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -155,21 +304,21 @@ const routes = [
     }
   },
   {
-    path: '/admin/create-notification',
-    name: 'CreateNotification',
-    component: CreateNotification,
-    meta: {
-      title: 'Create Notification - ImmunizeMe',
-      requiresAuth: true,
-      role: 'admin'
-    }
-  },
-  {
     path: '/admin/notifications-inbox',
     name: 'NotificationsInbox',
     component: NotificationsInbox,
     meta: {
       title: 'Notifications Inbox - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/add-notifications',
+    name: 'AddNotifications',
+    component: AddNotifications,
+    meta: {
+      title: 'Create Notification - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }

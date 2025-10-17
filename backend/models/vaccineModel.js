@@ -375,6 +375,24 @@ const vaccineModel = {
     }
   },
 
+  // Get schedule by schedule_id (for viewing/editing a specific schedule)
+  getScheduleById: async (schedule_id) => {
+    try {
+      const { data, error } = await supabase
+        .from('schedule_master')
+        .select(`*, schedule_doses(*), vaccine:vaccine_id (vaccine_id, antigen_name, brand_name)`)
+        .eq('id', schedule_id)
+        .eq('is_deleted', false)
+        .limit(1)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('[vaccineModel.getScheduleById] error:', error);
+      throw error;
+    }
+  },
+
   // Get all inventory items with vaccine details
   getAllInventory: async (filters = {}) => {
     try {

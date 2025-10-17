@@ -55,12 +55,32 @@
         </a>
       </div>
     </nav>
+
+    <!-- Toast Notifications -->
+    <ToastContainer />
+    
+    <!-- Global Confirm Dialog -->
+    <ConfirmDialog 
+      :show="confirmState.show"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :variant="confirmState.variant"
+      :confirmText="confirmState.confirmText"
+      :cancelText="confirmState.cancelText"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import ToastContainer from '@/components/common/ToastContainer.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirmState, handleConfirm, handleCancel } = useConfirm()
 
 const router = useRouter()
 const route = useRoute()

@@ -361,11 +361,13 @@ import { ref, watch, onMounted, computed } from 'vue';
 import VisitEditor from '@/components/common/VisitEditor.vue'
 import api from '@/services/api';
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
 
-console.log('API service imported:', api);
+const { addToast } = useToast()
+const { confirm } = useConfirm()
 
-const { addToast } = useToast();
+console.log('API service imported:', api);
 
 const props = defineProps({
   show: {
@@ -907,10 +909,16 @@ const deleteVaccinationRecord = async (index) => {
   if (!patientData.value?.vaccinationHistory?.[index]) return;
 
   const vaccine = patientData.value.vaccinationHistory[index];
-  const confirmMsg = `Are you sure you want to delete the vaccination record for ${vaccine.vaccineName}?
-This action cannot be undone.`;
-
-  if (confirm(confirmMsg)) {
+  
+  try {
+    await confirm({
+      title: 'Delete Vaccination Record',
+      message: `Are you sure you want to delete the vaccination record for ${vaccine.vaccineName}? This action cannot be undone.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    })
+    
     try {
       saving.value = true;
       if (vaccine.immunization_id) {
@@ -923,6 +931,7 @@ This action cannot be undone.`;
       // Schedule maintenance is handled by backend; no explicit schedule update call needed here.
       
       await fetchPatientData(); // Refresh data
+      addToast({ title: 'Deleted', message: 'Vaccination record deleted successfully', type: 'success' })
       emit('update'); // Notify parent component
     } catch (error) {
       console.error('Error deleting vaccination record:', error);
@@ -930,6 +939,8 @@ This action cannot be undone.`;
     } finally {
       saving.value = false;
     }
+  } catch {
+    // User cancelled
   }
 };
 

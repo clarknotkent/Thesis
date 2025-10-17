@@ -352,6 +352,21 @@ const listSchedules = async (req, res) => {
   }
 };
 
+// Get schedule by schedule_id
+const getScheduleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const schedule = await vaccineModel.getScheduleById(id);
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Schedule not found' });
+    }
+    return res.json({ success: true, data: schedule });
+  } catch (error) {
+    console.error('[vaccineController.getScheduleById] error:', error);
+    return sendError(res, error, 'Failed to fetch schedule');
+  }
+};
+
 module.exports = {
   addVaccine,
   getVaccine,
@@ -374,6 +389,7 @@ module.exports = {
   manageScheduling,
   getScheduleForVaccine,
   listSchedules,
+  getScheduleById,
   // Manual tasks
   runExpiryCheck: async (req, res) => {
     try {

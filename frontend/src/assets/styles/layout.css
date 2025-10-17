@@ -41,6 +41,17 @@
   transition: transform 0.3s ease;
 }
 
+/* Desktop: Hide sidebar when not .show */
+@media (min-width: 992px) {
+  .sidebar:not(.show) {
+    transform: translateX(-100%);
+  }
+  
+  .sidebar.show {
+    transform: translateX(0);
+  }
+}
+
 .sidebar-content {
   padding: 0 1rem;
 }
@@ -68,10 +79,20 @@
 
 .main-content {
   margin-left: var(--sidebar-width);
-  padding-top: var(--navbar-height);
+  padding-top: calc(var(--navbar-height) + 1.5rem);
+  padding-left: 2rem;
+  padding-right: 2rem;
+  padding-bottom: 2rem;
   min-height: calc(100vh - var(--navbar-height));
   background: var(--light-color);
   transition: margin-left 0.3s ease;
+}
+
+/* Desktop: Adjust main content when sidebar is collapsed */
+@media (min-width: 992px) {
+  .admin-layout.sidebar-collapsed .main-content {
+    margin-left: 0;
+  }
 }
 
 
