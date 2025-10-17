@@ -1,0 +1,26 @@
+﻿# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment files
+.env
+
+# Build outputs
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Uploaded files (optional - you might want to keep sample files)
+backend/uploads/*
+backend/trash/*
+
+# Keep directory structure but ignore contents
+!backend/uploads/.gitkeep
+!backend/trash/.gitkeep
