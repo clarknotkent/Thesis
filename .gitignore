@@ -17,10 +17,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Uploaded files (optional - you might want to keep sample files)
-backend/uploads/*
+# Uploaded files (exclude actual uploads but keep structure)
+backend/uploads/*.png
+backend/uploads/*.jpg
+backend/uploads/*.pdf
+backend/uploads/*.json
 backend/trash/*
 
-# Keep directory structure but ignore contents
+# Keep directory structure
 !backend/uploads/.gitkeep
 !backend/trash/.gitkeep
