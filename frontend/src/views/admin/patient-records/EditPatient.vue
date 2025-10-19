@@ -146,6 +146,14 @@ const fetchPatientData = async () => {
       newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || ''
     }
 
+    // If family number missing but guardian selected, prefill from guardians list
+    if (!patientData.value.family_number && patientData.value.guardian_id) {
+      const g = guardians.value.find(x => x.guardian_id === patientData.value.guardian_id)
+      if (g && g.family_number) {
+        patientData.value.family_number = g.family_number
+      }
+    }
+
   } catch (err) {
     console.error('Error fetching patient data:', err)
     error.value = 'Failed to load patient data. Please try again.'

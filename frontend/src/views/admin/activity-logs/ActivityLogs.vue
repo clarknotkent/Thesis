@@ -130,7 +130,7 @@
               <select class="form-select" v-model="filters.userRole" @change="applyFilters">
                 <option value="">All Roles</option>
                 <option value="admin">Admin</option>
-                <option value="health_worker">Health Worker</option>
+                <option value="health_staff">Health Staff</option>
                 <option value="parent">Parent</option>
               </select>
             </div>
@@ -207,13 +207,13 @@
                   <td>{{ formatDateOnly(log.timestamp) }}</td>
                   <td>{{ formatTimeOnly(log.timestamp) }}</td>
                   <td>
-                    <button 
-                      class="btn btn-outline-info btn-sm" 
-                      @click="viewLogDetails(log)"
+                    <router-link 
+                      class="btn btn-outline-info btn-sm"
+                      :to="{ name: 'ActivityLogDetails', params: { id: log.id } }"
                       title="View Details"
                     >
                       <i class="bi bi-eye"></i>
-                    </button>
+                    </router-link>
                   </td>
                 </tr>
                 <tr v-if="logs.length === 0">
@@ -235,66 +235,6 @@
             :items-per-page="itemsPerPage"
             @page-changed="changePage"
           />
-        </div>
-      </div>
-
-      <!-- Log Details Modal -->
-      <div class="modal fade" :class="{ show: showDetailsModal }" :style="{ display: showDetailsModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">
-                <i class="bi bi-info-circle me-2"></i>
-                Activity Log Details
-              </h5>
-              <button type="button" class="btn-close" @click="closeDetailsModal"></button>
-            </div>
-            <div class="modal-body" v-if="selectedLog">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <strong>Timestamp:</strong><br>
-                  <span class="text-muted">{{ formatDatePH(selectedLog.timestamp) }}</span>
-                </div>
-                <div class="col-md-6">
-                  <strong>User:</strong><br>
-                  <span class="text-muted">{{ selectedLog.userFullName }} ({{ selectedLog.userRole }})</span>
-                </div>
-                <div class="col-md-6">
-                  <strong>Action:</strong><br>
-                  <span class="badge" :class="getActionBadgeClass(selectedLog.action)">{{ selectedLog.action }}</span>
-                </div>
-                <div class="col-md-6">
-                  <strong>Status:</strong><br>
-                  <span class="badge" :class="selectedLog.status === 'success' ? 'bg-success' : 'bg-danger'">{{ selectedLog.status }}</span>
-                </div>
-                <div class="col-md-6">
-                  <strong>IP Address:</strong><br>
-                  <code>{{ selectedLog.ipAddress }}</code>
-                </div>
-                <div class="col-md-6">
-                  <strong>User Agent:</strong><br>
-                  <small class="text-muted">{{ selectedLog.userAgent || 'Not available' }}</small>
-                </div>
-                <div class="col-12">
-                  <strong>Resource:</strong><br>
-                  <span class="text-muted">{{ selectedLog.resource }}</span>
-                </div>
-                <div class="col-12" v-if="selectedLog.description">
-                  <strong>Description:</strong><br>
-                  <p class="text-muted">{{ selectedLog.description }}</p>
-                </div>
-                <div class="col-12" v-if="selectedLog.metadata">
-                  <strong>Additional Data:</strong><br>
-                  <pre class="bg-light p-3 rounded"><code>{{ JSON.stringify(selectedLog.metadata, null, 2) }}</code></pre>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeDetailsModal">
-                <i class="bi bi-x-circle me-2"></i>Close
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -337,8 +277,8 @@
         </div>
       </div>
 
-      <!-- Modal Backdrop -->
-      <div v-if="showDetailsModal || showClearModal" class="modal-backdrop fade show"></div>
+  <!-- Modal Backdrop -->
+  <div v-if="showClearModal" class="modal-backdrop fade show"></div>
     </div>
   </AdminLayout>
 </template>
@@ -355,7 +295,6 @@ import { formatPHDate, formatPHDateTime, utcToPH, nowPH, getPHDateKey } from '@/
 const loading = ref(true)
 const clearing = ref(false)
 const logs = ref([])
-const selectedLog = ref(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10) // Set to 10 items per page as requested
@@ -365,7 +304,6 @@ const totalPages = ref(0)
 // Date picker refs
 
 // Modal states
-const showDetailsModal = ref(false)
 const showClearModal = ref(false)
 const clearLogsAge = ref('90')
 
@@ -379,19 +317,6 @@ const filters = ref({
 })
 
 // Computed properties
-// Helper: normalize various timestamp shapes to a Date assuming UTC if timezone is missing
-const toDateAssumingUTCIfMissingTZ = (val) => {
-  if (!val) return null
-  if (val instanceof Date) return val
-  if (typeof val === 'number') return new Date(val)
-  if (typeof val === 'string') {
-    // If string lacks timezone offset or Z, treat it as UTC and append Z
-    const hasTZ = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(val)
-    const normalized = hasTZ ? val : (val.replace(' ', 'T') + 'Z')
-    return new Date(normalized)
-  }
-  return new Date(val)
-}
 
 // Helper: get YYYY-MM-DD string in Asia/Manila for day comparisons
 // Note: getPHDateKey is now imported from dateUtils
@@ -506,15 +431,7 @@ const changePage = (page) => {
   }
 }
 
-const viewLogDetails = (log) => {
-  selectedLog.value = log
-  showDetailsModal.value = true
-}
-
-const closeDetailsModal = () => {
-  showDetailsModal.value = false
-  selectedLog.value = null
-}
+// Details view now navigates via router-link in template
 
 const closeClearModal = () => {
   showClearModal.value = false
@@ -596,7 +513,7 @@ const formatUserRole = (role) => {
   if (!role) return 'Unknown'
   const roleStr = String(role).toLowerCase()
   if (roleStr === 'admin') return 'Admin'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker') return 'Health Staff'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff' || roleStr === 'health staff') return 'Health Staff'
   if (roleStr === 'parent' || roleStr === 'guardian') return 'Parent'
   return role
 }
@@ -604,7 +521,7 @@ const formatUserRole = (role) => {
 const getRoleIcon = (role) => {
   const roleStr = String(role).toLowerCase()
   if (roleStr === 'admin') return 'bi bi-shield-check fs-5'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker') return 'bi bi-hospital fs-5'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff') return 'bi bi-hospital fs-5'
   if (roleStr === 'parent' || roleStr === 'guardian') return 'bi bi-person-heart fs-5'
   return 'bi bi-person-circle fs-5'
 }
@@ -612,7 +529,7 @@ const getRoleIcon = (role) => {
 const getRoleColor = (role) => {
   const roleStr = String(role).toLowerCase()
   if (roleStr === 'admin') return '#dc3545'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker') return '#0d6efd'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff') return '#0d6efd'
   if (roleStr === 'parent' || roleStr === 'guardian') return '#198754'
   return '#6c757d'
 }
@@ -620,7 +537,7 @@ const getRoleColor = (role) => {
 const getRoleBadgeClass = (role) => {
   const roleStr = String(role).toLowerCase()
   if (roleStr === 'admin') return 'bg-danger'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker') return 'bg-primary'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff') return 'bg-primary'
   if (roleStr === 'parent' || roleStr === 'guardian') return 'bg-success'
   return 'bg-secondary'
 }

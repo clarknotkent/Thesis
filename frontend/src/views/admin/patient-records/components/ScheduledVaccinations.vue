@@ -136,16 +136,22 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
     const response = await api.get(`/patients/${props.patientId}`)
-    
-    console.log('Patient data response:', response.data)
-    
+
+    const pd = response.data?.data || response.data || {}
     // Try different possible field names for scheduled vaccinations
-    schedules.value = response.data.nextScheduledVaccinations || 
-                      response.data.scheduled_vaccinations || 
-                      response.data.scheduledVaccinations ||
-                      []
+    let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
+
+    // Some APIs wrap in an object
+    if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) {
+      // Common wrappers: { items: [...] } or { data: [...] }
+      sched = sched.items || sched.data || []
+    }
+
+    // Fallback: query a dedicated endpoint if exists (optional)
+    if (!Array.isArray(sched)) sched = []
+    schedules.value = sched
     
-    console.log('Scheduled vaccinations found:', schedules.value)
+  // console.debug('Scheduled vaccinations found:', schedules.value)
   } catch (err) {
     console.error('Error fetching scheduled vaccinations:', err)
     schedules.value = []

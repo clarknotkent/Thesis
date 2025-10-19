@@ -11,6 +11,7 @@ import PatientRecords from '@/views/admin/patient-records/PatientRecords.vue'
 import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
 import SMSLogs from '@/views/admin/sms/SMSLogs.vue'
 import Reports from '@/views/admin/reports-analytics/Reports.vue'
+import ReceivingReportPage from '@/views/admin/reports-analytics/ReceivingReportPage.vue'
 import UserAccounts from '@/views/admin/user-accounts/UserAccounts.vue'
 import ActivityLogs from '@/views/admin/activity-logs/ActivityLogs.vue'
 import Profile from '@/views/admin/profile/Profile.vue'
@@ -75,10 +76,20 @@ const routes = [
   },
   {
     path: '/admin/patients/add',
-    name: 'AddPatient',
+    name: 'AdminAddPatient',
     component: () => import('@/views/admin/patient-records/AddPatient.vue'),
     meta: {
       title: 'Add Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/add-record',
+    name: 'AddPatientRecord',
+    component: () => import('@/views/admin/patient-records/AddPatientRecord.vue'),
+    meta: {
+      title: 'Add Patient Record - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -99,6 +110,26 @@ const routes = [
     component: () => import('@/views/admin/patient-records/ViewPatient.vue'),
     meta: {
       title: 'View Patient - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:id/visits',
+    name: 'PatientVisitHistory',
+    component: () => import('@/views/admin/patient-records/VisitHistoryPage.vue'),
+    meta: {
+      title: 'Visit History - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:id/vaccinations',
+    name: 'PatientVaccinations',
+    component: () => import('@/views/admin/patient-records/VaccinationEditorPage.vue'),
+    meta: {
+      title: 'Vaccinations - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -234,6 +265,26 @@ const routes = [
     }
   },
   {
+    path: '/admin/reports/receiving/new',
+    name: 'ReceivingReportNew',
+    component: ReceivingReportPage,
+    meta: {
+      title: 'New Receiving Report - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/reports/receiving/:id',
+    name: 'ReceivingReportView',
+    component: ReceivingReportPage,
+    meta: {
+      title: 'Receiving Report - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
     path: '/admin/users',
     name: 'UserAccounts',
     component: UserAccounts,
@@ -284,6 +335,16 @@ const routes = [
     }
   },
   {
+    path: '/admin/activity-logs/:id',
+    name: 'ActivityLogDetails',
+    component: () => import('@/views/admin/activity-logs/ActivityLogDetails.vue'),
+    meta: {
+      title: 'Activity Log Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
     path: '/admin/profile',
     name: 'Profile',
     component: Profile,
@@ -329,7 +390,7 @@ const routes = [
     name: 'HealthWorkerDashboard',
     component: HealthWorkerDashboard,
     meta: {
-      title: 'Health Worker Dashboard - ImmunizeMe',
+      title: 'Health Staff Dashboard - ImmunizeMe',
       requiresAuth: true,
       role: 'healthworker'
     }
@@ -346,7 +407,7 @@ const routes = [
   },
   {
     path: '/healthworker/patients/add',
-    name: 'AddPatient',
+    name: 'HealthWorkerAddPatient',
     component: AddPatient,
     meta: {
       title: 'Add Patient - ImmunizeMe',
@@ -471,10 +532,13 @@ router.beforeEach((to, from, next) => {
 
   const role = (getRole() || '').toLowerCase()
   const requiredRole = (to.meta?.role || '').toLowerCase()
-  if (requiredRole && role && role !== requiredRole) {
+  // Accept both legacy 'healthworker' and new 'health_staff' role keys
+  const normalizedRole = role === 'health_staff' ? 'healthworker' : role
+  const normalizedRequired = requiredRole === 'health_staff' ? 'healthworker' : requiredRole
+  if (normalizedRequired && normalizedRole && normalizedRole !== normalizedRequired) {
     // Redirect to role-appropriate dashboard
     if (role === 'admin') return next('/admin/dashboard')
-    if (role === 'healthworker' || role === 'health-worker') return next('/healthworker/dashboard')
+    if (role === 'healthworker' || role === 'health-worker' || role === 'health_staff') return next('/healthworker/dashboard')
     if (role === 'parent') return next('/parent/dashboard')
   }
   next()

@@ -26,42 +26,55 @@
         <table class="table table-hover table-striped">
           <thead class="table-light">
             <tr>
-              <th>Date</th>
               <th>Vaccine Name</th>
+              <th>Disease Prevented</th>
               <th>Dose</th>
-              <th>Batch Number</th>
+              <th>Date Administered</th>
+              <th>Age at Administration</th>
               <th>Administered By</th>
               <th>Site</th>
-              <th>Route</th>
+              <th>Facility</th>
               <th>Status</th>
               <th>Remarks</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="vaccination in sortedVaccinations" :key="vaccination.id">
-              <td>
-                <small>{{ formatDate(vaccination.date_administered || vaccination.dateAdministered) }}</small>
-              </td>
               <td class="fw-semibold">
-                {{ vaccination.vaccine_name || vaccination.vaccineName || 'Unknown' }}
+                {{ vaccination.vaccine_antigen_name || vaccination.vaccineName || vaccination.antigen_name || vaccination.antigenName || 'Unknown' }}
               </td>
               <td>
-                <span v-if="vaccination.dose_number || vaccination.doseNumber" class="badge bg-secondary">
-                  Dose {{ vaccination.dose_number || vaccination.doseNumber }}
+                <small>{{ vaccination.disease_prevented || vaccination.lotNumber || vaccination.batch_number || vaccination.batchNumber || '—' }}</small>
+              </td>
+              <td>
+                <span v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose" class="badge bg-secondary">
+                  Dose {{ vaccination.dose_number || vaccination.doseNumber || vaccination.dose }}
                 </span>
                 <span v-else class="text-muted">—</span>
               </td>
               <td>
-                <small>{{ vaccination.batch_number || vaccination.batchNumber || '—' }}</small>
+                <small>{{ formatDate(vaccination.administered_date || vaccination.date_administered || vaccination.dateAdministered) }}</small>
               </td>
               <td>
-                <small>{{ vaccination.administered_by || vaccination.administeredBy || '—' }}</small>
+                <small>{{ vaccination.age_at_administration || '—' }}</small>
               </td>
               <td>
-                <small>{{ vaccination.site || '—' }}</small>
+                <small>{{
+                  vaccination.administered_by_name ||
+                  vaccination.administeredBy ||
+                  vaccination.health_worker_name ||
+                  vaccination.healthWorkerName ||
+                  vaccination.worker_name ||
+                  vaccination.workerName ||
+                  vaccination.recorded_by_name ||
+                  'Taken Outside'
+                }}</small>
               </td>
               <td>
-                <small>{{ vaccination.route || '—' }}</small>
+                <small>{{ deriveSite(vaccination) }}</small>
+              </td>
+              <td>
+                <small>{{ deriveFacility(vaccination) }}</small>
               </td>
               <td>
                 <span 
@@ -101,8 +114,10 @@ const loading = ref(true)
 
 const sortedVaccinations = computed(() => {
   return [...vaccinations.value].sort((a, b) => {
-    const dateA = new Date(a.date_administered || a.dateAdministered)
-    const dateB = new Date(b.date_administered || b.dateAdministered)
+    const aDate = a.administered_date || a.date_administered || a.dateAdministered
+    const bDate = b.administered_date || b.date_administered || b.dateAdministered
+    const dateA = aDate ? new Date(aDate) : 0
+    const dateB = bDate ? new Date(bDate) : 0
     return dateB - dateA // Most recent first
   })
 })
@@ -125,6 +140,34 @@ const getStatusBadgeClass = (status) => {
   return 'bg-secondary'
 }
 
+// Derive site: per requirement, always derive from remarks if present
+const deriveSite = (v) => {
+  const remarks = v?.remarks || v?.notes || ''
+  if (remarks) {
+    // Try to extract site after keywords like 'site:' or 'Site:'
+    const m = remarks.match(/(?:site|injection site)\s*[:\-]\s*([^;,.\n]+)/i)
+    if (m && m[1]) return m[1].trim()
+    // Fallback: if remarks look like "Left deltoid" etc., use full remarks
+    if (/deltoid|thigh|vastus|buttock|arm|left|right|intramuscular|subcutaneous/i.test(remarks)) return remarks
+  }
+  // Otherwise fallback to explicit fields if provided
+  return v?.site || v?.site_of_administration || v?.siteOfAdministration || '—'
+}
+
+// Facility: when outside is true, show 'Outside', otherwise use facility fields
+const deriveFacility = (v) => {
+  const isOutside = !!(v?.immunization_outside || v?.is_outside || v?.isOutside || v?.outside_immunization)
+  if (isOutside) return 'Outside'
+  return (
+    v?.immunization_facility_name ||
+    v?.facility_name ||
+    v?.facilityName ||
+    v?.health_center ||
+    v?.healthCenter ||
+    '—'
+  )
+}
+
 const fetchVaccinationHistory = async () => {
   try {
     loading.value = true
@@ -134,7 +177,20 @@ const fetchVaccinationHistory = async () => {
     const patientData = response.data.data || response.data
     
     // Extract vaccination history from patient data
-    vaccinations.value = patientData.vaccinationHistory || patientData.vaccination_history || []
+    let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || patientData.immunizationHistory || []
+
+    // If patient payload doesn't include history, fallback to dedicated endpoint
+    if (!Array.isArray(vax) || vax.length === 0) {
+      try {
+        const vaccRes = await api.get('/immunizations', { params: { patient_id: props.patientId, limit: 200 } })
+        vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
+      } catch (e) {
+        // ignore, keep empty
+        vax = []
+      }
+    }
+
+    vaccinations.value = Array.isArray(vax) ? vax : []
   } catch (error) {
     console.error('Error fetching vaccination history:', error)
     addToast({

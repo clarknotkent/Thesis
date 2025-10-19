@@ -7,10 +7,11 @@
           <p class="text-muted mb-0">Manage vaccine types and track vaccine stock levels</p>
         </div>
         <div class="d-flex gap-2">
-          <router-link class="btn btn-outline-primary" to="/admin/vaccines/add-stock">
+          <!-- Temporarily hidden per request; Receiving Reports is the canonical add path -->
+          <router-link v-if="false" class="btn btn-outline-primary" to="/admin/vaccines/add-stock">
             <i class="bi bi-plus-circle me-2"></i>Add New Stock
           </router-link>
-          <router-link class="btn btn-outline-success" to="/admin/vaccines/add-vaccine">
+          <router-link v-if="false" class="btn btn-outline-success" to="/admin/vaccines/add-vaccine">
             <i class="bi bi-plus-circle me-2"></i>Add New Vaccine
           </router-link>
         </div>
@@ -822,7 +823,7 @@
                   <label class="form-label">Select Vaccine Type *</label>
                   <select v-model="selectedVaccine" class="form-select" :disabled="scheduleReadOnly" required>
                     <option value="">-- Select Vaccine --</option>
-                    <option v-for="v in existingVaccines" :key="v.id" :value="v.id">
+                    <option v-for="v in (scheduleReadOnly ? existingVaccines : unscheduledVaccines)" :key="v.id" :value="v.id">
                       {{ v.antigen_name }} ({{ v.brand_name }})
                     </option>
                   </select>
@@ -2253,6 +2254,13 @@ function openScheduleModal() {
   currentDoseIndex.value = 0
   showScheduleModal.value = true
 }
+
+// Vaccines that don't have a schedule yet (for creating new schedules)
+const unscheduledVaccines = computed(() => {
+  const list = Array.isArray(existingVaccines.value) ? existingVaccines.value : []
+  const scheduledIds = new Set((schedules.value || []).map(s => s.vaccine_id || s.vaccine?.vaccine_id || s.vaccineId).filter(Boolean))
+  return list.map(v => ({ ...v, id: v.vaccine_id || v.id })).filter(v => !scheduledIds.has(v.id))
+})
 </script>
 
 <style scoped>

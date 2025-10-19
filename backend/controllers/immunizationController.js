@@ -45,7 +45,25 @@ async function findTodayVisitWithVitals(supabase, patient_id) {
 const listImmunizations = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
-    const immunizations = await immunizationModel.listImmunizations({}, supabase);
+    // Read filters from query params (patient_id, vaccine_id, administered_by)
+  const { patient_id, vaccine_id, administered_by, limit, sort } = req.query || {};
+    const filters = {};
+    // Coerce numeric-like values to numbers when possible
+    if (patient_id !== undefined && patient_id !== '') {
+      const v = Number(patient_id);
+      filters.patient_id = Number.isNaN(v) ? patient_id : v;
+    }
+    if (vaccine_id !== undefined && vaccine_id !== '') {
+      const v = Number(vaccine_id);
+      filters.vaccine_id = Number.isNaN(v) ? vaccine_id : v;
+    }
+    if (administered_by !== undefined && administered_by !== '') {
+      const v = Number(administered_by);
+      filters.administered_by = Number.isNaN(v) ? administered_by : v;
+    }
+  if (limit !== undefined && limit !== '') filters.limit = limit;
+  if (sort !== undefined && sort !== '') filters.sort = sort;
+  const immunizations = await immunizationModel.listImmunizations(filters, supabase);
     res.json(immunizations);
   } catch (error) {
     console.error(error);

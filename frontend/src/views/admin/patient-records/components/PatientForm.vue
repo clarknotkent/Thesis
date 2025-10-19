@@ -409,6 +409,9 @@ const formData = ref({
   newborn_screening_result: ''
 })
 
+// Keep the last selected guardian object for autofill purposes
+const selectedGuardian = ref(null)
+
 // Initialize form with initial data
 watch(() => props.initialData, (newData) => {
   if (newData && Object.keys(newData).length > 0) {
@@ -420,13 +423,36 @@ watch(() => props.initialData, (newData) => {
   }
 }, { immediate: true, deep: true })
 
+const applyParentAutofill = (guardian, relationship) => {
+  if (!guardian || !relationship) return
+  const rel = String(relationship).toLowerCase()
+  if (rel === 'mother') {
+    // Only set or overwrite if empty to allow manual edits later
+    if (!formData.value.mother_name) formData.value.mother_name = guardian.full_name || ''
+    // Do not override if user already typed a different contact unless empty
+    if (!formData.value.mother_contact_number) formData.value.mother_contact_number = guardian.contact_number || ''
+  } else if (rel === 'father') {
+    if (!formData.value.father_name) formData.value.father_name = guardian.full_name || ''
+    if (!formData.value.father_contact_number) formData.value.father_contact_number = guardian.contact_number || ''
+  }
+}
+
 const onGuardianSelected = (guardian) => {
+  selectedGuardian.value = guardian || null
   if (guardian && guardian.family_number) {
     formData.value.family_number = guardian.family_number
   }
+  // Apply autofill if the current relationship is Mother or Father
+  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian)
 }
 
 const handleSubmit = () => {
   emit('submit', formData.value)
 }
+
+// React when relationship changes to apply autofill for the selected guardian
+watch(() => formData.value.relationship_to_guardian, (newRel) => {
+  if (!newRel) return
+  applyParentAutofill(selectedGuardian.value, newRel)
+})
 </script>

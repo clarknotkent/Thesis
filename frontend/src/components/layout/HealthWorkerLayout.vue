@@ -61,7 +61,7 @@ const userName = computed(() => {
 
 const userRole = computed(() => {
   const role = getRole()
-  if (role === 'healthworker') return 'Health Worker'
+  if (role === 'healthworker' || role === 'health_staff' || role === 'health-staff') return 'Health Staff'
   if (role === 'admin') return 'Administrator'
   if (role === 'parent') return 'Parent'
   return role

@@ -37,7 +37,7 @@ import { useRouter } from 'vue-router'
 const props = defineProps({
   userRole: {
     type: String,
-    default: 'Health Worker'
+    default: 'Health Staff'
   },
   userName: {
     type: String,

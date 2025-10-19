@@ -2,21 +2,21 @@ const userModel = require('../models/userModel');
 const { getActorId } = require('../utils/actor');
 const healthWorkerModel = require('../models/healthWorkerModel');
 
-// List all health workers
+// List all health staff
 const listHealthWorkers = async (req, res) => {
   try {
-    // Remove BHW filter to get all health workers (BHW, nurses, nutritionists, etc.)
-    const filters = { role: 'health_worker' };
+    // Remove BHS filter to get all health staff (BHS, nurses, nutritionists, etc.)
+    const filters = { role: 'healthstaff' };
     // Set a high limit to ensure we get all health workers (no pagination for this endpoint)
     const result = await userModel.getAllUsers(filters, 1, 1000);
     const healthWorkers = result.users || [];
     console.log('[healthWorkerController.listHealthWorkers] filters:', filters, 'result.users count:', healthWorkers.length);
-    console.log('[healthWorkerController.listHealthWorkers] health worker types:', [...new Set(healthWorkers.map(hw => hw.hw_type))]);
-    console.log('[healthWorkerController.listHealthWorkers] first health worker:', healthWorkers[0]);
+    console.log('[healthWorkerController.listHealthWorkers] health staff types:', [...new Set(healthWorkers.map(hw => hw.hs_type))]);
+    console.log('[healthWorkerController.listHealthWorkers] first health staff:', healthWorkers[0]);
     res.json({
       success: true,
       data: {
-        healthWorkers: healthWorkers,
+        healthStaff: healthWorkers,
         totalCount: result.totalCount || healthWorkers.length
       }
     });
@@ -26,28 +26,28 @@ const listHealthWorkers = async (req, res) => {
   }
 };
 
-// Get a health worker by ID
+// Get a health staff by ID
 const getHealthWorker = async (req, res) => {
   try {
     const healthWorker = await healthWorkerModel.getHealthWorkerById(req.params.id);
     if (!healthWorker) {
-      return res.status(404).json({ message: 'Health worker not found' });
+      return res.status(404).json({ message: 'Health staff not found' });
     }
     res.json(healthWorker);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to fetch health worker details' });
+    res.status(500).json({ message: 'Failed to fetch health staff details' });
   }
 };
 
-// Create a health worker
+// Create a health staff
 const createHealthWorker = async (req, res) => {
   try {
   const actorId = getActorId(req);
   console.log('[healthWorkerController.createHealthWorker] ACTOR', actorId, 'USERNAME', req.body?.username);
   // Accept incoming role tokens but force canonical token; strip any spoofed audit fields
   const { created_by: _cb, updated_by: _ub, role: _roleIgnored, ...rest } = req.body;
-  const healthWorkerData = { ...rest, role: 'health_worker', created_by: actorId, updated_by: actorId };
+  const healthWorkerData = { ...rest, role: 'HealthStaff', created_by: actorId, updated_by: actorId };
     try {
       const safeBody = { ...req.body };
       if (safeBody.password) safeBody.password = '***redacted***';
@@ -59,33 +59,33 @@ const createHealthWorker = async (req, res) => {
     res.status(201).json(newHealthWorker);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to create health worker' });
+    res.status(500).json({ message: 'Failed to create health staff' });
   }
 };
 
-// Update a health worker
+// Update a health staff
 const updateHealthWorker = async (req, res) => {
   try {
     const actorId = req.user?.user_id || null;
     const updatedHealthWorker = await userModel.updateUser(req.params.id, { ...req.body, updated_by: actorId });
     if (!updatedHealthWorker) {
-      return res.status(404).json({ message: 'Health worker not found' });
+      return res.status(404).json({ message: 'Health staff not found' });
     }
     res.json(updatedHealthWorker);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to update health worker' });
+    res.status(500).json({ message: 'Failed to update health staff' });
   }
 };
 
-// Delete a health worker
+// Delete a health staff
 const deleteHealthWorker = async (req, res) => {
   try {
     await healthWorkerModel.deleteHealthWorker(req.params.id);
     res.status(204).send();
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to delete health worker' });
+    res.status(500).json({ message: 'Failed to delete health staff' });
   }
 };
 

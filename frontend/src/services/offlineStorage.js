@@ -256,7 +256,7 @@ export class OfflineStorageService {
       appointments: '/api/appointments',
       immunizations: '/api/immunizations',
       vaccines: '/api/vaccines',
-      healthWorkers: '/api/health-workers',
+  healthWorkers: '/api/health-staff',
       guardians: '/api/guardians'
     }
     return endpoints[tableName] || `/api/${tableName}`

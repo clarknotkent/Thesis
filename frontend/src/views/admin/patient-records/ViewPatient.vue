@@ -112,7 +112,7 @@
 
               <!-- Visit History Tab -->
               <div v-if="activeTab === 'visits'">
-                <VisitHistory :patient-id="patientId" />
+                <VisitHistory :patient-id="patientId" :embedded-page="true" />
               </div>
             </div>
           </div>
@@ -193,15 +193,7 @@
       </div>
     </div>
 
-    <!-- Vaccination Record Editor Modal -->
-    <VaccinationRecordEditor
-      v-if="showVaccinationEditor"
-      :show="showVaccinationEditor"
-      :patient-id="patientId"
-      :patient-data="vaccinationPatientData"
-      @close="closeVaccinationEditor"
-      @update="fetchPatientData"
-    />
+    <!-- Vaccination editor now opens as a dedicated page -->
   </AdminLayout>
 </template>
 
@@ -213,7 +205,6 @@ import PatientForm from './components/PatientForm.vue'
 import VaccinationHistory from './components/VaccinationHistory.vue'
 import ScheduledVaccinations from './components/ScheduledVaccinations.vue'
 import VisitHistory from './components/VisitHistory.vue'
-import VaccinationRecordEditor from '@/components/common/VaccinationRecordEditor.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -228,8 +219,7 @@ const guardians = ref([])
 const loading = ref(true)
 const error = ref(null)
 const lastVaccination = ref(null)
-const showVaccinationEditor = ref(false)
-const vaccinationPatientData = ref(null)
+// Vaccination editor is opened via routed page, not a modal
 const activeTab = ref('info') // Tab state: 'info' or 'vaccinations'
 
 const patientId = computed(() => route.params.id)
@@ -331,20 +321,29 @@ const fetchPatientData = async () => {
       newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || ''
     }
 
-    // Get last vaccination date if available
-    if (p.lastVaccination || p.last_vaccination) {
-      lastVaccination.value = p.lastVaccination || p.last_vaccination
-    }
-
-    // Prepare patient data for vaccination editor
-    vaccinationPatientData.value = {
-      id: patientData.value.id,
-      childInfo: {
-        name: fullName.value,
-        sex: patientData.value.sex,
-        birthDate: patientData.value.date_of_birth
+    // Resolve family number from guardian if missing
+    if (!patientData.value.family_number && patientData.value.guardian_id && Array.isArray(guardians.value)) {
+      const g = guardians.value.find(x => x.guardian_id === patientData.value.guardian_id)
+      if (g && g.family_number) {
+        patientData.value.family_number = g.family_number
       }
     }
+
+    // Get last vaccination: if not in patient payload, fetch by patient id
+    if (p.lastVaccination || p.last_vaccination_date) {
+      lastVaccination.value = p.lastVaccination || p.last_vaccination_date
+    } else {
+      try {
+        const vaccRes = await api.get(`/immunizations`, { params: { patient_id: patientId.value, limit: 1, sort: 'administered_date:desc' } })
+        const items = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
+        const mostRecent = Array.isArray(items) && items.length > 0 ? (items[0].administered_date || items[0].date_administered) : null
+        if (mostRecent) lastVaccination.value = mostRecent
+      } catch (e) {
+        // non-fatal; keep null if fetch fails
+      }
+    }
+
+    // Vaccination editor is now a separate page; no local modal data prep needed
 
   } catch (err) {
     console.error('Error fetching patient data:', err)
@@ -360,11 +359,7 @@ const fetchPatientData = async () => {
 }
 
 const handleEditVaccinations = () => {
-  showVaccinationEditor.value = true
-}
-
-const closeVaccinationEditor = () => {
-  showVaccinationEditor.value = false
+  router.push({ name: 'PatientVaccinations', params: { id: patientId.value } })
 }
 
 const handleDelete = async () => {

@@ -7,8 +7,8 @@
           <i class="bi bi-person-circle"></i>
         </div>
         <div class="profile-info">
-          <h4 class="profile-name">{{ userName || 'Health Worker' }}</h4>
-          <p class="profile-role">{{ userRole || 'Health Worker' }}</p>
+          <h4 class="profile-name">{{ userName || 'Health Staff' }}</h4>
+          <p class="profile-role">{{ userRole || 'Health Staff' }}</p>
           <p class="profile-id">ID: {{ userId || 'HW-001' }}</p>
         </div>
       </div>
@@ -92,7 +92,7 @@ const userName = computed(() => {
 
 const userRole = computed(() => {
   const role = getRole()
-  if (role === 'healthworker') return 'Health Worker'
+  if (role === 'healthworker' || role === 'health_staff' || role === 'health-staff') return 'Health Staff'
   if (role === 'admin') return 'Administrator'
   if (role === 'parent') return 'Parent'
   return role

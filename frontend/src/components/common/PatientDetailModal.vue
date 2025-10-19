@@ -21,7 +21,7 @@
           <!-- Patient Basic Information -->
           <div class="row mb-4">
             <div class="col-12">
-              <h6 class="text-primary fw-bold mb-3">
+                <h6 class="text-primary fw-bold mb-3">
                 <i class="bi bi-person-fill me-2"></i>Patient Information
               </h6>
               <div class="row g-4">
@@ -45,7 +45,7 @@
                   <label class="form-label fw-semibold">Date of Birth:</label>
                   <div class="form-control-plaintext border rounded p-2 bg-light">{{ formatDateMDY(patientData.patientInfo.date_of_birth) || '—' }}</div>
                 </div>
-                <div class="col-xl-3 col-lg-4 col-md-6">
+                  <div class="col-xl-3 col-lg-4 col-md-6">
                   <label class="form-label fw-semibold">Barangay:</label>
                   <div class="form-control-plaintext border rounded p-2 bg-light">{{ patientData.patientInfo.barangay || '—' }}</div>
                 </div>
@@ -213,7 +213,7 @@
                       <th width="8%">Dose</th>
                       <th width="15%">Manufacturer</th>
                       <th width="12%">Lot Number</th>
-                      <th width="15%">Health Worker</th>
+                      <th width="15%">Health Staff</th>
                       <th>Remarks</th>
                     </tr>
                   </thead>

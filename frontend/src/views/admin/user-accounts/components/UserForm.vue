@@ -127,25 +127,25 @@
           >
             <option value="">Select Role</option>
             <option value="admin">Admin</option>
-            <option value="health_worker">Health Worker</option>
+            <option value="health_staff">Health Staff</option>
             <option value="parent">Parent</option>
           </select>
         </div>
-        <div class="col-md-4" v-if="localForm.role === 'health_worker'">
-          <label class="form-label">Health Worker Type <span class="text-danger">*</span></label>
+        <div class="col-md-4" v-if="localForm.role === 'health_staff'">
+          <label class="form-label">Health Staff Type <span class="text-danger">*</span></label>
           <select 
             class="form-select" 
-            v-model="localForm.hwType"
+            v-model="localForm.hsType"
             :disabled="readOnly"
             required
           >
             <option value="">Select Type</option>
             <option value="nurse">Nurse</option>
             <option value="nutritionist">Nutritionist</option>
-            <option value="bhw">Barangay Health Worker</option>
+            <option value="bhs">Barangay Health Staff</option>
           </select>
         </div>
-        <div class="col-md-4" v-if="localForm.role === 'health_worker' || localForm.role === 'admin'">
+        <div class="col-md-4" v-if="localForm.role === 'health_staff' || localForm.role === 'admin'">
           <label class="form-label">Employee ID</label>
           <input 
             type="text" 
@@ -157,7 +157,7 @@
       </div>
       
       <div class="row g-3 mt-1">
-        <div class="col-md-6" v-if="(localForm.role === 'health_worker' && ['nurse','nutritionist'].includes(localForm.hwType)) || localForm.role === 'admin'">
+  <div class="col-md-6" v-if="(localForm.role === 'health_staff' && ['nurse','nutritionist'].includes(localForm.hsType)) || localForm.role === 'admin'">
           <label class="form-label">PRC License Number</label>
           <input 
             type="text" 
@@ -176,7 +176,7 @@
             placeholder="+63 XXX XXX XXXX"
           >
         </div>
-        <div class="col-md-6" v-if="localForm.role === 'health_worker' || localForm.role === 'admin'">
+        <div class="col-md-6" v-if="localForm.role === 'health_staff' || localForm.role === 'admin'">
           <label class="form-label">Contact Number</label>
           <input 
             type="tel" 
@@ -244,7 +244,7 @@ const localForm = ref({
   middleName: '',
   email: '',
   role: '',
-  hwType: '',
+  hsType: '',
   status: 'active',
   password: '',
   licenseNumber: '',
@@ -257,12 +257,24 @@ const localForm = ref({
 })
 
 // Watch for initial data changes (when editing)
+// Normalize incoming role tokens to the form's option values
+const normalizeRole = (r) => {
+  if (!r) return ''
+  const s = String(r).toLowerCase().trim()
+  if (s === 'admin' || s === 'administrator') return 'admin'
+  if (s === 'parent' || s === 'guardian') return 'parent'
+  if (s === 'health_worker' || s === 'healthworker' || s === 'health staff' || s === 'healthstaff' || s === 'health-staff') return 'health_staff'
+  return r
+}
+
 watch(() => props.initialData, (newData) => {
   if (newData && Object.keys(newData).length > 0) {
-    localForm.value = {
-      ...localForm.value,
-      ...newData
-    }
+    const merged = { ...localForm.value, ...newData }
+    // normalize role value so select options prefill correctly
+    merged.role = normalizeRole(merged.role)
+    // also normalize hsType keys to lower-case tokens
+    if (merged.hsType) merged.hsType = String(merged.hsType).toLowerCase()
+    localForm.value = merged
   }
 }, { immediate: true, deep: true })
 

@@ -2,7 +2,7 @@
 // to canonical storage tokens enforced by DB constraints, and back to
 // human-friendly display labels for the frontend.
 
-const CANONICAL_ROLES = ['admin', 'health_worker', 'guardian'];
+const CANONICAL_ROLES = ['admin', 'health_staff', 'guardian'];
 
 // Map many possible incoming variants to canonical
 const INCOMING_TO_CANONICAL = {
@@ -10,11 +10,14 @@ const INCOMING_TO_CANONICAL = {
   administrator: 'admin',
   'system admin': 'admin',
 
-  'health worker': 'health_worker',
-  health_worker: 'health_worker',
-  healthworker: 'health_worker',
-  'health-worker': 'health_worker',
-  hw: 'health_worker',
+  'health worker': 'health_staff',
+  health_worker: 'health_staff',
+  healthworker: 'health_staff',
+  'health-worker': 'health_staff',
+  hw: 'health_staff',
+  'health staff': 'health_staff',
+  healthstaff: 'health_staff',
+  'health_staff': 'health_staff',
 
   guardian: 'guardian',
   parent: 'guardian',
@@ -23,7 +26,7 @@ const INCOMING_TO_CANONICAL = {
 
 const CANONICAL_TO_DISPLAY = {
   admin: 'Admin',
-  health_worker: 'Health Worker',
+  health_staff: 'Health Staff',
   guardian: 'Guardian'
 };
 

@@ -108,10 +108,10 @@
                   <input type="date" class="form-control" v-model="vaccForm.dateAdministered" required>
                 </div>
                 <div class="col-md-12">
-                  <label class="form-label">Health Worker *</label>
+                  <label class="form-label">Health Staff *</label>
                   <select class="form-select" v-model="vaccForm.healthWorkerId" required>
-                    <option value="">Select health worker</option>
-                    <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hw_type }})</option>
+                    <option value="">Select health staff</option>
+                    <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})</option>
                   </select>
                 </div>
                 <div class="col-md-12">
@@ -145,10 +145,10 @@
                 <input type="date" class="form-control" v-model="dewForm.date" required>
               </div>
               <div class="mb-3">
-                <label class="form-label">Health Worker *</label>
+                <label class="form-label">Health Staff *</label>
                 <select class="form-select" v-model="dewForm.healthWorkerId" required>
-                  <option value="">Select health worker</option>
-                  <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hw_type }})</option>
+                  <option value="">Select health staff</option>
+                  <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -181,10 +181,10 @@
                 <input type="date" class="form-control" v-model="vitAForm.date" required>
               </div>
               <div class="mb-3">
-                <label class="form-label">Health Worker *</label>
+                <label class="form-label">Health Staff *</label>
                 <select class="form-select" v-model="vitAForm.healthWorkerId" required>
-                  <option value="">Select health worker</option>
-                  <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hw_type }})</option>
+                  <option value="">Select health staff</option>
+                  <option v-for="hw in nurses" :key="hw.id" :value="hw.id">{{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -264,7 +264,7 @@ const clearPatientSearch = () => {
 
 const fetchNurses = async () => {
   try {
-    const res = await api.get('/health-workers')
+  const res = await api.get('/health-staff')
     let list = []
     if (res.data?.data?.healthWorkers && Array.isArray(res.data.data.healthWorkers)) list = res.data.data.healthWorkers
     else if (Array.isArray(res.data)) list = res.data
@@ -272,9 +272,9 @@ const fetchNurses = async () => {
     else if (res.data?.users && Array.isArray(res.data.users)) list = res.data.users
     else if (res.data?.healthWorkers && Array.isArray(res.data.healthWorkers)) list = res.data.healthWorkers
     nurses.value = list.filter(hw => {
-      const t = hw.hw_type || hw.role || hw.type || ''
+      const t = hw.hs_type || hw.hw_type || hw.role || hw.type || ''
       return t.toLowerCase().includes('nurse') || t.toLowerCase().includes('nutritionist')
-    }).map(hw => ({ id: hw.user_id || hw.id || hw.health_worker_id, name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname, hw_type: hw.hw_type || hw.role || hw.type }))
+    }).map(hw => ({ id: hw.user_id || hw.id || hw.health_worker_id, name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname, hs_type: hw.hs_type || hw.hw_type || hw.role || hw.type }))
   } catch (err) {
     nurses.value = []
   }

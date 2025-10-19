@@ -37,6 +37,7 @@ const getAllPatients = async (req, res) => {
       limit = 5, 
       search, 
       gender, 
+      sex, 
       status,
       age_group,
       barangay 
@@ -46,7 +47,24 @@ const getAllPatients = async (req, res) => {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 5;
 
-    const filters = { search, sex: gender, status, age_group, barangay };
+    // Normalize sex/gender filter to match various DB encodings (Male/male/M, Female/female/F)
+    let sexOptions;
+    const rawSex = (sex || gender || '').toString().trim().toLowerCase();
+    if (rawSex) {
+      if (rawSex === 'male' || rawSex === 'm') {
+        sexOptions = ['Male', 'male', 'M', 'm'];
+      } else if (rawSex === 'female' || rawSex === 'f') {
+        sexOptions = ['Female', 'female', 'F', 'f'];
+      }
+    }
+
+    const filters = { search, status, age_group, barangay };
+    if (sexOptions) {
+      filters.sexOptions = sexOptions;
+    } else if (rawSex) {
+      // Fallback to single value if we couldn't map (future-proof)
+      filters.sex = rawSex;
+    }
     const supabase = getSupabaseForRequest(req);
     const patients = await patientModel.getAllPatients(filters, pageNum, limitNum, supabase);
     

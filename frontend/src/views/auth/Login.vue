@@ -122,7 +122,7 @@ const handleLogin = async () => {
     const role = (user.role || '').toLowerCase()
     if (role === 'admin') {
       router.push('/admin/dashboard')
-    } else if (role === 'healthworker' || role === 'health-worker') {
+    } else if (role === 'healthstaff' || role === 'health-worker') {
       router.push('/healthworker/dashboard')
     } else if (role === 'guardian') {
       router.push('/parent/dashboard')

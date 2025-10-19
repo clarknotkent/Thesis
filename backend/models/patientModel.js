@@ -19,7 +19,10 @@ const patientModel = {
         query = query.ilike('full_name', `%${filters.search}%`);
       }
 
-      if (filters.sex) {
+      if (filters.sexOptions && Array.isArray(filters.sexOptions) && filters.sexOptions.length > 0) {
+        // Match any of the provided encodings exactly (e.g., Male, male, M, m)
+        query = query.in('sex', filters.sexOptions);
+      } else if (filters.sex) {
         query = query.eq('sex', filters.sex);
       }
 

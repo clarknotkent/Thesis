@@ -185,7 +185,7 @@ export default {
           // For now, send to first user of that type as example
           const filteredUsers = this.users.filter(u => {
             if (this.form.recipientType === 'guardian') return u.role === 'guardian'
-            if (this.form.recipientType === 'healthworker') return u.role === 'health_worker'
+            if (this.form.recipientType === 'healthworker') return u.role === 'health_staff'
             if (this.form.recipientType === 'admin') return u.role === 'admin'
             return false
           })

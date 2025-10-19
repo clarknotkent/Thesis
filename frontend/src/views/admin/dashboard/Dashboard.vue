@@ -59,14 +59,14 @@
           </div>
         </div>
 
-        <!-- Active Health Workers Card -->
+        <!-- Active Health Staff Card -->
         <div class="col">
           <div class="card border-start border-info border-4 shadow h-100 py-2">
             <div class="card-body">
               <div class="row no-gutters align-items-center">
                 <div class="col me-2">
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
-                    Active Health Workers
+                    Active Health Staff
                   </div>
                   <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.activeHealthWorkers }}</div>
                 </div>

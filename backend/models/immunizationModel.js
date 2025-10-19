@@ -261,6 +261,22 @@ const listImmunizations = async (filters = {}, client) => {
     query = query.eq('administered_by', filters.administered_by);
   }
 
+  // Optional sorting: filters.sort accepts "column:asc|desc" or just column (defaults desc for date fields)
+  if (filters.sort) {
+    try {
+      const raw = String(filters.sort);
+      const [col, dir] = raw.split(':');
+      const ascending = (dir || '').toLowerCase() === 'asc';
+      if (col) query = query.order(col, { ascending });
+    } catch (_) {}
+  }
+
+  // Optional limit
+  if (filters.limit) {
+    const l = Number(filters.limit);
+    if (!Number.isNaN(l) && l > 0) query = query.limit(l);
+  }
+
   const { data, error } = await query;
   if (error) throw error;
   return data;

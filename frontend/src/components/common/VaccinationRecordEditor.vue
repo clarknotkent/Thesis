@@ -1,5 +1,396 @@
 <template>
-  <div class="modal fade" :class="{ show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
+  <!-- Page mode: render the editor as a full page (no modal chrome) -->
+  <div v-if="embeddedPage" class="vaccination-editor-page container-fluid py-3">
+    <div class="d-flex align-items-center mb-3">
+      <h3 class="mb-0">
+        <i class="bi bi-shield-check me-2"></i>
+        Manage Vaccination Records
+      </h3>
+      <button class="btn btn-outline-secondary ms-auto" @click="onClose">Back</button>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body p-3">
+        <!-- Loading State -->
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-3">Loading vaccination records...</p>
+        </div>
+
+        <!-- Main Interface: Only show when NOT in visit context -->
+        <div v-else-if="!visitContext">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h6 class="mb-0">
+                <span class="fw-bold">Patient:</span> {{ patientData?.firstname }} {{ patientData?.surname }}
+              </h6>
+              <p class="text-muted small mb-0">
+                {{ patientData?.sex }}, {{ calculateAge(patientData?.date_of_birth) }}
+              </p>
+            </div>
+
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-success" @click="startInFacilityAdd">
+                <i class="bi bi-plus-circle me-1"></i> Add Vaccination Record
+              </button>
+            </div>
+          </div>
+
+          <!-- Vaccination Records (merged list; edit allowed only for outside records) -->
+          <div class="table-responsive">
+            <h6 class="fw-bold mb-3">Vaccination Records</h6>
+            <table class="table table-hover table-striped">
+              <thead class="table-light">
+                <tr>
+                  <th>Vaccine Name</th>
+                  <th>Disease Prevented</th>
+                  <th>Dose</th>
+                  <th>Date Administered</th>
+                  <th>Age at Administration</th>
+                  <th>Administered By</th>
+                  <th>Site</th>
+                  <th>Facility</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(vaccination, index) in sortedVaccinations" :key="vaccination.immunization_id || vaccination.id || index">
+                  <td class="fw-semibold">
+                    {{ vaccination.vaccine_antigen_name || vaccination.vaccineName || vaccination.antigen_name || vaccination.antigenName || 'Unknown' }}
+                  </td>
+                  <td>
+                    <small>{{ vaccination.disease_prevented || vaccination.diseasePrevented || vaccination.lotNumber || vaccination.batch_number || vaccination.batchNumber || '—' }}</small>
+                  </td>
+                  <td>
+                    <span v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose" class="badge bg-secondary">
+                      Dose {{ vaccination.dose_number || vaccination.doseNumber || vaccination.dose }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td>
+                    <small>{{ formatDate(vaccination.administered_date || vaccination.date_administered || vaccination.dateAdministered) }}</small>
+                  </td>
+                  <td>
+                    <small>{{ vaccination.age_at_administration || vaccination.ageAtAdministration || '—' }}</small>
+                  </td>
+                  <td>
+                    <small>{{
+                      vaccination.administered_by_name ||
+                      vaccination.administeredBy ||
+                      vaccination.health_worker_name ||
+                      vaccination.healthWorkerName ||
+                      vaccination.worker_name ||
+                      vaccination.workerName ||
+                      vaccination.recorded_by_name ||
+                      'Taken Outside'
+                    }}</small>
+                  </td>
+                  <td>
+                    <small>{{ deriveSite(vaccination) }}</small>
+                  </td>
+                  <td>
+                    <small>{{ deriveFacility(vaccination) }}</small>
+                  </td>
+                  <td>
+                    <span class="badge" :class="getStatusBadgeClass(vaccination.status)">
+                      {{ vaccination.status || 'Completed' }}
+                    </span>
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ vaccination.remarks || vaccination.notes || '—' }}</small>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-primary" :disabled="!isOutside(vaccination)" :title="isOutside(vaccination) ? 'Edit' : 'Edit allowed for Outside records only'" @click="editVaccinationRecord(index)">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button class="btn btn-outline-danger" @click="deleteVaccinationRecord(index)" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="filteredVaccinations.length === 0">
+                  <td colspan="11" class="text-center py-4 text-muted">
+                    <i class="bi bi-shield-exclamation me-2"></i>
+                    No vaccination records found for this patient
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Removed separate outside list; merged above -->
+
+          <!-- Next Scheduled Vaccinations -->
+          <div class="mt-4">
+            <h6 class="fw-bold mb-3">Upcoming Scheduled Vaccinations</h6>
+            <div v-if="upcomingSchedules.length > 0" class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th>Vaccine Name</th>
+                    <th>Scheduled Date</th>
+                    <th>Dose Number</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(vaccine, index) in upcomingSchedules" :key="index">
+                    <td class="fw-semibold">{{ vaccine.vaccineName || 'Unknown' }}</td>
+                    <td>{{ formatDate(vaccine.scheduledDate) || 'N/A' }}</td>
+                    <td>{{ vaccine.doseNumber || 'N/A' }}</td>
+                    <td>
+                      <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
+                        {{ vaccine.status || 'Unknown' }}
+                      </span>
+                      <span v-if="computeDaysOverdue(vaccine) > 0" class="badge bg-danger ms-2">{{ computeDaysOverdue(vaccine) }}d overdue</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              No upcoming scheduled vaccinations found for this patient.
+              <br><small>This could mean all recommended vaccinations have been completed, or schedule data is not available.</small>
+            </div>
+          </div>
+          
+          <!-- Debug: Show raw schedule data -->
+          <div class="mt-3 p-3 bg-light border rounded" v-if="showDebug">
+            <h6 class="text-muted">Debug: Schedule Data</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <strong>Raw nextScheduledVaccinations:</strong>
+                <pre class="small">{{ JSON.stringify(patientData?.nextScheduledVaccinations, null, 2) }}</pre>
+              </div>
+              <div class="col-md-6">
+                <strong>Patient Data Keys:</strong>
+                <pre class="small">{{ patientData ? Object.keys(patientData).join('\n') : 'No patient data' }}</pre>
+                <strong>Patient DOB:</strong> {{ patientData?.date_of_birth || 'Not available' }}
+                <br><strong>Patient ID:</strong> {{ patientData?.patient_id || props.patientId }}
+                <br><strong>Array Length:</strong> {{ patientData?.nextScheduledVaccinations?.length || 0 }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Vaccination Record Modal (kept as modal even in page mode) -->
+    <div class="modal fade" :class="{ show: showNewVaccinationModal || showEditVaccinationModal }" 
+         :style="{ display: (showNewVaccinationModal || showEditVaccinationModal) ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="d-flex align-items-center w-100">
+              <h5 class="modal-title me-auto">
+                <i class="bi bi-shield-plus me-2"></i>
+                {{ showEditVaccinationModal ? 'Edit' : 'Add New' }} Vaccination Record
+              </h5>
+              <!-- Inside the add/edit vaccination modal: outside toggle at upper right -->
+              <div class="form-check form-switch" v-if="!showEditVaccinationModal">
+                <input class="form-check-input" type="checkbox" id="insideOutsideToggle" v-model="outsideImmunization">
+                <label class="form-check-label" for="insideOutsideToggle">Outside record</label>
+              </div>
+            </div>
+            <button type="button" class="btn-close" @click="closeVaccinationModal"></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="saveVaccinationRecord">
+              <div class="row g-3">
+                <div class="col-12">
+                  <small class="text-muted d-block">
+                    Outside = vaccinations done outside the facility. No inventory is used; choose a vaccine from the catalog. In-facility = administered here; choose a stock from inventory and ensure a same-day visit exists.
+                  </small>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Vaccine *</label>
+                  <!-- In-facility: choose from inventory stocks -->
+                  <select v-if="!outsideImmunization" class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" :required="!outsideImmunization" :disabled="showEditVaccinationModal">
+                    <option value="">Select a vaccine stock</option>
+                    <option v-for="v in vaccineOptions" :key="v.inventory_id" :value="v.inventory_id" :disabled="v.isExpired">
+                      {{ v.display_name }}<span v-if="v.isExpired"> — [EXPIRED]</span>
+                    </option>
+                  </select>
+                  <!-- Outside: choose vaccine (no inventory) -->
+                  <select v-else class="form-select" v-model="vaccinationForm.vaccineId" @change="onVaccineCatalogSelect" :required="outsideImmunization" :disabled="showEditVaccinationModal">
+                    <option value="">Select a vaccine</option>
+                    <option v-for="v in vaccineCatalog" :key="v.vaccine_id || v.id" :value="v.vaccine_id || v.id">
+                      {{ v.antigen_name || v.name || 'Vaccine' }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Disease Prevented</label>
+                  <input type="text" class="form-control" v-model="vaccinationForm.diseasePrevented" readonly>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Dose Number *</label>
+                  <select class="form-select" v-model="vaccinationForm.doseNumber" required>
+                    <option value="">Select dose</option>
+                    <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
+                  </select>
+                  <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Date Administered *</label>
+                  <input type="date" class="form-control" v-model="vaccinationForm.dateAdministered" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Age at Administration</label>
+                  <input type="text" class="form-control" v-model="vaccinationForm.ageAtAdministration" readonly>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Manufacturer</label>
+                  <input type="text" class="form-control" v-model="vaccinationForm.vaccineManufacturer" readonly>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Lot Number</label>
+                  <input type="text" class="form-control" v-model="vaccinationForm.lotNumber" readonly>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Site of Administration</label>
+                  <select class="form-select" v-model="vaccinationForm.siteOfAdministration">
+                    <option value="">Select a site</option>
+                    <option value="Left arm (deltoid)">Left arm (deltoid)</option>
+                    <option value="Right arm (deltoid)">Right arm (deltoid)</option>
+                    <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
+                    <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
+                    <option value="Oral">Oral</option>
+                  </select>
+                </div>
+                <div class="col-md-6" v-if="!outsideImmunization">
+                  <label class="form-label">Health Staff *</label>
+                  <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
+                    <option value="">Select health staff</option>
+                    <option v-for="hw in nurses" :key="hw.id || hw.health_worker_id" :value="hw.id || hw.health_worker_id">
+                      {{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})
+                    </option>
+                    <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Facility Name</label>
+                  <input type="text" class="form-control" v-model="vaccinationForm.facilityName">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Remarks</label>
+                  <textarea class="form-control" rows="2" v-model="vaccinationForm.remarks"></textarea>
+                </div>
+              </div>
+
+                <!-- Visit Picker Inline (for in-facility add) -->
+                <div v-if="showVisitPicker" class="modal fade" :class="{ show: showVisitPicker }" :style="{ display: showVisitPicker ? 'block' : 'none' }" tabindex="-1">
+                  <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Select a Visit</h5>
+                        <button type="button" class="btn-close" @click="showVisitPicker = false"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div v-if="loadingVisits" class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+                        <div v-else>
+                          <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
+                          <div class="list-group">
+                            <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
+                              <span>{{ formatDateShort(v.created_at || v.visit_date) }}</span>
+                              <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
+                            </button>
+                          </div>
+                          <div class="mt-3 d-flex justify-content-end">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="openOutsideRecordFromVisitPicker">
+                              <i class="bi bi-geo-alt me-1"></i> Outside record
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              <div class="mt-4 text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                Fields marked with * are required
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeVaccinationModal">Cancel</button>
+                <button type="submit" class="btn btn-primary" :disabled="saving || !canSave">
+                  <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                  {{ showEditVaccinationModal ? 'Update' : 'Add' }} Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visit Picker Modal (moved outside main modal) -->
+    <div v-if="showVisitPicker" class="modal fade" :class="{ show: showVisitPicker }" :style="{ display: showVisitPicker ? 'block' : 'none', zIndex: 1060 }" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Select a Visit</h5>
+            <button type="button" class="btn-close" @click="showVisitPicker = false"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="loadingVisits" class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+            <div v-else>
+              <div v-if="visits.length === 0" class="text-muted text-center py-3">No visits found. Create a visit from Add Patient Record (in-facility).</div>
+              <div class="list-group">
+                <button v-for="v in visits" :key="v.visit_id || v.id" type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" @click="pickVisit(v)">
+                  <span>{{ formatDateShort(v.created_at || v.visit_date) }}</span>
+                  <small class="text-muted">{{ v.visit_type || v.service_rendered || 'Visit' }}</small>
+                </button>
+              </div>
+              <div class="mt-3 d-flex justify-content-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @click="openOutsideRecordFromVisitPicker">
+                  <i class="bi bi-geo-alt me-1"></i> Create Record
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Backdrop for visit picker -->
+    <div v-if="showVisitPicker" class="modal-backdrop fade show" :style="{ zIndex: 1050 }" @click="showVisitPicker = false"></div>
+
+    <!-- Embedded Visit View (read-only + services active) -->
+    <div v-if="showVisitView" class="card border-primary mt-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0">Visit Details</h6>
+        <button type="button" class="btn-close" @click="closeVisitView"></button>
+      </div>
+      <div class="card-body p-0">
+        <div class="p-3">
+          <VisitEditor
+            :show="true"
+            :initial-patient-id="patientId"
+            :lock-patient="true"
+            :collected-vaccinations="[]"
+            :record-mode="false"
+            :embedded="true"
+            :view-mode="true"
+            :existing-visit-id="selectedVisitId"
+            @close="closeVisitView"
+            @saved="onVisitSaved"
+            @update-collected-vaccinations="noop"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal mode: keep previous behaviour for backward compatibility -->
+  <div v-else class="modal fade" :class="{ show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -54,7 +445,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(vaccine, index) in patientData?.vaccinationHistory" :key="index">
+                <tr v-for="(vaccine, index) in filteredVaccinations" :key="vaccine.immunization_id || vaccine.id || index">
                   <td>{{ index + 1 }}</td>
                   <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
                   <td>{{ vaccine.diseasePrevented }}</td>
@@ -74,7 +465,7 @@
                     </div>
                   </td>
                 </tr>
-                <tr v-if="!patientData?.vaccinationHistory || patientData.vaccinationHistory.length === 0">
+                <tr v-if="filteredVaccinations.length === 0">
                   <td colspan="9" class="text-center py-4 text-muted">
                     <i class="bi bi-shield-exclamation me-2"></i>
                     No vaccination records found for this patient
@@ -229,11 +620,11 @@
                 </select>
               </div>
               <div class="col-md-6" v-if="!outsideImmunization">
-                <label class="form-label">Health Worker *</label>
+                <label class="form-label">Health Staff *</label>
                 <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
-                  <option value="">Select health worker</option>
+                  <option value="">Select health staff</option>
                   <option v-for="hw in nurses" :key="hw.id || hw.health_worker_id" :value="hw.id || hw.health_worker_id">
-                    {{ hw.name }} ({{ hw.hw_type }})
+                    {{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})
                   </option>
                   <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
                 </select>
@@ -363,6 +754,7 @@ import api from '@/services/api';
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+import { useRouter } from 'vue-router'
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
@@ -388,6 +780,10 @@ const props = defineProps({
   },
   // When true, pre-selects the Outside Immunization mode when opening the add/edit modal
   defaultOutside: {
+    type: Boolean,
+    default: false
+  },
+  embeddedPage: {
     type: Boolean,
     default: false
   }
@@ -417,6 +813,7 @@ const availableDoses = ref([1, 2, 3, 4, 5]);
 const autoSelectHint = ref('');
 const outsideImmunization = ref(false);
 const vaccineCatalog = ref([]);
+const router = useRouter();
 // Outside record modal state
 // const showOutsideRecord = ref(false);
 
@@ -468,9 +865,22 @@ const startInFacilityAdd = async () => {
 }
 
 const pickVisit = (v) => {
-  // Instead of showing visit view, open the add record modal with this visit
+  // Instead of showing visit view, navigate to Add Patient Record page (embedded) when in page mode
   showVisitPicker.value = false
-  emit('open-add-patient-record', { outside: false, visitId: v.visit_id || v.id, patientId: props.patientId })
+  const visitId = v.visit_id || v.id
+  if (props.embeddedPage && router) {
+    router.push({
+      name: 'AddPatientRecord',
+      query: {
+        patientId: props.patientId,
+        visitId,
+        // ensure record-only mode is OFF for in-facility with a visit
+        outside: 'false'
+      }
+    })
+  } else {
+    emit('open-add-patient-record', { outside: false, visitId, patientId: props.patientId })
+  }
 }
 
 const selectedVisitId = ref(null)
@@ -483,10 +893,19 @@ const startOutsideAdd = () => {
 }
 
 const openOutsideRecordFromVisitPicker = () => {
-  console.log('Emitting open-add-patient-record with outside: true')
-  console.log('Closing visit picker')
+  console.log('Opening outside record flow')
   showVisitPicker.value = false
-  emit('open-add-patient-record', { outside: true, patientId: props.patientId })
+  if (props.embeddedPage && router) {
+    router.push({
+      name: 'AddPatientRecord',
+      query: {
+        patientId: props.patientId,
+        outside: 'true'
+      }
+    })
+  } else {
+    emit('open-add-patient-record', { outside: true, patientId: props.patientId })
+  }
 }
 
 const closeVisitView = () => {
@@ -570,11 +989,16 @@ const fetchPatientData = async () => {
 
     // Normalize vaccinationHistory entries to include vaccineName where missing
     if (patientData.value?.vaccinationHistory && Array.isArray(patientData.value.vaccinationHistory)) {
-      patientData.value.vaccinationHistory = patientData.value.vaccinationHistory.map(im => ({
+        patientData.value.vaccinationHistory = patientData.value.vaccinationHistory.map(im => ({
         ...im,
         vaccineId: im.vaccineId || im.vaccine_id || (im.vaccine && (im.vaccine.vaccine_id || im.vaccine.id)) || null,
         vaccineName: im.vaccineName || im.vaccine_name || (im.vaccine && (im.vaccine.antigen_name || im.vaccine.name)) || vaccineLookup[im.vaccineId] || vaccineLookup[im.vaccine_id] || ''
-      }))
+        }))
+        // Defensive filter by current patient id to avoid cross-patient leakage
+        .filter(im => {
+          const recPid = im.patient_id ?? im.patientId ?? im.patient_id_fk ?? im.patient?.patient_id ?? im.patient?.id
+          return recPid ? String(recPid) === String(props.patientId) : true
+        })
     }
 
     // Normalize nextScheduledVaccinations similarly
@@ -649,7 +1073,7 @@ const fetchVaccineCatalog = async () => {
 // Fetch health workers
 const fetchHealthWorkers = async () => {
   try {
-    const resp = await api.get('/health-workers');
+  const resp = await api.get('/health-staff');
     
     // Handle different possible response structures - prioritize new backend structure
     let allWorkers = [];
@@ -668,33 +1092,33 @@ const fetchHealthWorkers = async () => {
       allWorkers = [];
     }
     
-    // Filter BHW for visit recording (if needed for other contexts)
+    // Filter BHS for visit recording (if needed for other contexts)
     healthWorkers.value = allWorkers.filter(hw => {
-      const hwType = hw.hw_type || hw.role || hw.type || '';
-      return hwType.toLowerCase().includes('bhw');
+      const hsType = hw.hs_type || hw.hw_type || hw.role || hw.type || '';
+      return hsType.toLowerCase().includes('bhs');
     }).map(hw => ({
       id: hw.user_id || hw.id || hw.health_worker_id,
       health_worker_id: hw.health_worker_id || hw.user_id || hw.id,
       name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-      role: hw.hw_type || hw.role || hw.type
+      role: hw.hs_type || hw.hw_type || hw.role || hw.type
     }));
     
     // Filter nurses and nutritionists for vaccination administration
     nurses.value = allWorkers.filter(hw => {
-      const hwType = hw.hw_type || hw.role || hw.type || '';
-      return hwType.toLowerCase().includes('nurse') || hwType.toLowerCase().includes('nutritionist');
+      const hsType = hw.hs_type || hw.hw_type || hw.role || hw.type || '';
+      return hsType.toLowerCase().includes('nurse') || hsType.toLowerCase().includes('nutritionist');
     }).map(hw => ({
       id: hw.user_id || hw.id || hw.health_worker_id,
       health_worker_id: hw.health_worker_id || hw.user_id || hw.id,
       name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-      role: hw.hw_type || hw.role || hw.type,
-      hw_type: hw.hw_type || hw.role || hw.type
+      role: hw.hs_type || hw.hw_type || hw.role || hw.type,
+      hs_type: hw.hs_type || hw.hw_type || hw.role || hw.type
     }));
     
-    console.log('Health workers filtered:', { 
-      bhw: healthWorkers.value.length, 
+    console.log('Health staff filtered:', { 
+      bhs: healthWorkers.value.length, 
       nursesAndNutritionists: nurses.value.length,
-      availableTypes: [...new Set(allWorkers.map(hw => hw.hw_type || hw.role || hw.type))]
+      availableTypes: [...new Set(allWorkers.map(hw => hw.hs_type || hw.hw_type || hw.role || hw.type))]
     });
   } catch (err) {
     console.error('Error fetching health workers:', err);
@@ -1066,8 +1490,19 @@ const closeMainModal = () => {
   if (props.visitContext && collectedVaccinations.value.length > 0) {
     emit('vaccinations-collected', collectedVaccinations.value);
   }
-  emit('close');
+  // If embedded as page, navigate back instead of emitting close
+  if (props.embeddedPage) {
+    router.back();
+  } else {
+    emit('close');
+  }
 };
+
+// onClose handler for page header/back button
+const onClose = () => {
+  if (props.embeddedPage) return router.back();
+  return emit('close');
+}
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -1178,15 +1613,15 @@ watch(() => outsideImmunization.value, (isOutside) => {
 });
 
 onMounted(() => {
-  console.log('VaccinationRecordEditor mounted with props:', { show: props.show, patientId: props.patientId, visitContext: props.visitContext });
-  if (props.show && props.patientId) {
+  console.log('VaccinationRecordEditor mounted with props:', { show: props.show, embeddedPage: props.embeddedPage, patientId: props.patientId, visitContext: props.visitContext });
+  if ((props.embeddedPage || props.show) && props.patientId) {
     fetchPatientData();
     fetchVaccineOptions();
     fetchVaccineCatalog();
     fetchHealthWorkers();
 
     // If in visit context, automatically open the add vaccination modal
-    if (props.visitContext) {
+    if (props.visitContext && props.show) {
       console.log('Opening add vaccination modal automatically for visit context');
       setTimeout(() => {
         openNewVaccinationModal();
@@ -1219,6 +1654,66 @@ const canSave = computed(() => {
 });
 
 const noop = () => {}
+
+// Filter vaccination history strictly for current patient id
+const filteredVaccinations = computed(() => {
+  const list = patientData.value?.vaccinationHistory || []
+  return list.filter(im => {
+    const recPid = im?.patient_id ?? im?.patientId ?? im?.patient_id_fk ?? im?.patient?.patient_id ?? im?.patient?.id
+    return recPid ? String(recPid) === String(props.patientId) : true
+  })
+})
+
+// Sort vaccinations for table view (most recent first)
+const sortedVaccinations = computed(() => {
+  const list = filteredVaccinations.value || []
+  return [...list].sort((a, b) => {
+    const aDate = a.administered_date || a.date_administered || a.dateAdministered
+    const bDate = b.administered_date || b.date_administered || b.dateAdministered
+    const dateA = aDate ? new Date(aDate).getTime() : 0
+    const dateB = bDate ? new Date(bDate).getTime() : 0
+    return dateB - dateA
+  })
+})
+
+const upcomingSchedules = computed(() => {
+  const arr = patientData.value?.nextScheduledVaccinations || [];
+  const filtered = arr.filter(s => {
+    const st = String(s?.status || s?.schedule_status || '').toLowerCase();
+    return !['completed', 'done', 'administered', 'given'].includes(st);
+  });
+  return filtered.sort((a, b) => {
+    const da = new Date(a.scheduledDate || a.scheduled_date || 0).getTime();
+    const db = new Date(b.scheduledDate || b.scheduled_date || 0).getTime();
+    return da - db;
+  });
+});
+
+// Derive fields for display consistent with VaccinationHistory
+const deriveSite = (v) => {
+  const remarks = v?.remarks || v?.notes || ''
+  if (remarks) {
+    const m = remarks.match(/(?:site|injection site)\s*[:\-]\s*([^;,\.\n]+)/i)
+    if (m && m[1]) return m[1].trim()
+    if (/deltoid|thigh|vastus|buttock|arm|left|right|intramuscular|subcutaneous/i.test(remarks)) return remarks
+  }
+  return v?.site || v?.site_of_administration || v?.siteOfAdministration || '—'
+}
+
+const deriveFacility = (v) => {
+  const isOutside = !!(v?.immunization_outside || v?.is_outside || v?.isOutside || v?.outside_immunization || v?.outside)
+  if (isOutside) return 'Outside'
+  return (
+    v?.immunization_facility_name ||
+    v?.facility_name ||
+    v?.facilityName ||
+    v?.health_center ||
+    v?.healthCenter ||
+    '—'
+  )
+}
+
+const isOutside = (v) => !!(v?.immunization_outside || v?.is_outside || v?.isOutside || v?.outside_immunization || v?.outside)
 </script>
 
 <style scoped>

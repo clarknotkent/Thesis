@@ -37,9 +37,9 @@
               <div class="row no-gutters align-items-center">
                 <div class="col mr-2">
                   <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                    Health Workers
+                    Health Staff
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.healthWorkers }}</div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.healthStaff }}</div>
                 </div>
                 <div class="col-auto">
                   <i class="bi bi-person-badge text-success" style="font-size: 2rem;"></i>
@@ -104,9 +104,9 @@
               >Admins</button>
               <button 
                 class="btn btn-outline-primary"
-                :class="{ active: activeFilter === 'health_worker' }"
-                @click="setFilter('health_worker')"
-              >Health Workers</button>
+                :class="{ active: activeFilter === 'health_staff' }"
+                @click="setFilter('health_staff')"
+              >Health Staff</button>
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'parent' }"
@@ -307,20 +307,20 @@
                         <select class="form-select" v-model="userForm.role" required>
                           <option value="">Select Role</option>
                           <option value="admin">Admin</option>
-                          <option value="health_worker">Health Worker</option>
+                          <option value="health_staff">Health Staff</option>
                           <option value="parent">Parent</option>
                         </select>
                       </div>
-                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker'">
-                        <label class="form-label">Health Worker Type: <span class="text-danger">*</span></label>
-                        <select class="form-select" v-model="userForm.hwType" required>
+                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_staff'">
+                        <label class="form-label">Health Staff Type: <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="userForm.hsType" required>
                           <option value="">Select Type</option>
                           <option value="nurse">Nurse</option>
                           <option value="nutritionist">Nutritionist</option>
-                          <option value="bhw">Barangay Health Worker</option>
+                          <option value="bhs">Barangay Health Staff</option>
                         </select>
                       </div>
-                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
+                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_staff' || userForm.role === 'admin'">
                         <label class="form-label">Employee ID:</label>
                         <input
                           type="text"
@@ -328,7 +328,7 @@
                           v-model="userForm.employeeId"
                         >
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'">
+                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="(userForm.role === 'health_staff' && ['nurse','nutritionist'].includes(userForm.hsType)) || userForm.role === 'admin'">
                         <label class="form-label">PRC License Number:</label>
                         <input
                           type="text"
@@ -428,6 +428,7 @@ import AppModal from '@/components/common/AppModal.vue'
 import api from '@/services/api'
 import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 import DateInput from '@/components/common/DateInput.vue'
+import moment from 'moment-timezone'
 import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
 
 // Backend-driven; remove mock data
@@ -469,7 +470,7 @@ const userForm = ref({
   middleName: '',
   email: '',
   role: '',
-  hwType: '',
+  hsType: '',
   status: 'active',
   password: '',
   licenseNumber: '',
@@ -485,7 +486,7 @@ const userForm = ref({
 const userStats = computed(() => ({
   total: totalItems.value,
   admins: users.value.filter(u => u.role === 'admin').length,
-  healthWorkers: users.value.filter(u => u.role === 'health_worker').length,
+  healthStaff: users.value.filter(u => u.role === 'health_staff').length,
   parents: users.value.filter(u => u.role === 'parent').length
 }))
 
@@ -497,7 +498,7 @@ const mapBackendRoleToOption = (role) => {
   // Unify separators
   r = r.replace(/[-\s]+/g, '_') // "health worker" / "health-worker" -> health_worker
   // Handle common variants
-  if (r === 'health_worker' || r === 'healthworker') return 'health_worker'
+  if (r === 'health_worker' || r === 'healthworker' || r === 'health_staff' || r === 'healthstaff') return 'health_staff'
   if (r === 'guardian' || r === 'parent') return 'parent'
   if (r === 'admin') return 'admin'
   return r
@@ -522,11 +523,11 @@ const fetchUsers = async () => {
         name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
         email: u.email,
         role: mapBackendRoleToOption(u.role),
-        hwType: u.hw_type || '',
+        hsType: u.hs_type || '',
         status: u.status || 'active',
         lastLogin: rawLast,
         // Frontend-controlled PH timezone display for last login
-        lastLoginDisplay: rawLast ? formatDatePH(rawLast) : 'Never'
+        lastLoginDisplay: rawLast ? utcToPH(rawLast).format('MMM DD, YYYY hh:mm A') : 'Never'
       }
     })
     totalItems.value = pagination?.totalItems || rows.length
@@ -589,7 +590,7 @@ const openUserModal = async (user = null) => {
         middleName: full.middlename || user.middleName || '',
         email: full.email || user.email,
         role: mapBackendRoleToOption(full.role || user.role || ''),
-        hwType: full.hw_type || '',
+  hsType: full.hs_type || '',
         status: full.is_deleted ? 'inactive' : (user.status || 'active'),
         password: '',
         licenseNumber: full.professional_license_no || user.licenseNumber || '',
@@ -610,7 +611,7 @@ const openUserModal = async (user = null) => {
         middleName: user.middleName || '',
         email: user.email,
         role: mapBackendRoleToOption(user.role),
-        hwType: user.hwType || '',
+        hsType: user.hwType || user.hsType || '',
         status: user.status,
         password: '',
         licenseNumber: user.licenseNumber || '',
@@ -624,14 +625,14 @@ const openUserModal = async (user = null) => {
     }
   } else {
     isEditing.value = false
-    userForm.value = {
+      userForm.value = {
       id: '',
       firstName: '',
       lastName: '',
       middleName: '',
       email: '',
       role: '',
-      hwType: '',
+        hsType: '',
       status: 'active',
       password: '',
       licenseNumber: '',
@@ -655,7 +656,7 @@ const closeUserModal = () => {
     middleName: '',
     email: '',
     role: '',
-    hwType: '',
+    hsType: '',
     status: 'active',
     password: '',
     licenseNumber: '',
@@ -684,17 +685,17 @@ const saveUser = async () => {
       sex: userForm.value.sex || 'Other',
       birthdate: convertToISODate(userForm.value.birthdate) || userForm.value.birthdate || null,
       address: userForm.value.address || null,
-      professional_license_no: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
-      employee_id: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.employeeId || null) : null
+      professional_license_no: (userForm.value.role === 'health_staff' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
+      employee_id: (userForm.value.role === 'health_staff' || userForm.value.role === 'admin') ? (userForm.value.employeeId || null) : null
     }
-    if (userForm.value.role === 'health_worker') {
-      payload.hw_type = userForm.value.hwType || null
-      // if bhw, remove license
-      if (payload.hw_type === 'bhw') {
+    if (userForm.value.role === 'health_staff') {
+      payload.hs_type = userForm.value.hsType || null
+      // if bhs, remove license
+      if (payload.hs_type === 'bhs') {
         payload.professional_license_no = null
       }
     } else {
-      payload.hw_type = null
+      payload.hs_type = null
     }
     if (isEditing.value) {
       await apiUpdateUser(userForm.value.id, payload)
@@ -799,7 +800,7 @@ const restore = async (user) => {
 const getRoleBadgeClass = (role) => {
   switch (role) {
     case 'admin': return 'bg-warning text-dark'
-    case 'health_worker': return 'bg-success'
+    case 'health_staff': return 'bg-success'
     case 'parent': return 'bg-info text-dark'
     default: return 'bg-secondary'
   }
@@ -807,7 +808,7 @@ const getRoleBadgeClass = (role) => {
 
 const getRoleDisplayName = (role) => {
   switch (role) {
-    case 'health_worker': return 'Health Worker'
+    case 'health_staff': return 'Health Staff'
     case 'parent': return 'Parent'
     case 'admin': return 'Admin'
     default: {

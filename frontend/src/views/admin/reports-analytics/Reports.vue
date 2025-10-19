@@ -13,7 +13,7 @@
             <button v-if="activeTab === 'generated'" class="btn btn-primary" @click="showGenerateModal = true">
               <i class="bi bi-plus-circle me-2"></i>Generate Report
             </button>
-            <button v-if="activeTab === 'receiving'" class="btn btn-primary" @click="openCreateReceiving">
+            <button v-if="activeTab === 'receiving'" class="btn btn-primary" @click="goToCreateReceiving">
               <i class="bi bi-plus-circle me-2"></i>New Receiving Report
             </button>
           </div>
@@ -337,7 +337,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="r in receivingList.items" :key="r.report_id" @click="viewReceivingReport(r)" style="cursor:pointer;">
+                  <tr v-for="r in receivingList.items" :key="r.report_id" @click="goToViewReceiving(r)" style="cursor:pointer;">
                     <td class="fw-semibold">{{ r.report_number }}</td>
                     <td>{{ formatDate(r.delivery_date) }}</td>
                     <td>{{ r.delivered_by }}</td>
@@ -349,9 +349,9 @@
                     </td>
                     <td>
                       <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" @click.stop="viewReceivingReport(r)"><i class="bi bi-eye"></i></button>
-                        <button class="btn btn-outline-success" :disabled="r.status!=='DRAFT'" @click.stop="openCompleteReceiving(r)"><i class="bi bi-check2-circle"></i></button>
-                        <button class="btn btn-outline-danger" :disabled="r.status!=='DRAFT'" @click.stop="openCancelReceiving(r)"><i class="bi bi-x-circle"></i></button>
+                        <button class="btn btn-outline-primary" @click.stop="goToViewReceiving(r)"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-outline-success" :disabled="r.status!=='DRAFT'" @click.stop="goToCompleteReceiving(r)"><i class="bi bi-check2-circle"></i></button>
+                        <button class="btn btn-outline-danger" :disabled="r.status!=='DRAFT'" @click.stop="goToCancelReceiving(r)"><i class="bi bi-x-circle"></i></button>
                       </div>
                     </td>
                   </tr>
@@ -428,203 +428,14 @@
       <!-- Modal Backdrop -->
       <div v-if="showGenerateModal" class="modal-backdrop fade show"></div>
 
-      <!-- Receiving Report Create/Edit Modal -->
-      <div class="modal fade" :class="{ show: showReceivingModal }" :style="{ display: showReceivingModal ? 'block':'none' }" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">{{ receivingForm.report_id ? 'Edit' : 'New' }} Receiving Report</h5>
-              <button class="btn-close" @click="closeReceivingModal"></button>
-            </div>
-            <div class="modal-body">
-              <form @submit.prevent>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Delivery Date *</label>
-                    <DateInput v-model="receivingForm.delivery_date" :disabled="receivingForm.status === 'COMPLETED'" />
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Delivered By *</label>
-                    <input class="form-control" v-model="receivingForm.delivered_by" :disabled="receivingForm.status === 'COMPLETED'" required />
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Supplier Notes</label>
-                    <textarea class="form-control" rows="2" v-model="receivingForm.supplier_notes" :disabled="receivingForm.status === 'COMPLETED'"></textarea>
-                  </div>
-                </div>
-              </form>
-              <hr />
-              <div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="m-0">
-                    Items
-                    <small class="text-muted ms-2">
-                      ({{ Number(receivingForm.total_items || receivingItems.filter(it => !it.is_deleted).length) }} items · {{ Number(receivingForm.total_quantity || receivingItems.filter(it => !it.is_deleted).reduce((s,i)=> s + (Number(i.quantity_received)||0), 0)) }} total)
-                    </small>
-                  </h6>
-                  <button v-if="receivingForm.status !== 'COMPLETED'" class="btn btn-sm btn-outline-primary" @click="addReceivingItemRow"><i class="bi bi-plus"></i> Add Item</button>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm align-middle table-striped">
-                    <thead>
-                      <tr>
-                        <th>Vaccine</th>
-                        <th>Antigen</th>
-                        <th>Brand</th>
-                        <th>Manufacturer</th>
-                        <th>Lot #</th>
-                        <th>Expiry</th>
-                        <th>Qty</th>
-                        <th>Storage</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(it, idx) in receivingItems.filter(it => !it.is_deleted)" :key="it.item_id || idx">
-                        <td>
-                          <select class="form-select form-select-sm" v-model="it.vaccine_id" @change="onSelectVaccine(it)" :disabled="receivingForm.status === 'COMPLETED'" style="min-width: 150px;">
-                            <option value="">New / Not in list…</option>
-                            <option v-for="v in vaccineTypes" :key="v.id" :value="v.id">{{ v.antigen_name }} ({{ v.brand_name }})</option>
-                          </select>
-                        </td>
-                        <td>
-                          <input class="form-control form-control-sm" v-model="it.antigen_name" :disabled="receivingForm.status === 'COMPLETED' || !!it.vaccine_id" placeholder="e.g., DTP" style="min-width: 100px;" />
-                        </td>
-                        <td>
-                          <input class="form-control form-control-sm" v-model="it.brand_name" :disabled="receivingForm.status === 'COMPLETED' || !!it.vaccine_id" placeholder="Brand" style="min-width: 100px;" />
-                        </td>
-                        <td><input class="form-control form-control-sm" v-model="it.manufacturer" :disabled="receivingForm.status === 'COMPLETED'" style="min-width: 100px;" /></td>
-                        <td><input class="form-control form-control-sm" v-model="it.lot_number" :disabled="receivingForm.status === 'COMPLETED'" style="min-width: 80px;" /></td>
-                        <td><DateInput v-model="it.expiration_date" small :disabled="receivingForm.status === 'COMPLETED'" /></td>
-                        <td><input type="number" min="1" class="form-control form-control-sm text-center" v-model.number="it.quantity_received" :disabled="receivingForm.status === 'COMPLETED'" style="min-width: 60px;" /></td>
-                        <td><input class="form-control form-control-sm" v-model="it.storage_location" :disabled="receivingForm.status === 'COMPLETED'" style="min-width: 100px;" /></td>
-                        <td>
-                          <button v-if="receivingForm.status !== 'COMPLETED'" class="btn btn-sm btn-outline-danger" @click="it.is_deleted = true"><i class="bi bi-trash"></i></button>
-                        </td>
-                      </tr>
-                      <tr v-if="receivingItems.filter(it => !it.is_deleted).length===0"><td colspan="9" class="text-center text-muted">No items yet</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="closeReceivingModal">Close</button>
-              <button v-if="receivingForm.status !== 'COMPLETED'" class="btn btn-success" @click="saveReceivingReport" :disabled="receivingSaving">{{ receivingForm.report_id ? 'Save' : 'Create' }} Report</button>
-              <button v-if="receivingForm.status === 'DRAFT'" class="btn btn-primary" @click="openCompleteReceiving(receivingForm)" :disabled="!receivingForm.report_id || receivingSaving">Complete</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="showReceivingModal" class="modal-backdrop fade show" />
-
-      <!-- Complete Receiving Modal -->
-      <div class="modal fade" :class="{ show: showReceivingCompleteModal }" :style="{ display: showReceivingCompleteModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Complete Receiving Report</h5>
-              <button class="btn-close" @click="showReceivingCompleteModal = false"></button>
-            </div>
-            <div class="modal-body">
-              <p>You're about to complete this report and create inventory records.</p>
-              <ul class="mb-0">
-                <li><strong>Items:</strong> {{ (receivingCompleteSummary.items || 0) }}</li>
-                <li><strong>Total Qty:</strong> {{ (receivingCompleteSummary.quantity || 0) }}</li>
-              </ul>
-              <small class="text-muted">You can still update vaccine master details afterward if prompted.</small>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showReceivingCompleteModal = false">Cancel</button>
-              <button class="btn btn-primary" @click="confirmCompleteReceiving" :disabled="receivingCompleting">Complete Now</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="showReceivingCompleteModal" class="modal-backdrop fade show" />
-
-      <!-- Cancel Receiving Modal -->
-      <div class="modal fade" :class="{ show: showReceivingCancelModal }" :style="{ display: showReceivingCancelModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Cancel Receiving Report</h5>
-              <button class="btn-close" @click="showReceivingCancelModal = false"></button>
-            </div>
-            <div class="modal-body">
-              <label class="form-label">Reason (optional)</label>
-              <textarea class="form-control" rows="3" v-model="receivingCancelReason" placeholder="Enter reason for cancellation (optional)"></textarea>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showReceivingCancelModal = false">Close</button>
-              <button class="btn btn-danger" @click="confirmCancelReceiving" :disabled="receivingCancelling">Cancel Report</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="showReceivingCancelModal" class="modal-backdrop fade show" />
-
-      <!-- Complete Vaccine Details Modal -->
-      <div class="modal fade" :class="{ show: showDetailsModal }" :style="{ display: showDetailsModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Complete Vaccine Details</h5>
-              <button class="btn-close" @click="showDetailsModal = false"></button>
-            </div>
-            <div class="modal-body">
-              <p class="text-muted">Some vaccines created from this receiving report are missing details. Please review and complete them.</p>
-              <div v-for="(f, idx) in detailsForms" :key="f.vaccine_id" class="border rounded p-3 mb-3">
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label">Antigen</label>
-                    <input class="form-control" v-model="f.antigen_name" readonly />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Brand</label>
-                    <input class="form-control" v-model="f.brand_name" readonly />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Manufacturer</label>
-                    <input class="form-control" v-model="f.manufacturer" />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Disease Prevented</label>
-                    <input class="form-control" v-model="f.disease_prevented" placeholder="e.g., Measles, Polio" />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Vaccine Type</label>
-                    <select class="form-select" v-model="f.vaccine_type">
-                      <option v-for="o in vaccineTypeOptions" :key="o" :value="o">{{ o }}</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" v-model="f.category">
-                      <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Default Storage Location (optional)</label>
-                    <input class="form-control" v-model="f.default_storage_location" placeholder="Set for all inventory created by this RR" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showDetailsModal = false">Close</button>
-              <button class="btn btn-primary" @click="saveCompletedDetails">Save Details</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="showDetailsModal" class="modal-backdrop fade show" />
+      <!-- Receiving modals removed: flows are page-based now -->
     </div>
   </AdminLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import DateInput from '@/components/common/DateInput.vue'
@@ -673,28 +484,7 @@ const receivingLoading = ref(false)
 const receivingList = ref({ items: [], totalCount: 0, totalPages: 0 })
 const receivingStatus = ref('')
 const receivingSearch = ref('')
-const showReceivingModal = ref(false)
-const receivingForm = ref({ report_id: null, delivery_date: '', delivered_by: '', supplier_notes: '' })
-const receivingItems = ref([])
-const vaccineTypes = ref([])
-const manufacturerOptions = ref([])
-const antigenOptions = ref([])
-const brandOptions = ref([])
-const storageOptions = ref(['Cold Room A', 'Cold Room B', 'Refrigerator 1', 'Refrigerator 2', 'Freezer -20C', 'Freezer -80C'])
-const showReceivingCompleteModal = ref(false)
-const receivingCompleting = ref(false)
-const receivingCompleteTargetId = ref(null)
-const receivingCompleteSummary = ref({ items: 0, quantity: 0 })
-const showReceivingCancelModal = ref(false)
-const receivingCancelling = ref(false)
-const receivingCancelTargetId = ref(null)
-const receivingCancelReason = ref('')
-const receivingSaving = ref(false)
-const reportItemsCache = ref([])
-const showDetailsModal = ref(false)
-const detailsForms = ref([])
-const vaccineTypeOptions = ['inactivated','live-attenuated','toxoid','mrna','viral-vector','conjugate','subunit','other']
-const categoryOptions = ['VACCINE','DEWORMING','VITAMIN_A']
+const router = useRouter()
 
 // Methods
 const fetchReports = async () => {
@@ -1159,293 +949,11 @@ const fetchReceivingList = async () => {
   }
 }
 
-const loadVaccineTypes = async () => {
-  try {
-    const res = await api.get('/vaccines')
-    const arr = res.data?.data || res.data || []
-    vaccineTypes.value = (Array.isArray(arr) ? arr : arr.vaccines || []).map(v => ({ 
-      id: v.vaccine_id || v.id, 
-      antigen_name: v.antigen_name, 
-      brand_name: v.brand_name, 
-      manufacturer: v.manufacturer 
-    }))
-    manufacturerOptions.value = [...new Set(vaccineTypes.value.map(v => v.manufacturer).filter(Boolean))]
-    antigenOptions.value = [...new Set(vaccineTypes.value.map(v => v.antigen_name).filter(Boolean))]
-    brandOptions.value = [...new Set(vaccineTypes.value.map(v => v.brand_name).filter(Boolean))]
-  } catch (e) {
-    vaccineTypes.value = []
-    manufacturerOptions.value = []
-    antigenOptions.value = []
-    brandOptions.value = []
-  }
-}
-
-const openCreateReceiving = () => {
-  const today = new Date()
-  receivingForm.value = { 
-    report_id: null, 
-    delivery_date: today.toLocaleDateString('en-US'),
-    delivered_by: '', 
-    supplier_notes: '',
-    received_by: null
-  }
-  receivingItems.value = []
-  showReceivingModal.value = true
-}
-
-const closeReceivingModal = () => {
-  showReceivingModal.value = false
-}
-
-const toISO = (dateStr) => {
-  if (!dateStr) return null
-  if (dateStr.includes('-')) return dateStr
-  const [m, d, y] = String(dateStr).split('/')
-  if (!m || !d || !y) return null
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-}
-
-const saveReceivingReport = async () => {
-  try {
-    receivingSaving.value = true
-    if (!receivingForm.value.report_id) {
-      const payload = { 
-        delivery_date: toISO(receivingForm.value.delivery_date), 
-        delivered_by: receivingForm.value.delivered_by, 
-        supplier_notes: receivingForm.value.supplier_notes,
-        items: receivingItems.value.filter(it => !it.is_deleted).map(it => ({ 
-          ...it, 
-          expiration_date: toISO(it.expiration_date) 
-        }))
-      }
-      const { data } = await api.post('/receiving-reports', payload)
-      receivingForm.value = data.data.header || data.data
-      const arr = data.data.items || []
-      receivingItems.value = arr.map(x => ({
-        item_id: x.item_id,
-        vaccine_id: x.vaccine_id,
-        antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
-        brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
-        manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
-        lot_number: x.lot_number,
-        expiration_date: x.expiration_date,
-        quantity_received: x.quantity_received,
-        storage_location: x.storage_location,
-        is_deleted: false
-      }))
-      const { addToast } = useToast()
-      addToast({ 
-        title: 'Created', 
-        message: `Report ${(data.data.header || data.data).report_number} created with ${receivingItems.value.length} items.`, 
-        type: 'success' 
-      })
-    } else {
-      const payload = { 
-        delivery_date: toISO(receivingForm.value.delivery_date), 
-        delivered_by: receivingForm.value.delivered_by, 
-        supplier_notes: receivingForm.value.supplier_notes, 
-        items: receivingItems.value.filter(it => !it.is_deleted).map(it => ({ 
-          ...it, 
-          expiration_date: toISO(it.expiration_date) 
-        })) 
-      }
-      const { data } = await api.put(`/receiving-reports/${receivingForm.value.report_id}`, payload)
-      receivingForm.value = data.data.header || data.data
-      const arr = data.data.items || []
-      receivingItems.value = arr.map(x => ({
-        item_id: x.item_id,
-        vaccine_id: x.vaccine_id,
-        antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
-        brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
-        manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
-        lot_number: x.lot_number,
-        expiration_date: x.expiration_date,
-        quantity_received: x.quantity_received,
-        storage_location: x.storage_location,
-        is_deleted: false
-      }))
-      const { addToast } = useToast()
-      addToast({ title: 'Saved', message: 'Report and items updated.', type: 'success' })
-    }
-    await fetchReceivingList()
-  } catch (e) {
-    console.error('Failed to save report', e)
-    if (receivingForm.value.report_id && (e.response?.status === 404 || (e.response?.data?.message && e.response.data.message.includes('result contains 0 rows')))) {
-      receivingForm.value.report_id = null
-      const { addToast } = useToast()
-      addToast({ title: 'Report not found', message: 'The report may have been deleted. Please create a new one.', type: 'warning' })
-    } else {
-      const { addToast } = useToast()
-      addToast({ title: 'Error', message: 'Failed to save report', type: 'error' })
-    }
-  } finally {
-    receivingSaving.value = false
-  }
-}
-
-const addReceivingItemRow = () => {
-  receivingItems.value.push({ 
-    item_id: null, 
-    vaccine_id: '', 
-    antigen_name: '', 
-    brand_name: '', 
-    manufacturer: '', 
-    lot_number: '', 
-    expiration_date: new Date().toISOString().split('T')[0], 
-    quantity_received: 1, 
-    storage_location: '', 
-    is_deleted: false 
-  })
-}
-
-const viewReceivingReport = async (r) => {
-  try {
-    const { data } = await api.get(`/receiving-reports/${r.report_id}`)
-    receivingForm.value = data.data.header
-    const arr = data.data.items || []
-    reportItemsCache.value = arr
-    receivingItems.value = arr.map(x => ({
-      item_id: x.item_id,
-      vaccine_id: x.vaccine_id,
-      antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
-      brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
-      manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
-      lot_number: x.lot_number,
-      expiration_date: x.expiration_date,
-      quantity_received: x.quantity_received,
-      storage_location: x.storage_location,
-      is_deleted: false
-    }))
-    showReceivingModal.value = true
-  } catch (e) {
-    console.error('Failed to load report', e)
-  }
-}
-
-const onSelectVaccine = (it) => {
-  if (!it.vaccine_id) return
-  const v = vaccineTypes.value.find(x => String(x.id) === String(it.vaccine_id))
-  if (v) {
-    it.antigen_name = v.antigen_name || ''
-    it.brand_name = v.brand_name || ''
-    if (!it.manufacturer) it.manufacturer = v.manufacturer || ''
-  }
-}
-
-const openCompleteReceiving = (r) => {
-  const id = r.report_id || receivingForm.value.report_id
-  receivingCompleteTargetId.value = id
-  const itemsCount = Number(r.total_items || receivingForm.value.total_items || (reportItemsCache.value || []).length || 0)
-  const totalQty = Number(r.total_quantity || receivingForm.value.total_quantity || (reportItemsCache.value || []).reduce((s, x) => s + (Number(x.quantity_received) || 0), 0) || 0)
-  receivingCompleteSummary.value = { items: itemsCount, quantity: totalQty }
-  showReceivingCompleteModal.value = true
-}
-
-const confirmCompleteReceiving = async () => {
-  if (!receivingCompleteTargetId.value) return
-  try {
-    receivingCompleting.value = true
-    await api.post(`/receiving-reports/${receivingCompleteTargetId.value}/complete`)
-    const { addToast } = useToast()
-    addToast({ title: 'Completed', message: 'Report completed and inventory created.', type: 'success' })
-    
-    const { data } = await api.get(`/receiving-reports/${receivingCompleteTargetId.value}`)
-    const arr = data.data.items || []
-    reportItemsCache.value = arr
-    const byVaccine = new Map()
-    for (const it of arr) {
-      const vm = it.vaccinemaster || {}
-      const incomplete = !vm.disease_prevented || !vm.vaccine_type || !vm.category || (vm.vaccine_type === 'inactivated' && !vm.disease_prevented)
-      if (incomplete && it.vaccine_id) {
-        const key = String(it.vaccine_id)
-        if (!byVaccine.has(key)) {
-          byVaccine.set(key, {
-            vaccine_id: it.vaccine_id,
-            antigen_name: vm.antigen_name || it.antigen_name || '',
-            brand_name: vm.brand_name || it.brand_name || '',
-            manufacturer: vm.manufacturer || it.manufacturer || '',
-            disease_prevented: vm.disease_prevented || '',
-            vaccine_type: vm.vaccine_type || 'inactivated',
-            category: vm.category || 'VACCINE',
-            default_storage_location: ''
-          })
-        }
-      }
-    }
-    detailsForms.value = Array.from(byVaccine.values())
-    showReceivingModal.value = false
-    showReceivingCompleteModal.value = false
-    await fetchReceivingList()
-    if (detailsForms.value.length > 0) {
-      showDetailsModal.value = true
-    }
-  } catch (e) {
-    console.error('Failed to complete report', e)
-    const { addToast } = useToast()
-    addToast({ title: 'Error', message: 'Failed to complete report', type: 'error' })
-  } finally {
-    receivingCompleting.value = false
-  }
-}
-
-const openCancelReceiving = (r) => {
-  receivingCancelTargetId.value = r.report_id || receivingForm.value.report_id
-  receivingCancelReason.value = ''
-  showReceivingCancelModal.value = true
-}
-
-const confirmCancelReceiving = async () => {
-  if (!receivingCancelTargetId.value) return
-  try {
-    receivingCancelling.value = true
-    await api.post(`/receiving-reports/${receivingCancelTargetId.value}/cancel`, { 
-      reason: receivingCancelReason.value || null 
-    })
-    const { addToast } = useToast()
-    addToast({ title: 'Cancelled', message: 'Report cancelled.', type: 'success' })
-    showReceivingCancelModal.value = false
-    showReceivingModal.value = false
-    await fetchReceivingList()
-  } catch (e) {
-    console.error('Failed to cancel report', e)
-    const { addToast } = useToast()
-    addToast({ title: 'Error', message: 'Failed to cancel report', type: 'error' })
-  } finally {
-    receivingCancelling.value = false
-  }
-}
-
-const saveCompletedDetails = async () => {
-  try {
-    for (const f of detailsForms.value) {
-      const payload = {
-        antigen_name: f.antigen_name,
-        brand_name: f.brand_name,
-        manufacturer: f.manufacturer,
-        disease_prevented: f.disease_prevented,
-        vaccine_type: f.vaccine_type,
-        category: f.category
-      }
-      await api.put(`/vaccines/${f.vaccine_id}`, payload)
-
-      if (f.default_storage_location) {
-        const related = (reportItemsCache.value || []).filter(x => String(x.vaccine_id) === String(f.vaccine_id) && x.inventory_id)
-        for (const it of related) {
-          await api.put(`/vaccines/inventory/${it.inventory_id}`, { 
-            storage_location: f.default_storage_location 
-          })
-        }
-      }
-    }
-    const { addToast } = useToast()
-    addToast({ title: 'Updated', message: 'Vaccine details saved.', type: 'success' })
-    showDetailsModal.value = false
-  } catch (e) {
-    console.error('Failed updating vaccine details', e)
-    const { addToast } = useToast()
-    addToast({ title: 'Error', message: 'Failed to save vaccine details', type: 'error' })
-  }
-}
+// Navigation helpers for Receiving Reports page-based flows
+const goToCreateReceiving = () => router.push({ name: 'ReceivingReportNew' })
+const goToViewReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id } })
+const goToCompleteReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id }, query: { action: 'complete' } })
+const goToCancelReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id }, query: { action: 'cancel' } })
 
 const getReceivingBadgeClass = (status) => {
   const classes = {
@@ -1459,7 +967,6 @@ const getReceivingBadgeClass = (status) => {
 // Lifecycle
 onMounted(() => {
   fetchReports()
-  loadVaccineTypes()
   // If user directly navigates to receiving reports tab, fetch that data too
   if (activeTab.value === 'receiving') {
     fetchReceivingList()

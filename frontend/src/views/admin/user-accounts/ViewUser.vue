@@ -169,9 +169,10 @@ const fetchUserData = async () => {
       lastName: user.surname || user.lastName || '',
       email: user.email || '',
       role: user.role || '',
-      hwType: user.hw_type || user.hwType || '',
+      // prefer new hs_type field, but fall back to older names for compatibility
+      hsType: user.hs_type || user.hsType || user.hw_type || user.hwType || '',
       status: user.status || 'active',
-      licenseNumber: user.license_number || user.licenseNumber || '',
+      licenseNumber: user.professional_license_no || user.license_number || user.licenseNumber || '',
       employeeId: user.employee_id || user.employeeId || '',
       phoneNumber: user.phone_number || user.phoneNumber || '',
       contactNumber: user.contact_number || user.contactNumber || '',
@@ -193,12 +194,16 @@ const fetchUserData = async () => {
 const roleDisplayName = computed(() => {
   if (!userData.value) return ''
   const role = userData.value.role
-  if (role === 'health_worker') {
-    const hwType = userData.value.hwType
-    if (hwType) {
-      return `Health Worker (${hwType.charAt(0).toUpperCase() + hwType.slice(1)})`
+  if (role === 'health_staff' || role === 'healthstaff' || role === 'health worker' || role === 'health_worker' || role === 'Health Staff' || role === 'HealthStaff') {
+    const hsType = userData.value.hsType
+    if (hsType) {
+      // display 'Barangay Health Staff' for 'bhs' or capitalize other types
+      if (hsType.toLowerCase() === 'bhs' || hsType.toLowerCase() === 'bhw') {
+  return 'Health Staff (Barangay Health Staff)'
+      }
+      return `Health Staff (${hsType.charAt(0).toUpperCase() + hsType.slice(1)})`
     }
-    return 'Health Worker'
+    return 'Health Staff'
   }
   if (role === 'admin') return 'Admin'
   if (role === 'parent') return 'Parent'
@@ -214,7 +219,7 @@ const roleBadgeClass = computed(() => {
   if (!userData.value) return 'bg-secondary'
   const role = userData.value.role
   if (role === 'admin') return 'bg-danger'
-  if (role === 'health_worker') return 'bg-primary'
+  if (role === 'health_worker' || role === 'health_staff' || role === 'HealthStaff') return 'bg-primary'
   if (role === 'parent') return 'bg-info'
   return 'bg-secondary'
 })

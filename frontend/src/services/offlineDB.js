@@ -9,11 +9,11 @@ export class HealthcareDB extends Dexie {
       // Patient data
       patients: '++id, patient_id, name, email, phone, date_of_birth, gender, address, guardian_id, created_at, updated_at, synced',
       
-      // Appointments/Visits
-      appointments: '++id, appointment_id, patient_id, health_worker_id, appointment_date, status, notes, created_at, updated_at, synced',
+  // Appointments/Visits (recorded_by maps to health_staff user id)
+  appointments: '++id, appointment_id, patient_id, health_worker_id, appointment_date, status, notes, created_at, updated_at, synced',
       
-      // Immunization records
-      immunizations: '++id, immunization_id, patient_id, vaccine_id, date_administered, health_worker_id, notes, created_at, updated_at, synced',
+  // Immunization records (recorded_by maps to health_staff user id)
+  immunizations: '++id, immunization_id, patient_id, vaccine_id, date_administered, health_worker_id, notes, created_at, updated_at, synced',
       
       // Vaccine information
       vaccines: '++id, vaccine_id, vaccine_name, description, age_range, dosage_info, created_at, updated_at, synced',

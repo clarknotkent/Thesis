@@ -45,13 +45,13 @@
           <form @submit.prevent="handleSubmit">
             <div class="mb-3">
               <label class="form-label">Vaccine Type *</label>
-              <select v-model="selectedVaccine" class="form-select" disabled>
-                <option value="">-- Select Vaccine --</option>
-                <option v-for="v in existingVaccines" :key="v.id" :value="v.id">
-                  {{ v.antigen_name }} ({{ v.brand_name }})
-                </option>
-              </select>
-              <small class="text-muted">Vaccine type cannot be changed</small>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    :value="selectedVaccine.antigen_name + ' (' + selectedVaccine.brand_name + ')'" 
+                    readonly
+                    disabled
+                  >
             </div>
 
             <div>
@@ -377,7 +377,10 @@ const fetchExistingVaccines = async () => {
   try {
     const res = await api.get('/vaccines')
     const data = res.data?.data || res.data || []
-    existingVaccines.value = Array.isArray(data) ? data : []
+    // Normalize id alias so the disabled select binds properly to selectedVaccine (v.id)
+    existingVaccines.value = Array.isArray(data)
+      ? data.map(v => ({ ...v, id: v.vaccine_id || v.id }))
+      : []
   } catch (e) {
     console.error('Error fetching vaccines', e)
     addToast('Error loading vaccines', 'error')
@@ -396,7 +399,7 @@ const fetchSchedule = async () => {
     }
 
     // Set selected vaccine
-    selectedVaccine.value = data.vaccine_id
+    selectedVaccine.value = data.vaccine
 
     // Map dose data
     const rawDoses = Array.isArray(data.schedule_doses)
@@ -515,12 +518,12 @@ function buildPayload() {
 }
 
 const handleSubmit = async () => {
-  if (!selectedVaccine.value) return
+  if (!selectedVaccine.vaccine_id) return
   
   submitting.value = true
   try {
     const payload = buildPayload()
-    await api.put(`/vaccines/${selectedVaccine.value}/schedule`, payload)
+    await api.put(`/vaccines/${selectedVaccine.vaccine_id}/schedule`, payload)
     addToast('Schedule updated successfully!', 'success')
     router.push('/admin/vaccines')
   } catch (error) {

@@ -21,7 +21,7 @@
             </div>
 
             <div class="mb-3" v-if="!recordMode">
-              <label class="form-label">Health Worker (BHW) *</label>
+              <label class="form-label">Health Staff (BHS) *</label>
               <select class="form-select" v-model="form.recorded_by" :disabled="viewOnly || existingVisitMode" required>
                 <option value="">Select health worker</option>
                 <option v-for="hw in healthWorkers" :key="hw.user_id" :value="hw.user_id">{{ hw.fullname || hw.name }}</option>
@@ -76,7 +76,7 @@
               <label class="form-label">Vaccines to be Administered During Visit</label>
               <div class="border rounded p-2 bg-light">
                 <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-1">
-                  <span><strong>{{ vacc.vaccine_name || 'Unknown Vaccine' }}</strong> - {{ formatDate(vacc.administered_date) }}</span>
+                  <span><strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong> - {{ formatDate(vacc.administered_date) }}</span>
                   <span class="badge bg-info">Will be saved with visit</span>
                 </div>
               </div>
@@ -109,7 +109,7 @@
         </div>
 
         <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Health Worker (BHW) *</label>
+          <label class="form-label">Health Staff (BHS) *</label>
           <select class="form-select" v-model="form.recorded_by" :disabled="viewOnly || existingVisitMode" required>
             <option value="">Select health worker</option>
             <option v-for="hw in healthWorkers" :key="hw.user_id" :value="hw.user_id">{{ hw.fullname || hw.name }}</option>
@@ -167,7 +167,7 @@
           <div class="border rounded p-3 bg-light">
             <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
               <div class="flex-grow-1">
-                <strong>{{ vacc.vaccine_name || 'Unknown Vaccine' }}</strong>
+                <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
                 <br>
                 <small class="text-muted">
                   Date: {{ formatDate(vacc.administered_date) }} |
@@ -176,10 +176,10 @@
                 </small>
               </div>
               <div class="d-flex gap-1" v-if="!viewOnly && !existingVisitMode">
-                <button class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
+                <button type="button" class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
+                <button type="button" class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -276,11 +276,11 @@
                 </select>
               </div>
               <div class="col-md-6" v-if="!recordMode">
-                <label class="form-label">Health Worker *</label>
+                <label class="form-label">Health Staff *</label>
                 <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
-                  <option value="">Select health worker</option>
+                  <option value="">Select health staff</option>
                   <option v-for="nurse in nurses" :key="nurse.user_id || nurse.id" :value="nurse.user_id || nurse.id">
-                    {{ nurse.fullname }} ({{ nurse.hw_type }})
+                    {{ nurse.fullname }} ({{ nurse.hs_type || nurse.hw_type || nurse.role || nurse.type }})
                   </option>
                   <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
                 </select>
@@ -363,8 +363,8 @@ const showNipOnly = ref(false)
 const availableDoses = ref([1, 2, 3, 4, 5]) // Default doses, can be made dynamic later
 const autoSelectHint = ref('')
 
-// Use computed to get collected vaccinations from props
-const collectedVaccinations = computed(() => props.collectedVaccinations?.value || [])
+// Use computed to get collected vaccinations from props (prop is an Array, not a ref)
+const collectedVaccinations = computed(() => Array.isArray(props.collectedVaccinations) ? props.collectedVaccinations : [])
 
 const isSaveDisabled = computed(() => existingVisitMode.value && (!collectedVaccinations.value || collectedVaccinations.value.length === 0))
 
@@ -460,14 +460,17 @@ const clearPatientSearch = () => {
 
 const fetchHealthWorkers = async () => {
   try {
-    console.log('🔄 [VisitEditor] Fetching health workers...')
-    const res = await api.get('/health-workers')
+    console.log('🔄 [VisitEditor] Fetching health staff...')
+    const res = await api.get('/health-staff')
     console.log('✅ [VisitEditor] Health workers API response:', res.data)
     
     // Handle different possible response structures - prioritize new backend structure
     let list = []
     if (res.data?.data?.healthWorkers && Array.isArray(res.data.data.healthWorkers)) {
       list = res.data.data.healthWorkers
+    } else if (res.data?.data?.healthStaff && Array.isArray(res.data.data.healthStaff)) {
+      // Current backend returns { success:true, data: { healthStaff: [...] } }
+      list = res.data.data.healthStaff
     } else if (Array.isArray(res.data)) {
       list = res.data
     } else if (res.data?.data && Array.isArray(res.data.data)) {
@@ -476,6 +479,8 @@ const fetchHealthWorkers = async () => {
       list = res.data.users
     } else if (res.data?.healthWorkers && Array.isArray(res.data.healthWorkers)) {
       list = res.data.healthWorkers
+    } else if (res.data?.healthStaff && Array.isArray(res.data.healthStaff)) {
+      list = res.data.healthStaff
     } else {
       console.warn('Unexpected health workers response structure:', res.data)
       list = []
@@ -483,33 +488,51 @@ const fetchHealthWorkers = async () => {
     
     console.log('👥 [VisitEditor] Health workers list:', list)
     
-    // For visit form (recorded_by): only show BHW
+    // Role helpers
+    const rawRole = (hw) => String(hw.hs_type || hw.hw_type || hw.role || hw.type || '').toLowerCase()
+    const isHealthStaffRole = (r) => {
+      const s = r.toLowerCase()
+      return [
+        'bhs',
+        'barangay health staff',
+        'barangay health worker',
+        'health staff',
+        'health worker'
+      ].some(k => s.includes(k))
+    }
+    const isNurseOrNutritionistRole = (r) => {
+      const s = r.toLowerCase()
+      return s.includes('nurse') || s.includes('rn') || s.includes('nutritionist') || s.includes('dietitian') || s.includes('nd')
+    }
+    const displayRole = (r) => {
+      if (isNurseOrNutritionistRole(r)) {
+        return r.includes('nutrition') || r.includes('diet') ? 'Nutritionist' : 'Nurse'
+      }
+      if (isHealthStaffRole(r)) return 'Health Staff'
+      return r || 'Health Staff'
+    }
+
+    // For visit form (recorded_by): show Health Staff roles
     healthWorkers.value = list
-      .filter(hw => {
-        const hwType = hw.hw_type || hw.role || hw.type || ''
-        return hwType.toLowerCase().includes('bhw')
-      })
+      .filter(hw => isHealthStaffRole(rawRole(hw)))
       .map(hw => ({
         user_id: hw.user_id || hw.id || hw.health_worker_id,
         fullname: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        hw_type: hw.hw_type || hw.role || hw.type
+        hs_type: displayRole(rawRole(hw))
       }))
     
-    // For vaccination form (administered_by): show nurses and nutritionists
+    // For vaccination form (administered_by): show Nurses and Nutritionists
     nurses.value = list
-      .filter(hw => {
-        const hwType = hw.hw_type || hw.role || hw.type || ''
-        return hwType.toLowerCase().includes('nurse') || hwType.toLowerCase().includes('nutritionist')
-      })
+      .filter(hw => isNurseOrNutritionistRole(rawRole(hw)))
       .map(hw => ({
         user_id: hw.user_id || hw.id || hw.health_worker_id,
         fullname: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        hw_type: hw.hw_type || hw.role || hw.type
+        hs_type: displayRole(rawRole(hw))
       }))
     
-    console.log('🎯 [VisitEditor] Processed BHW for visit recording:', healthWorkers.value)
-    console.log('🎯 [VisitEditor] Processed nurses and nutritionists for vaccination:', nurses.value)
-    console.log('🔍 [VisitEditor] Available HW types in data:', [...new Set(list.map(hw => hw.hw_type || hw.role || hw.type))])
+    console.log('🎯 [VisitEditor] Processed Health Staff for visit recording:', healthWorkers.value)
+    console.log('🎯 [VisitEditor] Processed nurses/nutritionists for vaccination:', nurses.value)
+    console.log('🔍 [VisitEditor] Available HS types in data:', [...new Set(list.map(hw => hw.hs_type || hw.hw_type || hw.role || hw.type))])
   } catch (err) {
     console.error('❌ [VisitEditor] Failed to load health workers:', err)
     healthWorkers.value = []
@@ -777,7 +800,8 @@ const saveVaccination = async () => {
           age_at_administration: vaccinationForm.value.ageAtAdministration,
           administered_by: vaccinationForm.value.healthWorkerId,
           remarks: fullRemarks,
-          outside: true
+          outside: true,
+          vaccine_name: vaccinationForm.value.vaccineName
         }
       : {
           patient_id: form.value.patient_id,
@@ -788,6 +812,7 @@ const saveVaccination = async () => {
           age_at_administration: vaccinationForm.value.ageAtAdministration,
           administered_by: vaccinationForm.value.healthWorkerId,
           facility_name: vaccinationForm.value.facilityName,
+          vaccine_name: vaccinationForm.value.vaccineName,
           remarks: vaccinationForm.value.siteOfAdministration 
             ? `${vaccinationForm.value.remarks || ''} (Site: ${vaccinationForm.value.siteOfAdministration})`.trim()
             : vaccinationForm.value.remarks || ''

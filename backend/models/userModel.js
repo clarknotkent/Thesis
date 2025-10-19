@@ -1,22 +1,22 @@
 const supabase = require('../db');
 const bcrypt = require('bcrypt');
 
-// Map any incoming variant to DB-enforced tokens: 'Admin','HealthWorker','Guardian'
+// Map any incoming variant to DB-enforced tokens: 'Admin','HealthStaff','Guardian'
 const mapIncomingRoleToStored = (role) => {
   const r = (role || '').trim().toLowerCase();
   if (!r) return null;
   if (['admin','administrator','system admin'].includes(r)) return 'Admin';
-  if (['health worker','health_worker','healthworker','health-worker','hw','healthworkers','health workers','health-workers','healthworker(s)'].includes(r) || /^health[-_ ]?workers?$/.test(r)) return 'HealthWorker';
+  if (['health worker','health_worker','healthworker','health-worker','hw','healthworkers','health workers','health-workers','healthworker(s)','health staff','health_staff','healthstaff','health-staff','hs','healthstaffs','health staffs','health-staffs','healthstaff(s)'].includes(r) || /^health[-_ ]?(workers?|staffs?)$/.test(r)) return 'HealthStaff';
   if (['guardian','parent','guardian-parent'].includes(r)) return 'Guardian';
   return role; // let constraint reject invalid token
 };
 const toDisplayRole = (stored) => {
-  if (stored === 'HealthWorker') return 'Health Worker';
+  if (stored === 'HealthStaff') return 'Health Staff';
   if (stored === 'Guardian') return 'Parent';
   return stored;
 };
 
-const HW_TYPES = ['nurse','nutritionist','bhw'];
+const HS_TYPES = ['nurse','nutritionist','bhs'];
 
 const userModel = {
   // Get all users with filtering and pagination
@@ -24,7 +24,7 @@ const userModel = {
     try {
       let query = supabase
     .from('users_with_uuid')
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, last_login, contact_number, employee_id, professional_license_no, is_deleted, supabase_uuid, created_by, updated_by', { count: 'exact' });
+  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, last_login, contact_number, employee_id, professional_license_no, is_deleted, supabase_uuid, created_by, updated_by', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
@@ -37,7 +37,7 @@ const userModel = {
           const stored = mapIncomingRoleToStored(filters.role);
           const ROLE_VARIANTS = {
             'Admin': ['Admin','admin','administrator','system admin'],
-            'HealthWorker': ['HealthWorker','healthworker','health worker','health_worker','health-workers','health workers','Health Worker','hw','healthworkers'],
+            'HealthStaff': ['HealthStaff','healthstaff','health staff','health_staff','health-staffs','health staffs','Health Staff','hs','healthstaffs'],
             'Guardian': ['Guardian','guardian','parent','guardian-parent']
           };
           const variants = ROLE_VARIANTS[stored];
@@ -57,8 +57,8 @@ const userModel = {
         }
       }
 
-      if (filters.hw_type) {
-        query = query.eq('hw_type', filters.hw_type);
+      if (filters.hs_type) {
+        query = query.eq('hs_type', filters.hs_type);
       }
 
       // Apply pagination
@@ -87,7 +87,7 @@ const userModel = {
             firstname: u.firstname,
             middlename: u.middlename || null,
             surname: u.surname,
-            hw_type: u.hw_type || null,
+            hs_type: u.hs_type || null,
             employee_id: u.employee_id || null,
             professional_license_no: u.professional_license_no || null,
             status: u.is_deleted ? 'inactive' : 'active',
@@ -115,7 +115,7 @@ const userModel = {
     try {
       const { data, error } = await supabase
         .from('users_with_uuid')
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid')
+  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid')
         .eq('user_id', id)
         .single();
 
@@ -137,9 +137,9 @@ const userModel = {
       }
       // Do NOT store password locally; Supabase Auth holds credentials
       const storedRole = mapIncomingRoleToStored(userData.role);
-      let hwType = null;
-      if (storedRole === 'HealthWorker' && userData.hw_type && HW_TYPES.includes(userData.hw_type)) {
-        hwType = userData.hw_type;
+      let hsType = null;
+      if (storedRole === 'HealthStaff' && userData.hs_type && HS_TYPES.includes(userData.hs_type)) {
+        hsType = userData.hs_type;
       }
       // Ensure audit actor fallback (self is unknown yet; will patch after insert)
   const incomingCreatedBy = actorId || userData.created_by || null;
@@ -156,14 +156,14 @@ const userModel = {
         sex: userData.sex || 'Other',
         birthdate: userData.birthdate || null,
         is_deleted: userData.status === 'inactive',
-  professional_license_no: (storedRole === 'HealthWorker' || storedRole === 'Admin') ? (userData.professional_license_no || null) : null,
-  employee_id: (storedRole === 'HealthWorker' || storedRole === 'Admin') ? (userData.employee_id || null) : null,
-        hw_type: hwType,
+  professional_license_no: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.professional_license_no || null) : null,
+  employee_id: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.employee_id || null) : null,
+        hs_type: hsType,
         created_by: incomingCreatedBy,
         updated_by: incomingUpdatedBy
       };
-      // If BHW subtype, ensure license is null
-      if (hwType === 'bhw') {
+      // If BHS subtype, ensure license is null
+      if (hsType === 'bhs') {
         payload.professional_license_no = null;
       }
 
@@ -173,7 +173,7 @@ const userModel = {
   const { data, error } = await supabase
         .from('users')
         .insert(payload)
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
+  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -187,7 +187,7 @@ const userModel = {
           .from('users')
           .update({ created_by: actorId, updated_by: actorId })
           .eq('user_id', data.user_id)
-          .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
+          .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
           .single();
         if (!corrErr && corrected) return corrected;
       } else if (!actorId && data.created_by == null && data.updated_by == null) {
@@ -196,7 +196,7 @@ const userModel = {
           .from('users')
           .update({ created_by: data.user_id, updated_by: data.user_id })
           .eq('user_id', data.user_id)
-          .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
+          .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
           .single();
         if (!selfErr && selfAssign) return selfAssign;
       }
@@ -233,7 +233,7 @@ const userModel = {
         updateData.updated_by = updates.actor_id;
       }
 
-  const allowed = ['username', 'email', 'role', 'hw_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
+  const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
       const filtered = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.includes(k)));
 
       // Role-based pruning
@@ -249,30 +249,30 @@ const userModel = {
       if (['guardian','parent'].includes(effectiveRole)) {
         delete filtered.employee_id;
         delete filtered.professional_license_no;
-        delete filtered.hw_type;
-      } else if (['healthworker','health worker','health_worker'].includes(effectiveRole)) {
-        if (filtered.hw_type && !HW_TYPES.includes(filtered.hw_type)) {
-          delete filtered.hw_type; // invalid subtype
+        delete filtered.hs_type;
+      } else if (['healthstaff','health staff','health_staff'].includes(effectiveRole)) {
+        if (filtered.hs_type && !HS_TYPES.includes(filtered.hs_type)) {
+          delete filtered.hs_type; // invalid subtype
         }
         // PRC license required only for nurse / nutritionist? (Optionally enforce)
-        if (filtered.hw_type === 'bhw') {
-          // BHW should not carry professional license (optional prune)
+        if (filtered.hs_type === 'bhs') {
+          // BHS should not carry professional license (optional prune)
           if (filtered.professional_license_no) delete filtered.professional_license_no;
         }
       } else if (['admin','administrator','system admin'].includes(effectiveRole)) {
         // allow both
-        delete filtered.hw_type; // Admin not a HW subtype
+        delete filtered.hs_type; // Admin not a HS subtype
       } else {
         delete filtered.employee_id;
         delete filtered.professional_license_no;
-        delete filtered.hw_type;
+        delete filtered.hs_type;
       }
 
       const { data, error } = await supabase
         .from('users')
         .update(filtered)
         .eq('user_id', id)
-  .select('user_id, username, email, role, hw_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
+  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -404,7 +404,7 @@ const userModel = {
           middlename,
           surname,
           role,
-          hw_type,
+          hs_type,
           contact_number,
           address,
           date_registered,

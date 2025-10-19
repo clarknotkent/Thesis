@@ -176,7 +176,15 @@
             <div class="row g-3">
               <div class="col-12">
                 <label for="mother_name" class="form-label">Mother's Name *</label>
-                <input type="text" class="form-control" id="mother_name" v-model="form.mother_name" required>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="mother_name"
+                  v-model="form.mother_name"
+                  list="hw-parent-names"
+                  placeholder="Type to search existing guardians..."
+                  required
+                >
               </div>
               <div class="col-12">
                 <label for="mother_occupation" class="form-label">Mother's Occupation</label>
@@ -188,7 +196,14 @@
               </div>
               <div class="col-12">
                 <label for="father_name" class="form-label">Father's Name</label>
-                <input type="text" class="form-control" id="father_name" v-model="form.father_name">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="father_name"
+                  v-model="form.father_name"
+                  list="hw-parent-names"
+                  placeholder="Type to search existing guardians..."
+                >
               </div>
               <div class="col-12">
                 <label for="father_occupation" class="form-label">Father's Occupation</label>
@@ -234,6 +249,10 @@
           </button>
         </div>
       </form>
+      <!-- Shared datalist for parent names suggestions (must be inside <template>) -->
+      <datalist id="hw-parent-names">
+        <option v-for="g in guardians" :key="g.guardian_id" :value="g.full_name"></option>
+      </datalist>
     </div>
   </HealthWorkerLayout>
 </template>
@@ -385,10 +404,13 @@ const selectGuardian = (guardian) => {
   guardianSearchTerm.value = ''
   showGuardianDropdown.value = false
   
-  // Auto-fill mother's information if relationship is "Mother"
+  // Auto-fill parent's information based on relationship
   if (form.value.guardian_relationship === 'Mother') {
-    form.value.mother_name = guardian.full_name
-    form.value.mother_contact_number = guardian.contact_number || ''
+    if (!form.value.mother_name) form.value.mother_name = guardian.full_name
+    if (!form.value.mother_contact_number) form.value.mother_contact_number = guardian.contact_number || ''
+  } else if (form.value.guardian_relationship === 'Father') {
+    if (!form.value.father_name) form.value.father_name = guardian.full_name
+    if (!form.value.father_contact_number) form.value.father_contact_number = guardian.contact_number || ''
   }
 }
 
@@ -426,12 +448,15 @@ const savePatient = async () => {
 
 // Watch for guardian relationship changes
 watch(() => form.value.guardian_relationship, (newRelationship) => {
-  if (newRelationship === 'Mother' && form.value.guardian_id) {
-    const guardian = guardians.value.find(g => g.guardian_id === form.value.guardian_id)
-    if (guardian) {
-      form.value.mother_name = guardian.full_name
-      form.value.mother_contact_number = guardian.contact_number || ''
-    }
+  if (!form.value.guardian_id) return
+  const guardian = guardians.value.find(g => g.guardian_id === form.value.guardian_id)
+  if (!guardian) return
+  if (newRelationship === 'Mother') {
+    if (!form.value.mother_name) form.value.mother_name = guardian.full_name
+    if (!form.value.mother_contact_number) form.value.mother_contact_number = guardian.contact_number || ''
+  } else if (newRelationship === 'Father') {
+    if (!form.value.father_name) form.value.father_name = guardian.full_name
+    if (!form.value.father_contact_number) form.value.father_contact_number = guardian.contact_number || ''
   }
 })
 
@@ -459,6 +484,7 @@ onMounted(async () => {
   loading.value = false
 })
 </script>
+
 
 <style scoped>
 /* Prevent horizontal scrolling and improve mobile stability */

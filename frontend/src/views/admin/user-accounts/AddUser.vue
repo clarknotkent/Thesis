@@ -78,7 +78,7 @@ const handleSubmit = async (formData) => {
       email: formData.email,
       password: formData.password,
       role: formData.role,
-      hw_type: formData.hwType || null,
+      hs_type: formData.hsType || formData.hwType || null,
       status: formData.status,
       license_number: formData.licenseNumber || null,
       employee_id: formData.employeeId || null,

@@ -1,10 +1,10 @@
 const supabase = require('../db');
 
-// Create a new health worker
+// Create a new health staff
 const createHealthWorker = async (workerData) => {
   const healthWorkerData = {
     ...workerData,
-    role: 'HealthWorker',
+    role: 'HealthStaff',
     is_deleted: false,
     date_registered: new Date().toISOString()
   };
@@ -24,7 +24,7 @@ const getHealthWorkerById = async (id) => {
     .from('users')
     .select('*')
     .eq('user_id', id)
-    .in('role', ['HealthWorker', 'Nurse', 'Nutritionist'])
+    .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
     .eq('is_deleted', false)
     .single();
   if (error && error.code !== 'PGRST116') throw error;
@@ -37,7 +37,7 @@ const updateHealthWorker = async (id, workerData) => {
     .from('users')
     .update(workerData)
     .eq('user_id', id)
-    .in('role', ['HealthWorker', 'Nurse', 'Nutritionist'])
+    .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
     .eq('is_deleted', false)
     .select()
     .single();
@@ -54,7 +54,7 @@ const deleteHealthWorker = async (id) => {
       deleted_at: new Date().toISOString() 
     })
     .eq('user_id', id)
-    .in('role', ['HealthWorker', 'Nurse', 'Nutritionist'])
+    .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
     .select()
     .single();
   if (error) throw error;
@@ -66,7 +66,7 @@ const listHealthWorkers = async (filters = {}) => {
   let query = supabase
     .from('users')
     .select('*')
-    .in('role', ['HealthWorker', 'Nurse', 'Nutritionist'])
+    .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
     .eq('is_deleted', false);
 
   if (filters.role) {

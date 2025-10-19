@@ -22,18 +22,53 @@ export const utcToPH = (utcString) => moment.utc(utcString).tz(PH_TIMEZONE);
 
 /**
  * Format date for display in PH timezone
+ * Handles timestamps that may already be in PH time from backend
  */
 export const formatPHDate = (date, format = 'MMM DD, YYYY') => {
-  const phMoment = typeof date === 'string' ? utcToPH(date) : moment.tz(date, PH_TIMEZONE);
-  return phMoment.format(format);
+  if (!date) return '';
+
+  // If it's a Date object, assume it's already in correct timezone
+  if (date instanceof Date) {
+    return moment.tz(date, PH_TIMEZONE).format(format);
+  }
+
+  // If it's a string, decide how to parse it.
+  // Backend view may already return a PH-local timestamp string WITHOUT timezone info
+  // In that case we should parse it as PH time directly (avoid converting again).
+  if (typeof date === 'string') {
+    const looksLikeIsoWithTz = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(date);
+    if (looksLikeIsoWithTz) {
+      // string has timezone info (UTC or offset) -> convert from UTC to PH
+      return utcToPH(date).format(format);
+    }
+    // No timezone info: assume backend already converted to PH local time
+    return moment.tz(date, PH_TIMEZONE).format(format);
+  }
+
+  // Fallback for other types
+  return moment.tz(date, PH_TIMEZONE).format(format);
 };
 
 /**
  * Format date and time for display in PH timezone
+ * Handles timestamps that may already be in PH time from backend
  */
 export const formatPHDateTime = (date, format = 'MMM DD, YYYY hh:mm A') => {
-  const phMoment = typeof date === 'string' ? utcToPH(date) : moment.tz(date, PH_TIMEZONE);
-  return phMoment.format(format);
+  if (!date) return '';
+
+  if (date instanceof Date) {
+    return moment.tz(date, PH_TIMEZONE).format(format);
+  }
+
+  if (typeof date === 'string') {
+    const looksLikeIsoWithTz = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(date);
+    if (looksLikeIsoWithTz) {
+      return utcToPH(date).format(format);
+    }
+    return moment.tz(date, PH_TIMEZONE).format(format);
+  }
+
+  return moment.tz(date, PH_TIMEZONE).format(format);
 };
 
 /**
@@ -83,9 +118,20 @@ export const getTodayPHRange = () => {
 
 /**
  * Get YYYY-MM-DD string in PH timezone for day comparisons
+ * Handles timestamps that may already be in PH time from backend
  */
 export const getPHDateKey = (date) => {
   if (!date) return '';
-  const phMoment = typeof date === 'string' ? utcToPH(date) : moment.tz(date, PH_TIMEZONE);
-  return phMoment.format('YYYY-MM-DD');
+  // If it's a Date object, assume it's already in correct timezone
+  if (date instanceof Date) return moment.tz(date, PH_TIMEZONE).format('YYYY-MM-DD');
+
+  if (typeof date === 'string') {
+    const looksLikeIsoWithTz = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(date);
+    if (looksLikeIsoWithTz) {
+      return utcToPH(date).format('YYYY-MM-DD');
+    }
+    return moment.tz(date, PH_TIMEZONE).format('YYYY-MM-DD');
+  }
+
+  return moment.tz(date, PH_TIMEZONE).format('YYYY-MM-DD');
 };

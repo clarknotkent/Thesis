@@ -20,51 +20,66 @@
         <thead>
           <tr>
             <th>Visit Date</th>
-            <th>Visit Type</th>
-            <th>Health Worker</th>
-            <th>Vitals</th>
+            <th>Recorded By</th>
             <th>Services</th>
-            <th>Notes</th>
+            <th>Immunizations</th>
+            <th>Vitals</th>
+            <th>Findings</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="visit in sortedVisits" :key="visit.id">
+          <tr v-for="visit in sortedVisits" :key="visit.visit_id || visit.id">
             <td>
               <i class="bi bi-calendar-event me-1"></i>
-              {{ formatDate(visit.visit_date || visit.visitDate) }}
-            </td>
-            <td>
-              <span class="badge bg-info">
-                {{ visit.visit_type || visit.visitType || 'General' }}
-              </span>
+              {{ formatDate(visit.visit_date) }}
             </td>
             <td>
               <i class="bi bi-person-badge me-1"></i>
-              {{ getWorkerName(visit) }}
+              {{ visit.recorded_by || getWorkerName(visit) }}
             </td>
             <td>
-              <div v-if="hasVitals(visit)" class="vitals-info">
-                <small class="d-block" v-if="visit.height">
-                  <i class="bi bi-arrows-vertical me-1"></i>{{ visit.height }} cm
-                </small>
-                <small class="d-block" v-if="visit.weight">
-                  <i class="bi bi-speedometer me-1"></i>{{ visit.weight }} kg
-                </small>
-                <small class="d-block" v-if="visit.temperature">
-                  <i class="bi bi-thermometer me-1"></i>{{ visit.temperature }}°C
+              <div class="d-flex flex-column gap-1">
+                <span v-if="visit.service_rendered" class="services-badge" :title="visit.service_rendered">
+                  {{ visit.service_rendered }}
+                </span>
+                <div class="d-flex gap-1">
+                  <span v-if="visit.vitamina_given" class="badge bg-warning text-dark">Vitamin A</span>
+                  <span v-if="visit.deworming_given" class="badge bg-success">Deworming</span>
+                </div>
+              </div>
+              <span v-if="!visit.service_rendered && !visit.vitamina_given && !visit.deworming_given" class="text-muted">—</span>
+            </td>
+            <td>
+              <div v-if="Array.isArray(visit.immunizations_given) && visit.immunizations_given.length > 0">
+                <small class="d-block" v-for="(im, idx) in visit.immunizations_given" :key="idx">
+                  <i class="bi bi-syringe me-1"></i>{{ im.antigen_name }} <span v-if="im.dose_number">(Dose {{ im.dose_number }})</span>
                 </small>
               </div>
               <span v-else class="text-muted">—</span>
             </td>
             <td>
-              <span v-if="visit.services" class="services-badge">
-                {{ visit.services }}
-              </span>
+              <div v-if="hasVitals(visit)" class="vitals-info">
+                <small class="d-block" v-if="getVitals(visit).height_length">
+                  <i class="bi bi-arrows-vertical me-1"></i>{{ getVitals(visit).height_length }} cm
+                </small>
+                <small class="d-block" v-if="getVitals(visit).weight">
+                  <i class="bi bi-speedometer me-1"></i>{{ getVitals(visit).weight }} kg
+                </small>
+                <small class="d-block" v-if="getVitals(visit).temperature">
+                  <i class="bi bi-thermometer me-1"></i>{{ getVitals(visit).temperature }}°C
+                </small>
+                <small class="d-block" v-if="getVitals(visit).respiration_rate">
+                  <i class="bi bi-wind me-1"></i>{{ getVitals(visit).respiration_rate }} bpm
+                </small>
+                <small class="d-block" v-if="getVitals(visit).muac">
+                  <i class="bi bi-activity me-1"></i>{{ getVitals(visit).muac }} cm MUAC
+                </small>
+              </div>
               <span v-else class="text-muted">—</span>
             </td>
             <td>
-              <span v-if="visit.notes" class="text-truncate" :title="visit.notes">
-                {{ truncateText(visit.notes, 50) }}
+              <span v-if="visit.findings" class="text-truncate" :title="visit.findings">
+                {{ truncateText(visit.findings, 80) }}
               </span>
               <span v-else class="text-muted">—</span>
             </td>
@@ -96,10 +111,9 @@ const loading = ref(true)
 
 const sortedVisits = computed(() => {
   if (!visits.value || visits.value.length === 0) return []
-  
   return [...visits.value].sort((a, b) => {
-    const dateA = new Date(a.visit_date || a.visitDate)
-    const dateB = new Date(b.visit_date || b.visitDate)
+    const dateA = new Date(a.visit_date)
+    const dateB = new Date(b.visit_date)
     return dateB - dateA // Sort descending (most recent first)
   })
 })
@@ -115,7 +129,9 @@ const formatDate = (dateString) => {
 }
 
 const getWorkerName = (visit) => {
-  // Try different possible field names
+  // visits_view exposes recorded_by (users.full_name)
+  if (visit.recorded_by) return visit.recorded_by
+  // Fallbacks for any legacy shapes
   if (visit.health_worker_name) return visit.health_worker_name
   if (visit.healthWorkerName) return visit.healthWorkerName
   if (visit.worker_name) return visit.worker_name
@@ -128,8 +144,14 @@ const getWorkerName = (visit) => {
   return '—'
 }
 
+const getVitals = (visit) => {
+  // visits_view returns vital_signs object
+  return visit.vital_signs || {}
+}
+
 const hasVitals = (visit) => {
-  return visit.height || visit.weight || visit.temperature
+  const v = getVitals(visit)
+  return v && (v.height_length || v.weight || v.temperature || v.respiration_rate || v.muac)
 }
 
 const truncateText = (text, maxLength) => {
@@ -141,18 +163,24 @@ const truncateText = (text, maxLength) => {
 const fetchVisits = async () => {
   try {
     loading.value = true
-    const response = await api.get(`/visits?patient_id=${props.patientId}&limit=100`)
-    
-    // Handle both direct array and paginated response
-    if (Array.isArray(response.data)) {
-      visits.value = response.data
-    } else if (response.data.data && Array.isArray(response.data.data)) {
-      visits.value = response.data.data
-    } else if (response.data.visits && Array.isArray(response.data.visits)) {
-      visits.value = response.data.visits
-    } else {
-      visits.value = []
-    }
+    const pageSize = 200
+    let page = 1
+    let collected = []
+    let totalPages = 1
+    do {
+      const resp = await api.get(`/visits?patient_id=${props.patientId}&page=${page}&limit=${pageSize}`)
+      const raw = resp.data
+      let batch = []
+      if (Array.isArray(raw)) batch = raw
+      else if (Array.isArray(raw?.data)) batch = raw.data
+      else if (Array.isArray(raw?.items)) batch = raw.items
+      else if (Array.isArray(raw?.visits)) batch = raw.visits
+      else if (Array.isArray(raw?.data?.items)) batch = raw.data.items
+      collected = collected.concat((batch || []).filter(v => v && (v.visit_date || v.visitDate)))
+      totalPages = Number(raw?.totalPages || raw?.data?.totalPages || 1)
+      page += 1
+    } while (page <= totalPages)
+    visits.value = collected
   } catch (err) {
     console.error('Error fetching visit history:', err)
     visits.value = []

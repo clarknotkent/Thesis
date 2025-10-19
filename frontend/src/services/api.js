@@ -34,7 +34,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Unauthorized - redirect to login
       localStorage.removeItem('authToken')
-      localStorage.removeItem('user')
+      localStorage.removeItem('authUser')
       window.location.href = '/auth/login'
     } else if (error.response?.status === 403) {
       // Forbidden

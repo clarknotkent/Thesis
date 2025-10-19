@@ -39,7 +39,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/sms', smsRoutes);
-app.use('/api/health-workers', healthWorkerRoutes);
+app.use('/api/health-staff', healthWorkerRoutes);
 app.use('/api/activity-logs', activityRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/conversations', conversationRoutes);

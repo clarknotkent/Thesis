@@ -40,10 +40,13 @@
               <label class="form-label">Select Vaccine Type *</label>
               <select v-model="selectedVaccine" class="form-select" required>
                 <option value="">-- Select Vaccine --</option>
-                <option v-for="v in existingVaccines" :key="v.id" :value="v.id">
+                <option v-for="v in unscheduledVaccines" :key="v.id" :value="v.id">
                   {{ v.antigen_name }} ({{ v.brand_name }})
                 </option>
               </select>
+              <small v-if="existingVaccines.length > 0 && unscheduledVaccines.length === 0" class="text-muted d-block mt-1">
+                All vaccine types already have schedules configured.
+              </small>
             </div>
 
             <div v-if="selectedVaccine">
@@ -317,7 +320,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import api from '@/services/api'
@@ -327,6 +330,7 @@ const router = useRouter()
 const { addToast } = useToast()
 
 const existingVaccines = ref([])
+const schedules = ref([])
 const selectedVaccine = ref('')
 const currentDoseIndex = ref(0)
 const submitting = ref(false)
@@ -348,7 +352,7 @@ const goBack = () => {
 }
 
 onMounted(async () => {
-  await fetchExistingVaccines()
+  await Promise.all([fetchExistingVaccines(), fetchSchedules()])
 })
 
 watch(() => schedulingFields.value.total_doses, (newVal) => {
@@ -358,13 +362,46 @@ watch(() => schedulingFields.value.total_doses, (newVal) => {
 const fetchExistingVaccines = async () => {
   try {
     const res = await api.get('/vaccines')
-    const data = res.data?.data || res.data || []
-    existingVaccines.value = Array.isArray(data) ? data : []
+    // Normalize various API shapes: array, { data: array }, { data: { vaccines: [...] } }, or { vaccines: [...] }
+    let raw = res.data?.data ?? res.data ?? []
+    if (raw && typeof raw === 'object' && Array.isArray(raw.vaccines)) {
+      raw = raw.vaccines
+    }
+    // If still not an array but is a single object, wrap it
+    if (raw && !Array.isArray(raw) && typeof raw === 'object') {
+      raw = [raw]
+    }
+    // Map and add a stable id alias
+    existingVaccines.value = Array.isArray(raw)
+      ? raw.map(v => ({ ...v, id: v.vaccine_id || v.id }))
+      : []
   } catch (e) {
     console.error('Error fetching vaccines', e)
     addToast('Error loading vaccines', 'error')
   }
 }
+
+const fetchSchedules = async () => {
+  try {
+    const res = await api.get('/vaccines/schedules')
+    const data = res.data?.data || res.data || []
+    schedules.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('Error fetching schedules', e)
+    schedules.value = []
+  }
+}
+
+// Vaccines without an existing schedule
+const unscheduledVaccines = computed(() => {
+  if (!Array.isArray(existingVaccines.value)) return []
+  const scheduledIds = new Set(
+    (schedules.value || []).map(s => s.vaccine_id || s.vaccine?.vaccine_id || s.vaccineId).filter(Boolean)
+  )
+  return existingVaccines.value
+    .map(v => ({ ...v, id: v.vaccine_id || v.id }))
+    .filter(v => !scheduledIds.has(v.id))
+})
 
 function ensureDosesCount(count) {
   const n = Number(count) || 0

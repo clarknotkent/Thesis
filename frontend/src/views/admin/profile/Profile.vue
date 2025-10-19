@@ -238,12 +238,12 @@
                 readonly
               >
             </div>
-            <div class="col-xl-4 col-lg-6 col-md-6" v-if="profile.role === 'health_worker'">
-              <label class="form-label fw-semibold">Health Worker Type:</label>
+            <div class="col-xl-4 col-lg-6 col-md-6" v-if="profile.role === 'health_staff' || profile.role === 'HealthStaff'">
+              <label class="form-label fw-semibold">Health Staff Type:</label>
               <input 
                 type="text" 
                 class="form-control-plaintext border-0" 
-                :value="getHwTypeDisplayName(profile.hwType)" 
+                :value="getHsTypeDisplayName(profile.hsType || profile.hwType)" 
                 readonly
               >
             </div>
@@ -257,7 +257,7 @@
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
             </div>
-            <div class="col-xl-6 col-lg-6 col-md-6" v-if="profile.role === 'health_worker' || profile.role === 'admin'">
+            <div class="col-xl-6 col-lg-6 col-md-6" v-if="profile.role === 'health_staff' || profile.role === 'admin'">
               <label class="form-label fw-semibold">PRC License Number:</label>
               <input 
                 type="text" 
@@ -425,7 +425,7 @@ const profile = ref({
   middleName: '',
   email: '',
   role: '',
-  hwType: '',
+  hsType: '',
   status: 'Active',
   createdAt: '',
   lastLogin: '',
@@ -461,7 +461,7 @@ const profileCompleteness = computed(() => {
     profile.value.contactNumber
   ]
   
-  if (profile.value.role === 'health_worker' || profile.value.role === 'admin') {
+  if (profile.value.role === 'health_staff' || String(profile.value.role).toLowerCase().includes('health') || profile.value.role === 'admin') {
     fields.push(profile.value.employeeId, profile.value.licenseNumber)
   }
   
@@ -483,7 +483,7 @@ const fetchProfile = async () => {
       middleName: data.middlename || '',
       email: data.email || '',
       role: data.role || '',
-      hwType: data.hw_type || '',
+      hsType: data.hs_type || data.hsType || data.hw_type || data.hwType || '',
       status: data.status || 'Active',
       createdAt: data.created_at || data.createdAt || '',
       lastLogin: data.last_login || data.lastLogin || '',
@@ -692,20 +692,19 @@ const formatLastLogin = (dateString) => {
 }
 
 const getRoleDisplayName = (role) => {
-  switch (role) {
-    case 'health_worker': return 'Health Worker'
-    case 'parent': return 'Parent'
-    case 'admin': return 'Administrator'
-    default: return role || 'Unknown'
-  }
+  const r = String(role || '').toLowerCase()
+  if (r.includes('health')) return 'Health Staff'
+  if (r === 'parent' || r === 'guardian') return 'Parent'
+  if (r === 'admin' || r === 'administrator') return 'Administrator'
+  return role || 'Unknown'
 }
 
-const getHwTypeDisplayName = (hwType) => {
-  switch (hwType) {
+const getHsTypeDisplayName = (hsType) => {
+  switch (hsType) {
     case 'nurse': return 'Nurse'
     case 'nutritionist': return 'Nutritionist'
-    case 'bhw': return 'Barangay Health Worker'
-    default: return hwType || 'Unknown'
+    case 'bhs': return 'Barangay Health Staff'
+    default: return hsType || 'Unknown'
   }
 }
 

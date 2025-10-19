@@ -1,0 +1,20 @@
+<template>
+  <AdminLayout>
+    <div class="container-fluid py-3">
+      <div class="d-flex align-items-center mb-3">
+        <h3 class="mb-0">Visit History</h3>
+        <button class="btn btn-outline-secondary ms-auto" @click="$router.back()">Back</button>
+      </div>
+      <div class="card shadow-sm">
+            <div class="card-body">
+                <VisitHistory :patient-id="$route.params.id" :embedded-page="true" />
+              </div>
+      </div>
+    </div>
+  </AdminLayout>
+</template>
+
+<script setup>
+import AdminLayout from '@/components/layout/AdminLayout.vue'
+import VisitHistory from '@/components/common/VisitHistoryModal.vue'
+</script>
