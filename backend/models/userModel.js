@@ -18,6 +18,21 @@ const toDisplayRole = (stored) => {
 
 const HS_TYPES = ['nurse','nutritionist','bhs'];
 
+// Normalize contact number to +639... format
+const normalizeContactNumber = (contact) => {
+  if (!contact) return null;
+  const cleaned = contact.replace(/\D/g, '');
+  if (cleaned.length === 11 && cleaned.startsWith('09')) {
+    return '+639' + cleaned.slice(2);
+  } else if (cleaned.length === 11 && cleaned.startsWith('639')) {
+    return '+639' + cleaned.slice(3);
+  } else if (cleaned.length === 12 && cleaned.startsWith('639')) {
+    return '+639' + cleaned.slice(3);
+  } else {
+    return contact; // keep original if can't normalize
+  }
+};
+
 const userModel = {
   // Get all users with filtering and pagination
   getAllUsers: async (filters = {}, page = 1, limit = 10) => {
@@ -144,6 +159,10 @@ const userModel = {
       // Ensure audit actor fallback (self is unknown yet; will patch after insert)
   const incomingCreatedBy = actorId || userData.created_by || null;
   const incomingUpdatedBy = actorId || userData.updated_by || incomingCreatedBy || null;
+      // Derive username from email if not provided
+      if (!userData.username && userData.email) {
+        userData.username = userData.email.split('@')[0];
+      }
       const payload = {
         username: userData.username,
         email: userData.email,
@@ -151,7 +170,7 @@ const userModel = {
         firstname: userData.firstname,
         middlename: userData.middlename || null,
         surname: userData.surname,
-        contact_number: userData.contact_number || null,
+        contact_number: normalizeContactNumber(userData.contact_number) || null,
         address: userData.address || null,
         sex: userData.sex || 'Other',
         birthdate: userData.birthdate || null,
@@ -233,10 +252,13 @@ const userModel = {
         updateData.updated_by = updates.actor_id;
       }
 
-  const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
+      const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
       const filtered = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.includes(k)));
 
-      // Role-based pruning
+      // Normalize contact number
+      if (filtered.contact_number) {
+        filtered.contact_number = normalizeContactNumber(filtered.contact_number);
+      }      // Role-based pruning
       // Decide effective role for pruning: newly provided or existing DB value
       let effectiveRole = (filtered.role || '').toLowerCase();
       if (!effectiveRole) {

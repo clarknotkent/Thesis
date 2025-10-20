@@ -82,7 +82,6 @@ const handleSubmit = async (formData) => {
       status: formData.status,
       license_number: formData.licenseNumber || null,
       employee_id: formData.employeeId || null,
-      phone_number: formData.phoneNumber || null,
       contact_number: formData.contactNumber || null,
       sex: formData.sex || null,
       birthdate: formData.birthdate || null,

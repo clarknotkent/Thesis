@@ -65,7 +65,7 @@ const createGuardian = async (req, res) => {
     // Send welcome notification
     try {
       await notificationModel.createNotification({
-        channel: 'in-app',
+        channel: 'Push',
         recipient_user_id: newGuardian.user_id,
         template_code: 'welcome_guardian',
         message_body: `Welcome ${newGuardian.firstname} ${newGuardian.surname}! Your account has been created successfully.`,

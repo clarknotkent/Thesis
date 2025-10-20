@@ -46,3 +46,8 @@ export function getRole() {
   const u = getUser()
   return u?.role || null
 }
+
+export function getUserId() {
+  const u = getUser()
+  return u?.user_id || u?.id || null
+}

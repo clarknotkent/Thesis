@@ -17,8 +17,8 @@ const createUser = async (req, res) => {
     const userData = req.body;
 
     // Validate required fields
-    if (!userData.username || !userData.email || !userData.password || !userData.role) {
-      return res.status(400).json({ message: 'Missing required fields: username, email, password, role' });
+    if (!userData.email || !userData.password || !userData.role) {
+      return res.status(400).json({ message: 'Missing required fields: email, password, role' });
     }
 
     // 1) Create Supabase Auth user (email/password)

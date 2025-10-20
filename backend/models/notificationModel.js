@@ -3,20 +3,54 @@ const { ACTIVITY } = require('../constants/activityTypes');
 
 function mapNotificationDTO(row) {
   if (!row) return null;
+  // Normalize legacy channel tokens (e.g., 'Push' -> 'in-app') to frontend-facing values
+  const normalizeOutChannel = (ch) => {
+    if (!ch) return ch
+    const s = String(ch).trim().toLowerCase()
+    if (s === 'push') return 'in-app'
+    if (s === 'sms') return 'sms'
+    if (s === 'email') return 'email'
+    if (s === 'in-app' || s === 'inapp' || s === 'notification') return 'in-app'
+    return ch
+  }
+
+  const normalizeOutStatus = (st) => {
+    if (!st) return st
+    const s = String(st).trim().toLowerCase()
+    if (['queued','pending'].includes(s)) return 'queued'
+    if (s === 'sent') return 'sent'
+    if (s === 'failed') return 'failed'
+    if (s === 'delivered') return 'delivered'
+    return s
+  }
+  const phTime = (dt) => {
+    if (!dt) return null;
+    try {
+      const d = new Date(dt);
+      return new Intl.DateTimeFormat('en-PH', {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: true, timeZone: 'Asia/Manila'
+      }).format(d);
+    } catch (_) { return dt; }
+  };
+
   return {
     notification_id: row.notification_id,
-    channel: row.channel,
+    channel: normalizeOutChannel(row.channel),
     recipient_user_id: row.recipient_user_id,
     recipient_phone: row.recipient_phone,
     recipient_email: row.recipient_email,
     recipient_name: row.recipient_name, // from view
+    created_by: row.created_by ?? null,
+    created_by_name: row.created_by_name || null,
     template_code: row.template_code,
     message_body: row.message_body,
     related_entity_type: row.related_entity_type,
     related_entity_id: row.related_entity_id,
     scheduled_at: row.scheduled_at,
     sent_at: row.sent_at,
-    status: row.status,
+    status: normalizeOutStatus(row.status),
     error_message: row.error_message,
     created_by: row.created_by,
     created_at: row.created_at,
@@ -33,21 +67,99 @@ module.exports = {
   // Create new notification
   createNotification: async (notificationData, actorId) => {
     try {
+      const coerceEmpty = (v) => (v === '' ? null : v)
+      // Normalize incoming channel to DB tokens: Push, SMS, Email
+      const normalizeChannelDB = (ch) => {
+        if (!ch) return null
+        const s = String(ch).trim().toLowerCase()
+        if (['in-app','inapp','push','notification','push-notification'].includes(s)) return 'Push'
+        if (['sms','text','mobile','sms-text','sms '].includes(s)) return 'SMS'
+        if (['email','e-mail','mail'].includes(s)) return 'Email'
+        if (['push','sms','email'].includes(s)) return s.charAt(0).toUpperCase() + s.slice(1)
+        return ch
+      }
+
+      // Normalize incoming status to DB tokens: Queued, Sent, Failed, Delivered
+      const normalizeStatusDB = (st) => {
+        if (!st) return null
+        const s = String(st).trim().toLowerCase()
+        if (['pending','queue','queued','schedule','scheduled'].includes(s)) return 'Queued'
+        if (s === 'sent') return 'Sent'
+        if (s === 'failed') return 'Failed'
+        if (s === 'delivered') return 'Delivered'
+        return null
+      }
+
+      // Accept both snake_case and camelCase field names from clients
+      const incoming = notificationData || {}
+      console.log('Incoming notificationData:', JSON.stringify(incoming, null, 2));
       const insertPayload = {
-        channel: notificationData.channel,
-        recipient_user_id: notificationData.recipient_user_id || null,
-        recipient_phone: notificationData.recipient_phone || null,
-        recipient_email: notificationData.recipient_email || null,
-        template_code: notificationData.template_code,
-        message_body: notificationData.message_body,
-        related_entity_type: notificationData.related_entity_type || null,
-        related_entity_id: notificationData.related_entity_id || null,
-        scheduled_at: notificationData.scheduled_at || null,
-        status: notificationData.status || 'pending',
+        channel: normalizeChannelDB(incoming.channel),
+  recipient_user_id: coerceEmpty(
+          incoming.recipient_user_id
+          ?? incoming.recipientUserId
+          ?? incoming.recipientId
+          ?? incoming.user_id
+          ?? incoming.userId
+          ?? incoming.recepient_user_id
+          ?? incoming.recepientUserId
+          ?? null
+        ),
+  recipient_phone: coerceEmpty(incoming.recipient_phone ?? incoming.recipientPhone ?? incoming.phone ?? incoming.contact_number ?? incoming.contactNumber ?? incoming.recepient_phone ?? incoming.recepientPhone ?? null),
+  recipient_email: coerceEmpty(incoming.recipient_email ?? incoming.recipientEmail ?? incoming.email ?? incoming.recepient_email ?? incoming.recepientEmail ?? null),
+        template_code: coerceEmpty(incoming.template_code ?? incoming.templateCode ?? incoming.template ?? null),
+        message_body: coerceEmpty(incoming.message_body ?? incoming.messageBody ?? incoming.message ?? null),
+        related_entity_type: coerceEmpty(incoming.related_entity_type ?? incoming.relatedEntityType ?? incoming.entity_type ?? incoming.entityType ?? null),
+        related_entity_id: incoming.related_entity_id ?? incoming.relatedEntityId ?? incoming.entity_id ?? incoming.entityId ?? null,
+        scheduled_at: coerceEmpty(incoming.scheduled_at ?? incoming.scheduledAt ?? null),
+        status: normalizeStatusDB(incoming.status) || 'Queued',
         created_by: actorId || null,
         updated_by: actorId || null
       };
-      const { data, error } = await supabase.from('notifications').insert(insertPayload).select().single();
+      console.log('InsertPayload:', JSON.stringify(insertPayload, null, 2));
+      // Basic validations to ensure Inbox visibility and DB constraints
+      if (!insertPayload.message_body) {
+        const err = new Error('message_body is required')
+        err.status = 400
+        throw err
+      }
+      if (insertPayload.channel === 'Push' && !insertPayload.recipient_user_id) {
+        const err = new Error('recipient_user_id is required for Push (in-app) notifications')
+        err.status = 400
+        throw err
+      }
+      if (insertPayload.channel === 'SMS' && !insertPayload.recipient_phone) {
+        const err = new Error('recipient_phone is required for SMS notifications')
+        err.status = 400
+        throw err
+      }
+      if (insertPayload.channel === 'Email' && !insertPayload.recipient_email) {
+        const err = new Error('recipient_email is required for Email notifications')
+        err.status = 400
+        throw err
+      }
+      // Validate channel token against allowed DB tokens
+  const allowedChannels = ['Push', 'SMS', 'Email']
+      if (!insertPayload.channel || !allowedChannels.includes(insertPayload.channel)) {
+        const err = new Error('Invalid channel value; must be one of: ' + allowedChannels.join(', '))
+        err.status = 400
+        throw err
+      }
+
+      // For in-app immediate notifications (no schedule), mark as sent immediately
+      if (insertPayload.channel === 'Push' && !insertPayload.scheduled_at) {
+        insertPayload.status = 'Sent'
+        insertPayload.sent_at = new Date().toISOString()
+      }
+
+      let data, error;
+      ({ data, error } = await supabase.from('notifications').insert(insertPayload).select().single());
+      // If the DB has a stricter/legacy check constraint (e.g., expects 'Push'/'SMS'/'Email'), retry with legacy tokens
+      if (error && (error.code === '23514' || String(error.message || '').includes('notifications_channel_check'))) {
+        const legacyMap = { 'in-app': 'Push', 'sms': 'SMS', 'email': 'Email' };
+        const retryPayload = { ...insertPayload, channel: legacyMap[insertPayload.channel] || insertPayload.channel };
+        ({ data, error } = await supabase.from('notifications').insert(retryPayload).select().single());
+      }
       if (error) throw error;
       await logActivitySafely({
         action_type: 'NOTIFICATION_CREATE',
@@ -69,9 +181,30 @@ module.exports = {
     try {
       let query = supabase.from('notifications_view').select('*').eq('recipient_user_id', userId).eq('is_deleted', false);
 
-      if (filters.status) query = query.eq('status', filters.status);
-      if (filters.channel) query = query.eq('channel', filters.channel);
+      if (filters.status) {
+        const s = String(filters.status).trim().toLowerCase()
+        const map = { pending: 'Queued', queued: 'Queued', queue: 'Queued', schedule: 'Queued', scheduled: 'Queued', sent: 'Sent', failed: 'Failed', delivered: 'Delivered' }
+        query = query.eq('status', map[s] || s)
+      }
+      if (filters.channel) {
+        const ch = String(filters.channel).toLowerCase().trim()
+        // Accept legacy stored values too
+        if (['in-app','inapp','push','notification','push-notification'].includes(ch)) {
+          query = query.in('channel', ['Push', 'push'])
+        } else if (['sms','sms-text','text','mobile'].includes(ch)) {
+          query = query.in('channel', ['SMS', 'sms'])
+        } else if (['email','e-mail','mail'].includes(ch)) {
+          query = query.in('channel', ['Email', 'email'])
+        } else {
+          query = query.eq('channel', ch)
+        }
+      }
       if (filters.unreadOnly) query = query.is('read_at', null);
+      if (filters.search) {
+        const q = `%${String(filters.search).toLowerCase()}%`
+        // ILIKE on message_body or template_code
+        query = query.or(`message_body.ilike.${q},template_code.ilike.${q}`)
+      }
 
       query = query.order('created_at', { ascending: false });
 
@@ -80,7 +213,30 @@ module.exports = {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data.map(mapNotificationDTO);
+
+      // Enrich with created_by_name (lookup from users)
+      const creatorIds = Array.from(new Set((data || []).map(r => r.created_by).filter(id => id != null)));
+      let namesById = {};
+      if (creatorIds.length) {
+        try {
+          const { data: usersRows } = await supabase
+            .from('users')
+            .select('user_id, firstname, surname, email')
+            .in('user_id', creatorIds);
+          namesById = (usersRows || []).reduce((acc, u) => {
+            const name = [u.firstname || '', u.surname || ''].join(' ').trim() || u.email || `User #${u.user_id}`;
+            acc[u.user_id] = name;
+            return acc;
+          }, {});
+        } catch (_) {}
+      }
+
+      // Attach created_by_name and Manila time strings before mapping to DTO
+      const enriched = (data || []).map(r => ({
+        ...r,
+        created_by_name: (r.created_by == null) ? 'System' : (namesById[r.created_by] || `User #${r.created_by}`),
+      }));
+      return enriched.map(mapNotificationDTO);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       throw error;
@@ -108,11 +264,20 @@ module.exports = {
   // Update notification status (for sending)
   updateStatus: async (notificationId, status, errorMessage = null, actorId) => {
     try {
+      const normalizeStatusDB = (st) => {
+        if (!st) return null
+        const s = String(st).trim().toLowerCase()
+        if (['pending','queue','queued','schedule','scheduled'].includes(s)) return 'Queued'
+        if (s === 'sent') return 'Sent'
+        if (s === 'failed') return 'Failed'
+        if (s === 'delivered') return 'Delivered'
+        return null
+      }
       const updatePayload = {
-        status: status,
+        status: normalizeStatusDB(status),
         updated_by: actorId || null
       };
-      if (status === 'sent') updatePayload.sent_at = new Date().toISOString();
+      if (updatePayload.status === 'Sent') updatePayload.sent_at = new Date().toISOString();
       if (errorMessage) updatePayload.error_message = errorMessage;
 
       const { data, error } = await supabase
@@ -136,7 +301,7 @@ module.exports = {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('status', 'pending')
+  .eq('status', 'Queued')
         .or(`scheduled_at.is.null,scheduled_at.lte.${now}`)
         .eq('is_deleted', false);
       if (error) throw error;

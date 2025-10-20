@@ -141,7 +141,23 @@
                 <tbody>
                   <tr v-for="(vaccine, index) in upcomingSchedules" :key="index">
                     <td class="fw-semibold">{{ vaccine.vaccineName || 'Unknown' }}</td>
-                    <td>{{ formatDate(vaccine.scheduledDate) || 'N/A' }}</td>
+                    <td>
+                      <div v-if="editingScheduleIndex !== index" class="d-flex align-items-center">
+                        {{ formatDate(vaccine.scheduledDate) || 'N/A' }}
+                        <button class="btn btn-sm btn-outline-primary ms-2" @click="startEditSchedule(vaccine)" title="Reschedule">
+                          <i class="bi bi-calendar"></i>
+                        </button>
+                      </div>
+                      <div v-else class="d-flex align-items-center">
+                        <input type="date" class="form-control form-control-sm me-2" v-model="newScheduleDate" :min="getMinDate(vaccine)" />
+                        <button class="btn btn-sm btn-success me-1" @click="saveScheduleDate(vaccine)" :disabled="saving">
+                          <i class="bi bi-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" @click="cancelEditSchedule">
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </div>
+                    </td>
                     <td>{{ vaccine.doseNumber || 'N/A' }}</td>
                     <td>
                       <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
@@ -441,11 +457,15 @@
                   <th>Manufacturer</th>
                   <th>Lot Number</th>
                   <th>Health Worker</th>
+                  <th>Site</th>
+                  <th>Facility</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(vaccine, index) in filteredVaccinations" :key="vaccine.immunization_id || vaccine.id || index">
+                <tr v-for="(vaccine, index) in sortedVaccinations" :key="vaccine.immunization_id || vaccine.id || index">
                   <td>{{ index + 1 }}</td>
                   <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
                   <td>{{ vaccine.diseasePrevented }}</td>
@@ -455,8 +475,22 @@
                   <td><code>{{ vaccine.lotNumber }}</code></td>
                   <td>{{ vaccine.healthWorker }}</td>
                   <td>
+                    <small>{{ deriveSite(vaccine) }}</small>
+                  </td>
+                  <td>
+                    <small>{{ deriveFacility(vaccine) }}</small>
+                  </td>
+                  <td>
+                    <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
+                      {{ vaccine.status || 'Completed' }}
+                    </span>
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ vaccine.remarks || vaccine.notes || '—' }}</small>
+                  </td>
+                  <td>
                     <div class="btn-group btn-group-sm">
-                      <button class="btn btn-outline-primary" @click="editVaccinationRecord(index)" title="Edit">
+                      <button class="btn btn-outline-primary" :disabled="!isOutside(vaccine)" :title="isOutside(vaccine) ? 'Edit' : 'Edit allowed for Outside records only'" @click="editVaccinationRecord(index)">
                         <i class="bi bi-pencil"></i>
                       </button>
                       <button class="btn btn-outline-danger" @click="deleteVaccinationRecord(index)" title="Delete">
@@ -465,8 +499,8 @@
                     </div>
                   </td>
                 </tr>
-                <tr v-if="filteredVaccinations.length === 0">
-                  <td colspan="9" class="text-center py-4 text-muted">
+                <tr v-if="sortedVaccinations.length === 0">
+                  <td colspan="13" class="text-center py-4 text-muted">
                     <i class="bi bi-shield-exclamation me-2"></i>
                     No vaccination records found for this patient
                   </td>
@@ -491,7 +525,23 @@
                 <tbody>
                   <tr v-for="(vaccine, index) in patientData.nextScheduledVaccinations" :key="index">
                     <td class="fw-semibold">{{ vaccine.vaccineName || 'Unknown' }}</td>
-                    <td>{{ formatDate(vaccine.scheduledDate) || 'N/A' }}</td>
+                    <td>
+                      <div v-if="editingScheduleIndex !== index" class="d-flex align-items-center">
+                        {{ formatDate(vaccine.scheduledDate) || 'N/A' }}
+                        <button class="btn btn-sm btn-outline-primary ms-2" @click="startEditSchedule(vaccine)" title="Reschedule">
+                          <i class="bi bi-calendar"></i>
+                        </button>
+                      </div>
+                      <div v-else class="d-flex align-items-center">
+                        <input type="date" class="form-control form-control-sm me-2" v-model="newScheduleDate" :min="getMinDate(vaccine)" />
+                        <button class="btn btn-sm btn-success me-1" @click="saveScheduleDate(vaccine)" :disabled="saving">
+                          <i class="bi bi-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" @click="cancelEditSchedule">
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </div>
+                    </td>
                     <td>{{ vaccine.doseNumber || 'N/A' }}</td>
                     <td>
                       <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
@@ -814,6 +864,9 @@ const autoSelectHint = ref('');
 const outsideImmunization = ref(false);
 const vaccineCatalog = ref([]);
 const router = useRouter();
+// Schedule editing state
+const editingScheduleIndex = ref(-1);
+const newScheduleDate = ref('');
 // Outside record modal state
 // const showOutsideRecord = ref(false);
 
@@ -957,11 +1010,11 @@ const fetchPatientData = async () => {
     
     // Fetch patient details and vaccine list in parallel to normalize names
     const [resp, vaccinesResp] = await Promise.all([
-      api.get(`/patients/${props.patientId}`).catch((error) => {
+      api.get(`/patients/${props.patientId}/details`).catch((error) => {
         console.error('Error fetching patient details:', error);
-        // Try the details endpoint as fallback
-        return api.get(`/patients/${props.patientId}/details`).catch((detailsError) => {
-          console.error('Error fetching patient details from fallback endpoint:', detailsError);
+        // Try the basic endpoint as fallback
+        return api.get(`/patients/${props.patientId}`).catch((basicError) => {
+          console.error('Error fetching patient details from fallback endpoint:', basicError);
           return { data: null };
         });
       }),
@@ -1005,6 +1058,8 @@ const fetchPatientData = async () => {
     if (patientData.value?.nextScheduledVaccinations && Array.isArray(patientData.value.nextScheduledVaccinations)) {
       patientData.value.nextScheduledVaccinations = patientData.value.nextScheduledVaccinations.map(s => ({
         ...s,
+        patient_schedule_id: s.patient_schedule_id || s.patientScheduleId || s.id,
+        eligible_date: s.eligible_date || s.eligibleDate,
         vaccineId: s.vaccineId || s.vaccine_id || s.vaccine_id || null,
         vaccineName: s.vaccineName || s.vaccine_name || s.antigen_name || (s.vaccine && (s.vaccine.antigen_name || s.vaccine.name)) || vaccineLookup[s.vaccineId] || vaccineLookup[s.vaccine_id] || '',
         scheduledDate: s.scheduledDate || s.scheduled_date || s.due_date,
@@ -1714,6 +1769,85 @@ const deriveFacility = (v) => {
 }
 
 const isOutside = (v) => !!(v?.immunization_outside || v?.is_outside || v?.isOutside || v?.outside_immunization || v?.outside)
+
+// Schedule editing methods
+const startEditSchedule = (vaccine) => {
+  console.log('Starting edit for vaccine:', vaccine);
+  console.log('Available fields:', Object.keys(vaccine));
+  console.log('patient_schedule_id:', vaccine.patient_schedule_id);
+  console.log('patientScheduleId:', vaccine.patientScheduleId);
+  console.log('id:', vaccine.id);
+  // Find index in upcomingSchedules for page mode, or in patientData.nextScheduledVaccinations for modal mode
+  let index = upcomingSchedules.value.indexOf(vaccine);
+  if (index === -1 && patientData.value?.nextScheduledVaccinations) {
+    index = patientData.value.nextScheduledVaccinations.indexOf(vaccine);
+  }
+  editingScheduleIndex.value = index;
+  newScheduleDate.value = vaccine.scheduledDate ? utcToPH(vaccine.scheduledDate).format('YYYY-MM-DD') : '';
+  console.log('Set newScheduleDate to:', newScheduleDate.value);
+};
+
+const cancelEditSchedule = () => {
+  editingScheduleIndex.value = -1;
+  newScheduleDate.value = '';
+};
+
+const saveScheduleDate = async (vaccine) => {
+  if (!newScheduleDate.value) {
+    addToast({ title: 'Error', message: 'Please select a valid date.', type: 'error' });
+    return;
+  }
+
+  const minDate = getMinDate(vaccine);
+  if (newScheduleDate.value < minDate) {
+    addToast({ title: 'Error', message: 'Scheduled date cannot be earlier than the baseline date.', type: 'error' });
+    return;
+  }
+
+  console.log('Rescheduling vaccine:', vaccine);
+  console.log('patient_schedule_id:', vaccine.patient_schedule_id);
+  console.log('new date:', newScheduleDate.value);
+
+  // Confirm cascade effect
+  try {
+    await confirm({
+      title: 'Confirm Reschedule',
+      message: `This will reschedule this vaccination to ${formatDate(newScheduleDate.value)}. Related vaccinations in the schedule may also be adjusted. Do you want to proceed?`,
+      variant: 'warning',
+      confirmText: 'Yes, Reschedule',
+      cancelText: 'Cancel'
+    });
+  } catch {
+    // User cancelled
+    return;
+  }
+
+  try {
+    saving.value = true;
+    await api.post('/immunizations/manual-reschedule', {
+      p_patient_schedule_id: vaccine.patient_schedule_id || vaccine.patientScheduleId,
+      p_new_scheduled_date: newScheduleDate.value,
+      cascade: true,
+      force_override: true
+    });
+
+    addToast({ title: 'Success', message: 'Vaccination rescheduled successfully.', type: 'success' });
+    await fetchPatientData(); // Refresh data
+    cancelEditSchedule();
+  } catch (error) {
+    console.error('Error rescheduling vaccination:', error);
+    const message = error.response?.data?.message || 'Failed to reschedule vaccination.';
+    addToast({ title: 'Error', message, type: 'error' });
+  } finally {
+    saving.value = false;
+  }
+};
+
+const getMinDate = (vaccine) => {
+  // Get baseline date - eligible_date from the schedule, or patient DOB
+  const baseline = vaccine.eligible_date || vaccine.eligibleDate || vaccine.baseline_date || vaccine.baselineDate || patientData.value?.date_of_birth;
+  return baseline ? utcToPH(baseline).format('YYYY-MM-DD') : '';
+};
 </script>
 
 <style scoped>

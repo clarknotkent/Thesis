@@ -273,10 +273,25 @@ const saveEdit = async (item) => {
     
     // Subject-first save: call without cascade first
     const originalScheduledISO = (item.scheduledDate || item.scheduled_date) || null
+    // Resolve numeric user id (backend expects bigint) from stored user info
+    let p_user_id = undefined
+    try {
+      const raw = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
+      if (raw) {
+        const u = JSON.parse(raw)
+        p_user_id = u?.user_id || u?.id || undefined
+      }
+    } catch {}
+    if (!p_user_id) {
+      const uidStr = localStorage.getItem('userId') || localStorage.getItem('user_id')
+      const asNum = uidStr ? Number(uidStr) : NaN
+      if (!Number.isNaN(asNum)) p_user_id = asNum
+    }
+
     const payload = { 
       p_patient_schedule_id: item.patient_schedule_id,
       p_new_scheduled_date: isoDate, 
-      p_user_id: localStorage.getItem('userId'),
+      p_user_id,
       cascade: false,
       debug: showDebug.value
     }
@@ -328,7 +343,7 @@ const saveEdit = async (item) => {
           const revertPayload = { 
             p_patient_schedule_id: item.patient_schedule_id,
             p_new_scheduled_date: originalScheduledISO,
-            p_user_id: localStorage.getItem('userId'),
+            p_user_id,
             cascade: false
           }
           const revertResp = await api.post('/immunizations/manual-reschedule', revertPayload)
@@ -359,9 +374,34 @@ const saveEdit = async (item) => {
     addToast({ title: 'Success', message: 'Schedule rescheduled successfully.', type: 'success' })
     emit('updated')
   } catch (err) {
-    const backendMsg = err?.response?.data?.message || err?.message || 'Failed to save schedule edit.'
     console.error('Failed to save schedule edit', err)
-    addToast({ title: 'Error', message: backendMsg, type: 'error' })
+    // Extract friendly message similar to VaccinationRecordEditor
+    const data = err?.response?.data || {}
+    const ruleNameMap = {
+      dad_baseline: 'Cannot be earlier than the baseline due date (due_after_days).',
+      dad_sync: 'Cannot be earlier than due_after_days from baseline or DOB.',
+      min_interval_same: 'Minimum interval since last dose of this vaccine is not met.',
+      max_interval_same: 'Exceeds maximum recommended interval for this vaccine.',
+      same_vaccine_same_day: 'A dose of the same vaccine already exists on that date.',
+      same_day_concurrency: 'Too many vaccines scheduled on the same day.',
+      min_interval_other_vax: 'Minimum interval from another vaccine is not met.'
+    }
+    let msg = data?.message || data?.error || data?.detail || data?.details || null
+    if (!msg && Array.isArray(data.errors) && data.errors.length) {
+      const first = data.errors[0]
+      msg = typeof first === 'string' ? first : (first?.message || null)
+    }
+    if (!msg && Array.isArray(data.checkpoints)) {
+      const failing = data.checkpoints.filter(c => c && c.passed === false)
+      if (failing.length) {
+        const r = failing[0]
+        const friendly = ruleNameMap[r.rule] || r.rule || 'Rule validation failed'
+        msg = r.detail ? `${friendly}: ${r.detail}` : friendly
+      }
+    }
+    if (!msg && data.code && data.message) msg = `${data.code}: ${data.message}`
+    if (!msg) msg = err?.message || 'Failed to save schedule edit.'
+    addToast({ title: 'Error', message: msg, type: 'error' })
     // Attempt to pull DB trace when debug is enabled
     if (showDebug.value) {
       try {

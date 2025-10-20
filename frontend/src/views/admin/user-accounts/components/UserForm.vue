@@ -166,17 +166,7 @@
             :readonly="readOnly"
           >
         </div>
-        <div class="col-md-6" v-if="localForm.role === 'parent'">
-          <label class="form-label">Phone Number</label>
-          <input 
-            type="tel" 
-            class="form-control" 
-            v-model="localForm.phoneNumber"
-            :readonly="readOnly"
-            placeholder="+63 XXX XXX XXXX"
-          >
-        </div>
-        <div class="col-md-6" v-if="localForm.role === 'health_staff' || localForm.role === 'admin'">
+        <div class="col-md-6">
           <label class="form-label">Contact Number</label>
           <input 
             type="tel" 
@@ -249,7 +239,6 @@ const localForm = ref({
   password: '',
   licenseNumber: '',
   employeeId: '',
-  phoneNumber: '',
   contactNumber: '',
   sex: '',
   birthdate: '',

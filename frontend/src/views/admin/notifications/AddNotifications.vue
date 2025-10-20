@@ -32,7 +32,7 @@
                   <label class="form-label">Select User</label>
                   <select v-model="form.recipient_user_id" class="form-select" required>
                     <option value="">Choose a user...</option>
-                    <option v-for="user in users" :key="user.user_id" :value="user.user_id">
+                    <option v-for="user in users" :key="user.user_id || user.id" :value="user.user_id || user.id">
                       {{ user.firstname }} {{ user.surname }} ({{ user.role }})
                     </option>
                   </select>
@@ -128,6 +128,7 @@
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { notificationAPI } from '@/services/api'
 import { usersAPI } from '@/services/users'
+import { useToast } from '@/composables/useToast'
 
 export default {
   name: 'CreateNotification',
@@ -148,17 +149,28 @@ export default {
       }
     }
   },
+  setup() {
+    const { addToast } = useToast()
+    return { addToast }
+  },
   async mounted() {
     await this.loadUsers()
   },
   methods: {
     async loadUsers() {
       try {
-        const response = await usersAPI.getAllUsers()
-        this.users = response.data.data || []
+        // Request a large limit to get the full list (UI expects to be able to send to all users of a role)
+        const response = await usersAPI.listUsers({ page: 1, limit: 10000 })
+        // Possible response shapes:
+        // - { users: [...], pagination: {...} } (backend controller returns this)
+        // - axios response where data is the above: { data: { users: [...] } }
+        // - older helper shapes
+        const usersFromResponse = response?.users ?? response?.data?.users ?? response?.data ?? response ?? []
+        this.users = Array.isArray(usersFromResponse) ? usersFromResponse : (usersFromResponse.users || [])
       } catch (error) {
         console.error('Failed to load users:', error)
-        this.$toast.error('Failed to load users')
+        // use the setup-returned binding on this
+        this.addToast({ title: 'Error', message: `Failed to load users: ${error?.message || error}`, type: 'error' })
       }
     },
 
@@ -168,7 +180,7 @@ export default {
 
     getRecipientPreview() {
       if (this.form.recipientType === 'user') {
-        const user = this.users.find(u => u.user_id == this.form.recipient_user_id)
+        const user = this.users.find(u => (u.user_id || u.id) == this.form.recipient_user_id)
         return user ? `${user.firstname} ${user.surname}` : 'Not selected'
       }
       return `All ${this.form.recipientType}s`
@@ -184,29 +196,48 @@ export default {
           // For bulk, we'll need to create multiple notifications
           // For now, send to first user of that type as example
           const filteredUsers = this.users.filter(u => {
-            if (this.form.recipientType === 'guardian') return u.role === 'guardian'
-            if (this.form.recipientType === 'healthworker') return u.role === 'health_staff'
-            if (this.form.recipientType === 'admin') return u.role === 'admin'
+            const role = (u.role || '').toLowerCase()
+            if (this.form.recipientType === 'guardian') return role.includes('guardian') || role.includes('parent')
+            if (this.form.recipientType === 'healthworker') return role.includes('health') || role.includes('staff')
+            if (this.form.recipientType === 'admin') return role.includes('admin')
             return false
           })
 
-          for (const user of filteredUsers.slice(0, 10)) { // Limit to 10 for demo
-            await notificationAPI.create({
-              ...payload,
-              recipient_user_id: user.user_id,
-              recipient_phone: user.contact_number,
-              recipient_email: user.email
-            })
+          if (!filteredUsers.length) {
+            throw new Error('No recipients found for the selected recipient type')
+          }
+
+          // Send and count successful creations (limit to 10 for demo)
+          let createdCount = 0
+          for (const user of filteredUsers.slice(0, 10)) {
+            try {
+              const resp = await notificationAPI.create({
+                ...payload,
+                recipient_user_id: user.user_id || user.id,
+                recipient_phone: user.contact_number,
+                recipient_email: user.email
+              })
+              if (resp && resp.status && resp.status >= 200 && resp.status < 300) createdCount++
+            } catch (err) {
+              // Log and continue to next recipient
+              console.warn('Failed to create notification for user', user.user_id, err)
+            }
+          }
+
+          if (createdCount === 0) {
+            throw new Error('Failed to create notifications for all recipients')
           }
         } else {
           await notificationAPI.create(payload)
         }
 
-        this.$toast.success('Notification sent successfully')
+        this.addToast({ title: 'Success', message: 'Notification sent successfully', type: 'success' })
         this.resetForm()
       } catch (error) {
         console.error('Failed to send notification:', error)
-        this.$toast.error('Failed to send notification')
+        // Try to surface backend error message if available
+        const backendMsg = error?.response?.data?.message || JSON.stringify(error?.response?.data || error?.message || 'Failed to send notification')
+        this.addToast({ title: 'Error', message: backendMsg, type: 'error' })
       } finally {
         this.loading = false
       }

@@ -35,7 +35,8 @@ const list = async (req, res) => {
     };
 
     const notifications = await notificationModel.getNotifications(userId, filters);
-    return res.json({ success: true, data: notifications });
+    // Best effort total count; if we want exact counts, we'd run a separate count query
+    return res.json({ success: true, data: notifications, meta: { totalCount: notifications.length } });
   } catch (error) {
     console.error('getMyNotifications error:', error);
     return sendError(res, error, 'Failed to fetch notifications');

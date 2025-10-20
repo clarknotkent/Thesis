@@ -41,7 +41,7 @@ async function generate() {
         // Prepare notification
         const msg = `Reminder: ${r.antigen_name} scheduled for ${iso} for ${r.patient_name}`;
         const payload = {
-          channel: 'in-app',
+          channel: 'Push',
           recipient_user_id: r.guardian_user_id || null,
           recipient_phone: r.guardian_contact_number || null,
           recipient_email: r.guardian_email || null,

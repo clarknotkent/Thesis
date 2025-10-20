@@ -1,4 +1,5 @@
 const supabase = require('../db');
+const notificationModel = require('./notificationModel');
 
 // Send SMS
 const sendSMS = async (to, message) => {
@@ -10,7 +11,8 @@ const sendSMS = async (to, message) => {
 // Fetch SMS logs
 const getSMSLogs = async (filters) => {
   const { recipient, status } = filters;
-  let query = supabase.from('notifications_view').select('*').eq('channel', 'SMS');
+  // Be tolerant of legacy stored values ("SMS") but prefer canonical 'sms'
+  let query = supabase.from('notifications_view').select('*').in('channel', ['sms', 'SMS']);
 
   if (recipient) {
     query = query.eq('recipient_phone', recipient);
@@ -27,22 +29,14 @@ const getSMSLogs = async (filters) => {
 
 // Log SMS
 const logSMS = async (to, message, status) => {
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert([
-      {
-        channel: 'SMS',
-        recipient_phone: to,
-        message_body: message,
-        status,
-        created_at: new Date(),
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  // Use createNotification to ensure normalization and constraint compatibility
+  return notificationModel.createNotification({
+    channel: 'sms',
+    recipient_phone: to,
+    message_body: message,
+    status,
+    // no recipient_user_id in this context; purely SMS log
+  }, null);
 };
 
 // Test functions for compatibility

@@ -23,8 +23,6 @@
 - Once Inventory Stock is deleted, should we be able to restore it? (or no need for restoration?)
 
 - Editing Vaccine Type removed??
-- Should there still be Add New Vaccine and Add New Stock, since all Vaccines and Stocks must be derived from an RR (I temporarily hid it)
-- Editing Patient Schedule removed??
 
 //// I ADDED A FILE --- CHANGES_2025-10-19.md ////
 

@@ -67,11 +67,11 @@ const registerUser = async (req, res) => {
 
     // Create application user record via unified userModel (ensures role canonicalization & audit handling)
     console.log('[registerUser] DEBUG: Building canonical app user payload');
-  // Canonical role tokens (DB constraint): Admin | HealthStaff | Guardian
+  // Canonical role tokens (DB constraint): Admin | HealthWorker | Guardian
     let incomingRole = (role || '').trim().toLowerCase();
     let canonicalRole;
   if (['admin','administrator','system admin'].includes(incomingRole)) canonicalRole = 'Admin';
-  else if (['health_worker','healthstaff','healthworker','health worker','health staff','health_staff','health-staff'].includes(incomingRole)) canonicalRole = 'HealthStaff';
+  else if (['health_worker','healthworker','health worker'].includes(incomingRole)) canonicalRole = 'HealthWorker';
   else if (['guardian','parent','guardian-parent'].includes(incomingRole)) canonicalRole = 'Guardian';
   else canonicalRole = 'Guardian'; // fallback
 
@@ -85,14 +85,14 @@ const registerUser = async (req, res) => {
     } else normalizedSex = 'Other';
 
     // Accept additional optional fields from body
-  const { middlename, hs_type, employee_id, created_by: _cb, updated_by: _ub } = req.body; // ignore spoofed audit fields
+  const { middlename, hw_type, employee_id, created_by: _cb, updated_by: _ub } = req.body; // ignore spoofed audit fields
     let professionalLicense = professional_license_no || null;
-    let hsType = hs_type || null;
-    // If role is HealthStaff but subtype provided as role variants like 'nurse'
-    if (canonicalRole === 'HealthStaff' && !hsType) {
-      if (['nurse','nutritionist','bhs'].includes(incomingRole)) hsType = incomingRole; // edge case
+    let hwType = hw_type || null;
+    // If role is HealthWorker but subtype provided as role variants like 'nurse'
+    if (canonicalRole === 'HealthWorker' && !hwType) {
+      if (['nurse','nutritionist','bhw'].includes(incomingRole)) hwType = incomingRole; // edge case
     }
-    if (hsType === 'bhs') professionalLicense = null; // BHS never keeps license
+    if (hwType === 'bhw') professionalLicense = null; // BHW never keeps license
 
   // Actor (creator) id: middleware may set user_id or id
   const actorId = getActorId(req); // if an authenticated admin creates user
@@ -111,7 +111,7 @@ const registerUser = async (req, res) => {
       status: status || 'active',
   professional_license_no: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? professionalLicense : null,
   employee_id: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? (employee_id || null) : null,
-  hs_type: (canonicalRole === 'HealthStaff') ? (hsType || null) : null,
+  hw_type: (canonicalRole === 'HealthWorker') ? (hwType || null) : null,
       created_by: actorId, // if null, will be self-assigned after insert
       updated_by: actorId,
       password // userModel ignores password for local hash, Supabase handles auth
@@ -145,7 +145,7 @@ const registerUser = async (req, res) => {
         console.warn('[registerUser] DEBUG: Failed self-assign audit fields', auditPatchErr?.message || auditPatchErr);
       }
     }
-  console.log('[registerUser] DEBUG: App user created (canonical):', newUser?.user_id, 'stored role:', newUser?.role, 'hs_type:', newUser?.hs_type, 'created_by:', newUser?.created_by, 'updated_by:', newUser?.updated_by);
+    console.log('[registerUser] DEBUG: App user created (canonical):', newUser?.user_id, 'stored role:', newUser?.role, 'hw_type:', newUser?.hw_type, 'created_by:', newUser?.created_by, 'updated_by:', newUser?.updated_by);
 
     // Map Supabase UUID to local user_id
     try {

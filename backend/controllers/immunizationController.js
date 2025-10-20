@@ -186,7 +186,7 @@ const createImmunizationRecord = async (req, res) => {
       const { data: patientRow } = await supabase.from('patients_view').select('patient_id, full_name, guardian_contact_number, guardian_email, guardian_user_id').eq('patient_id', imm.patient_id).maybeSingle();
       const msg = `Confirmation: ${imm.disease_prevented || 'vaccine'} was recorded for ${patientRow?.full_name || imm.patient_id} on ${imm.administered_date}`;
       const notif = {
-        channel: 'in-app',
+        channel: 'Push',
         recipient_user_id: patientRow?.guardian_user_id || null,
         recipient_phone: patientRow?.guardian_contact_number || null,
         recipient_email: patientRow?.guardian_email || null,

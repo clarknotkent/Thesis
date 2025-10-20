@@ -159,6 +159,21 @@
             </div>
           </div>
 
+          <!-- QR Code Card -->
+          <div class="card shadow mb-4">
+            <div class="card-header py-3">
+              <h6 class="m-0 fw-bold text-primary">Patient QR Code</h6>
+            </div>
+            <div class="card-body text-center">
+              <canvas ref="qrCanvas" width="200" height="200" style="border: 1px solid #ccc;"></canvas>
+              <p class="mt-2"><small class="text-muted">Scan to access vaccination records</small></p>
+              <p v-if="patientData.qr" class="mt-2"><small><a :href="patientData.qr.url" target="_blank" rel="noreferrer">Open QR link</a></small></p>
+              <button v-if="patientData.qr" class="btn btn-sm btn-outline-primary mt-2" @click="refreshQr">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh QR
+              </button>
+            </div>
+          </div>
+
           <!-- Actions Card -->
           <div class="card shadow">
             <div class="card-header py-3">
@@ -198,7 +213,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PatientForm from './components/PatientForm.vue'
@@ -208,6 +223,7 @@ import VisitHistory from './components/VisitHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import QRCode from 'qrcode'
 
 const router = useRouter()
 const route = useRoute()
@@ -221,6 +237,7 @@ const error = ref(null)
 const lastVaccination = ref(null)
 // Vaccination editor is opened via routed page, not a modal
 const activeTab = ref('info') // Tab state: 'info' or 'vaccinations'
+const qrCanvas = ref(null)
 
 const patientId = computed(() => route.params.id)
 
@@ -289,6 +306,7 @@ const fetchPatientData = async () => {
 
     // Fetch patient data
     const response = await api.get(`/patients/${patientId.value}`)
+    console.log('API response data:', response.data)
     const p = response.data.data || response.data
 
     // Map backend fields to form structure
@@ -318,7 +336,8 @@ const fetchPatientData = async () => {
       attendant_at_birth: (p.medical_history && (p.medical_history.attendant_at_birth || p.medical_history.attendantAtBirth)) || p.attendant_at_birth || '',
       type_of_delivery: (p.medical_history && (p.medical_history.type_of_delivery || p.medical_history.typeOfDelivery)) || p.type_of_delivery || '',
       ballards_score: (p.medical_history && (p.medical_history.ballards_score || p.medical_history.ballardsScore)) || p.ballards_score || '',
-      newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || ''
+      newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
+      qr: p.qr // Include the QR data from backend
     }
 
     // Resolve family number from guardian if missing
@@ -344,6 +363,8 @@ const fetchPatientData = async () => {
     }
 
     // Vaccination editor is now a separate page; no local modal data prep needed
+
+    console.log('patientData.qr:', patientData.value.qr)
 
   } catch (err) {
     console.error('Error fetching patient data:', err)
@@ -388,8 +409,56 @@ const handleDelete = async () => {
   }
 }
 
+const renderQr = async () => {
+  console.log('renderQr called, qrCanvas:', qrCanvas.value, 'url:', patientData.value.qr?.url)
+  if (qrCanvas.value && patientData.value.qr?.url) {
+    try {
+      await QRCode.toCanvas(qrCanvas.value, patientData.value.qr.url, { width: 200 })
+      console.log('QR rendered successfully')
+    } catch (e) {
+      console.error('Error rendering QR:', e)
+      // Fallback: show URL as text
+      const ctx = qrCanvas.value.getContext('2d')
+      ctx.clearRect(0, 0, qrCanvas.value.width, qrCanvas.value.height)
+      ctx.font = '12px Arial'
+      ctx.fillText('QR Error - Use link below', 10, 50)
+      ctx.fillText(patientData.value.qr.url.slice(0, 30) + '...', 10, 70)
+    }
+  } else {
+    console.log('QR not rendered: missing canvas or url')
+  }
+}
+
+const refreshQr = async () => {
+  try {
+    const res = await api.post(`/qr/patients/${patientId.value}`)
+    patientData.value.qr = res.data.data
+    await renderQr()
+    addToast({
+      title: 'Success',
+      message: 'QR code refreshed',
+      type: 'success'
+    })
+  } catch (e) {
+    console.error('Error refreshing QR:', e)
+    addToast({
+      title: 'Error',
+      message: 'Failed to refresh QR code',
+      type: 'error'
+    })
+  }
+}
+
 onMounted(() => {
   fetchPatientData()
+})
+
+// Watch for patientData.qr changes to render QR
+watch(() => patientData.value.qr, async (newQr) => {
+  if (newQr?.url) {
+    await nextTick()
+    renderQr()
+  }
 })
 </script>
 

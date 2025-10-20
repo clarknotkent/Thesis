@@ -598,12 +598,8 @@ const scheduleAppointment = () => {
 }
 
 const sendMessage = () => {
-  const { addToast } = useToast()
-  addToast({
-    title: 'Message Center',
-    message: 'Opening health center chat...',
-    type: 'info'
-  })
+  // Temporary: route to public FAQs while chat UI for parents is added
+  router.push('/faqs')
 }
 
 const openResource = (resourceType) => {

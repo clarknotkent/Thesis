@@ -85,15 +85,31 @@
                         <small class="text-muted">
                           {{ formatDate(notification.created_at) }}
                         </small>
+                        <small class="text-muted ms-3">
+                          Sender: {{ notification.created_by_name || senderLabel(notification) }}
+                        </small>
                       </div>
                       <p class="mb-1">{{ notification.message_body }}</p>
                       <div class="d-flex align-items-center">
                         <small class="text-muted me-3">
                           Template: {{ notification.template_code || 'Custom' }}
                         </small>
-                        <small v-if="notification.related_entity_type" class="text-muted">
+                        <small v-if="notification.related_entity_type" class="text-muted me-2">
                           Related: {{ notification.related_entity_type }}
                         </small>
+                        <button
+                          v-if="notification.related_entity_type && notification.related_entity_id"
+                          @click="openRelated(notification)"
+                          class="btn btn-link btn-sm p-0"
+                        >
+                          View
+                        </button>
+                        <button
+                          @click="openDetails(notification)"
+                          class="btn btn-link btn-sm p-0"
+                        >
+                          Details
+                        </button>
                       </div>
                     </div>
                     <div class="d-flex flex-column gap-2">
@@ -151,11 +167,47 @@
       </div>
     </div>
   </AdminLayout>
+  
+  <!-- Details Modal -->
+  <div v-if="showDetails && selectedNotification" class="modal-backdrop-custom">
+    <div class="modal-custom card shadow">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="m-0">Notification Details</h6>
+        <button class="btn btn-sm btn-outline-secondary" @click="closeDetails">Close</button>
+      </div>
+      <div class="card-body">
+        <div class="mb-2"><strong>Message:</strong><br>{{ selectedNotification.message_body }}</div>
+        <div class="row g-3">
+          <div class="col-md-6"><strong>Channel:</strong> {{ selectedNotification.channel }}</div>
+          <div class="col-md-6"><strong>Status:</strong> {{ selectedNotification.status }}</div>
+          <div class="col-md-6"><strong>Sender:</strong> {{ selectedNotification.created_by_name || senderLabel(selectedNotification) }}</div>
+          <div class="col-md-6"><strong>Recipient:</strong> {{ selectedNotification.recipient_name || selectedNotification.recipient_user_id }}</div>
+          <div class="col-md-6"><strong>Template:</strong> {{ selectedNotification.template_code || 'Custom' }}</div>
+          <div class="col-md-6" v-if="selectedNotification.related_entity_type"><strong>Related:</strong> {{ selectedNotification.related_entity_type }} #{{ selectedNotification.related_entity_id }}</div>
+        </div>
+        <hr>
+        <div class="row g-3 small text-muted">
+          <div class="col-md-6"><strong>Created:</strong> {{ formatDate(selectedNotification.created_at) }}</div>
+          <div class="col-md-6"><strong>Scheduled:</strong> {{ formatDate(selectedNotification.scheduled_at) }}</div>
+          <div class="col-md-6"><strong>Sent:</strong> {{ formatDate(selectedNotification.sent_at) }}</div>
+          <div class="col-md-6"><strong>Read:</strong> {{ formatDate(selectedNotification.read_at) }}</div>
+          <div class="col-md-6"><strong>Updated:</strong> {{ formatDate(selectedNotification.updated_at) }}</div>
+          <div class="col-md-6" v-if="selectedNotification.error_message"><strong>Error:</strong> {{ selectedNotification.error_message }}</div>
+        </div>
+        <hr>
+        <details>
+          <summary>Raw JSON</summary>
+          <pre class="mt-2 small">{{ formatJSON(selectedNotification) }}</pre>
+        </details>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { notificationAPI } from '@/services/api'
+import { useToast } from '@/composables/useToast'
 
 export default {
   name: 'NotificationsInbox',
@@ -174,7 +226,9 @@ export default {
       },
       currentPage: 1,
       totalPages: 1,
-      debounceTimer: null
+      debounceTimer: null,
+      showDetails: false,
+      selectedNotification: null
     }
   },
   computed: {
@@ -191,7 +245,31 @@ export default {
   async mounted() {
     await this.loadNotifications()
   },
+  setup() {
+    const { addToast } = useToast()
+    return { addToast }
+  },
   methods: {
+    openDetails(n) {
+      this.selectedNotification = n
+      this.showDetails = true
+    },
+    closeDetails() {
+      this.showDetails = false
+      this.selectedNotification = null
+    },
+    openRelated(n) {
+      const type = (n.related_entity_type || '').toLowerCase().trim()
+      const id = n.related_entity_id
+      if (!type || !id) return
+      // Route mapping by type
+      if (type === 'conversation') {
+        this.$router.push({ name: 'AdminChat', query: { conversation_id: id } })
+        return
+      }
+      // Add additional mappings as needed
+      // e.g., patient -> { name: 'ViewPatient', params: { id } }
+    },
     async loadNotifications() {
       this.loading = true
       try {
@@ -206,7 +284,7 @@ export default {
         this.totalPages = Math.ceil((response.data.meta?.totalCount || this.notifications.length) / 20)
       } catch (error) {
         console.error('Failed to load notifications:', error)
-        this.$toast.error('Failed to load notifications')
+        this.addToast({ title: 'Error', message: 'Failed to load notifications', type: 'error' })
       } finally {
         this.loading = false
       }
@@ -231,10 +309,10 @@ export default {
       try {
         await notificationAPI.markAsRead(notificationId)
         await this.loadNotifications() // Refresh list
-        this.$toast.success('Notification marked as read')
+        this.addToast({ title: 'Success', message: 'Notification marked as read', type: 'success' })
       } catch (error) {
         console.error('Failed to mark as read:', error)
-        this.$toast.error('Failed to mark notification as read')
+        this.addToast({ title: 'Error', message: 'Failed to mark notification as read', type: 'error' })
       }
     },
 
@@ -244,10 +322,10 @@ export default {
       try {
         await notificationAPI.delete(notificationId)
         await this.loadNotifications() // Refresh list
-        this.$toast.success('Notification deleted')
+        this.addToast({ title: 'Success', message: 'Notification deleted', type: 'success' })
       } catch (error) {
         console.error('Failed to delete notification:', error)
-        this.$toast.error('Failed to delete notification')
+        this.addToast({ title: 'Error', message: 'Failed to delete notification', type: 'error' })
       }
     },
 
@@ -270,13 +348,59 @@ export default {
     },
 
     formatDate(dateString) {
-      return new Date(dateString).toLocaleString()
+      if (!dateString) return ''
+      try {
+        // Treat timestamps without timezone as UTC to avoid local-time misinterpretation
+        let s = dateString
+        if (typeof s === 'string') {
+          const tzPattern = /([zZ]|[+-]\d{2}:?\d{2})$/
+          const hasTime = /T\d{2}:\d{2}:\d{2}/.test(s)
+          if (hasTime && !tzPattern.test(s)) {
+            s = s + 'Z'
+          }
+        }
+        const d = new Date(s)
+        return new Intl.DateTimeFormat(undefined, {
+          year: 'numeric', month: 'short', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: true, timeZone: 'Asia/Manila'
+        }).format(d)
+      } catch(_) {
+        return String(dateString)
+      }
+    },
+
+    senderLabel(notification) {
+      // Interpret null created_by as System; otherwise show "User #<id>" for now.
+      // If backend later enriches with created_by_name, we can display that here.
+      const cid = notification.created_by
+      if (cid === null || typeof cid === 'undefined') return 'System'
+      return `User #${cid}`
+    },
+
+    formatJSON(obj) {
+      try { return JSON.stringify(obj, null, 2) } catch(_) { return String(obj) }
     }
   }
 }
 </script>
 
 <style scoped>
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-custom {
+  width: min(800px, 95vw);
+  max-height: 85vh;
+  overflow: auto;
+}
 .list-group-item {
   border-left: none;
   border-right: none;

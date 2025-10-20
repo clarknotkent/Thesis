@@ -14,6 +14,9 @@
           <router-link v-if="false" class="btn btn-outline-success" to="/admin/vaccines/add-vaccine">
             <i class="bi bi-plus-circle me-2"></i>Add New Vaccine
           </router-link>
+          <button class="btn btn-primary" @click="goToCreateReceiving">
+            <i class="bi bi-plus-circle me-2"></i>New Receiving Report
+          </button>
         </div>
       </div>
 
@@ -194,6 +197,69 @@
 
       <!-- Vaccine Schedules Section -->
       <VaccineScheduleSection v-if="!loading" :existing-vaccines="existingVaccines" />
+
+      <!-- Receiving Reports Section -->
+      <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+          <h6 class="m-0 fw-bold text-primary">Receiving Reports</h6>
+          <div class="d-flex align-items-center gap-2">
+            <input class="form-control" placeholder="Search RR-..." v-model="receivingSearch" @input="fetchReceivingList" style="max-width: 240px;" />
+            <select class="form-select" v-model="receivingStatus" @change="fetchReceivingList" style="max-width: 180px;">
+              <option value="">All Status</option>
+              <option value="DRAFT">Draft</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+            <button class="btn btn-outline-secondary" @click="fetchReceivingList" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div v-if="receivingLoading" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+          <div v-else class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead class="table-light">
+                <tr>
+                  <th>Report #</th>
+                  <th>Delivery Date</th>
+                  <th>Delivered By</th>
+                  <th>Received By</th>
+                  <th>Total Items</th>
+                  <th>Total Qty</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in receivingList.items" :key="r.report_id" @click="goToViewReceiving(r)" style="cursor:pointer;">
+                  <td class="fw-semibold">{{ r.report_number }}</td>
+                  <td>{{ formatDate(r.delivery_date) }}</td>
+                  <td>{{ r.delivered_by }}</td>
+                  <td>{{ r.received_by_name || '-' }}</td>
+                  <td>{{ r.total_items || 0 }}</td>
+                  <td>{{ r.total_quantity || 0 }}</td>
+                  <td>
+                    <span class="badge" :class="getReceivingBadgeClass(r.status)">{{ r.status }}</span>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-primary" @click.stop="goToViewReceiving(r)"><i class="bi bi-eye"></i></button>
+                      <button class="btn btn-outline-success" :disabled="r.status!=='DRAFT'" @click.stop="goToCompleteReceiving(r)"><i class="bi bi-check2-circle"></i></button>
+                      <button class="btn btn-outline-danger" :disabled="r.status!=='DRAFT'" @click.stop="goToCancelReceiving(r)"><i class="bi bi-x-circle"></i></button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="(receivingList.items||[]).length===0">
+                  <td colspan="8" class="text-center text-muted py-4">No receiving reports found</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <!-- Add/Edit Stock Modal -->
       <div class="modal fade" :class="{ show: showAddModal || showAddStockModal }" :style="{ display: (showAddModal || showAddStockModal) ? 'block' : 'none' }" tabindex="-1">
@@ -1085,6 +1151,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import DateInput from '@/components/common/DateInput.vue'
@@ -1147,6 +1214,13 @@ const savedLot = ref(null)
 const storageLocationOptions = ref([
   'Cold Room A', 'Cold Room B', 'Refrigerator 1', 'Refrigerator 2', 'Freezer -20C', 'Freezer -80C'
 ])
+
+// Receiving Reports state
+const receivingLoading = ref(false)
+const receivingList = ref({ items: [], totalCount: 0, totalPages: 0 })
+const receivingStatus = ref('')
+const receivingSearch = ref('')
+const router = useRouter()
 const schedulingFields = ref({
   // schedule_master fields
   name: '',
@@ -2124,6 +2198,7 @@ onMounted(async () => {
   await fetchStats();
   await fetchSchedules();
   await fetchDiseaseOptions(); // Add this line
+  await fetchReceivingList();
 })
 
 // Category change handler - set vaccine_type to null for Deworming/Vitamin A
@@ -2261,6 +2336,46 @@ const unscheduledVaccines = computed(() => {
   const scheduledIds = new Set((schedules.value || []).map(s => s.vaccine_id || s.vaccine?.vaccine_id || s.vaccineId).filter(Boolean))
   return list.map(v => ({ ...v, id: v.vaccine_id || v.id })).filter(v => !scheduledIds.has(v.id))
 })
+
+// Receiving Reports Methods
+const fetchReceivingList = async () => {
+  console.log('Fetching receiving reports...', { status: receivingStatus.value, search: receivingSearch.value })
+  receivingLoading.value = true
+  try {
+    const { data } = await api.get('/receiving-reports', { 
+      params: { 
+        status: receivingStatus.value, 
+        search: receivingSearch.value, 
+        page: 1, 
+        limit: 20 
+      } 
+    })
+    console.log('Receiving reports API response:', data)
+    receivingList.value = data.data || data
+    console.log('Receiving list after assignment:', receivingList.value)
+  } catch (e) {
+    console.error('Failed to load receiving reports', e)
+    console.error('Error response:', e.response?.data)
+    receivingList.value = { items: [], totalCount: 0, totalPages: 0 }
+  } finally {
+    receivingLoading.value = false
+  }
+}
+
+// Navigation helpers for Receiving Reports page-based flows
+const goToCreateReceiving = () => router.push({ name: 'ReceivingReportNew' })
+const goToViewReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id } })
+const goToCompleteReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id }, query: { action: 'complete' } })
+const goToCancelReceiving = (r) => router.push({ name: 'ReceivingReportView', params: { id: r.report_id }, query: { action: 'cancel' } })
+
+const getReceivingBadgeClass = (status) => {
+  const classes = {
+    'DRAFT': 'bg-secondary',
+    'COMPLETED': 'bg-success',
+    'CANCELLED': 'bg-danger'
+  }
+  return classes[status] || 'bg-secondary'
+}
 </script>
 
 <style scoped>

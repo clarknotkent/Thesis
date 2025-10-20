@@ -23,6 +23,7 @@ const healthWorkerRoutes = require('./routes/healthWorkerRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const visitRoutes = require('./routes/visitRoutes');
 const conversationRoutes = require('./routes/conversationRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 const guardianRoutes = require('./routes/guardianRoutes');
 const parentRoutes = require('./routes/parentRoutes');
 const immunizationRoutes = require('./routes/immunizationRoutes');
@@ -31,6 +32,8 @@ const vitaminaRoutes = require('./routes/vitaminaRoutes');
 const vitalsRoutes = require('./routes/vitalsRoutes');
 const receivingReportRoutes = require('./routes/receivingReportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const faqRoutes = require('./routes/faqRoutes');
+const qrRoutes = require('./routes/qrRoutes');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
@@ -43,6 +46,7 @@ app.use('/api/health-staff', healthWorkerRoutes);
 app.use('/api/activity-logs', activityRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/messages', messageRoutes);
 app.use('/api/guardians', guardianRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/immunizations', immunizationRoutes);
@@ -51,6 +55,8 @@ app.use('/api/vitamina', vitaminaRoutes);
 app.use('/api/vitals', vitalsRoutes);
 app.use('/api/receiving-reports', receivingReportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/faqs', faqRoutes);
+app.use('/qr', qrRoutes); // public + protected QR endpoints
 // Alias route for vaccination-records (used by frontend)
 app.use('/api/vaccination-records', immunizationRoutes);
 

@@ -18,6 +18,8 @@ import Profile from '@/views/admin/profile/Profile.vue'
 import Settings from '@/views/admin/settings/Settings.vue'
 import NotificationsInbox from '@/views/admin/notifications/NotificationsInbox.vue'
 import AddNotifications from '@/views/admin/notifications/AddNotifications.vue'
+import FAQManager from '@/views/admin/faq/FAQManager.vue'
+import AdminChat from '@/views/admin/chat/AdminChat.vue'
 
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
@@ -375,6 +377,26 @@ const routes = [
     }
   },
   {
+    path: '/admin/faqs',
+    name: 'FAQManager',
+    component: FAQManager,
+    meta: {
+      title: 'FAQ Manager - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/chat',
+    name: 'AdminChat',
+    component: AdminChat,
+    meta: {
+      title: 'Admin Chat - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
     path: '/admin/add-notifications',
     name: 'AddNotifications',
     component: AddNotifications,
@@ -486,6 +508,15 @@ const routes = [
       role: 'parent'
     }
   },
+    {
+      path: '/faqs',
+      name: 'PublicFAQs',
+      component: () => import('@/views/PublicFAQs.vue'),
+      meta: {
+        title: 'FAQs - ImmunizeMe',
+        requiresAuth: false
+      }
+    },
   {
     path: '/parent/child-info/:childId',
     name: 'ChildInfo',

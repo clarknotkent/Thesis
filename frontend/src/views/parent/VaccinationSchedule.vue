@@ -522,8 +522,8 @@ const downloadSchedule = () => {
 }
 
 const contactDoctor = () => {
-  const { addToast } = useToast()
-  addToast({ title: 'Info', message: 'Direct messaging with healthcare workers coming soon', type: 'info' })
+  // For now, route to the public FAQs page as a placeholder
+  router.push('/faqs')
 }
 
 const viewReminders = () => {
@@ -532,10 +532,10 @@ const viewReminders = () => {
 }
 
 const learnMore = (topic) => {
+  if (topic === 'faq') return router.push('/faqs')
   const { addToast } = useToast()
   const messages = {
-    importance: 'Learn about vaccine importance and disease prevention',
-    faq: 'Find answers to common vaccination questions'
+    importance: 'Learn about vaccine importance and disease prevention'
   }
   addToast({ title: 'Info', message: messages[topic] || 'Educational content coming soon', type: 'info' })
 }

@@ -4,6 +4,7 @@ const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const immunizationModel = require('../models/immunizationModel');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
+const { mintPatientQrUrl } = require('../services/qrService');
 
 // Normalize incoming payload to match DB schema
 const mapPatientPayload = (body) => ({
@@ -184,7 +185,7 @@ const createPatient = async (req, res) => {
       const { data: guardianInfo } = await supabase.from('patients_view').select('guardian_user_id, guardian_contact_number, guardian_email, full_name').eq('patient_id', newPatient.patient_id).maybeSingle();
       if (guardianInfo?.guardian_user_id) {
         await notificationModel.createNotification({
-          channel: 'in-app',
+          channel: 'Push',
           recipient_user_id: guardianInfo.guardian_user_id,
           template_code: 'schedule_created',
           message_body: `Vaccination schedule has been created for ${guardianInfo.full_name}.`,
@@ -225,10 +226,18 @@ const createPatient = async (req, res) => {
     }
     const schedule = await patientModel.getPatientVaccinationSchedule(newPatient.patient_id);
 
+    // Generate a QR URL for this patient (long-lived for printed cards; override via env TTL)
+    let qr;
+    try {
+      qr = await mintPatientQrUrl(newPatient.patient_id);
+    } catch (qrErr) {
+      console.warn('QR mint (non-blocking) failed:', qrErr.message);
+    }
+
     res.status(201).json({ 
       success: true,
       message: 'Patient registered successfully', 
-      data: { patient: patientView, schedule }
+      data: { patient: patientView, schedule, qr }
     });
   } catch (error) {
     console.error('Error registering patient:', error);
@@ -335,6 +344,16 @@ const getPatientById = async (req, res) => {
   const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
       payload.nextScheduledVaccinations = nextScheduledVaccinations || [];
       
+      // Attach QR url for display on patient details page
+      try {
+        console.log('Minting QR for patient', id)
+        const { mintPatientQrUrl } = require('../services/qrService');
+        const qr = await mintPatientQrUrl(id); // Use default TTL from environment
+        payload.qr = qr;
+        console.log('QR minted successfully:', !!qr)
+      } catch (qrErr) {
+        console.warn('QR mint on getPatientById failed (non-blocking):', qrErr.message);
+      }
       res.json({ success: true, data: payload });
     } catch (err) {
       console.error('Error attaching additional data:', err);

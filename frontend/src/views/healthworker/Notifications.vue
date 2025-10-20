@@ -54,9 +54,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
+import { notificationAPI } from '@/services/api'
 
 const router = useRouter()
 
@@ -64,44 +65,54 @@ const goBack = () => {
   router.go(-1)
 }
 
-const notifications = ref([
-  {
-    id: 1,
-    type: 'urgent',
-    title: 'Vaccine Stock Alert',
-    message: 'COVID-19 vaccine stock is running low. Only 5 doses remaining.',
-    time: '5 min ago',
-    read: false
-  },
-  {
-    id: 2,
-    type: 'appointment',
-    title: 'New Appointment',
-    message: 'Patient Maria Santos scheduled for 2:30 PM vaccination.',
-    time: '30 min ago',
-    read: false
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: 'System Update',
-    message: 'Patient records have been successfully synchronized.',
-    time: '2 hours ago',
-    read: false
-  },
-  {
-    id: 4,
-    type: 'reminder',
-    title: 'Daily Report Reminder',
-    message: 'Don\'t forget to submit your daily vaccination report.',
-    time: '1 day ago',
-    read: true
-  }
-])
+const loading = ref(false)
+const notifications = ref([])
 
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
+const loadNotifications = async () => {
+  loading.value = true
+  try {
+    const resp = await notificationAPI.getMyNotifications({ limit: 50, offset: 0, unreadOnly: false })
+    const rows = resp?.data?.data || []
+    notifications.value = rows.map(row => ({
+      id: row.notification_id,
+      type: mapType(row),
+      title: row.template_code ? formatTemplateTitle(row.template_code) : 'Notification',
+      message: row.message_body,
+      time: new Date(row.created_at).toLocaleString(),
+      read: !!row.read_at
+    }))
+  } catch (e) {
+    console.error('Failed to load notifications', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
+
+function mapType(row) {
+  const ch = (row.channel || '').toLowerCase()
+  if (ch === 'in-app') return 'system'
+  if (ch === 'sms') return 'urgent'
+  if (ch === 'email') return 'reminder'
+  return 'system'
+}
+
+function formatTemplateTitle(code) {
+  const map = {
+    welcome_guardian: 'Welcome',
+    schedule_created: 'Schedule Created',
+    vaccination_reminder_14: '14-Day Reminder',
+    vaccination_reminder_7: '7-Day Reminder',
+    vaccination_reminder_0: 'Due Date Reminder',
+    vaccination_overdue: 'Overdue Alert',
+    immunization_confirmation: 'Immunization Confirmation',
+    low_stock_alert: 'Low Stock Alert',
+    password_reset: 'Password Reset',
+    role_change: 'Role Change'
+  }
+  return map[code] || 'Notification'
+}
 
 const getNotificationIcon = (type) => {
   const icons = {
@@ -113,13 +124,26 @@ const getNotificationIcon = (type) => {
   return icons[type] || 'bi bi-info-circle-fill'
 }
 
-const markAsRead = (notification) => {
-  notification.read = true
+const markAsRead = async (notification) => {
+  try {
+    if (!notification.read) {
+      await notificationAPI.markAsRead(notification.id)
+      notification.read = true
+    }
+  } catch (e) {
+    console.error('Failed to mark as read', e)
+  }
 }
 
-const markAllAsRead = () => {
-  notifications.value.forEach(n => n.read = true)
+const markAllAsRead = async () => {
+  for (const n of notifications.value) {
+    if (!n.read) {
+      try { await notificationAPI.markAsRead(n.id); n.read = true } catch {}
+    }
+  }
 }
+
+onMounted(loadNotifications)
 </script>
 
 <style scoped>
