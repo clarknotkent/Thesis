@@ -1,17 +1,18 @@
+- Must always update 'schema-overview' folder
+
 - Must Finalize/Maximize Activity Logging
-- Must always update schema overview.txt
 - Make sure all buttons and CRUDs are working perfectly
-- Make sure all created_by and updated_by is being inserted
+
+- Make sure all created_by and updated_by is being inserted (BACKEND)
 
 - Try all CRUDs
 - Get/Utilize All necessary Views
 - Repopulate Everything (with decent examples)
-- Why is the Inventory History not being updated each time inventory changes (like updates on stock--its name, brands, quantity, etc)?
 
 
 ---- FRONTEND ----
 
-- Apply the Toast in Everything (remove the prompts--sytem-like notifications--in deleting too) **SEMI-FINISHED**
+- Apply the Toast in Everything (remove all prompts--sytem-like notifications--in deleting too) **SEMI-FINISHED**
 - Make all dropdowns to accept inputs too (for searching through options) **SEMI-FINISHED**
 
 - Disease Prevented should be a Dropdown that shows all Disease Prevented list, then can also accept Input for new Disease Prevented or to search the list (must also be applied to Antigen Name, Brand Name, Manufacturer, and Storage Location, also the Mother and Father full name in adding Patients) **SEMI-FINISHED** //currently wors as suggestions??
@@ -22,9 +23,8 @@
 - In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
 - Once Inventory Stock is deleted, should we be able to restore it? (or no need for restoration?)
 
-- Editing Vaccine Type removed??
+- Make sure that all fields are well-mapped (must prefill/occupy/populate necessary fields)
 
-//// I ADDED A FILE --- CHANGES_2025-10-19.md ////
 
 ---- BACKEND ----
 
@@ -33,7 +33,3 @@ can u clean my backend and check if everything is necessary? check if all are st
 (you can list all triggers, functions, and routines, then describe them and did any of them overlapped or contradicted?)
 
 i have functions and triggers already in the database, and in the backend, there are also functions right? are any of them overlaps or contradicts? can u please scan and check everyhting
-
-why do visits dont have created and updated by and recorded_by
-
-- Make sure that all fields are well-mapped (must prefill/occupy/populate necessary fields)

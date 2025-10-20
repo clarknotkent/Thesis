@@ -177,9 +177,9 @@ const routes = [
     }
   },
   {
-    path: '/admin/vaccines/edit-vaccine/:id',
-    name: 'EditVaccine',
-    component: () => import('@/views/admin/inventory/EditVaccine.vue'),
+    path: '/admin/vaccines/edit-vaccine-type',
+    name: 'EditVaccineType',
+    component: () => import('@/views/admin/inventory/EditVaccineType.vue'),
     meta: {
       title: 'Edit Vaccine Type - ImmunizeMe',
       requiresAuth: true,

@@ -19,7 +19,18 @@ const getVisits = async (req, res) => {
 const getVisit = async (req, res) => {
   try {
     const { id } = req.params;
+    const payload = req.body || {};
+    const actorId = getActorId(req) || null;
     const supabase = getSupabaseForRequest(req);
+
+    // Ensure created_by and updated_by have an entry even if recorded_by is null
+    // Do NOT override recorded_by here; it may intentionally be null.
+    if (payload.created_by === undefined || payload.created_by === null || payload.created_by === '') {
+      payload.created_by = actorId;
+    }
+    if (payload.updated_by === undefined || payload.updated_by === null || payload.updated_by === '') {
+      payload.updated_by = actorId;
+    }
     const visit = await getVisitById(id, supabase);
     if (!visit) return res.status(404).json({ message: 'Visit not found' });
     res.json(visit);
@@ -34,6 +45,17 @@ const postVisit = async (req, res) => {
     // Expect body to contain visit data and nested vitals
     const payload = req.body || {};
     const supabase = getSupabaseForRequest(req);
+    const actorId = getActorId(req) || null;
+    // Ensure created_by and updated_by have values; do not override recorded_by
+    if (payload.created_by === undefined || payload.created_by === null || payload.created_by === '') {
+      payload.created_by = actorId;
+    }
+    if (payload.updated_by === undefined || payload.updated_by === null || payload.updated_by === '') {
+      payload.updated_by = actorId;
+    }
+    // Also pass actor_id explicitly so model can fallback when recorded_by is null
+    payload.actor_id = actorId;
+
     const created = await createVisit(payload, supabase);
     res.status(201).json(created);
   } catch (error) {

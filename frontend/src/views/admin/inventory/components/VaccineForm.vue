@@ -20,7 +20,7 @@
                 class="form-select"
                 v-model="selectedAntigen"
                 @change="onAntigenSelect"
-                :disabled="isEditing || readOnly"
+                :disabled="readOnly"
               >
                 <option value="">-- Select or type antigen --</option>
                 <option v-for="antigen in antigenOptions" :key="antigen" :value="antigen">
@@ -35,7 +35,7 @@
                 @input="onAntigenInput"
                 placeholder="e.g., COVID-19, Rotavirus, Measles"
                 required
-                :readonly="isEditing || readOnly"
+                :readonly="readOnly"
               >
             </div>
             <small class="text-muted">Select from dropdown or type manually to add new antigen</small>
@@ -47,7 +47,7 @@
                 class="form-select"
                 v-model="selectedBrand"
                 @change="onBrandSelect"
-                :disabled="isEditing || readOnly"
+                :disabled="readOnly"
               >
                 <option value="">-- Select or type brand --</option>
                 <option v-for="brand in brandOptions" :key="brand" :value="brand">
@@ -62,7 +62,7 @@
                 @input="onBrandInput"
                 placeholder="e.g., Pfizer, Moderna, Sinovac"
                 required
-                :readonly="isEditing || readOnly"
+                :readonly="readOnly"
               >
             </div>
             <small class="text-muted">Select from dropdown or type manually to add new brand</small>

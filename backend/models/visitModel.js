@@ -103,6 +103,16 @@ const createVisit = async (visitPayload, client) => {
   // patient_id, visit_date, recorded_by, vitals {...}, collectedVaccinations [...], services [...]
   const { vitals, collectedVaccinations = [], services = [], ...visitData } = visitPayload;
 
+  // Normalize actor fields: prefer explicit created_by/updated_by,
+  // else fall back to recorded_by, else fall back to actor_id (current user if provided)
+  const isProvided = (v) => v !== undefined && v !== null && v !== '';
+  const createdBy = isProvided(visitData.created_by)
+    ? visitData.created_by
+    : (isProvided(visitData.recorded_by) ? visitData.recorded_by : (visitData.actor_id || null));
+  const updatedBy = isProvided(visitData.updated_by)
+    ? visitData.updated_by
+    : (isProvided(visitData.recorded_by) ? visitData.recorded_by : (visitData.actor_id || null));
+
   console.log('🔄 [VISIT_CREATION] Starting visit creation process...');
   console.log('📋 [VISIT_DATA] Visit data received:', { patient_id: visitData.patient_id, visit_date: visitData.visit_date, recorded_by: visitData.recorded_by });
   console.log('💉 [VITALS] Vitals data received:', vitals ? 'Present' : 'None');
@@ -151,8 +161,8 @@ const createVisit = async (visitPayload, client) => {
       findings: findings,
       service_rendered: serviceRendered,
       recorded_by: visitData.recorded_by || null,
-      created_by: visitData.recorded_by || null,
-      updated_by: visitData.recorded_by || null
+      created_by: createdBy,
+      updated_by: updatedBy
     })
     .select()
     .single();
@@ -177,8 +187,8 @@ const createVisit = async (visitPayload, client) => {
         respiration_rate: respiration || null,
         weight: weight || null,
         height_length: height || null,
-        created_by: visitData.recorded_by || null,
-        updated_by: visitData.recorded_by || null
+        created_by: createdBy,
+        updated_by: updatedBy
       })
       .select()
       .single();
@@ -217,6 +227,7 @@ const createVisit = async (visitPayload, client) => {
       vaccine_id = inv.vaccine_id;
     }
 
+    // Whitelist fields passed to immunization insert to avoid schema errors
     const immunizationData = {
       inventory_id: vaccination.inventory_id || null,
       vaccine_id,
@@ -230,7 +241,10 @@ const createVisit = async (visitPayload, client) => {
       remarks: vaccination.remarks || null,
       visit_id: visit.visit_id, // Link to this visit
       vital_id: createdVitalId || null,
-      outside: vaccination.outside || false
+      outside: vaccination.outside || false,
+      // Ensure audit fields propagate even if recorded_by/administered_by are null
+      created_by: createdBy,
+      updated_by: updatedBy
     };
 
     try {
@@ -254,8 +268,8 @@ const createVisit = async (visitPayload, client) => {
         administered_by: service.administered_by || visitData.recorded_by,
         vital_id: createdVitalId || null,
         remarks: service.remarks || null,
-        created_by: visitData.recorded_by || null,
-        updated_by: visitData.recorded_by || null
+        created_by: createdBy,
+        updated_by: updatedBy
       };
 
       const { error: dewErr } = await supabase
@@ -274,8 +288,8 @@ const createVisit = async (visitPayload, client) => {
         administered_by: service.administered_by || visitData.recorded_by,
         vital_id: createdVitalId || null,
         remarks: service.remarks || null,
-        created_by: visitData.recorded_by || null,
-        updated_by: visitData.recorded_by || null
+        created_by: createdBy,
+        updated_by: updatedBy
       };
       const { error: vitAErr } = await supabase
         .from('vitamina')

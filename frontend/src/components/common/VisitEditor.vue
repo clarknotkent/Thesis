@@ -71,13 +71,33 @@
               <textarea class="form-control" rows="3" v-model="form.service_rendered" readonly></textarea>
             </div>
 
-            <!-- Collected Vaccinations Display -->
-            <div v-if="collectedVaccinations && collectedVaccinations.length > 0" class="mb-3">
+            <!-- Collected Vaccinations Display (with edit/remove in modal) -->
+            <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="mb-3">
               <label class="form-label">Vaccines to be Administered During Visit</label>
               <div class="border rounded p-2 bg-light">
-                <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-1">
-                  <span><strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong> - {{ formatDate(vacc.administered_date) }}</span>
-                  <span class="badge bg-info">Will be saved with visit</span>
+                <div v-for="(vacc, index) in localCollectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-1 p-2 border rounded">
+                  <div class="flex-grow-1">
+                    <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
+                    <br>
+                    <small class="text-muted">
+                      Date: {{ formatDate(vacc.administered_date) }} |
+                      Dose: {{ vacc.dose_number || 'N/A' }} |
+                      Outside Transaction: {{ vacc.outside ? 'Yes' : 'No' }}
+                    </small>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info me-2">Will be saved with visit</span>
+                    <div v-if="!viewOnly" class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                        <span class="ms-1">Edit</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
+                        <i class="bi bi-trash"></i>
+                        <span class="ms-1">Remove</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <small class="text-muted">These vaccines will be administered and recorded when you save the visit.</small>
@@ -162,10 +182,10 @@
         </div>
 
         <!-- Editable Services Section -->
-        <div v-if="collectedVaccinations && collectedVaccinations.length > 0" class="mb-3">
+  <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="mb-3">
           <label class="form-label">Services to be Administered During Visit</label>
           <div class="border rounded p-3 bg-light">
-            <div v-for="(vacc, index) in collectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+            <div v-for="(vacc, index) in localCollectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
               <div class="flex-grow-1">
                 <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
                 <br>
@@ -175,12 +195,14 @@
                   Outside Transaction: {{ vacc.outside ? 'Yes' : 'No' }}
                 </small>
               </div>
-              <div class="d-flex gap-1" v-if="!viewOnly && !existingVisitMode">
+              <div class="d-flex gap-1" v-if="!viewOnly">
                 <button type="button" class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
                   <i class="bi bi-pencil"></i>
+                  <span class="ms-1">Edit</span>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
                   <i class="bi bi-trash"></i>
+                  <span class="ms-1">Remove</span>
                 </button>
               </div>
             </div>
@@ -364,15 +386,25 @@ const availableDoses = ref([1, 2, 3, 4, 5]) // Default doses, can be made dynami
 const autoSelectHint = ref('')
 
 // Use computed to get collected vaccinations from props (prop is an Array, not a ref)
-const collectedVaccinations = computed(() => Array.isArray(props.collectedVaccinations) ? props.collectedVaccinations : [])
+// Local buffer so additions show immediately even if parent doesn't two-way bind
+const localCollectedVaccinations = ref(Array.isArray(props.collectedVaccinations) ? [...props.collectedVaccinations] : [])
 
-const isSaveDisabled = computed(() => existingVisitMode.value && (!collectedVaccinations.value || collectedVaccinations.value.length === 0))
+// Keep local buffer in sync with parent prop
+watch(() => props.collectedVaccinations, (newVal) => {
+  if (Array.isArray(newVal)) {
+    localCollectedVaccinations.value = [...newVal]
+  } else {
+    localCollectedVaccinations.value = []
+  }
+}, { deep: true })
+
+const isSaveDisabled = computed(() => existingVisitMode.value && (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0))
 
 // Auto-fill findings and service_rendered based on collected services
 const autoFilledFindings = computed(() => {
-  if (!collectedVaccinations.value || collectedVaccinations.value.length === 0) return ''
+  if (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0) return ''
   
-  const services = collectedVaccinations.value
+  const services = localCollectedVaccinations.value
   const vaccineCount = services.filter(s => s.inventory_id || s.vaccine_id).length
   const dewormingCount = services.filter(s => s.deworming_type).length
   const vitaminACount = services.filter(s => s.vitamin_a_type).length
@@ -386,9 +418,9 @@ const autoFilledFindings = computed(() => {
 })
 
 const autoFilledServiceRendered = computed(() => {
-  if (!collectedVaccinations.value || collectedVaccinations.value.length === 0) return ''
+  if (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0) return ''
   
-  const services = collectedVaccinations.value
+  const services = localCollectedVaccinations.value
   const vaccineCount = services.filter(s => s.inventory_id || s.vaccine_id).length
   const dewormingCount = services.filter(s => s.deworming_type).length
   const vitaminACount = services.filter(s => s.vitamin_a_type).length
@@ -827,7 +859,7 @@ const saveVaccination = async () => {
     } else {
       console.log('🔄 [VISIT_VACCINATION] Adding vaccination to visit collection:', vaccinationData)
       // Add to collected vaccinations (will be saved with visit)
-      const collectedVaccinationsArray = [...collectedVaccinations.value]
+  const collectedVaccinationsArray = [...localCollectedVaccinations.value]
 
       // Check if we're editing an existing service
       if (vaccinationForm.value.editingIndex !== undefined) {
@@ -842,8 +874,9 @@ const saveVaccination = async () => {
         addToast({ title: 'Success', message: 'Vaccine added to visit. Will be administered when you save the visit.', type: 'success' })
       }
 
-      // Emit the updated collected vaccinations to parent
-      emit('update-collected-vaccinations', collectedVaccinationsArray)
+  // Update local buffer and emit to parent
+  localCollectedVaccinations.value = collectedVaccinationsArray
+  emit('update-collected-vaccinations', collectedVaccinationsArray)
       closeVaccinationModal()
     }
   } catch (err) {
@@ -884,7 +917,7 @@ const closeVaccinationModal = () => {
 }
 
 const editService = (index) => {
-  const service = collectedVaccinations.value[index]
+  const service = localCollectedVaccinations.value[index]
   if (!service) return
 
   // Populate vaccination form with service data for editing
@@ -921,9 +954,10 @@ const removeService = async (index) => {
       cancelText: 'Cancel'
     })
     
-    const collectedVaccinationsArray = [...collectedVaccinations.value]
+  const collectedVaccinationsArray = [...localCollectedVaccinations.value]
     collectedVaccinationsArray.splice(index, 1)
-    emit('update-collected-vaccinations', collectedVaccinationsArray)
+  localCollectedVaccinations.value = collectedVaccinationsArray
+  emit('update-collected-vaccinations', collectedVaccinationsArray)
     addToast({ title: 'Removed', message: 'Service removed from visit', type: 'info' })
   } catch {
     // User cancelled
@@ -938,10 +972,10 @@ const saveVisit = async () => {
   try {
     loading.value = true
 
-    console.log('🔄 [VISIT_SAVE_FRONTEND] collectedVaccinations before save:', collectedVaccinations.value)
+  console.log('🔄 [VISIT_SAVE_FRONTEND] collectedVaccinations before save:', localCollectedVaccinations.value)
 
     // In full visit mode: If vaccines are queued, require at least one vital sign
-    if (!props.recordMode && collectedVaccinations.value && collectedVaccinations.value.length > 0) {
+    if (!props.recordMode && localCollectedVaccinations.value && localCollectedVaccinations.value.length > 0) {
       const v = form.value.vitals || {}
       const vitalsProvided = [v.temperature, v.muac, v.respiration, v.weight, v.height].some(x => x !== '' && x !== null && typeof x !== 'undefined')
       if (!vitalsProvided) {
@@ -953,7 +987,7 @@ const saveVisit = async () => {
 
     // If adding to existing visit, save services directly
     if (props.existingVisitId) {
-      if (!collectedVaccinations.value || collectedVaccinations.value.length === 0) {
+      if (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0) {
         addToast({ title: 'No Services', message: 'Please add at least one service to save.', type: 'warning' })
         loading.value = false
         return
@@ -968,9 +1002,9 @@ const saveVisit = async () => {
       let additionalServiceRendered = []
       let additionalFindings = []
 
-      if (collectedVaccinations.value.length > 0) {
+  if (localCollectedVaccinations.value.length > 0) {
         additionalServiceRendered.push('Vaccine Administration')
-        for (const vacc of collectedVaccinations.value) {
+        for (const vacc of localCollectedVaccinations.value) {
           if (vacc.remarks) {
             additionalFindings.push(`Vaccine Administration -- ${vacc.remarks}`)
           }
@@ -989,7 +1023,7 @@ const saveVisit = async () => {
       })
 
       // Post each collected vaccination as immunization
-      const promises = collectedVaccinations.value.map(vacc => 
+  const promises = localCollectedVaccinations.value.map(vacc => 
         api.post('/immunizations', {
           ...vacc,
           visit_id: props.existingVisitId,
@@ -1009,7 +1043,7 @@ const saveVisit = async () => {
       ...form.value,
       // In recordMode, omit findings/service_rendered and recorded_by if empty
       ...(props.recordMode ? { recorded_by: form.value.recorded_by || undefined, findings: undefined, service_rendered: undefined, vitals: form.value.vitals || {} } : {}),
-      collectedVaccinations: collectedVaccinations.value || [],
+  collectedVaccinations: localCollectedVaccinations.value || [],
       services: [] // Add services array for future use (deworming, etc.)
     }
 
@@ -1200,7 +1234,7 @@ watch(() => props.recordMode, (isOutside) => {
 })
 
 // Watch for collected vaccinations changes to auto-fill findings and service_rendered
-watch(collectedVaccinations, (newServices) => {
+watch(() => localCollectedVaccinations.value, (newServices) => {
   if (newServices && newServices.length > 0) {
     // Only auto-fill if fields are empty or contain default values
     if (!form.value.findings || form.value.findings.trim() === '') {

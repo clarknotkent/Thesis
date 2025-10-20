@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="container-fluid py-4">
+  <div class="container-fluid py-4 chat-wrapper">
       <!-- Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -24,9 +24,9 @@
 
       <!-- Chat Interface -->
       <div class="chat-container">
-        <div class="row g-0 h-100">
+        <div class="row g-0 h-100 chat-row">
           <!-- Conversations Sidebar -->
-          <div class="col-lg-4 col-md-5 border-end bg-light">
+          <div class="col-lg-4 col-md-5 border-end bg-light sidebar-column">
             <div class="conversations-sidebar h-100 d-flex flex-column">
               <!-- Search -->
               <div class="p-3 border-bottom bg-white">
@@ -102,7 +102,7 @@
           </div>
 
           <!-- Chat Area -->
-          <div class="col-lg-8 col-md-7 d-flex flex-column">
+          <div class="col-lg-8 col-md-7 d-flex flex-column chat-column">
             <!-- Chat Header -->
             <div v-if="selected" class="chat-header border-bottom bg-white p-3">
               <div class="d-flex align-items-center justify-content-between">
@@ -129,7 +129,7 @@
             </div>
 
             <!-- Messages Area -->
-            <div class="flex-grow-1 d-flex flex-column">
+            <div class="flex-grow-1 d-flex flex-column chat-main">
               <div v-if="!selected" class="empty-chat d-flex align-items-center justify-content-center h-100">
                 <div class="text-center">
                   <div class="empty-chat-icon mb-3">
@@ -657,18 +657,45 @@ const leave = async () => {
 
 <style scoped>
 /* Chat Container */
+.chat-wrapper {
+  /* Allow child flex items to shrink and scroll */
+  min-height: 0;
+}
+
 .chat-container {
   height: calc(100vh - 200px);
   min-height: 600px;
   border-radius: 12px;
-  overflow: hidden;
+  /* Do not clip inner scroll; let children manage their own overflow */
+  overflow: visible;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   background: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-row {
+  min-height: 0; /* critical for inner scroll */
+}
+
+/* Ensure the right column allows inner scroll areas */
+.chat-column {
+  min-height: 0; /* critical so the inner flex child can shrink and scroll */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Conversations Sidebar */
 .conversations-sidebar {
   background: #f8f9fa;
+  min-height: 0; /* allow inner list to scroll */
+}
+
+/* Ensure the left sidebar column doesn't trap overflow */
+.sidebar-column {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .conversation-item {
@@ -728,6 +755,9 @@ const leave = async () => {
 .chat-header {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-bottom: 1px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 3; /* keep above messages */
 }
 
 /* Messages Container */
@@ -742,6 +772,22 @@ const leave = async () => {
   /* Ensure the list scrolls and doesn't push the composer */
   overflow-y: auto;
   min-height: 0;
+}
+
+/* Ensure the main chat section can shrink to allow messages list to scroll */
+.chat-main {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix header and composer to natural content height */
+.chat-header {
+  flex: 0 0 auto;
+}
+
+.message-composer {
+  flex: 0 0 auto;
 }
 
 /* Message Styles */

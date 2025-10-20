@@ -11,40 +11,21 @@
         </router-link>
       </div>
 
-      <!-- Filters -->
-      <div class="card shadow mb-4">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label">Status</label>
-              <select v-model="filters.status" class="form-select" @change="loadNotifications">
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="sent">Sent</option>
-                <option value="failed">Failed</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Channel</label>
-              <select v-model="filters.channel" class="form-select" @change="loadNotifications">
-                <option value="">All</option>
-                <option value="in-app">In-App</option>
-                <option value="email">Email</option>
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Unread Only</label>
-              <div class="form-check mt-2">
-                <input v-model="filters.unreadOnly" class="form-check-input" type="checkbox" @change="loadNotifications">
-                <label class="form-check-label">Show unread only</label>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Search</label>
-              <input v-model="filters.search" class="form-control" placeholder="Search messages..." @input="debouncedSearch">
-            </div>
+      <!-- Compact Toolbar -->
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <ul class="nav nav-pills small">
+          <li class="nav-item"><button class="nav-link" :class="{ active: !filters.channel }" @click="onChannelTab('')"><i class="bi bi-ui-checks-grid me-1"></i>All</button></li>
+          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='in-app' }" @click="onChannelTab('in-app')"><i class="bi bi-bell-fill me-1"></i>In‑App</button></li>
+          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='email' }" @click="onChannelTab('email')"><i class="bi bi-envelope-fill me-1"></i>Email</button></li>
+          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='sms' }" @click="onChannelTab('sms')"><i class="bi bi-chat-dots-fill me-1"></i>SMS</button></li>
+        </ul>
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="unreadOnly" v-model="filters.unreadOnly" @change="loadNotifications">
+            <label class="form-check-label small" for="unreadOnly">Unread only</label>
           </div>
+          <input v-model="filters.search" class="form-control form-control-sm" style="min-width: 240px;" placeholder="Search notifications..." @input="debouncedSearch">
+          <button class="btn btn-sm btn-outline-secondary" @click="markAllVisibleAsRead" :disabled="!hasUnreadVisible"><i class="bi bi-check2-all me-1"></i>Mark all read</button>
         </div>
       </div>
 
@@ -55,78 +36,43 @@
         </div>
       </div>
 
-      <!-- Notifications List -->
+      <!-- Notifications List (Grouped) -->
       <div v-else-if="notifications.length > 0" class="row">
         <div class="col-12">
           <div class="card shadow">
             <div class="card-body p-0">
-              <div class="list-group list-group-flush">
+              <div v-for="section in groupedNotifications" :key="section.label">
+                <div class="section-header small text-uppercase text-muted px-3 py-2">{{ section.label }}</div>
                 <div
-                  v-for="notification in notifications"
-                  :key="notification.notification_id"
-                  class="list-group-item"
-                  :class="{ 'list-group-item-action': !notification.read_at, 'bg-light': notification.read_at }"
+                  v-for="n in section.items"
+                  :key="n.notification_id"
+                  class="notification-item d-flex align-items-start px-3 py-3"
+                  :class="{ unread: !n.read_at }"
                 >
-                  <div class="d-flex w-100 justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                      <div class="d-flex align-items-center mb-2">
-                        <span
-                          class="badge me-2"
-                          :class="getStatusBadgeClass(notification.status)"
-                        >
-                          {{ notification.status }}
-                        </span>
-                        <span
-                          class="badge me-2"
-                          :class="getChannelBadgeClass(notification.channel)"
-                        >
-                          {{ notification.channel }}
-                        </span>
-                        <small class="text-muted">
-                          {{ formatDate(notification.created_at) }}
-                        </small>
-                        <small class="text-muted ms-3">
-                          Sender: {{ notification.created_by_name || senderLabel(notification) }}
-                        </small>
+                  <div class="avatar me-3" :class="avatarClass(n)">
+                    <i :class="channelIcon(n.channel)"></i>
+                  </div>
+                  <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <div class="text-truncate fw-semibold">
+                        {{ n.created_by_name || senderLabel(n) }}
+                        <span class="text-muted">• {{ channelLabel(n.channel) }}</span>
                       </div>
-                      <p class="mb-1">{{ notification.message_body }}</p>
-                      <div class="d-flex align-items-center">
-                        <small class="text-muted me-3">
-                          Template: {{ notification.template_code || 'Custom' }}
-                        </small>
-                        <small v-if="notification.related_entity_type" class="text-muted me-2">
-                          Related: {{ notification.related_entity_type }}
-                        </small>
-                        <button
-                          v-if="notification.related_entity_type && notification.related_entity_id"
-                          @click="openRelated(notification)"
-                          class="btn btn-link btn-sm p-0"
-                        >
-                          View
-                        </button>
-                        <button
-                          @click="openDetails(notification)"
-                          class="btn btn-link btn-sm p-0"
-                        >
-                          Details
-                        </button>
-                      </div>
+                      <small class="text-muted flex-shrink-0 ms-2">{{ timeAgo(n.created_at) }}</small>
                     </div>
-                    <div class="d-flex flex-column gap-2">
-                      <button
-                        v-if="!notification.read_at"
-                        @click="markAsRead(notification.notification_id)"
-                        class="btn btn-sm btn-outline-primary"
-                      >
-                        Mark Read
-                      </button>
-                      <button
-                        @click="deleteNotification(notification.notification_id)"
-                        class="btn btn-sm btn-outline-danger"
-                      >
-                        Delete
-                      </button>
+                    <div class="text-truncate-2 mb-1">{{ n.message_body }}</div>
+                    <div class="small text-muted d-flex align-items-center gap-3">
+                      <span>Template: {{ n.template_code || 'Custom' }}</span>
+                      <span v-if="n.related_entity_type">Related: {{ n.related_entity_type }}</span>
                     </div>
+                    <div class="mt-2 d-flex align-items-center gap-3">
+                      <button v-if="n.related_entity_type && n.related_entity_id" class="btn btn-link btn-sm p-0" @click="openRelated(n)">View</button>
+                      <button class="btn btn-link btn-sm p-0" @click="openDetails(n)">Details</button>
+                    </div>
+                  </div>
+                  <div class="ms-3 d-flex flex-column align-items-end gap-2">
+                    <button v-if="!n.read_at" class="btn btn-sm btn-outline-primary" @click="markAsRead(n.notification_id)"><i class="bi bi-check2 me-1"></i>Mark read</button>
+                    <button class="btn btn-sm btn-outline-danger" @click="deleteNotification(n.notification_id)"><i class="bi bi-trash"></i></button>
                   </div>
                 </div>
               </div>
@@ -240,6 +186,28 @@ export default {
         pages.push(i)
       }
       return pages
+    },
+    hasUnreadVisible() {
+      return (this.notifications || []).some(n => !n.read_at)
+    },
+    groupedNotifications() {
+      const groups = {}
+      const arr = this.notifications || []
+      for (const n of arr) {
+        const key = this.phDateKey(n.created_at)
+        if (!groups[key]) groups[key] = []
+        groups[key].push(n)
+      }
+      const todayKey = this.phDateKey(new Date().toISOString())
+      const yKey = this.phDateKey(this.addDays(new Date(), -1).toISOString())
+      const labels = Object.keys(groups).sort((a,b)=> b.localeCompare(a)).map(k => {
+        let label
+        if (k === todayKey) label = 'Today'
+        else if (k === yKey) label = 'Yesterday'
+        else label = this.formatDate(k + 'T00:00:00Z')
+        return { label, items: groups[k].sort((a,b)=> new Date(b.created_at) - new Date(a.created_at)) }
+      })
+      return labels
     }
   },
   async mounted() {
@@ -250,6 +218,18 @@ export default {
     return { addToast }
   },
   methods: {
+    onChannelTab(ch) {
+      this.filters.channel = ch
+      this.currentPage = 1
+      this.loadNotifications()
+    },
+    markAllVisibleAsRead: async function() {
+      const unread = (this.notifications || []).filter(n => !n.read_at)
+      if (!unread.length) return
+      await Promise.allSettled(unread.map(n => notificationAPI.markAsRead(n.notification_id)))
+      await this.loadNotifications()
+      this.addToast({ title: 'Done', message: 'All visible notifications marked as read', type: 'success' })
+    },
     openDetails(n) {
       this.selectedNotification = n
       this.showDetails = true
@@ -346,6 +326,22 @@ export default {
         default: return 'bg-secondary'
       }
     },
+    channelIcon(channel) {
+      switch ((channel || '').toLowerCase()) {
+        case 'in-app':
+        case 'push': return 'bi bi-bell-fill'
+        case 'email': return 'bi bi-envelope-fill'
+        case 'sms': return 'bi bi-chat-dots-fill'
+        default: return 'bi bi-bell'
+      }
+    },
+    channelLabel(channel) {
+      const c = (channel || '').toLowerCase()
+      if (c === 'in-app' || c === 'push') return 'In‑App'
+      if (c === 'email') return 'Email'
+      if (c === 'sms') return 'SMS'
+      return channel || 'Unknown'
+    },
 
     formatDate(dateString) {
       if (!dateString) return ''
@@ -369,6 +365,52 @@ export default {
         return String(dateString)
       }
     },
+    timeAgo(dateString) {
+      if (!dateString) return ''
+      try {
+        let s = dateString
+        if (typeof s === 'string' && /T\d{2}:\d{2}:\d{2}/.test(s) && !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s)) s = s + 'Z'
+        const d = new Date(s)
+        const now = new Date()
+        const diff = (d.getTime() - now.getTime()) / 1000
+        const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+        const ranges = [
+          ['year', 60*60*24*365],
+          ['month', 60*60*24*30],
+          ['day', 60*60*24],
+          ['hour', 60*60],
+          ['minute', 60],
+          ['second', 1]
+        ]
+        for (const [unit, seconds] of ranges) {
+          const value = Math.round(diff / seconds)
+          if (Math.abs(value) >= 1) return rtf.format(value, unit)
+        }
+        return 'just now'
+      } catch(_) { return this.formatDate(dateString) }
+    },
+    phDateKey(dateString) {
+      // Normalize to Manila calendar date key YYYY-MM-DD
+      try {
+        let s = dateString
+        if (typeof s === 'string' && /T\d{2}:\d{2}:\d{2}/.test(s) && !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s)) s = s + 'Z'
+        const d = new Date(s)
+        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+        return parts // already YYYY-MM-DD
+      } catch(_) { return String(dateString).slice(0,10) }
+    },
+    addDays(date, days) {
+      const d = new Date(date)
+      d.setDate(d.getDate() + days)
+      return d
+    },
+    avatarClass(n) {
+      const ch = (n.channel || '').toLowerCase()
+      if (ch === 'in-app' || ch === 'push') return 'avatar-inapp'
+      if (ch === 'email') return 'avatar-email'
+      if (ch === 'sms') return 'avatar-sms'
+      return 'avatar-default'
+    },
 
     senderLabel(notification) {
       // Interpret null created_by as System; otherwise show "User #<id>" for now.
@@ -386,6 +428,16 @@ export default {
 </script>
 
 <style scoped>
+.nav-pills .nav-link { cursor: pointer; }
+.section-header { background: #f8f9fa; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+.notification-item { border-bottom: 1px solid #f1f1f1; }
+.notification-item.unread { background: #fdfdfd; border-left: 3px solid #3b82f6; }
+.text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.avatar-inapp { background: #3b82f6; }
+.avatar-email { background: #0ea5e9; }
+.avatar-sms { background: #10b981; }
+.avatar-default { background: #6b7280; }
 .modal-backdrop-custom {
   position: fixed;
   inset: 0;

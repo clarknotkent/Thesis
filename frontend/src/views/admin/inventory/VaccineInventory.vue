@@ -14,6 +14,9 @@
           <router-link v-if="false" class="btn btn-outline-success" to="/admin/vaccines/add-vaccine">
             <i class="bi bi-plus-circle me-2"></i>Add New Vaccine
           </router-link>
+          <router-link class="btn btn-outline-warning" to="/admin/vaccines/edit-vaccine-type">
+            <i class="bi bi-pencil-square me-2"></i>Edit Vaccine Type
+          </router-link>
           <button class="btn btn-primary" @click="goToCreateReceiving">
             <i class="bi bi-plus-circle me-2"></i>New Receiving Report
           </button>

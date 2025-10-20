@@ -99,9 +99,30 @@ const createImmunization = async (immunizationData, client) => {
     console.error('[createImmunization] Pre-insert RPC call error:', rpcPreErr);
   }
 
+  // Whitelist fields to avoid PostgREST schema errors when extra client fields are present (e.g., vaccine_name)
+  const allowedKeys = new Set([
+    'inventory_id',
+    'vaccine_id',
+    'patient_id',
+    'disease_prevented',
+    'dose_number',
+    'administered_date',
+    'age_at_administration',
+    'administered_by',
+    'visit_id',
+    'vital_id',
+    'facility_name',
+    'remarks',
+    'outside',
+    'created_by',
+    'updated_by',
+    'created_at',
+    'updated_at',
+  ]);
+  const insertPayload = Object.fromEntries(Object.entries(payload).filter(([k]) => allowedKeys.has(k)));
   const { data, error } = await supabase
     .from('immunizations')
-    .insert([payload])
+    .insert([insertPayload])
     .select()
     .single();
   if (error) throw error;
