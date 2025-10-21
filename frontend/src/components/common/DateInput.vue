@@ -26,7 +26,7 @@
       <input
         type="date"
         ref="nativePicker"
-        style="position: absolute; visibility: hidden; pointer-events: none;"
+        class="native-picker-hidden"
         @change="onNativeChange"
       />
     </div>
@@ -75,6 +75,8 @@ const textInput = ref(null)
 const nativePicker = ref(null)
 const displayValue = ref('')
 const error = ref('')
+const lastValue = ref('')
+const cursorPosition = ref(0)
 
 // Format date to MM/DD/YYYY for display
 const formatDisplay = (d) => {
@@ -136,18 +138,47 @@ watch(() => props.modelValue, (nv) => {
 
 // Auto-format as user types (adds slashes automatically)
 const handleInput = (e) => {
-  let value = e.target.value.replace(/\D/g, '') // Remove non-digits
+  const input = e.target
+  const newValue = input.value
+  const oldValue = lastValue.value
   
-  // Auto-format as MM/DD/YYYY
-  if (value.length >= 2) {
-    value = value.substring(0, 2) + '/' + value.substring(2)
-  }
-  if (value.length >= 5) {
-    value = value.substring(0, 5) + '/' + value.substring(5, 9)
+  // Get cursor position before formatting
+  let cursor = input.selectionStart || 0
+  
+  // Remove all non-digits
+  let digits = newValue.replace(/\D/g, '')
+  
+  // Limit to 8 digits (MMDDYYYY)
+  if (digits.length > 8) {
+    digits = digits.substring(0, 8)
   }
   
-  displayValue.value = value
+  // Format as MM/DD/YYYY
+  let formatted = ''
+  if (digits.length > 0) {
+    formatted = digits.substring(0, 2)
+    if (digits.length >= 3) {
+      formatted += '/' + digits.substring(2, 4)
+    }
+    if (digits.length >= 5) {
+      formatted += '/' + digits.substring(4, 8)
+    }
+  }
+  
+  // Calculate new cursor position
+  if (newValue.length > oldValue.length) {
+    // Typing - move cursor forward if we just added a slash
+    if (formatted.length > cursor && formatted[cursor] === '/') {
+      cursor++
+    }
+  }
+  
+  displayValue.value = formatted
+  lastValue.value = formatted
   error.value = ''
+  
+  // Restore cursor position
+  e.target.setSelectionRange(cursor, cursor)
 }
 
 // Validate and emit on blur
@@ -179,8 +210,48 @@ const handleBlur = () => {
   }
 }
 
-// Restrict input to numbers and navigation keys
+// Restrict input to numbers and navigation keys, handle backspace for slashes
 const handleKeydown = (e) => {
+  const input = e.target
+  const cursor = input.selectionStart || 0
+  const value = input.value
+  
+  // Handle backspace
+  if (e.keyCode === 8 || e.key === 'Backspace') {
+    // If cursor is right after a slash, delete the slash and the digit before it
+    if (cursor > 0 && value[cursor - 1] === '/') {
+      e.preventDefault()
+      const beforeSlash = value.substring(0, cursor - 2)
+      const afterSlash = value.substring(cursor)
+      displayValue.value = beforeSlash + afterSlash
+      lastValue.value = displayValue.value
+      
+      // Position cursor before the deleted digit
+      setTimeout(() => {
+        input.setSelectionRange(cursor - 2, cursor - 2)
+      }, 0)
+      return
+    }
+  }
+  
+  // Handle delete key
+  if (e.keyCode === 46 || e.key === 'Delete') {
+    // If cursor is right before a slash, delete the slash and the digit after it
+    if (cursor < value.length && value[cursor] === '/') {
+      e.preventDefault()
+      const beforeSlash = value.substring(0, cursor)
+      const afterDigit = value.substring(cursor + 2)
+      displayValue.value = beforeSlash + afterDigit
+      lastValue.value = displayValue.value
+      
+      // Keep cursor in same position
+      setTimeout(() => {
+        input.setSelectionRange(cursor, cursor)
+      }, 0)
+      return
+    }
+  }
+  
   // Allow: backspace, delete, tab, escape, enter
   if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
       // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
@@ -248,5 +319,19 @@ const onNativeChange = (e) => {
 </script>
 
 <style scoped>
-.input-group > input[type="date"] { display: none; }
+.date-input-wrapper {
+  position: relative;
+}
+
+.native-picker-hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.input-group > input[type="date"] {
+  display: none;
+}
 </style>

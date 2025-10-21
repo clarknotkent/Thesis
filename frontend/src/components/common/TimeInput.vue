@@ -1,0 +1,271 @@
+<template>
+  <div class="time-input-wrapper">
+    <div class="input-group">
+      <input
+        ref="textInput"
+        type="text"
+        :class="inputClass"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :required="required"
+        v-model="displayValue"
+        @input="handleInput"
+        @blur="handleBlur"
+        @keydown="handleKeydown"
+        maxlength="5"
+      />
+      <button
+        class="btn btn-outline-secondary"
+        type="button"
+        :disabled="disabled"
+        @click="openPicker"
+        title="Pick time from clock"
+      >
+        <i class="bi bi-clock"></i>
+      </button>
+      <input
+        type="time"
+        ref="nativePicker"
+        class="native-picker-hidden"
+        @change="onNativeChange"
+      />
+    </div>
+    <small v-if="error" class="text-danger d-block mt-1">{{ error }}</small>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch, onMounted } from 'vue'
+
+const props = defineProps({
+  modelValue: { 
+    type: String, 
+    default: '' 
+  },
+  placeholder: { 
+    type: String, 
+    default: 'HH:MM' 
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  required: {
+    type: Boolean,
+    default: false
+  },
+  inputClass: {
+    type: String,
+    default: 'form-control'
+  },
+  format24: {
+    type: Boolean,
+    default: true // true for 24-hour, false for 12-hour with AM/PM
+  }
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const textInput = ref(null)
+const nativePicker = ref(null)
+const displayValue = ref('')
+const error = ref('')
+const lastValue = ref('')
+
+// Initialize display value
+onMounted(() => {
+  if (props.modelValue) {
+    displayValue.value = props.modelValue
+    lastValue.value = props.modelValue
+  }
+})
+
+// Watch for external value changes
+watch(() => props.modelValue, (nv) => {
+  if (nv !== displayValue.value) {
+    displayValue.value = nv || ''
+    lastValue.value = nv || ''
+  }
+})
+
+// Auto-format as user types (adds colon automatically)
+const handleInput = (e) => {
+  const input = e.target
+  const newValue = input.value
+  
+  // Get cursor position before formatting
+  let cursor = input.selectionStart || 0
+  
+  // Remove all non-digits
+  let digits = newValue.replace(/\D/g, '')
+  
+  // Limit to 4 digits (HHMM)
+  if (digits.length > 4) {
+    digits = digits.substring(0, 4)
+  }
+  
+  // Format as HH:MM
+  let formatted = ''
+  if (digits.length > 0) {
+    formatted = digits.substring(0, 2)
+    if (digits.length >= 3) {
+      formatted += ':' + digits.substring(2, 4)
+    }
+  }
+  
+  // Calculate new cursor position
+  if (newValue.length > lastValue.value.length) {
+    // Typing - move cursor forward if we just added a colon
+    if (formatted.length > cursor && formatted[cursor] === ':') {
+      cursor++
+    }
+  }
+  
+  displayValue.value = formatted
+  lastValue.value = formatted
+  error.value = ''
+  
+  // Restore cursor position
+  e.target.setSelectionRange(cursor, cursor)
+}
+
+// Validate and emit on blur
+const handleBlur = () => {
+  const parsed = parseTimeValue(displayValue.value)
+  if (displayValue.value && parsed) {
+    // Valid time - format and emit
+    const formattedTime = `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
+    displayValue.value = formattedTime
+    emit('update:modelValue', formattedTime)
+    error.value = ''
+  } else if (displayValue.value) {
+    // Invalid format
+    error.value = 'Invalid time. Use HH:MM format.'
+    if (!props.required) {
+      // Clear if not required
+      displayValue.value = ''
+      emit('update:modelValue', '')
+    }
+  } else {
+    // Empty
+    emit('update:modelValue', '')
+    error.value = ''
+  }
+}
+
+// Handle backspace for colon deletion
+const handleKeydown = (e) => {
+  const input = e.target
+  const cursor = input.selectionStart || 0
+  const value = input.value
+  
+  // Handle backspace
+  if (e.keyCode === 8 || e.key === 'Backspace') {
+    // If cursor is right after a colon, delete the colon and the digit before it
+    if (cursor > 0 && value[cursor - 1] === ':') {
+      e.preventDefault()
+      const beforeColon = value.substring(0, cursor - 2)
+      const afterColon = value.substring(cursor)
+      displayValue.value = beforeColon + afterColon
+      lastValue.value = displayValue.value
+      
+      // Position cursor before the deleted digit
+      setTimeout(() => {
+        input.setSelectionRange(cursor - 2, cursor - 2)
+      }, 0)
+      return
+    }
+  }
+  
+  // Handle delete key
+  if (e.keyCode === 46 || e.key === 'Delete') {
+    // If cursor is right before a colon, delete the colon and the digit after it
+    if (cursor < value.length && value[cursor] === ':') {
+      e.preventDefault()
+      const beforeColon = value.substring(0, cursor)
+      const afterDigit = value.substring(cursor + 2)
+      displayValue.value = beforeColon + afterDigit
+      lastValue.value = displayValue.value
+      
+      // Keep cursor in same position
+      setTimeout(() => {
+        input.setSelectionRange(cursor, cursor)
+      }, 0)
+      return
+    }
+  }
+  
+  // Allow: backspace, delete, tab, escape, enter
+  if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+      (e.keyCode === 65 && e.ctrlKey === true) ||
+      (e.keyCode === 67 && e.ctrlKey === true) ||
+      (e.keyCode === 86 && e.ctrlKey === true) ||
+      (e.keyCode === 88 && e.ctrlKey === true) ||
+      // Allow: home, end, left, right
+      (e.keyCode >= 35 && e.keyCode <= 39)) {
+    return
+  }
+  // Ensure that it is a number and stop the keypress if not
+  if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+    e.preventDefault()
+  }
+}
+
+// Parse HH:MM time value
+const parseTimeValue = (val) => {
+  if (!val) return null
+  const match = val.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+  
+  const hour = parseInt(match[1])
+  const minute = parseInt(match[2])
+  
+  // Validate hour and minute
+  if (hour < 0 || hour > 23) return null
+  if (minute < 0 || minute > 59) return null
+  
+  return { hour, minute }
+}
+
+// Open native time picker
+const openPicker = () => {
+  if (nativePicker.value) {
+    // Set current value to native picker
+    const parsed = parseTimeValue(displayValue.value)
+    if (parsed) {
+      nativePicker.value.value = `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
+    }
+    nativePicker.value.showPicker?.()
+  }
+}
+
+// Handle native picker change
+const onNativeChange = (e) => {
+  const timeValue = e.target.value // HH:MM
+  if (!timeValue) return
+  
+  displayValue.value = timeValue
+  lastValue.value = timeValue
+  emit('update:modelValue', timeValue)
+  error.value = ''
+}
+</script>
+
+<style scoped>
+.time-input-wrapper {
+  position: relative;
+}
+
+.native-picker-hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.input-group > input[type="time"] {
+  display: none;
+}
+</style>
