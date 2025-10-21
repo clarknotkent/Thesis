@@ -94,21 +94,6 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
 </script>
 
 <style scoped>
-.sidebar {
-  width: 250px;
-  background-color: #f8f9fa;
-  border-right: 1px solid #dee2e6;
-  transition: transform 0.3s ease;
-}
-
-.sidebar.show {
-  transform: translateX(0);
-}
-
-.sidebar-content {
-  padding: 1rem;
-}
-
 .nav-header {
   font-size: 0.875rem;
   font-weight: bold;
