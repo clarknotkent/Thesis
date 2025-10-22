@@ -103,11 +103,12 @@ Backspace behavior:
 Auto-formatting time input with time picker support.
 
 ### Features
-- Auto-formats as HH:MM while typing
+- Auto-formats as HH:MM AM/PM (12-hour) or HH:MM (24-hour) while typing
 - Automatically adds `:` after hour
-- Smart backspace: deletes `:` along with the preceding digit
+- Allows typing AM or PM for 12-hour format
+- Smart backspace: deletes `:` and spaces along with the preceding digit
 - Time picker button for easy time selection
-- 24-hour format
+- Supports both 12-hour (default) and 24-hour formats
 - Validation on blur
 
 ### Usage
@@ -118,17 +119,25 @@ import TimeInput from '@/components/common/TimeInput.vue'
 import { ref } from 'vue'
 
 const startTime = ref('')
-const endTime = ref('14:30')
+const endTime = ref('02:30 PM')
+const militaryTime = ref('14:30')
 </script>
 
 <template>
-  <!-- Basic usage -->
+  <!-- Basic usage (12-hour format with AM/PM) -->
   <TimeInput v-model="startTime" />
 
   <!-- With custom placeholder -->
   <TimeInput 
     v-model="endTime" 
     placeholder="Enter time"
+  />
+
+  <!-- 24-hour format -->
+  <TimeInput 
+    v-model="militaryTime" 
+    :format24="true"
+    placeholder="HH:MM"
   />
 
   <!-- Required field -->
@@ -155,15 +164,24 @@ const endTime = ref('14:30')
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `modelValue` | String | `''` | The time value (v-model) in HH:MM format |
-| `placeholder` | String | `'HH:MM'` | Placeholder text |
+| `modelValue` | String | `''` | The time value (v-model) in HH:MM AM/PM or HH:MM format |
+| `placeholder` | String | `'HH:MM AM/PM'` | Placeholder text |
 | `disabled` | Boolean | `false` | Disable the input |
 | `required` | Boolean | `false` | Make the field required |
 | `inputClass` | String | `'form-control'` | CSS class for the input |
-| `format24` | Boolean | `true` | Use 24-hour format (always true for now) |
+| `format24` | Boolean | `false` | Use 24-hour format (false = 12-hour with AM/PM) |
 
 ### Auto-Formatting Behavior
 
+**12-hour format (default):**
+As you type:
+- Type `02` → displays `02`
+- Type `3` → displays `02:`
+- Type `30` → displays `02:30`
+- Type `P` → displays `02:30 P`
+- Type `M` → displays `02:30 PM`
+
+**24-hour format:**
 As you type:
 - Type `14` → displays `14`
 - Type `3` → displays `14:`
@@ -171,7 +189,9 @@ As you type:
 
 Backspace behavior:
 - Cursor after `:` and press backspace → deletes `:` and the digit before it
-- Example: `14:|` → backspace → `1|`
+- Cursor after space (before AM/PM) and press backspace → deletes space and digit before it
+- Example (12-hour): `02:30 |PM` → backspace → `02:3|`
+- Example (24-hour): `14:|` → backspace → `1|`
 
 ---
 

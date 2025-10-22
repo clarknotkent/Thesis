@@ -3,29 +3,35 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ recordMode ? 'Add Patient Record' : 'Add Patient Visit / Record' }}</h5>
+          <h5 class="modal-title">{{ recordMode ? 'Add Patient Immunization Record' : 'Add Patient Visit / Record' }}</h5>
           <button type="button" class="btn-close" @click="$emit('close')"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="saveVisit">
             <div class="mb-3">
-                      <label class="form-label">Patient *</label>
-                      <div class="input-group mb-2">
-                        <input type="search" class="form-control" placeholder="Search patients by name" v-model="patientSearch" @input="onPatientSearchInput" :disabled="lockPatientEffective || viewOnly || existingVisitMode">
-                        <button class="btn btn-outline-secondary" type="button" @click="clearPatientSearch">Clear</button>
-                      </div>
-                      <select class="form-select" v-model="form.patient_id" :disabled="lockPatientEffective || viewOnly || existingVisitMode" required>
-                        <option value="">Select patient</option>
-                        <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.childInfo.name }}</option>
-                      </select>
+              <label class="form-label">Patient *</label>
+              <SearchableSelect
+                v-model="form.patient_id"
+                :options="patients"
+                :disabled="lockPatientEffective || viewOnly || existingVisitMode"
+                :required="true"
+                placeholder="Search or select patient..."
+                label-key="childInfo.name"
+                value-key="id"
+              />
             </div>
 
             <div class="mb-3" v-if="!recordMode">
-              <label class="form-label">Health Staff (BHS) *</label>
-              <select class="form-select" v-model="form.recorded_by" :disabled="viewOnly || existingVisitMode" required>
-                <option value="">Select health worker</option>
-                <option v-for="hw in healthWorkers" :key="hw.user_id" :value="hw.user_id">{{ hw.fullname || hw.name }}</option>
-              </select>
+              <label class="form-label">Select Health Staff *</label>
+              <SearchableSelect
+                v-model="form.recorded_by"
+                :options="healthWorkers"
+                :disabled="viewOnly || existingVisitMode"
+                :required="true"
+                placeholder="Search or select health staff..."
+                label-key="fullname"
+                value-key="user_id"
+              />
             </div>
 
             <h6 class="mb-2">Vital Signs</h6>
@@ -113,27 +119,32 @@
       </div>
     </div>
   </div>
-  <div v-else class="card shadow-sm mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">{{ recordMode ? 'Add Patient Record' : 'Add Patient Visit / Record' }}</h6>
-      <button type="button" class="btn-close" @click="$emit('close')"></button>
-    </div>
-    <div class="card-body">
-      <form @submit.prevent="saveVisit">
-        <div class="mb-3">
-          <label class="form-label">Patient *</label>
-                    <select class="form-select" v-model="form.patient_id" :disabled="lockPatientEffective || viewOnly || existingVisitMode" required>
-            <option value="">Select patient</option>
-            <option v-for="p in patients" :key="p.id" :value="p.id">{{ p.childInfo.name }}</option>
-          </select>
-        </div>
+  <div v-else>
+    <form @submit.prevent="saveVisit">
+      <div class="mb-3">
+        <label class="form-label">Patient *</label>
+        <SearchableSelect
+          v-model="form.patient_id"
+          :options="patients"
+          :disabled="lockPatientEffective || viewOnly || existingVisitMode"
+          :required="true"
+          placeholder="Search or select patient..."
+          label-key="childInfo.name"
+          value-key="id"
+        />
+      </div>
 
         <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Health Staff (BHS) *</label>
-          <select class="form-select" v-model="form.recorded_by" :disabled="viewOnly || existingVisitMode" required>
-            <option value="">Select health worker</option>
-            <option v-for="hw in healthWorkers" :key="hw.user_id" :value="hw.user_id">{{ hw.fullname || hw.name }}</option>
-          </select>
+          <label class="form-label">Select Health Staff *</label>
+          <SearchableSelect
+            v-model="form.recorded_by"
+            :options="healthWorkers"
+            :disabled="viewOnly || existingVisitMode"
+            :required="true"
+            placeholder="Search or select health staff..."
+            label-key="fullname"
+            value-key="user_id"
+          />
         </div>
 
         <h6 class="mb-2">Vital Signs</h6>
@@ -212,11 +223,10 @@
 
         <div class="text-end">
           <button type="button" class="btn btn-secondary me-2" @click="$emit('close')">Cancel</button>
-          <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? 'Add Services' : (recordMode ? 'Save Record' : 'Save Visit') }}</button>
+          <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? 'Add Services' : (recordMode ? 'Save Record' : 'Save Record') }}</button>
           <button v-else type="button" class="btn btn-primary" @click="$emit('close')">Close</button>
         </div>
       </form>
-    </div>
   </div>
 
   <!-- Add Vaccination Modal -->
@@ -226,7 +236,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-plus-circle me-2"></i>
-            {{ recordMode ? 'Add Vaccine to Record' : 'Add Vaccine to Visit' }}
+            {{ recordMode ? 'Add Vaccine to Record' : 'Add Vaccine to Record' }}
           </h5>
           <button type="button" class="btn-close" @click="closeVaccinationModal"></button>
         </div>
@@ -242,19 +252,27 @@
                       <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
                     </div>
                   </div>
-                  <select v-if="!recordMode" class="form-select" v-model="vaccinationForm.inventoryId" @change="onVaccineSelect" required>
-                  <option value="">Select a vaccine stock</option>
-                  <option v-for="v in vaccineOptions" :key="v.inventory_id" :value="v.inventory_id">
-                    {{ v.display_name }}
-                  </option>
-                </select>
+                  <SearchableSelect
+                    v-if="!recordMode"
+                    v-model="vaccinationForm.inventoryId"
+                    :options="vaccineOptions"
+                    :required="true"
+                    placeholder="Search or select vaccine..."
+                    label-key="display_name"
+                    value-key="inventory_id"
+                    @update:modelValue="onVaccineSelect"
+                  />
                 <!-- Outside: choose vaccine from catalog (no inventory) -->
-                <select v-else class="form-select" v-model="vaccinationForm.vaccineId" @change="onVaccineCatalogSelect" required>
-                  <option value="">Select a vaccine</option>
-                  <option v-for="v in vaccineCatalog" :key="v.vaccine_id" :value="v.vaccine_id">
-                    {{ v.antigen_name }}
-                  </option>
-                </select>
+                <SearchableSelect
+                  v-else
+                  v-model="vaccinationForm.vaccineId"
+                  :options="vaccineCatalog"
+                  :required="true"
+                  placeholder="Search or select vaccine..."
+                  label-key="antigen_name"
+                  value-key="vaccine_id"
+                  @update:modelValue="onVaccineCatalogSelect"
+                />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Disease Prevented</label>
@@ -272,7 +290,12 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label">Date Administered *</label>
-                <input type="date" class="form-control" v-model="vaccinationForm.dateAdministered" required @change="updateAgeCalculation">
+                <DateInput 
+                  v-model="vaccinationForm.dateAdministered"
+                  :required="true"
+                  output-format="iso"
+                  @update:modelValue="updateAgeCalculation"
+                />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Age at Administration</label>
@@ -320,7 +343,7 @@
               <button type="button" class="btn btn-secondary me-2" @click="closeVaccinationModal">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="savingVaccination">
                 <span v-if="savingVaccination" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ savingVaccination ? 'Adding...' : (recordMode ? 'Add to Record' : 'Add to Visit') }}
+                {{ savingVaccination ? 'Adding...' : (recordMode ? 'Add to Record' : 'Add to Record') }}
               </button>
             </div>
             
@@ -345,6 +368,8 @@ import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+import SearchableSelect from '@/components/common/SearchableSelect.vue'
+import DateInput from '@/components/common/DateInput.vue'
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
@@ -708,8 +733,11 @@ const openVitAModal = (patientId = null) => {
   emit('open-vita', selectedPatientId, selectedPatientData.value, { outside: !!props.recordMode })
 }
 
-const onVaccineSelect = async () => {
-  if (!vaccinationForm.value.inventoryId) {
+const onVaccineSelect = async (newInventoryId) => {
+  // Update the form value
+  vaccinationForm.value.inventoryId = newInventoryId
+  
+  if (!newInventoryId) {
     vaccinationForm.value.diseasePrevented = ''
     vaccinationForm.value.doseNumber = ''
     vaccinationForm.value.vaccineManufacturer = ''
@@ -721,7 +749,7 @@ const onVaccineSelect = async () => {
   }
 
   // Get vaccine data from already loaded vaccineOptions
-  const selectedVaccine = vaccineOptions.value.find(v => v.inventory_id === vaccinationForm.value.inventoryId)
+  const selectedVaccine = vaccineOptions.value.find(v => v.inventory_id === newInventoryId)
   if (selectedVaccine) {
     vaccinationForm.value.vaccineName = selectedVaccine.vaccine_name || ''
     vaccinationForm.value.diseasePrevented = selectedVaccine.disease_prevented || ''
@@ -762,9 +790,11 @@ const onVaccineSelect = async () => {
   }
 }
 
-const onVaccineCatalogSelect = async () => {
-  const vid = vaccinationForm.value.vaccineId
-  if (!vid) {
+const onVaccineCatalogSelect = async (newVaccineId) => {
+  // Update the form value
+  vaccinationForm.value.vaccineId = newVaccineId
+  
+  if (!newVaccineId) {
     vaccinationForm.value.diseasePrevented = ''
     vaccinationForm.value.vaccineManufacturer = ''
     vaccinationForm.value.vaccineName = ''
@@ -772,7 +802,7 @@ const onVaccineCatalogSelect = async () => {
     autoSelectHint.value = ''
     return
   }
-  const v = (vaccineCatalog.value || []).find(x => x.vaccine_id === vid)
+  const v = (vaccineCatalog.value || []).find(x => x.vaccine_id === newVaccineId)
   if (v) {
     vaccinationForm.value.vaccineName = v.antigen_name || ''
     vaccinationForm.value.diseasePrevented = v.disease_prevented || ''
@@ -783,7 +813,7 @@ const onVaccineCatalogSelect = async () => {
 
   try {
     if (form.value.patient_id) {
-      const res = await api.get(`/patients/${form.value.patient_id}/smart-doses`, { params: { vaccine_id: vaccinationForm.value.vaccineId } })
+      const res = await api.get(`/patients/${form.value.patient_id}/smart-doses`, { params: { vaccine_id: newVaccineId } })
       const data = res.data?.data || res.data || {}
       const doses = Array.isArray(data.available_doses) ? data.available_doses : (Array.isArray(data.doses) ? data.doses : [])
       availableDoses.value = doses.length > 0 ? doses : [1,2,3,4,5]

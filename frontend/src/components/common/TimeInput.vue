@@ -12,7 +12,7 @@
         @input="handleInput"
         @blur="handleBlur"
         @keydown="handleKeydown"
-        maxlength="5"
+        :maxlength="format24 ? 5 : 8"
       />
       <button
         class="btn btn-outline-secondary"
@@ -44,7 +44,7 @@ const props = defineProps({
   },
   placeholder: { 
     type: String, 
-    default: 'HH:MM' 
+    default: 'HH:MM AM/PM' 
   },
   disabled: {
     type: Boolean,
@@ -60,7 +60,7 @@ const props = defineProps({
   },
   format24: {
     type: Boolean,
-    default: true // true for 24-hour, false for 12-hour with AM/PM
+    default: false // false for 12-hour with AM/PM, true for 24-hour
   }
 })
 
@@ -91,42 +91,80 @@ watch(() => props.modelValue, (nv) => {
 // Auto-format as user types (adds colon automatically)
 const handleInput = (e) => {
   const input = e.target
-  const newValue = input.value
+  let newValue = input.value.toUpperCase()
   
   // Get cursor position before formatting
   let cursor = input.selectionStart || 0
   
-  // Remove all non-digits
-  let digits = newValue.replace(/\D/g, '')
-  
-  // Limit to 4 digits (HHMM)
-  if (digits.length > 4) {
-    digits = digits.substring(0, 4)
-  }
-  
-  // Format as HH:MM
-  let formatted = ''
-  if (digits.length > 0) {
-    formatted = digits.substring(0, 2)
-    if (digits.length >= 3) {
-      formatted += ':' + digits.substring(2, 4)
+  if (props.format24) {
+    // 24-hour format (HH:MM)
+    let digits = newValue.replace(/\D/g, '')
+    
+    if (digits.length > 4) {
+      digits = digits.substring(0, 4)
     }
-  }
-  
-  // Calculate new cursor position
-  if (newValue.length > lastValue.value.length) {
-    // Typing - move cursor forward if we just added a colon
-    if (formatted.length > cursor && formatted[cursor] === ':') {
-      cursor++
+    
+    let formatted = ''
+    if (digits.length > 0) {
+      formatted = digits.substring(0, 2)
+      if (digits.length >= 3) {
+        formatted += ':' + digits.substring(2, 4)
+      }
     }
+    
+    if (newValue.length > lastValue.value.length) {
+      if (formatted.length > cursor && formatted[cursor] === ':') {
+        cursor++
+      }
+    }
+    
+    displayValue.value = formatted
+  } else {
+    // 12-hour format (HH:MM AM/PM)
+    // Extract AM/PM if present
+    let ampm = ''
+    if (newValue.includes('A')) ampm = 'AM'
+    else if (newValue.includes('P')) ampm = 'PM'
+    
+    // Remove all non-digits except for tracking where user is typing
+    let digits = newValue.replace(/[^0-9]/g, '')
+    
+    if (digits.length > 4) {
+      digits = digits.substring(0, 4)
+    }
+    
+    let formatted = ''
+    if (digits.length > 0) {
+      formatted = digits.substring(0, 2)
+      if (digits.length >= 3) {
+        formatted += ':' + digits.substring(2, 4)
+      }
+    }
+    
+    // Add space and AM/PM if we have time digits
+    if (formatted && ampm) {
+      formatted += ' ' + ampm
+    } else if (formatted && digits.length >= 4) {
+      // Auto-add AM if fully typed but no AM/PM specified yet
+      formatted += ' '
+    }
+    
+    if (newValue.length > lastValue.value.length) {
+      if (formatted.length > cursor && formatted[cursor] === ':') {
+        cursor++
+      }
+    }
+    
+    displayValue.value = formatted
   }
   
-  displayValue.value = formatted
-  lastValue.value = formatted
+  lastValue.value = displayValue.value
   error.value = ''
   
   // Restore cursor position
-  e.target.setSelectionRange(cursor, cursor)
+  setTimeout(() => {
+    input.setSelectionRange(cursor, cursor)
+  }, 0)
 }
 
 // Validate and emit on blur
@@ -134,13 +172,24 @@ const handleBlur = () => {
   const parsed = parseTimeValue(displayValue.value)
   if (displayValue.value && parsed) {
     // Valid time - format and emit
-    const formattedTime = `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
+    let formattedTime = ''
+    
+    if (props.format24) {
+      formattedTime = `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
+    } else {
+      // Convert to 12-hour format for display and storage
+      const displayHour = parsed.hour12 || parsed.hour
+      formattedTime = `${String(displayHour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')} ${parsed.period || 'AM'}`
+    }
+    
     displayValue.value = formattedTime
     emit('update:modelValue', formattedTime)
     error.value = ''
   } else if (displayValue.value) {
     // Invalid format
-    error.value = 'Invalid time. Use HH:MM format.'
+    error.value = props.format24 
+      ? 'Invalid time. Use HH:MM format.' 
+      : 'Invalid time. Use HH:MM AM/PM format.'
     if (!props.required) {
       // Clear if not required
       displayValue.value = ''
@@ -175,6 +224,19 @@ const handleKeydown = (e) => {
       }, 0)
       return
     }
+    // If cursor is right after a space (before AM/PM), delete the space and digit before
+    if (cursor > 0 && value[cursor - 1] === ' ') {
+      e.preventDefault()
+      const beforeSpace = value.substring(0, cursor - 2)
+      const afterSpace = value.substring(cursor)
+      displayValue.value = beforeSpace + afterSpace
+      lastValue.value = displayValue.value
+      
+      setTimeout(() => {
+        input.setSelectionRange(cursor - 2, cursor - 2)
+      }, 0)
+      return
+    }
   }
   
   // Handle delete key
@@ -193,6 +255,19 @@ const handleKeydown = (e) => {
       }, 0)
       return
     }
+    // If cursor is right before a space, delete the space and keep going
+    if (cursor < value.length && value[cursor] === ' ') {
+      e.preventDefault()
+      const beforeSpace = value.substring(0, cursor)
+      const afterSpace = value.substring(cursor + 1)
+      displayValue.value = beforeSpace + afterSpace
+      lastValue.value = displayValue.value
+      
+      setTimeout(() => {
+        input.setSelectionRange(cursor, cursor)
+      }, 0)
+      return
+    }
   }
   
   // Allow: backspace, delete, tab, escape, enter
@@ -206,35 +281,71 @@ const handleKeydown = (e) => {
       (e.keyCode >= 35 && e.keyCode <= 39)) {
     return
   }
+  
+  // Allow A, P, M for AM/PM in 12-hour format
+  if (!props.format24) {
+    const key = e.key?.toUpperCase()
+    if (key === 'A' || key === 'P' || key === 'M') {
+      return
+    }
+  }
+  
   // Ensure that it is a number and stop the keypress if not
   if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
     e.preventDefault()
   }
 }
 
-// Parse HH:MM time value
+// Parse HH:MM or HH:MM AM/PM time value
 const parseTimeValue = (val) => {
   if (!val) return null
-  const match = val.match(/^(\d{1,2}):(\d{2})$/)
-  if (!match) return null
   
-  const hour = parseInt(match[1])
-  const minute = parseInt(match[2])
-  
-  // Validate hour and minute
-  if (hour < 0 || hour > 23) return null
-  if (minute < 0 || minute > 59) return null
-  
-  return { hour, minute }
+  if (props.format24) {
+    // 24-hour format
+    const match = val.match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return null
+    
+    const hour = parseInt(match[1])
+    const minute = parseInt(match[2])
+    
+    if (hour < 0 || hour > 23) return null
+    if (minute < 0 || minute > 59) return null
+    
+    return { hour, minute }
+  } else {
+    // 12-hour format with AM/PM
+    const match = val.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?$/i)
+    if (!match) return null
+    
+    let hour = parseInt(match[1])
+    const minute = parseInt(match[2])
+    const period = (match[3] || 'AM').toUpperCase()
+    
+    if (hour < 1 || hour > 12) return null
+    if (minute < 0 || minute > 59) return null
+    
+    // Store the 12-hour format hour for display
+    const hour12 = hour
+    
+    // Convert to 24-hour for internal use if needed
+    if (period === 'PM' && hour !== 12) {
+      hour = hour + 12
+    } else if (period === 'AM' && hour === 12) {
+      hour = 0
+    }
+    
+    return { hour, minute, period, hour12 }
+  }
 }
 
 // Open native time picker
 const openPicker = () => {
   if (nativePicker.value) {
-    // Set current value to native picker
+    // Set current value to native picker (always uses 24-hour format)
     const parsed = parseTimeValue(displayValue.value)
     if (parsed) {
-      nativePicker.value.value = `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
+      const hour24 = props.format24 ? parsed.hour : parsed.hour
+      nativePicker.value.value = `${String(hour24).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}`
     }
     nativePicker.value.showPicker?.()
   }
@@ -242,12 +353,26 @@ const openPicker = () => {
 
 // Handle native picker change
 const onNativeChange = (e) => {
-  const timeValue = e.target.value // HH:MM
+  const timeValue = e.target.value // HH:MM in 24-hour format
   if (!timeValue) return
   
-  displayValue.value = timeValue
-  lastValue.value = timeValue
-  emit('update:modelValue', timeValue)
+  const [hourStr, minuteStr] = timeValue.split(':')
+  let hour = parseInt(hourStr)
+  const minute = parseInt(minuteStr)
+  
+  if (props.format24) {
+    displayValue.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  } else {
+    // Convert 24-hour to 12-hour with AM/PM
+    const period = hour >= 12 ? 'PM' : 'AM'
+    let hour12 = hour % 12
+    if (hour12 === 0) hour12 = 12
+    
+    displayValue.value = `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${period}`
+  }
+  
+  lastValue.value = displayValue.value
+  emit('update:modelValue', displayValue.value)
   error.value = ''
 }
 </script>

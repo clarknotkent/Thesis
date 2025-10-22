@@ -3,23 +3,23 @@
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading visit history...</span>
+        <span class="visually-hidden">Loading medical history...</span>
       </div>
-      <p class="text-muted mt-3">Loading visit history...</p>
+      <p class="text-muted mt-3">Loading medical history...</p>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="!visits || visits.length === 0" class="text-center py-5">
       <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
-      <p class="text-muted mt-3">No visit records found</p>
+      <p class="text-muted mt-3">No medical records found</p>
     </div>
 
-    <!-- Visit History Table -->
+    <!-- Medical History Table -->
     <div v-else class="table-responsive">
       <table class="table table-hover table-striped">
         <thead>
           <tr>
-            <th>Visit Date</th>
+            <th>Checkup Date</th>
             <th>Recorded By</th>
             <th>Services</th>
             <th>Immunizations</th>
@@ -182,7 +182,7 @@ const fetchVisits = async () => {
     } while (page <= totalPages)
     visits.value = collected
   } catch (err) {
-    console.error('Error fetching visit history:', err)
+    console.error('Error fetching medical history:', err)
     visits.value = []
   } finally {
     loading.value = false

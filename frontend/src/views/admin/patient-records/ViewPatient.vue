@@ -6,7 +6,7 @@
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
           <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">View Patient</li>
+          <li class="breadcrumb-item active" aria-current="page">View Details</li>
         </ol>
       </nav>
 
@@ -83,7 +83,7 @@
                     :class="{ active: activeTab === 'visits' }"
                     @click="activeTab = 'visits'"
                   >
-                    <i class="bi bi-clipboard-pulse me-2"></i>Visit History
+                    <i class="bi bi-clipboard-pulse me-2"></i>Medical History
                   </button>
                 </li>
               </ul>
@@ -98,6 +98,14 @@
                   :read-only="true"
                   submit-label="Update Patient"
                 />
+                <div class="d-flex justify-content-end mt-3">
+                  <router-link 
+                    :to="{ name: 'EditPatient', params: { id: patientId } }"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <i class="bi bi-pencil-square me-2"></i>Edit Patient Information
+                  </router-link>
+                </div>
               </div>
 
               <!-- Vaccination History Tab -->
@@ -110,98 +118,75 @@
                 <ScheduledVaccinations :patient-id="patientId" />
               </div>
 
-              <!-- Visit History Tab -->
+              <!-- Medical History Tab -->
               <div v-if="activeTab === 'visits'">
                 <VisitHistory :patient-id="patientId" :embedded-page="true" />
+                <div class="d-flex justify-content-end mt-3">
+                  <button 
+                    @click="handleEditMedicalHistory"
+                    class="btn btn-primary btn-sm"
+                  >
+                    <i class="bi bi-pencil-square me-2"></i>Edit Medical History
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Sidebar with Stats and Actions -->
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-flex flex-column">
           <!-- Patient Stats Card -->
-          <div class="card shadow mb-4">
+          <div class="card shadow mb-4 flex-grow-1">
             <div class="card-header py-3">
               <h6 class="m-0 fw-bold text-primary">Patient Summary</h6>
             </div>
             <div class="card-body">
               <div class="mb-3">
-                <small class="text-muted d-block">Patient ID</small>
+                <small class="text-muted d-block mb-1">Patient ID</small>
                 <strong class="text-primary">{{ patientData.id }}</strong>
               </div>
               <div class="mb-3">
-                <small class="text-muted d-block">Full Name</small>
+                <small class="text-muted d-block mb-1">Full Name</small>
                 <strong>{{ fullName }}</strong>
               </div>
               <div class="mb-3">
-                <small class="text-muted d-block">Age</small>
+                <small class="text-muted d-block mb-1">Age</small>
                 <strong>{{ calculateAge(patientData.date_of_birth) }}</strong>
               </div>
               <div class="mb-3">
-                <small class="text-muted d-block">Sex</small>
+                <small class="text-muted d-block mb-1">Sex</small>
                 <span class="badge" :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'">
                   {{ patientData.sex }}
                 </span>
               </div>
               <div class="mb-3" v-if="patientData.family_number">
-                <small class="text-muted d-block">Family Number</small>
+                <small class="text-muted d-block mb-1">Family Number</small>
                 <strong>{{ patientData.family_number }}</strong>
               </div>
               <div class="mb-3" v-if="lastVaccination">
-                <small class="text-muted d-block">Last Vaccination</small>
+                <small class="text-muted d-block mb-1">Last Vaccination</small>
                 <strong>{{ formatDate(lastVaccination) }}</strong>
               </div>
               <div v-else class="mb-3">
-                <small class="text-muted d-block">Last Vaccination</small>
+                <small class="text-muted d-block mb-1">Last Vaccination</small>
                 <span class="text-warning">No vaccination records</span>
               </div>
             </div>
           </div>
 
           <!-- QR Code Card -->
-          <div class="card shadow mb-4">
+          <div class="card shadow flex-grow-1">
             <div class="card-header py-3">
               <h6 class="m-0 fw-bold text-primary">Patient QR Code</h6>
             </div>
-            <div class="card-body text-center">
-              <canvas ref="qrCanvas" width="200" height="200" style="border: 1px solid #ccc;"></canvas>
-              <p class="mt-2"><small class="text-muted">Scan to access vaccination records</small></p>
-              <p v-if="patientData.qr" class="mt-2"><small><a :href="patientData.qr.url" target="_blank" rel="noreferrer">Open QR link</a></small></p>
-              <button v-if="patientData.qr" class="btn btn-sm btn-outline-primary mt-2" @click="refreshQr">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+              <canvas ref="qrCanvas" width="200" height="200" style="border: 1px solid #ccc; margin: 0 auto;"></canvas>
+              <p class="mt-3 mb-2"><small class="text-muted">Scan to access vaccination records</small></p>
+              <p v-if="patientData.qr" class="mt-2 mb-2"><small><a :href="patientData.qr.url" target="_blank" rel="noreferrer">Open QR link</a></small></p>
+              <button v-if="patientData.qr" class="btn btn-sm btn-outline-primary mt-2 mx-auto" style="max-width: 150px;" @click="refreshQr">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh QR
               </button>
-            </div>
-          </div>
-
-          <!-- Actions Card -->
-          <div class="card shadow">
-            <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Actions</h6>
-            </div>
-            <div class="card-body">
-              <div class="d-grid gap-2">
-                <router-link 
-                  :to="`/admin/patients/edit/${patientId}`"
-                  class="btn btn-primary"
-                >
-                  <i class="bi bi-pencil me-2"></i>Edit Patient Details
-                </router-link>
-                
-                <button 
-                  class="btn btn-info"
-                  @click="handleEditVaccinations"
-                >
-                  <i class="bi bi-shield-plus me-2"></i>Edit Vaccination Records
-                </button>
-                
-                <button 
-                  class="btn btn-danger"
-                  @click="handleDelete"
-                >
-                  <i class="bi bi-trash me-2"></i>Delete Patient
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -383,6 +368,11 @@ const handleEditVaccinations = () => {
   router.push({ name: 'PatientVaccinations', params: { id: patientId.value } })
 }
 
+const handleEditMedicalHistory = () => {
+  // Navigate to medical history page
+  router.push({ name: 'PatientVisitHistory', params: { id: patientId.value } })
+}
+
 const handleDelete = async () => {
   const confirmed = await confirm(
     'Delete Patient',
@@ -451,6 +441,14 @@ const refreshQr = async () => {
 
 onMounted(() => {
   fetchPatientData()
+  
+  // Check for hash navigation (e.g., #vaccinations)
+  if (route.hash) {
+    const tab = route.hash.replace('#', '')
+    if (['info', 'vaccinations', 'scheduled', 'visits'].includes(tab)) {
+      activeTab.value = tab
+    }
+  }
 })
 
 // Watch for patientData.qr changes to render QR

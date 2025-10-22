@@ -51,13 +51,12 @@
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
-            <input 
-              type="date" 
-              class="form-control" 
+            <DateInput 
               v-model="formData.date_of_birth"
               :disabled="readOnly"
-              required
-            >
+              :required="true"
+              output-format="iso"
+            />
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Barangay: <span class="text-danger">*</span></label>
@@ -240,13 +239,11 @@
         <div class="row g-4">
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Time of Birth: <span class="text-danger" v-if="!isEditing">*</span></label>
-            <input 
-              type="time" 
-              class="form-control" 
+            <TimeInput 
               v-model="formData.time_of_birth"
               :disabled="readOnly"
               :required="!isEditing"
-            >
+            />
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Attendant at Birth: <span class="text-danger" v-if="!isEditing">*</span></label>
@@ -325,16 +322,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="d-flex gap-2" v-if="!readOnly">
-      <button 
-        type="submit" 
-        class="btn btn-primary"
-        :disabled="submitting"
-      >
-        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-        <i v-else class="bi bi-check-circle me-2"></i>
-        {{ submitLabel }}
-      </button>
+    <div class="d-flex justify-content-end gap-2" v-if="!readOnly">
       <button 
         type="button" 
         class="btn btn-secondary" 
@@ -343,6 +331,15 @@
       >
         <i class="bi bi-x-circle me-2"></i>Cancel
       </button>
+        <button 
+          type="submit" 
+          class="btn btn-primary"
+          :disabled="submitting"
+        >
+          <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+          <i v-else class="bi bi-check-circle me-2"></i>
+          Save Record
+        </button>
     </div>
   </form>
 </template>
@@ -350,6 +347,8 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import GuardianSelector from './GuardianSelector.vue'
+import DateInput from '@/components/common/DateInput.vue'
+import TimeInput from '@/components/common/TimeInput.vue'
 
 const props = defineProps({
   initialData: {

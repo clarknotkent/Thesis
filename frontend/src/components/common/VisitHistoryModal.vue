@@ -1,7 +1,7 @@
 <template>
   <div v-if="embeddedPage" class="visit-history-page container-fluid py-3">
           <div class="d-flex align-items-center mb-3">
-            <h3 class="mb-0">Visit History</h3>
+            <h3 class="mb-0">Medical History</h3>
             <button class="btn btn-outline-secondary ms-auto" @click="onClose">Back</button>
           </div>
 
@@ -105,7 +105,7 @@
             <div class="modal-dialog modal-lg">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Visit History</h5>
+                  <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Medical History</h5>
                   <button type="button" class="btn-close" @click="$emit('close')"></button>
                 </div>
                 <div class="modal-body">

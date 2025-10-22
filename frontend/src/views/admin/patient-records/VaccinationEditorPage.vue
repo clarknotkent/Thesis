@@ -8,6 +8,7 @@
         :patient-data="null"
         :default-outside="defaultOutside"
         :visit-context="visitContext"
+        :edit-record-id="editRecordId"
       />
     </div>
   </AdminLayout>
@@ -23,4 +24,5 @@ const route = useRoute()
 // Honor query ?outside=true only as an initial hint; no page-level toggle
 const defaultOutside = ref(String(route.query.outside).toLowerCase() === 'true')
 const visitContext = computed(() => String(route.query.visitContext).toLowerCase() === 'true')
+const editRecordId = computed(() => route.query.edit || null)
 </script>

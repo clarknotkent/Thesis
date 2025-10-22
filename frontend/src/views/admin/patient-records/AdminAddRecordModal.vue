@@ -37,6 +37,12 @@
 
     <!-- Single Form Card -->
     <div class="card shadow">
+      <div class="card-header py-3">
+        <h5 class="mb-0 text-primary">
+          <i class="bi bi-clipboard-data me-2"></i>
+          Patient Immunization Form
+        </h5>
+      </div>
       <div class="card-body">
         <VisitEditor
           :show="true"

@@ -132,6 +132,16 @@ const getOptionLabel = (option) => {
   if (typeof option === 'string' || typeof option === 'number') {
     return String(option)
   }
+  // Handle nested properties (e.g., "childInfo.name")
+  if (props.labelKey.includes('.')) {
+    const keys = props.labelKey.split('.')
+    let value = option
+    for (const key of keys) {
+      value = value?.[key]
+      if (value === undefined) break
+    }
+    return value ? String(value) : String(option)
+  }
   return option[props.labelKey] || String(option)
 }
 
@@ -139,6 +149,16 @@ const getOptionLabel = (option) => {
 const getOptionValue = (option) => {
   if (typeof option === 'string' || typeof option === 'number') {
     return option
+  }
+  // Handle nested properties (e.g., "id.value")
+  if (props.valueKey.includes('.')) {
+    const keys = props.valueKey.split('.')
+    let value = option
+    for (const key of keys) {
+      value = value?.[key]
+      if (value === undefined) break
+    }
+    return value !== undefined ? value : option
   }
   return option[props.valueKey] !== undefined ? option[props.valueKey] : option
 }

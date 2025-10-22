@@ -435,11 +435,9 @@
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Backup Time:</label>
-              <input 
-                type="time" 
-                class="form-control" 
+              <TimeInput 
                 v-model="settings.backup.backupTime"
-              >
+              />
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Retain Backups (days):</label>
@@ -615,6 +613,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import TimeInput from '@/components/common/TimeInput.vue'
 import api from '@/services/api'
 
 // Reactive data

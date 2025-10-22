@@ -836,6 +836,11 @@ const props = defineProps({
   embeddedPage: {
     type: Boolean,
     default: false
+  },
+  // ID of a specific vaccination record to edit
+  editRecordId: {
+    type: [String, Number],
+    default: null
   }
 });
 
@@ -1383,6 +1388,33 @@ const editVaccinationRecord = async (index) => {
   calculateAgeAtAdministration();
 };
 
+// Open edit modal for a specific vaccination record by ID
+const openEditForRecordId = async (recordId) => {
+  console.log('Opening edit for record ID:', recordId);
+  
+  // Ensure patient data is loaded
+  if (!patientData.value) {
+    await fetchPatientData();
+  }
+  
+  // Find the record by immunization_id
+  const index = patientData.value?.vaccinationHistory?.findIndex(v => 
+    String(v.immunization_id || v.id) === String(recordId)
+  );
+  
+  if (index !== undefined && index >= 0) {
+    console.log('Found record at index:', index);
+    await editVaccinationRecord(index);
+  } else {
+    console.log('Record not found with ID:', recordId);
+    addToast({
+      title: 'Error',
+      message: 'Vaccination record not found',
+      type: 'error'
+    });
+  }
+};
+
 // Delete vaccination record by immunization id
 const deleteVaccinationRecord = async (index) => {
   if (!patientData.value?.vaccinationHistory?.[index]) return;
@@ -1668,15 +1700,22 @@ watch(() => outsideImmunization.value, (isOutside) => {
 });
 
 onMounted(() => {
-  console.log('VaccinationRecordEditor mounted with props:', { show: props.show, embeddedPage: props.embeddedPage, patientId: props.patientId, visitContext: props.visitContext });
+  console.log('VaccinationRecordEditor mounted with props:', { show: props.show, embeddedPage: props.embeddedPage, patientId: props.patientId, visitContext: props.visitContext, editRecordId: props.editRecordId });
   if ((props.embeddedPage || props.show) && props.patientId) {
     fetchPatientData();
     fetchVaccineOptions();
     fetchVaccineCatalog();
     fetchHealthWorkers();
 
+    // If editRecordId is provided, automatically open the edit modal for that record
+    if (props.editRecordId) {
+      console.log('Auto-opening edit modal for record ID:', props.editRecordId);
+      setTimeout(async () => {
+        await openEditForRecordId(props.editRecordId);
+      }, 800); // Delay to ensure data is loaded
+    }
     // If in visit context, automatically open the add vaccination modal
-    if (props.visitContext && props.show) {
+    else if (props.visitContext && props.show) {
       console.log('Opening add vaccination modal automatically for visit context');
       setTimeout(() => {
         openNewVaccinationModal();

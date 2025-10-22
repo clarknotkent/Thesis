@@ -321,7 +321,7 @@
     @updated="fetchPatientData"
   />
 
-  <!-- Visit History Modal -->
+  <!-- Medical History Modal -->
   <VisitHistoryModal
     :show="showVisitHistory"
     :patient-id="patientId"

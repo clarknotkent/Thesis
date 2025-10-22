@@ -121,7 +121,7 @@ const routes = [
     name: 'PatientVisitHistory',
     component: () => import('@/views/admin/patient-records/VisitHistoryPage.vue'),
     meta: {
-      title: 'Visit History - ImmunizeMe',
+      title: 'Medical History - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -132,6 +132,36 @@ const routes = [
     component: () => import('@/views/admin/patient-records/VaccinationEditorPage.vue'),
     meta: {
       title: 'Vaccinations - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:patientId/vaccinations/:recordId/edit',
+    name: 'EditVaccinationRecord',
+    component: () => import('@/views/admin/patient-records/EditVaccinationRecord.vue'),
+    meta: {
+      title: 'Edit Vaccination Record - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:patientId/vaccine/:vaccine/edit',
+    name: 'EditVaccineRecords',
+    component: () => import('@/views/admin/patient-records/EditVaccineRecords.vue'),
+    meta: {
+      title: 'Edit Vaccine Records - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:patientId/vaccine-details',
+    name: 'VaccineDetails',
+    component: () => import('@/views/admin/patient-records/VaccineDetails.vue'),
+    meta: {
+      title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
