@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, defineProps, defineEmits } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 
 const props = defineProps({
   modelValue: {

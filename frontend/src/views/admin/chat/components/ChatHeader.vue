@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+// Vue compiler macros are globally available in <script setup>
 
 defineProps({
   conversation: {

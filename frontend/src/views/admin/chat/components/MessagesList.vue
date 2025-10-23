@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, defineProps, defineExpose } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 
 const props = defineProps({
   messages: {

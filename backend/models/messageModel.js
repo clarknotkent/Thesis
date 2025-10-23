@@ -6,11 +6,15 @@ const notificationModel = require('./notificationModel');
 const SHOULD_NOTIFY_NEW_MESSAGE = String(process.env.NOTIFY_ON_NEW_MESSAGE ?? 'false').toLowerCase() === 'true';
 
 const createMessage = async (payload) => {
+  // Remove fields that are not actual columns on public.messages to avoid PostgREST PGRST204 errors
+  const { suppress_notification: suppressNotification, ...messagePayload } = payload || {};
+
   const withAudit = {
-    ...payload,
-    created_by: payload.sender_id || payload.created_by || null,
-    updated_by: payload.sender_id || payload.updated_by || null,
+    ...messagePayload,
+    created_by: messagePayload.sender_id || messagePayload.created_by || null,
+    updated_by: messagePayload.sender_id || messagePayload.updated_by || null,
   };
+
   const { data, error } = await supabase.from('messages').insert(withAudit).select().single();
   if (error) throw error;
 
@@ -27,7 +31,7 @@ const createMessage = async (payload) => {
       if (receipts.length > 0) {
         await supabase.from('message_receipts').insert(receipts);
         // Optionally insert notifications for recipients (use model to normalize channel & enforce constraint)
-        if (SHOULD_NOTIFY_NEW_MESSAGE && !payload.suppress_notification) {
+  if (SHOULD_NOTIFY_NEW_MESSAGE && !suppressNotification) {
           for (const r of receipts) {
             try {
               await notificationModel.createNotification({
