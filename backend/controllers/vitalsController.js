@@ -1,4 +1,4 @@
-const { getVitalsignsByVisitId } = require('../models/vitalsModel');
+const { getVitalsignsByVisitId, updateVitalsignsByVisitId } = require('../models/vitalsModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
 const getVitalsByVisitId = async (req, res) => {
@@ -14,4 +14,18 @@ const getVitalsByVisitId = async (req, res) => {
   }
 };
 
-module.exports = { getVitalsByVisitId };
+const updateVitalsByVisitId = async (req, res) => {
+  try {
+    const { visitId } = req.params;
+    const vitalsData = req.body;
+    const supabase = getSupabaseForRequest(req);
+    
+    const updatedVitals = await updateVitalsignsByVisitId(visitId, vitalsData, supabase);
+    res.json({ data: updatedVitals });
+  } catch (error) {
+    console.error('Error updating vitals:', error);
+    res.status(500).json({ message: 'Failed to update vitals' });
+  }
+};
+
+module.exports = { getVitalsByVisitId, updateVitalsByVisitId };

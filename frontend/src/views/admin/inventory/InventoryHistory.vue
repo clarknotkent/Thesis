@@ -80,8 +80,8 @@
                       {{ formatQuantityChange(item.quantityChange) }}
                     </span>
                   </td>
-                  <td>{{ item.quantityBefore || '-' }}</td>
-                  <td>{{ item.quantityAfter || '-' }}</td>
+                  <td>{{ displayNumber(item.quantityBefore) }}</td>
+                  <td>{{ displayNumber(item.quantityAfter) }}</td>
                   <td>{{ item.userName || 'System' }}</td>
                   <td>
                     <small class="text-muted">{{ item.note || '-' }}</small>
@@ -134,7 +134,7 @@ const fetchInventoryData = async () => {
     }
   } catch (error) {
     console.error('Error fetching inventory data:', error)
-    addToast('Error loading inventory data', 'error')
+  addToast({ title: 'Error', message: 'Error loading inventory data', type: 'error' })
   }
 }
 
@@ -159,19 +159,35 @@ const fetchHistory = async () => {
       transactions = response.data.data.transactions || []
     }
     
-    history.value = transactions.map(item => ({
-      id: item.id || item.transaction_id,
-      timestamp: item.timestamp || item.created_at,
-      type: item.type || item.transaction_type,
-      quantityChange: item.quantity_change || item.quantityChange,
-      quantityBefore: item.quantity_before || item.quantityBefore,
-      quantityAfter: item.quantity_after || item.quantityAfter,
-      userName: item.user_name || item.userName,
-      note: item.note || item.notes || item.description
-    }))
+    history.value = transactions.map(item => {
+      const type = (item.transaction_type || item.type || '').toUpperCase()
+      const rawQty = Number(
+        item.quantity_delta ?? item.quantity ?? item.quantity_change ?? item.quantityChange ?? 0
+      )
+      // Determine sign based on type; ISSUE/OUTBOUND/EXPIRED and similar are negative
+      const negativeTypes = ['ISSUE', 'OUTBOUND', 'EXPIRED', 'USE', 'DISPENSE', 'STOCK_OUT']
+      const signedQty = negativeTypes.includes(type) ? -Math.abs(rawQty) : Math.abs(rawQty)
+      const after = Number(
+        item.balance_after ?? item.quantity_after ?? item.quantityAfter ?? NaN
+      )
+      const before = Number.isFinite(after) && Number.isFinite(signedQty)
+        ? after - signedQty
+        : null
+
+      return {
+        id: item.transaction_id || item.id,
+        timestamp: item.created_at || item.date || item.timestamp,
+        type: type || 'UNKNOWN',
+        quantityChange: signedQty,
+        quantityBefore: Number.isFinite(before) ? before : null,
+        quantityAfter: Number.isFinite(after) ? after : null,
+        userName: item.performed_by || item.user_name || item.userName || 'SYSTEM',
+        note: item.remarks || item.note || item.notes || item.description || null
+      }
+    })
   } catch (error) {
     console.error('Error fetching history:', error)
-    addToast('Error loading transaction history', 'error')
+  addToast({ title: 'Error', message: 'Error loading transaction history', type: 'error' })
   } finally {
     loading.value = false
   }
@@ -220,6 +236,10 @@ const getTypeBadgeClass = (type) => {
     default:
       return 'bg-secondary'
   }
+}
+
+const displayNumber = (v) => {
+  return v === 0 ? '0' : (v ?? '-')
 }
 </script>
 

@@ -44,14 +44,18 @@
                   :key="index"
                   class="d-flex align-items-center justify-content-center gap-2 mb-2"
                 >
-                  <span class="badge bg-secondary" style="min-width: 60px;">Dose {{ dose.doseNumber }}</span>
-                  <div class="flex-grow-1">
-                    <DateInput
-                      v-model="editForm.doses[index].scheduledDate"
-                      :required="true"
-                      placeholder="MM/DD/YYYY"
-                    />
-                  </div>
+                  <span :class="['badge', 'dose-badge', getDoseBadgeClass(dose.doseNumber)]" style="min-width: 60px;">Dose {{ dose.doseNumber }}</span>
+                    <div class="flex-grow-1" v-if="!editForm.doses[index]?.readonly">
+                      <DateInput
+                        v-model="editForm.doses[index].scheduledDate"
+                        :required="true"
+                        placeholder="MM/DD/YYYY"
+                      />
+                    </div>
+                    <div v-else class="flex-grow-1 d-flex align-items-center">
+                      <span class="text-muted small me-2">Completed</span>
+                      <span class="small">{{ formatShortDate(dose.scheduledDate) }}</span>
+                    </div>
                 </div>
               </div>
               <div v-else class="d-flex flex-wrap gap-2 justify-content-center">
@@ -59,7 +63,7 @@
                   v-for="(dose, index) in group.doses" 
                   :key="index"
                   class="dose-box-small"
-                  :class="getDoseBoxClass(dose)"
+                   :class="[getDoseColorClass(dose.doseNumber), getDoseBoxClass(dose)]"
                 >
                   <div class="dose-number-small">Dose {{ dose.doseNumber }}</div>
                   <div class="dose-date-small">{{ formatShortDate(dose.scheduledDate) }}</div>
@@ -117,8 +121,10 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import DateInput from '@/components/common/DateInput.vue'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { addToast } = useToast()
+const { confirm } = useConfirm()
 
 const props = defineProps({
   patientId: {
@@ -163,7 +169,8 @@ const groupedVaccines = computed(() => {
     }
     
     groups[vaccineName].doses.push({
-      scheduleId: schedule.schedule_id || schedule.id,
+      // Use the canonical patientschedule primary key; fall back defensively
+      scheduleId: schedule.patient_schedule_id || schedule.patientScheduleId || schedule.schedule_id || schedule.id,
       doseNumber: schedule.dose_number || schedule.doseNumber || '—',
       scheduledDate: schedule.scheduled_date || schedule.scheduledDate,
       status: schedule.status,
@@ -197,7 +204,8 @@ const startEdit = (group) => {
   editForm.value.doses = group.doses.map(dose => ({
     scheduleId: dose.scheduleId,
     scheduledDate: formatShortDate(dose.scheduledDate),
-    doseNumber: dose.doseNumber
+    doseNumber: dose.doseNumber,
+    readonly: isDoseCompleted(dose.status)
   }))
 }
 
@@ -230,22 +238,95 @@ const saveEdit = async (group) => {
   try {
     saving.value = true
 
-    // Update all doses for this vaccine group
-    const updatePromises = editForm.value.doses.map(async (dose) => {
-      const updateData = {
-        scheduled_date: formatDateForAPI(dose.scheduledDate)
+    // Resolve numeric user id (backend expects bigint) from stored user info
+    let p_user_id = undefined
+    try {
+      const raw = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
+      if (raw) {
+        const u = JSON.parse(raw)
+        p_user_id = u?.user_id || u?.id || undefined
       }
+    } catch {}
+    if (!p_user_id) {
+      const uidStr = localStorage.getItem('userId') || localStorage.getItem('user_id')
+      const asNum = uidStr ? Number(uidStr) : NaN
+      if (!Number.isNaN(asNum)) p_user_id = asNum
+    }
 
-      console.log('Updating schedule:', dose.scheduleId, updateData)
-      return api.put(`/schedules/${dose.scheduleId}`, updateData)
-    })
+    // Prepare a buffer of only the doses that actually changed and are editable
+    const changedQueue = editForm.value.doses
+      .map((d, idx) => ({
+        ...d,
+        _originalDate: group.doses[idx]?.scheduledDate || null,
+        _index: idx
+      }))
+      .filter(d => !d.readonly)
+      .filter(d => {
+        const newISO = formatDateForAPI(d.scheduledDate)
+        const origISO = formatDateForAPI(d._originalDate)
+        return !!newISO && newISO !== origISO
+      })
 
-    await Promise.all(updatePromises)
+    // Process sequentially (dose 1 then 2 then 3), to respect server rule checks order
+    let successCount = 0
+    for (const dose of changedQueue) {
+      const newISO = formatDateForAPI(dose.scheduledDate)
+      const origISO = formatDateForAPI(dose._originalDate)
+      const payload = {
+        p_patient_schedule_id: dose.scheduleId,
+        p_new_scheduled_date: newISO,
+        p_user_id,
+        cascade: false,
+        debug: false
+      }
+      console.log('[ScheduledVaccinations] Rescheduling (manual-reschedule):', payload)
+      try {
+        const resp = await api.post('/immunizations/manual-reschedule', payload)
+        const body = resp?.data || {}
+        if (body?.warning) {
+          try {
+            await confirm({
+              title: 'Cascade effects detected',
+              message: `${body.warning}\n\nContinue and cascade related schedule adjustments?`,
+              variant: 'warning',
+              confirmText: 'Continue',
+              cancelText: 'Cancel'
+            })
+            // If confirmed, apply cascade for this dose
+            const cascadeResp = await api.post('/immunizations/manual-reschedule', { ...payload, cascade: true })
+            if (cascadeResp?.data?.data) successCount += 1
+          } catch {
+            // Cancelled: revert this dose (no cascade)
+            if (origISO) {
+              try {
+                await api.post('/immunizations/manual-reschedule', {
+                  p_patient_schedule_id: dose.scheduleId,
+                  p_new_scheduled_date: origISO,
+                  p_user_id,
+                  cascade: false
+                })
+              } catch (revertErr) {
+                console.warn('[ScheduledVaccinations] Revert failed:', revertErr)
+              }
+            }
+          }
+        } else {
+          // No warning, consider updated
+          successCount += 1
+        }
+      } catch (doseErr) {
+        console.error('[ScheduledVaccinations] Failed updating a dose:', doseErr)
+        // Continue to next dose; overall error toast is shown below
+      }
+    }
 
+    const editedCount = successCount
     addToast({
       title: 'Success',
-      message: `${group.vaccineName} schedule(s) updated successfully`,
-      type: 'success'
+      message: editedCount > 0
+        ? `${group.vaccineName} — ${editedCount} dose${editedCount>1?'s':''} updated`
+        : 'No changes to save',
+      type: editedCount > 0 ? 'success' : 'info'
     })
 
     // Refresh schedules to get updated status
@@ -311,8 +392,12 @@ const getDoseBoxClass = (dose) => {
   
   if (statusLower.includes('completed') || statusLower.includes('administered')) {
     return 'dose-completed'
-  } else if (statusLower.includes('overdue') || statusLower.includes('missed')) {
+  } else if (statusLower.includes('rescheduled')) {
+    return 'dose-rescheduled'
+  } else if (statusLower.includes('overdue')) {
     return 'dose-overdue'
+  } else if (statusLower.includes('missed')) {
+    return 'dose-missed'
   } else if (statusLower.includes('due') || statusLower.includes('upcoming')) {
     return 'dose-upcoming'
   } else {
@@ -322,18 +407,39 @@ const getDoseBoxClass = (dose) => {
 
 const getStatusBadgeClass = (status) => {
   if (!status) return 'bg-primary'
-  
-  const statusLower = status.toLowerCase()
-  
-  if (statusLower.includes('completed') || statusLower.includes('administered')) {
-    return 'bg-success'
-  } else if (statusLower.includes('overdue') || statusLower.includes('missed')) {
-    return 'bg-danger'
-  } else if (statusLower.includes('due') || statusLower.includes('upcoming')) {
-    return 'bg-warning'
-  } else {
-    return 'bg-primary' // Default for 'scheduled'
-  }
+  const s = String(status).toLowerCase()
+
+  // Normalized explicit mappings
+  if (s === 'scheduled') return 'bg-primary'
+  if (s === 'rescheduled') return 'bg-orange'
+  if (s === 'overdue') return 'bg-overdue'
+  if (s === 'missed') return 'bg-danger'
+  if (s === 'pending') return 'bg-warning text-dark'
+
+  // Common synonyms/variants
+  if (s.includes('completed') || s.includes('administered')) return 'bg-success'
+  if (s.includes('overdue') || s.includes('missed')) return 'bg-danger'
+  if (s.includes('due') || s.includes('upcoming')) return 'bg-warning text-dark'
+
+  // Fallback
+  return 'bg-secondary'
+}
+
+// Dose color helpers (1: white, 2: light brown, 3: dark brown)
+const getDoseColorClass = (doseNumber) => {
+  const n = Number(doseNumber)
+  if (n === 1) return 'dose-color-1'
+  if (n === 2) return 'dose-color-2'
+  if (n === 3) return 'dose-color-3'
+  return 'dose-color-1'
+}
+
+const getDoseBadgeClass = (doseNumber) => {
+  const n = Number(doseNumber)
+  if (n === 1) return 'dose-badge-1'
+  if (n === 2) return 'dose-badge-2'
+  if (n === 3) return 'dose-badge-3'
+  return 'dose-badge-1'
 }
 
 const formatStatus = (status) => {
@@ -379,6 +485,13 @@ const fetchSchedules = async () => {
 onMounted(() => {
   fetchSchedules()
 })
+
+// Helper: determine if a dose is completed/administered
+const isDoseCompleted = (status) => {
+  if (!status) return false
+  const s = String(status).toLowerCase()
+  return s.includes('completed') || s.includes('administered')
+}
 </script>
 
 <style scoped>
@@ -459,12 +572,17 @@ onMounted(() => {
 }
 
 .dose-overdue {
+  border-color: #ff1000;
+  background-color: #fef5f6;
+}
+
+.dose-missed {
   border-color: #dc3545;
   background-color: #fef5f6;
 }
 
 .dose-overdue .dose-number {
-  color: #dc3545;
+  color: #ff1000;
 }
 
 .dose-upcoming {
@@ -519,39 +637,40 @@ onMounted(() => {
 }
 
 /* Status-based styling */
-.dose-completed {
-  border-color: #198754;
-  background-color: #f0f9f4;
-}
+.dose-completed { border-color: #198754; background-color: #f0f9f4; }
+.dose-completed .dose-number-small { color: #198754; }
+.dose-completed .dose-date-small { color: #198754; }
 
-.dose-completed .dose-number-small {
-  color: #198754;
-}
+.dose-rescheduled { border-color: #fd7e14; background-color: rgba(253, 125, 20, 0.053); }
+.dose-rescheduled .dose-number-small { color: #fd7e14; }
+.dose-rescheduled .dose-date-small { color: #fd7e14; }
 
-.dose-overdue {
-  border-color: #dc3545;
-  background-color: #fef5f6;
-}
+.dose-missed { border-color: #dc3545; background-color: rgba(220, 53, 70, 0.153); }
+.dose-missed .dose-number-small { color: #dc3545; }
+.dose-missed .dose-date-small { color: #dc3545; }
 
-.dose-overdue .dose-number-small {
-  color: #dc3545;
-}
+.dose-overdue { border-color: #ff1000; background-color: #ff11001f; }
+.dose-overdue .dose-number-small { color: #ff1000; }
+.dose-overdue .dose-date-small { color: #ff1000; }
 
-.dose-pending {
-  border-color: #0d6efd;
-  background-color: #f0f5ff;
-}
+.dose-pending { border-color: #0d6efd; background-color: rgba(13, 109, 253, 0.089); }
+.dose-pending .dose-number-small { color: #0d6efd; }
+.dose-pending .dose-date-small { color: #0d6efd; }
 
-.dose-pending .dose-number-small {
-  color: #0d6efd;
-}
+.dose-upcoming { border-color: #ffc107; background-color: rgba(255, 193, 7, 0.15); }
+.dose-upcoming .dose-number-small { color: #ffc107; }
+.dose-upcoming .dose-date-small { color: #ffc107; }
 
-.dose-upcoming {
-  border-color: #ffc107;
-  background-color: #fffbf0;
-}
+/* Dose number color scheme - backgrounds handled by status classes */
 
-.dose-upcoming .dose-number-small {
-  color: #ffc107;
-}
+/* Dose badge styling in edit mode */
+.dose-badge { border: 1px solid rgba(0,0,0,0.1); }
+.dose-badge-1 { background-color: #f2e4d5; color: #000; }
+.dose-badge-2 { background-color: #c79a6a; color: #fff; }
+.dose-badge-3 { background-color: #8b4513; color: #fff; }
+
+/* Orange badge for Rescheduled */
+.bg-orange { background-color: #fd7e14 !important; color: #fff !important; }
+
+.bg-overdue { background-color: #ff1000 !important; color: #fff !important; }
 </style>

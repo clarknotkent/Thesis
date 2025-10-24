@@ -69,7 +69,7 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   
   const enriched = (data || []).map(r => ({
     ...r,
-    user_role: r.user_role || 'unknown',
+    user_role: r.user_role || 'System',
     display_user_name: r.user_fullname || r.username || (r.user_id == null ? 'System' : `User ${r.user_id}`),
     display_action: r.description || r.action_type,
     full_description: r.description

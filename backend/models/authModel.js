@@ -113,12 +113,19 @@ const linkSupabaseUser = async (uuid, userId) => {
   return await createUserMapping({ uuid, user_id: userId });
 };
 
-// Verify authentication token
+// Verify authentication token with sliding inactivity window.
+// Behavior:
+// - Verifies JWT signature (and default expiration)
+// - Enforces inactivity window using public.user_sessions.last_activity
+// - On each successful verification, updates last_activity to now (sliding)
+// Configuration:
+// - INACTIVITY_MINUTES env var (default: 60 minutes)
 const verifyToken = async (token) => {
   try {
+    // Verify JWT signature and claims first (keeps exp enforcement unless tokens are issued with a longer exp)
     const decoded = jwt.verify(token, SECRET_KEY);
 
-    // Read from users_with_uuid view to include Supabase UUID for mapping
+    // Resolve user info (includes supabase_uuid for mapping)
     const { data: row, error } = await supabase
       .from('users_with_uuid')
       .select('user_id, role, username, email, supabase_uuid')
@@ -126,6 +133,40 @@ const verifyToken = async (token) => {
       .single();
 
     if (error || !row) return null;
+
+    // Enforce inactivity-based expiry using per-user last_activity
+    const INACTIVITY_MINUTES = parseInt(process.env.INACTIVITY_MINUTES || '60', 10);
+    const windowMs = Math.max(1, INACTIVITY_MINUTES) * 60 * 1000;
+
+    // Fetch current last_activity
+    const { data: sess, error: sessErr } = await supabase
+      .from('user_sessions')
+      .select('user_id, last_activity')
+      .eq('user_id', row.user_id)
+      .single();
+
+    const now = new Date();
+    let expiredForInactivity = false;
+    if (!sessErr && sess && sess.last_activity) {
+      const last = new Date(sess.last_activity);
+      const diff = now.getTime() - last.getTime();
+      if (diff > windowMs) expiredForInactivity = true;
+    }
+
+    if (expiredForInactivity) {
+      // Mark as expired by inactivity
+      try { console.warn('[auth] Inactivity window exceeded for user', row.user_id); } catch(_) {}
+      return null;
+    }
+
+    // Touch session last_activity (upsert: create if missing)
+    try {
+      await supabase
+        .from('user_sessions')
+        .upsert({ user_id: row.user_id, last_activity: now.toISOString() }, { onConflict: 'user_id' });
+    } catch (_) {
+      // Non-fatal: continue without blocking the request
+    }
 
     return {
       id: row.user_id,
@@ -140,7 +181,8 @@ const verifyToken = async (token) => {
 };
 
 // Generate JWT token
-const generateToken = (payload, expiresIn = '1h') => {
+// Default to 7 days to avoid fighting the inactivity window policy.
+const generateToken = (payload, expiresIn = '7d') => {
   return jwt.sign(payload, SECRET_KEY, { expiresIn });
 };
 

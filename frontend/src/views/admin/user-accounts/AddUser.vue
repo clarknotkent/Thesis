@@ -85,16 +85,16 @@ const handleSubmit = async (formData) => {
       contact_number: formData.contactNumber || null,
       sex: formData.sex || null,
       birthdate: formData.birthdate || null,
-      address: formData.address || null
+      address: (formData.address && formData.address.trim()) ? formData.address : 'address not given'
     }
 
     await createUser(payload)
-    addToast('User created successfully!', 'success')
+    addToast({ title: 'Success', message: 'User created successfully!', type: 'success' })
     router.push('/admin/users')
   } catch (error) {
     console.error('Error creating user:', error)
     const errorMessage = error.response?.data?.message || 'Error creating user'
-    addToast(errorMessage, 'error')
+    addToast({ title: 'Error', message: errorMessage, type: 'error' })
   } finally {
     submitting.value = false
   }

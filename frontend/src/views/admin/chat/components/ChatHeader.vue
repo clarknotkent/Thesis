@@ -3,10 +3,10 @@
     <div class="d-flex align-items-center justify-content-between">
       <div class="d-flex align-items-center">
         <div class="avatar-circle me-3">
-          {{ getInitials(conversation.title) }}
+          {{ getInitials(headerTitle) }}
         </div>
         <div>
-          <h6 class="mb-0 fw-semibold">{{ conversation.title }}</h6>
+          <h6 class="mb-0 fw-semibold">{{ headerTitle }}</h6>
           <small class="text-muted">{{ participantList }}</small>
         </div>
       </div>
@@ -26,12 +26,14 @@
       </div>
     </div>
   </div>
-</template>
+ </template>
 
 <script setup>
+import { computed } from 'vue';
+
 // Vue compiler macros are globally available in <script setup>
 
-defineProps({
+const props = defineProps({
   conversation: {
     type: Object,
     required: true
@@ -43,6 +45,10 @@ defineProps({
   leaving: {
     type: Boolean,
     default: false
+  },
+  currentUserId: {
+    type: [String, Number],
+    default: null
   }
 });
 
@@ -61,6 +67,35 @@ const formatDate = (s) => {
   const ph = shiftHours(d, 8);
   return ph.toLocaleString('en-PH');
 };
+
+// Helpers to derive header title: primary other participant name + "+N" if more
+const getUserKey = (u) => u?.user_id ?? u?.id ?? u?.userId ?? null;
+const getParticipantDisplayName = (p) => {
+  if (!p) return '';
+  return (
+    p.participant_name ||
+    p.full_name ||
+    `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() ||
+    p.email ||
+    ''
+  );
+};
+
+const headerTitle = computed(() => {
+  const conv = props.conversation || {};
+  const currentId = String(props.currentUserId ?? '');
+  const parts = Array.isArray(conv.participants) ? conv.participants : [];
+  const others = parts
+    .filter(p => String(getUserKey(p) ?? '') !== currentId)
+    .map(getParticipantDisplayName)
+    .filter(Boolean);
+
+  if (others.length === 0) return conv.title || 'Conversation';
+  if (others.length === 1) return others[0];
+  const firstTwo = others.slice(0, 2);
+  const remaining = others.length - 2;
+  return remaining > 0 ? `${firstTwo[0]}, ${firstTwo[1]}, +${remaining}` : `${firstTwo[0]}, ${firstTwo[1]}`;
+});
 </script>
 
 <style scoped>

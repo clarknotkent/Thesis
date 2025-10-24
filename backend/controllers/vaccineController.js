@@ -139,7 +139,7 @@ const adjustInventoryStock = async (req, res) => {
     const actorId = req.user?.user_id || null;
     const { id } = req.params; // inventory_id
     const { type, quantity, note } = req.body;
-    const allowed = ['ADJUST','RECEIVE','RETURN','EXPIRED'];
+  const allowed = ['ADJUST','RECEIVE','RETURN','EXPIRED','ISSUE'];
     if (!allowed.includes(type)) {
       return res.status(400).json({ success:false, message:`Invalid type. Allowed: ${allowed.join(', ')}` });
     }

@@ -66,6 +66,9 @@
             class="form-control" 
             v-model="localForm.address"
             :readonly="readOnly"
+            :class="{
+              'placeholder-address': readOnly && (localForm.address || '').toLowerCase() === 'address not given'
+            }"
             placeholder="House/Street, Barangay, City/Municipality, Province"
           >
         </div>
@@ -172,8 +175,10 @@
             type="tel" 
             class="form-control" 
             v-model="localForm.contactNumber"
+            @focus="ensureContactPrefix"
+            @input="onContactInput"
             :readonly="readOnly"
-            placeholder="+63 XXX XXX XXXX"
+            placeholder="+639**-***-****"
           >
         </div>
       </div>
@@ -274,6 +279,53 @@ const handleSubmit = () => {
 const handleCancel = () => {
   emit('cancel')
 }
+
+// Contact number formatting: enforce +639**-***-****
+const ensureContactPrefix = () => {
+  if (!localForm.value.contactNumber || localForm.value.contactNumber.trim() === '') {
+    localForm.value.contactNumber = '+639'
+  }
+}
+
+const formatMaskedContact = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  // Force base prefix '639'
+  let rest = digits
+  if (rest.startsWith('639')) {
+    rest = rest.slice(3)
+  } else {
+    // Strip potential leading 63/09/9 and normalize
+    if (rest.startsWith('63')) rest = rest.slice(2)
+    if (rest.startsWith('0')) rest = rest.slice(1)
+    if (rest.startsWith('9')) rest = rest.slice(1)
+  }
+  // Limit to 9 digits
+  rest = rest.slice(0, 9)
+  const p1 = rest.slice(0, 2)
+  const p2 = rest.slice(2, 5)
+  const p3 = rest.slice(5, 9)
+  let out = '+639'
+  if (p1) out += p1
+  if (p2) out += '-' + p2
+  if (p3) out += '-' + p3
+  return out
+}
+
+const onContactInput = (e) => {
+  const formatted = formatMaskedContact(e.target.value)
+  localForm.value.contactNumber = formatted
+}
+
+// Normalize incoming contact number on initial load
+watch(() => localForm.value.contactNumber, (val, oldVal) => {
+  // If readOnly, don't reformat to avoid flicker; otherwise keep mask
+  if (!props.readOnly) {
+    const formatted = formatMaskedContact(val)
+    if (formatted !== val) {
+      localForm.value.contactNumber = formatted
+    }
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -284,5 +336,10 @@ const handleCancel = () => {
 
 .text-danger {
   color: #dc3545 !important;
+}
+
+.placeholder-address {
+  font-style: italic;
+  color: #6c757d !important; /* Bootstrap secondary text */
 }
 </style>

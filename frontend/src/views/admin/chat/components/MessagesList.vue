@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted } from 'vue';
 
 const props = defineProps({
   messages: {
@@ -73,14 +73,23 @@ watch(() => props.messages.length, () => {
   scrollToBottom();
 });
 
+onMounted(() => {
+  // Ensure initial render is scrolled to latest
+  scrollToBottom();
+});
+
 defineExpose({ scrollToBottom });
 </script>
 
 <style scoped>
 .messages-list {
   background: #fafbfc;
+  /* Make this flex child truly scrollable inside flex parents */
   overflow-y: auto;
-  min-height: 0;
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+  min-height: 0; /* allow shrinking inside column flex */
+  height: 0; /* key: prevents auto min-content height from blocking overflow */
+  flex: 1 1 auto; /* grow to fill, shrink when needed */
 }
 
 .message-wrapper {

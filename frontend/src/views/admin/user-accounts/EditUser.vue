@@ -115,7 +115,7 @@ const fetchUserData = async () => {
     }
   } catch (error) {
     console.error('Error fetching user data:', error)
-    addToast('Error loading user data', 'error')
+  addToast({ title: 'Error', message: 'Error loading user data', type: 'error' })
     userData.value = null
   } finally {
     loading.value = false
@@ -145,12 +145,12 @@ const handleSubmit = async (formData) => {
     }
 
     await updateUser(id, payload)
-    addToast('User updated successfully!', 'success')
+    addToast({ title: 'Success', message: 'User updated successfully!', type: 'success' })
     router.push('/admin/users')
   } catch (error) {
     console.error('Error updating user:', error)
     const errorMessage = error.response?.data?.message || 'Error updating user'
-    addToast(errorMessage, 'error')
+    addToast({ title: 'Error', message: errorMessage, type: 'error' })
   } finally {
     submitting.value = false
   }

@@ -195,13 +195,13 @@
                       </div>
                       <div>
                         <div class="fw-semibold">{{ log.userFullName }}</div>
-                        <small class="badge" :class="getRoleBadgeClass(log.userRole)">{{ formatUserRole(log.userRole) }}</small>
+                        <small class="badge role-badge" :class="getRoleBadgeClass(log.userRole)">{{ formatUserRole(log.userRole) }}</small>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span class="badge" :class="getActionBadgeClass(log.action)">
-                      {{ log.action }}
+                    <span class="badge" :class="getActionBadgeClass(log.actionType)">
+                      {{ log.displayAction }}
                     </span>
                   </td>
                   <td>{{ formatDateOnly(log.timestamp) }}</td>
@@ -211,6 +211,7 @@
                       class="btn btn-outline-info btn-sm"
                       :to="{ name: 'ActivityLogDetails', params: { id: log.id } }"
                       title="View Details"
+                      @click="prefetchDetails(log)"
                     >
                       <i class="bi bi-eye"></i>
                     </router-link>
@@ -285,6 +286,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useActivityLogStore } from '@/stores/activityLogStore'
+import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
 import api from '@/services/api'
@@ -300,6 +303,8 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10) // Set to 10 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
+const activityLogStore = useActivityLogStore()
+const router = useRouter()
 
 // Date picker refs
 
@@ -330,8 +335,107 @@ const stats = computed(() => ({
   activeUsers: new Set(logs.value.map(log => log.userId)).size,
   failedActions: logs.value.filter(log => log.status === 'failed').length
 }))
+// Prefetch selected log into store so details can render immediately/fallback
+const prefetchDetails = (log) => {
+  try {
+    activityLogStore.setSelectedLog(log)
+    // fallback for new-tab opens where click handler may not run in target tab
+    try {
+      localStorage.setItem('activityLog:selected', JSON.stringify(log))
+    } catch {}
+  } catch (e) {
+    // no-op
+  }
+}
 
 // Methods
+// Normalize action into a canonical type and a display label
+const deriveAction = (raw) => {
+  const s = String(raw || '').toLowerCase().trim()
+  const includes = (k) => s.includes(k)
+  // Canonical buckets
+  if (s === 'login' || includes('log in') || includes('signin') || includes('sign in')) {
+    return { type: 'login', label: 'Login' }
+  }
+  if (s === 'logout' || includes('log out') || includes('signout') || includes('sign out')) {
+    return { type: 'logout', label: 'Logout' }
+  }
+  if (s === 'create' || includes('add') || includes('insert') || includes('register') || includes('new ')) {
+    return { type: 'create', label: 'Create' }
+  }
+  if (s === 'update' || includes('edit') || includes('modify') || includes('change')) {
+    return { type: 'update', label: 'Update' }
+  }
+  if (s === 'delete' || includes('remove') || includes('destroy')) {
+    return { type: 'delete', label: 'Delete' }
+  }
+  if (s === 'view' || includes('read') || includes('open') || includes('viewed')) {
+    return { type: 'view', label: 'View' }
+  }
+  // Messaging/notification flavored actions
+  if (includes('send') || includes('sent') || includes('message')) {
+    return { type: 'send', label: 'Send Message' }
+  }
+  if (includes('deliver') || includes('delivered')) {
+    return { type: 'deliver', label: 'Delivery' }
+  }
+  if (includes('notify') || includes('notification') || includes('broadcast')) {
+    return { type: 'notify', label: 'Notification' }
+  }
+  // Fallback: Title Case
+  const title = s
+    .replace(/[\-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return { type: 'other', label: title || 'Unknown' }
+}
+// Extract a robust timestamp from various possible fields and formats
+const extractTimestamp = (raw) => {
+  if (!raw || typeof raw !== 'object') return null
+  const candidates = [
+    raw.timestamp,
+    raw.created_at, raw.createdAt,
+    raw.occurred_at, raw.occurredAt,
+    raw.logged_at, raw.loggedAt,
+    raw.datetime, raw.date_time,
+    raw.event_time, raw.action_time,
+    raw.time, raw.date,
+    raw.ts,
+    // sometimes stored inside metadata/additional_data
+    (raw.metadata && (raw.metadata.timestamp || raw.metadata.time || raw.metadata.date)) || null,
+    (raw.additional_data && (raw.additional_data.timestamp || raw.additional_data.time || raw.additional_data.date)) || null
+  ]
+
+  for (const val of candidates) {
+    if (val === undefined || val === null || val === '') continue
+    // numeric epoch seconds/ms
+    if (typeof val === 'number') {
+      const ms = val < 1e12 ? val * 1000 : val
+      const d = new Date(ms)
+      if (!isNaN(d.getTime())) return d
+      continue
+    }
+    if (typeof val === 'string') {
+      const v = val.trim()
+      if (!v) continue
+      // pure digits
+      if (/^\d{10,13}$/.test(v)) {
+        const num = Number(v)
+        const ms = num < 1e12 ? num * 1000 : num
+        const d = new Date(ms)
+        if (!isNaN(d.getTime())) return d
+        continue
+      }
+      const d = new Date(v)
+      if (!isNaN(d.getTime())) return d
+    }
+    // Date object
+    if (val instanceof Date && !isNaN(val.getTime())) return val
+  }
+  return null
+}
+
 const fetchLogs = async () => {
   try {
     loading.value = true
@@ -355,40 +459,50 @@ const fetchLogs = async () => {
     // Handle the backend response structure properly
     if (result.items) {
       // Backend returns { items: [], totalCount: number, page: number, limit: number, totalPages: number }
-      logs.value = result.items.map(log => ({
-        id: log.log_id || log.id,
-        timestamp: log.timestamp,
+      logs.value = result.items.map(log => {
+        const actionTypeRaw = log.action_type || log.action || log.actionName || log.event || log.display_action || log.description
+        const actionNorm = deriveAction(actionTypeRaw)
+        return {
+        id: log.log_id || log.id || log.activity_id || log.audit_id || log.event_id,
+        timestamp: extractTimestamp(log),
         userId: log.user_id,
         userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
         userRole: log.user_role || 'Unknown',
-        action: log.display_action || log.description || log.action_type || 'Unknown Action',
+        actionType: actionNorm.type,
+        displayAction: actionNorm.label,
         resource: log.resource || log.table_name || 'System',
         ipAddress: log.ip_address || 'N/A',
         status: log.status || (log.success ? 'success' : 'failed'),
         userAgent: log.user_agent,
         description: log.full_description || log.details,
         metadata: log.metadata || log.additional_data
-      }))
+        }
+      })
 
       totalItems.value = result.totalCount
       totalPages.value = result.totalPages
     } else {
       // Fallback for other response formats
       const logsArray = Array.isArray(result) ? result : result.data || []
-      logs.value = logsArray.map(log => ({
-        id: log.log_id || log.id,
-        timestamp: log.timestamp,
+      logs.value = logsArray.map(log => {
+        const actionTypeRaw = log.action_type || log.action || log.actionName || log.event || log.display_action || log.description
+        const actionNorm = deriveAction(actionTypeRaw)
+        return {
+        id: log.log_id || log.id || log.activity_id || log.audit_id || log.event_id,
+        timestamp: extractTimestamp(log),
         userId: log.user_id,
         userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
-        userRole: log.user_role || 'Unknown',
-        action: log.display_action || log.description || log.action_type || 'Unknown Action',
+        userRole: log.user_role || 'System',
+        actionType: actionNorm.type,
+        displayAction: actionNorm.label,
         resource: log.resource || log.table_name || 'System',
         ipAddress: log.ip_address || 'N/A',
         status: log.status || (log.success ? 'success' : 'failed'),
         userAgent: log.user_agent,
         description: log.full_description || log.details,
         metadata: log.metadata || log.additional_data
-      }))
+        }
+      })
 
   const totalCount = (result.totalCount ?? result.total) ?? logs.value.length
   totalItems.value = Number(totalCount)
@@ -514,32 +628,35 @@ const formatUserRole = (role) => {
   const roleStr = String(role).toLowerCase()
   if (roleStr === 'admin') return 'Admin'
   if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff' || roleStr === 'health staff') return 'Health Staff'
-  if (roleStr === 'parent' || roleStr === 'guardian') return 'Parent'
+  if (roleStr === 'parent' || roleStr === 'guardian') return 'Guardian'
   return role
 }
 
 const getRoleIcon = (role) => {
   const roleStr = String(role).toLowerCase()
-  if (roleStr === 'admin') return 'bi bi-shield-check fs-5'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff') return 'bi bi-hospital fs-5'
-  if (roleStr === 'parent' || roleStr === 'guardian') return 'bi bi-person-heart fs-5'
+  if (roleStr === 'admin') return 'bi bi-shield-fill-check fs-5'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff' || roleStr === 'health staff') return 'bi bi-person-lines-fill fs-5'
+  if (roleStr === 'parent' || roleStr === 'guardian') return 'bi bi-person-hearts fs-5'
+  if (roleStr === 'system') return 'bi bi-gear-fill fs-5'
   return 'bi bi-person-circle fs-5'
 }
 
 const getRoleColor = (role) => {
   const roleStr = String(role).toLowerCase()
-  if (roleStr === 'admin') return '#dc3545'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff') return '#0d6efd'
-  if (roleStr === 'parent' || roleStr === 'guardian') return '#198754'
+  if (roleStr === 'admin') return '#601fc2'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff' || roleStr === 'health staff') return '#00b2e3'
+  if (roleStr === 'parent' || roleStr === 'guardian') return '#bc4e1e'
+  if (roleStr === 'system') return '#ff3a3a'
   return '#6c757d'
 }
 
 const getRoleBadgeClass = (role) => {
-  const roleStr = String(role).toLowerCase()
-  if (roleStr === 'admin') return 'bg-danger'
-  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff') return 'bg-primary'
-  if (roleStr === 'parent' || roleStr === 'guardian') return 'bg-success'
-  return 'bg-secondary'
+  const roleStr = String(role).toLowerCase().replace(/[-\s]+/g, '_')
+  if (roleStr === 'admin') return 'role-admin'
+  if (roleStr === 'parent' || roleStr === 'guardian') return 'role-parent'
+  if (roleStr === 'system') return 'role-system'
+  if (roleStr === 'health_worker' || roleStr === 'healthworker' || roleStr === 'health_staff' || roleStr === 'healthstaff') return 'role-healthstaff'
+  return 'role-system'
 }
 
 const getActionBadgeClass = (action) => {

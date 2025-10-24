@@ -682,7 +682,15 @@ const vaccineModel = {
       const { data, error } = await supabase.from('inventory').update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null }).eq('inventory_id', id).select('*').single();
       if (error) throw error;
       if ((before.current_stock_level || 0) > 0) {
-        await insertLedgerIfExists({ inventory_id: id, transaction_type: 'ADJUST', quantity_delta: 0, balance_after: 0, performed_by: actorId, note: 'Deletion correction' });
+        // Record a proper outbound transaction so history reflects stock removal on delete
+        await insertLedgerIfExists({
+          inventory_id: id,
+          transaction_type: 'ISSUE',
+          quantity_delta: Math.abs(before.current_stock_level || 0),
+          balance_after: 0,
+          performed_by: actorId,
+          note: 'Deletion correction'
+        });
       }
       await logActivitySafely({ action_type: 'INVENTORY_DELETE', description: `Deleted inventory ${id}`, user_id: actorId || null, entity_type: 'inventory', entity_id: id, old_value: { qty: before.current_stock_level } });
       return mapInventoryDTO(data);

@@ -99,6 +99,7 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
   background-color: #f8f9fa;
   border-right: 1px solid #dee2e6;
   transition: transform 0.3s ease;
+  padding: 5px 0;
 }
 
 .sidebar.show {
@@ -106,7 +107,7 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
 }
 
 .sidebar-content {
-  padding: 1rem;
+  padding: 0 1rem;
 }
 
 .nav-header {

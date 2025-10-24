@@ -3,17 +3,27 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ recordMode ? 'Add Patient Immunization Record' : 'Add Patient Visit / Record' }}</h5>
+          <h5 class="modal-title">{{ existingVisitMode ? `Edit Visit for ${patientDisplayName}` : (recordMode ? 'Add Patient Immunization Record' : 'Add Patient Visit / Record') }}</h5>
           <button type="button" class="btn-close" @click="$emit('close')"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="saveVisit">
+            <div v-if="viewOnly" class="alert alert-light border mb-3">
+              <div><strong>Patient:</strong> {{ patientDisplayName }}</div>
+              <div><strong>Visit Date:</strong> {{ formatDate(form.visit_date) }}</div>
+              <div v-if="form.findings"><strong>Findings:</strong> {{ form.findings }}</div>
+              <div v-if="form.service_rendered"><strong>Service Rendered:</strong> {{ form.service_rendered }}</div>
+              <div v-if="!recordMode"><strong>Recorded By:</strong> {{ recordedByDisplayName }}</div>
+              <div><strong>Taken Outside:</strong> {{ hasOutsideInVisit ? 'Yes' : 'No' }}</div>
+            </div>
             <div class="mb-3">
               <label class="form-label">Patient *</label>
+              <input v-if="existingVisitMode" type="text" class="form-control" :value="patientDisplayName" readonly>
               <SearchableSelect
+                v-else
                 v-model="form.patient_id"
                 :options="patients"
-                :disabled="lockPatientEffective || viewOnly || existingVisitMode"
+                :disabled="lockPatientEffective || viewOnly"
                 :required="true"
                 placeholder="Search or select patient..."
                 label-key="childInfo.name"
@@ -23,10 +33,12 @@
 
             <div class="mb-3" v-if="!recordMode">
               <label class="form-label">Select Health Staff *</label>
+              <input v-if="existingVisitMode" type="text" class="form-control" :value="recordedByDisplayName" readonly>
               <SearchableSelect
+                v-else
                 v-model="form.recorded_by"
                 :options="healthWorkers"
-                :disabled="viewOnly || existingVisitMode"
+                :disabled="viewOnly"
                 :required="true"
                 placeholder="Search or select health staff..."
                 label-key="fullname"
@@ -38,33 +50,40 @@
             <div class="row g-3 mb-3">
               <div class="col-md-4">
                 <label class="form-label">Temperature (°C)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || existingVisitMode">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
                 <label class="form-label">MUAC (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || existingVisitMode">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Respiration (breaths/min)</label>
-                <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || existingVisitMode">
+                <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Weight (kg)</label>
-                <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || existingVisitMode">
+                <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Height (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || existingVisitMode">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
             </div>
 
             <div class="mb-3">
               <label class="form-label">Service Options</label>
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-primary" @click="openVaccinationModal">Add Vaccine</button>
+              <div class="d-flex gap-2 align-items-center">
+                <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Vaccine</button>
                 <button type="button" class="btn btn-outline-secondary" @click="openDewormModal">Deworm</button>
                 <button type="button" class="btn btn-outline-info" @click="openVitAModal">Vitamin A</button>
+                <div class="form-check form-switch ms-3">
+                  <input class="form-check-input" type="checkbox" id="visitOutsideToggle" v-model="hasOutsideInVisit" :disabled="viewOnly || existingVisitMode">
+                  <label class="form-check-label small" for="visitOutsideToggle">
+                    Outside Facility
+                  </label>
+                </div>
               </div>
+              <small class="text-muted">Check if services will be administered outside the facility</small>
             </div>
 
             <div class="mb-3" v-if="!recordMode">
@@ -111,7 +130,7 @@
 
             <div class="text-end">
               <button type="button" class="btn btn-secondary me-2" @click="$emit('close')">Cancel</button>
-              <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? 'Add Services' : (recordMode ? 'Save Record' : 'Save Visit') }}</button>
+              <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Visit') }}</button>
               <button v-else type="button" class="btn btn-primary" @click="$emit('close')">Close</button>
             </div>
           </form>
@@ -121,12 +140,22 @@
   </div>
   <div v-else>
     <form @submit.prevent="saveVisit">
+      <div v-if="viewOnly" class="alert alert-light border mb-3">
+        <div><strong>Patient:</strong> {{ patientDisplayName }}</div>
+        <div><strong>Visit Date:</strong> {{ formatDate(form.visit_date) }}</div>
+        <div v-if="form.findings"><strong>Findings:</strong> {{ form.findings }}</div>
+        <div v-if="form.service_rendered"><strong>Service Rendered:</strong> {{ form.service_rendered }}</div>
+        <div v-if="!recordMode"><strong>Recorded By:</strong> {{ recordedByDisplayName }}</div>
+        <div><strong>Taken Outside:</strong> {{ hasOutsideInVisit ? 'Yes' : 'No' }}</div>
+      </div>
       <div class="mb-3">
         <label class="form-label">Patient *</label>
+        <input v-if="existingVisitMode" type="text" class="form-control" :value="patientDisplayName" readonly>
         <SearchableSelect
+          v-else
           v-model="form.patient_id"
           :options="patients"
-          :disabled="lockPatientEffective || viewOnly || existingVisitMode"
+          :disabled="lockPatientEffective || viewOnly"
           :required="true"
           placeholder="Search or select patient..."
           label-key="childInfo.name"
@@ -136,10 +165,12 @@
 
         <div class="mb-3" v-if="!recordMode">
           <label class="form-label">Select Health Staff *</label>
+          <input v-if="existingVisitMode" type="text" class="form-control" :value="recordedByDisplayName" readonly>
           <SearchableSelect
+            v-else
             v-model="form.recorded_by"
             :options="healthWorkers"
-            :disabled="viewOnly || existingVisitMode"
+            :disabled="viewOnly"
             :required="true"
             placeholder="Search or select health staff..."
             label-key="fullname"
@@ -151,33 +182,163 @@
         <div class="row g-3 mb-3">
           <div class="col-md-4">
             <label class="form-label">Temperature (°C)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || existingVisitMode">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
           </div>
           <div class="col-md-4">
             <label class="form-label">MUAC (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || existingVisitMode">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
           </div>
           <div class="col-md-4">
             <label class="form-label">Respiration (breaths/min)</label>
-            <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || existingVisitMode">
+            <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
           </div>
           <div class="col-md-4">
             <label class="form-label">Weight (kg)</label>
-            <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || existingVisitMode">
+            <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
           </div>
           <div class="col-md-4">
             <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || existingVisitMode">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
           </div>
         </div>
 
         <div class="mb-3">
           <label class="form-label">Service Options</label>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-primary" @click="openVaccinationModal">Add Vaccine</button>
+          <div class="d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Vaccine</button>
             <button type="button" class="btn btn-outline-secondary" @click="openDewormModal">Deworm</button>
             <button type="button" class="btn btn-outline-info" @click="openVitAModal">Vitamin A</button>
           </div>
+          <small class="text-muted">Check to default new services to outside facility. Individual vaccines can override this setting.</small>
+        </div>
+
+        <!-- Vaccination Form Section -->
+        <div v-if="showVaccinationForm" class="mb-3 border rounded p-3 bg-light">
+          <h6 class="mb-3">
+            <i class="bi bi-plus-circle me-2"></i>
+            {{ recordMode ? 'Add Vaccine to Record' : 'Add Vaccine to Visit' }}
+            <button type="button" class="btn btn-sm btn-outline-secondary float-end" @click="closeVaccinationForm">
+              <i class="bi bi-x"></i> Cancel
+            </button>
+          </h6>
+          <form @submit.prevent="saveVaccination">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Vaccine *</label>
+                  <!-- In-facility (inside): choose from inventory stocks -->
+                  <div class="d-flex align-items-center mb-2">
+                    <div class="form-check form-switch ms-auto">
+                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="onNipToggle">
+                      <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
+                    </div>
+                  </div>
+                  <SearchableSelect
+                    v-if="!recordMode && !vaccinationForm.outside"
+                    v-model="vaccinationForm.inventoryId"
+                    :options="vaccineOptions"
+                    :required="true"
+                    placeholder="Search or select vaccine..."
+                    label-key="display_name"
+                    value-key="inventory_id"
+                    @update:modelValue="onVaccineSelect"
+                  />
+                <!-- Outside: choose vaccine from catalog (no inventory) -->
+                <SearchableSelect
+                  v-else
+                  v-model="vaccinationForm.vaccineId"
+                  :options="vaccineCatalog"
+                  :required="true"
+                  placeholder="Search or select vaccine..."
+                  label-key="antigen_name"
+                  value-key="vaccine_id"
+                  @update:modelValue="onVaccineCatalogSelect"
+                />
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="vaccinationOutsideToggle" v-model="vaccinationForm.outside">
+                  <label class="form-check-label small" for="vaccinationOutsideToggle">
+                    Administer outside facility
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Disease Prevented</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.diseasePrevented" readonly>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Dose Number *</label>
+                <select class="form-select" v-model="vaccinationForm.doseNumber" required>
+                  <option value="">Select dose</option>
+                  <option v-for="dose in availableDoses" :key="dose" :value="dose">
+                    Dose {{ dose }}
+                  </option>
+                </select>
+                <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Date Administered *</label>
+                <DateInput 
+                  v-model="vaccinationForm.dateAdministered"
+                  :required="true"
+                  output-format="iso"
+                  @update:modelValue="updateAgeCalculation"
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Age at Administration</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.ageAtAdministration" readonly>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Manufacturer</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.vaccineManufacturer" :readonly="!recordMode && !vaccinationForm.outside">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Lot Number</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.lotNumber" :readonly="!recordMode && !vaccinationForm.outside">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Site of Administration</label>
+                <select class="form-select" v-model="vaccinationForm.siteOfAdministration">
+                  <option value="">Select a site</option>
+                  <option value="Left arm (deltoid)">Left arm (deltoid)</option>
+                  <option value="Right arm (deltoid)">Right arm (deltoid)</option>
+                  <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
+                  <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
+                  <option value="Oral">Oral</option>
+                </select>
+              </div>
+              <div class="col-md-6" v-if="!recordMode && !vaccinationForm.outside">
+                <label class="form-label">Health Staff *</label>
+                <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
+                  <option value="">Select health staff</option>
+                  <option v-for="nurse in nurses" :key="nurse.user_id || nurse.id" :value="nurse.user_id || nurse.id">
+                    {{ nurse.fullname }} ({{ nurse.hs_type || nurse.hw_type || nurse.role || nurse.type }})
+                  </option>
+                  <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Facility Name</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.facilityName">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Remarks</label>
+                <input type="text" class="form-control" v-model="vaccinationForm.remarks" :placeholder="recordMode ? 'Hint: include the person who administered the vaccine' : ''">
+              </div>
+            </div>
+            <div class="text-end mt-3">
+              <button type="button" class="btn btn-secondary me-2" @click="closeVaccinationForm">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="savingVaccination">
+                <span v-if="savingVaccination" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                {{ savingVaccination ? 'Adding...' : (recordMode ? 'Add to Record' : 'Add to Visit') }}
+              </button>
+            </div>
+            
+            <!-- Debug info -->
+            <div v-if="false" class="mt-3 p-2 bg-light border rounded">
+              <small class="text-muted">Debug: {{ nurses.length }} nurses/nutritionists available</small>
+              <pre class="small">{{ JSON.stringify(nurses, null, 2) }}</pre>
+            </div>
+          </form>
         </div>
 
         <div class="mb-3" v-if="!recordMode">
@@ -186,11 +347,11 @@
           <small class="text-muted">Auto-filled when services are added, but can be edited</small>
         </div>
 
-        <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Service Rendered</label>
-          <textarea class="form-control" rows="3" v-model="form.service_rendered" :readonly="viewOnly || existingVisitMode" placeholder="Describe services rendered..."></textarea>
-          <small class="text-muted">Auto-filled when services are added, but can be edited</small>
-        </div>
+            <div class="mb-3" v-if="!recordMode">
+              <label class="form-label">Service Rendered</label>
+              <textarea class="form-control" rows="3" v-model="form.service_rendered" :readonly="viewOnly || existingVisitMode" placeholder="Describe services rendered..."></textarea>
+              <small class="text-muted">Auto-filled when services are added, but can be edited</small>
+            </div>
 
         <!-- Editable Services Section -->
   <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="mb-3">
@@ -223,143 +384,13 @@
 
         <div class="text-end">
           <button type="button" class="btn btn-secondary me-2" @click="$emit('close')">Cancel</button>
-          <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? 'Add Services' : (recordMode ? 'Save Record' : 'Save Record') }}</button>
+          <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Record') }}</button>
           <button v-else type="button" class="btn btn-primary" @click="$emit('close')">Close</button>
         </div>
       </form>
   </div>
 
-  <!-- Add Vaccination Modal -->
-  <div class="modal fade" :class="{ show: showVaccinationModal }" :style="{ display: showVaccinationModal ? 'block' : 'none' }" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="bi bi-plus-circle me-2"></i>
-            {{ recordMode ? 'Add Vaccine to Record' : 'Add Vaccine to Record' }}
-          </h5>
-          <button type="button" class="btn-close" @click="closeVaccinationModal"></button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="saveVaccination">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">Vaccine *</label>
-                  <!-- In-facility (inside): choose from inventory stocks -->
-                  <div class="d-flex align-items-center mb-2">
-                    <div class="form-check form-switch ms-auto">
-                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="onNipToggle">
-                      <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
-                    </div>
-                  </div>
-                  <SearchableSelect
-                    v-if="!recordMode"
-                    v-model="vaccinationForm.inventoryId"
-                    :options="vaccineOptions"
-                    :required="true"
-                    placeholder="Search or select vaccine..."
-                    label-key="display_name"
-                    value-key="inventory_id"
-                    @update:modelValue="onVaccineSelect"
-                  />
-                <!-- Outside: choose vaccine from catalog (no inventory) -->
-                <SearchableSelect
-                  v-else
-                  v-model="vaccinationForm.vaccineId"
-                  :options="vaccineCatalog"
-                  :required="true"
-                  placeholder="Search or select vaccine..."
-                  label-key="antigen_name"
-                  value-key="vaccine_id"
-                  @update:modelValue="onVaccineCatalogSelect"
-                />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Disease Prevented</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.diseasePrevented" readonly>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Dose Number *</label>
-                <select class="form-select" v-model="vaccinationForm.doseNumber" required>
-                  <option value="">Select dose</option>
-                  <option v-for="dose in availableDoses" :key="dose" :value="dose">
-                    Dose {{ dose }}
-                  </option>
-                </select>
-                <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Date Administered *</label>
-                <DateInput 
-                  v-model="vaccinationForm.dateAdministered"
-                  :required="true"
-                  output-format="iso"
-                  @update:modelValue="updateAgeCalculation"
-                />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Age at Administration</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.ageAtAdministration" readonly>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Manufacturer</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.vaccineManufacturer" :readonly="!recordMode">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Lot Number</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.lotNumber" :readonly="!recordMode">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Site of Administration</label>
-                <select class="form-select" v-model="vaccinationForm.siteOfAdministration">
-                  <option value="">Select a site</option>
-                  <option value="Left arm (deltoid)">Left arm (deltoid)</option>
-                  <option value="Right arm (deltoid)">Right arm (deltoid)</option>
-                  <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
-                  <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
-                  <option value="Oral">Oral</option>
-                </select>
-              </div>
-              <div class="col-md-6" v-if="!recordMode">
-                <label class="form-label">Health Staff *</label>
-                <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
-                  <option value="">Select health staff</option>
-                  <option v-for="nurse in nurses" :key="nurse.user_id || nurse.id" :value="nurse.user_id || nurse.id">
-                    {{ nurse.fullname }} ({{ nurse.hs_type || nurse.hw_type || nurse.role || nurse.type }})
-                  </option>
-                  <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Facility Name</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.facilityName">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Remarks</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.remarks" :placeholder="recordMode ? 'Hint: include the person who administered the vaccine' : ''">
-              </div>
-            </div>
-            <div class="text-end mt-3">
-              <button type="button" class="btn btn-secondary me-2" @click="closeVaccinationModal">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="savingVaccination">
-                <span v-if="savingVaccination" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ savingVaccination ? 'Adding...' : (recordMode ? 'Add to Record' : 'Add to Record') }}
-              </button>
-            </div>
-            
-            <!-- Debug info -->
-            <div v-if="false" class="mt-3 p-2 bg-light border rounded">
-              <small class="text-muted">Debug: {{ nurses.length }} nurses/nutritionists available</small>
-              <pre class="small">{{ JSON.stringify(nurses, null, 2) }}</pre>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Modal Backdrop -->
-  <div v-if="showVaccinationModal" class="modal-backdrop fade show" @click="closeVaccinationModal"></div>
 </template>
 
 <script setup>
@@ -387,7 +418,9 @@ const props = defineProps({
   // View-only mode for existing visit: fields disabled; service buttons still active
   viewMode: { type: Boolean, default: false },
   // Existing visit id to load in viewMode and to post immunizations to
-  existingVisitId: { type: [String, Number], default: '' }
+  existingVisitId: { type: [String, Number], default: '' },
+  // When true, allows editing fields even for existing visits
+  editMode: { type: Boolean, default: false }
 })
 const emit = defineEmits(['close', 'saved', 'open-vaccination', 'open-deworm', 'open-vita', 'update-collected-vaccinations'])
 
@@ -402,13 +435,15 @@ const healthWorkers = ref([]) // BHW for visit recording
 const nurses = ref([]) // Nurses for vaccination administration
 const loading = ref(false)
 const selectedPatientData = ref(null)
-const showVaccinationModal = ref(false)
+const showVaccinationForm = ref(false)
 const savingVaccination = ref(false)
 const vaccineOptions = ref([])
 const vaccineCatalog = ref([])
 const showNipOnly = ref(false)
 const availableDoses = ref([1, 2, 3, 4, 5]) // Default doses, can be made dynamic later
 const autoSelectHint = ref('')
+// Indicator if any immunization in this visit was recorded as outside
+const hasOutsideInVisit = ref(false)
 
 // Use computed to get collected vaccinations from props (prop is an Array, not a ref)
 // Local buffer so additions show immediately even if parent doesn't two-way bind
@@ -423,7 +458,7 @@ watch(() => props.collectedVaccinations, (newVal) => {
   }
 }, { deep: true })
 
-const isSaveDisabled = computed(() => existingVisitMode.value && (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0))
+const isSaveDisabled = computed(() => existingVisitMode.value && !props.editMode && (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0))
 
 // Auto-fill findings and service_rendered based on collected services
 const autoFilledFindings = computed(() => {
@@ -458,6 +493,32 @@ const autoFilledServiceRendered = computed(() => {
   return servicesRendered.join(', ')
 })
 
+// Display name for the selected patient
+const patientDisplayName = computed(() => {
+  if (selectedPatientData.value) {
+    const p = selectedPatientData.value
+    const parts = [
+      p.firstname || p.first_name || p.firstName,
+      p.middlename || p.middle_name || p.middleName,
+      p.surname || p.last_name || p.lastName
+    ].filter(Boolean)
+    const name = parts.join(' ').trim()
+    if (name) return name
+  }
+  try {
+    const opt = (patients.value || []).find(o => String(o.id) === String(form.value.patient_id))
+    return opt?.childInfo?.name || '—'
+  } catch {
+    return '—'
+  }
+})
+
+// Display name for the recorded by health worker
+const recordedByDisplayName = computed(() => {
+  const hw = healthWorkers.value.find(h => String(h.user_id) === String(form.value.recorded_by))
+  return hw?.fullname || form.value.recorded_by || '—'
+})
+
 const form = ref({
   patient_id: '',
   recorded_by: '',
@@ -486,7 +547,8 @@ const vaccinationForm = ref({
   siteOfAdministration: '',
   healthWorkerId: '',
   facilityName: '',
-  remarks: ''
+  remarks: '',
+  outside: false
 })
 
 const fetchPatients = async () => {
@@ -498,7 +560,23 @@ const fetchPatients = async () => {
     const res = await api.get('/patients', { params })
     const payload = res.data?.data || {}
     const list = payload.patients || payload.items || payload || []
-    patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
+    patients.value = list.map(p => ({ id: String(p.patient_id || p.id), childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
+    
+    // Ensure current patient is included if editing existing visit
+    if (form.value.patient_id && selectedPatientData.value) {
+      const existingPatient = patients.value.find(p => p.id === form.value.patient_id)
+      if (!existingPatient) {
+        const currentPatient = {
+          id: form.value.patient_id,
+          childInfo: { 
+            name: [selectedPatientData.value.firstname, selectedPatientData.value.middlename, selectedPatientData.value.surname]
+              .filter(Boolean).join(' ').trim() 
+          }
+        }
+        patients.value.unshift(currentPatient)
+        console.log('✅ [VISIT_EDITOR] Ensured current patient is in patients list')
+      }
+    }
   } catch (err) {
     console.error('Failed to load patients for visit editor', err)
     patients.value = []
@@ -646,9 +724,9 @@ const fetchVaccineCatalog = async () => {
   }
 }
 
-// When NIP filter toggles, refresh the appropriate source (inventory for in-facility, catalog for recordMode)
+// When NIP filter toggles, refresh the appropriate source (inventory for in-facility, catalog for outside)
 const onNipToggle = () => {
-  if (props.recordMode) {
+  if (vaccinationForm.value.outside) {
     fetchVaccineCatalog()
   } else {
     fetchVaccineOptions()
@@ -683,7 +761,7 @@ const fetchSelectedPatientData = async (patientId) => {
   }
 }
 
-const openVaccinationModal = async (patientId = null) => {
+const openVaccinationForm = async (patientId = null) => {
   const selectedPatientId = patientId || form.value.patient_id
   if (!selectedPatientId || selectedPatientId === '') {
     addToast({ title: 'Error', message: 'Please select a patient first', type: 'error' })
@@ -708,13 +786,14 @@ const openVaccinationModal = async (patientId = null) => {
     siteOfAdministration: '',
     healthWorkerId: '',
     facilityName: '',
-    remarks: ''
+    remarks: '',
+    outside: hasOutsideInVisit.value // Default to visit-level setting
   }
   
   // Calculate age immediately with default date
   updateAgeCalculation()
   
-  showVaccinationModal.value = true
+  showVaccinationForm.value = true
 }
 const openDewormModal = (patientId = null) => {
   const selectedPatientId = patientId || form.value.patient_id
@@ -852,7 +931,7 @@ const saveVaccination = async () => {
       fullRemarks = fullRemarks ? `${fullRemarks} | Site: ${vaccinationForm.value.siteOfAdministration}` : `Site: ${vaccinationForm.value.siteOfAdministration}`
     }
 
-    const vaccinationData = props.recordMode
+    const vaccinationData = (props.recordMode || vaccinationForm.value.outside)
       ? {
           patient_id: form.value.patient_id,
           vaccine_id: vaccinationForm.value.vaccineId,
@@ -862,7 +941,7 @@ const saveVaccination = async () => {
           age_at_administration: vaccinationForm.value.ageAtAdministration,
           administered_by: vaccinationForm.value.healthWorkerId,
           remarks: fullRemarks,
-          outside: true,
+          outside: vaccinationForm.value.outside,
           vaccine_name: vaccinationForm.value.vaccineName
         }
       : {
@@ -885,7 +964,7 @@ const saveVaccination = async () => {
       console.log('🔄 [VISIT_VACCINATION] Posting immunization directly to existing visit:', payload)
       await api.post('/immunizations', payload)
       addToast({ title: 'Saved', message: 'Immunization added to visit', type: 'success' })
-      closeVaccinationModal()
+      closeVaccinationForm()
     } else {
       console.log('🔄 [VISIT_VACCINATION] Adding vaccination to visit collection:', vaccinationData)
       // Add to collected vaccinations (will be saved with visit)
@@ -907,7 +986,7 @@ const saveVaccination = async () => {
   // Update local buffer and emit to parent
   localCollectedVaccinations.value = collectedVaccinationsArray
   emit('update-collected-vaccinations', collectedVaccinationsArray)
-      closeVaccinationModal()
+      closeVaccinationForm()
     }
   } catch (err) {
     console.error('❌ [VISIT_VACCINATION] Error saving vaccination', err)
@@ -926,8 +1005,8 @@ const updateAgeCalculation = () => {
   }
 }
 
-const closeVaccinationModal = () => {
-  showVaccinationModal.value = false
+const closeVaccinationForm = () => {
+  showVaccinationForm.value = false
   // Reset form when closing
   vaccinationForm.value = {
     inventoryId: '',
@@ -942,6 +1021,7 @@ const closeVaccinationModal = () => {
     healthWorkerId: '',
     facilityName: '',
     remarks: '',
+    outside: hasOutsideInVisit.value, // Reset to visit-level default
     editingIndex: undefined // Clear editing state
   }
 }
@@ -964,11 +1044,12 @@ const editService = (index) => {
     siteOfAdministration: service.site_of_administration || '',
     healthWorkerId: service.administered_by || '',
     facilityName: service.facility_name || '',
-    remarks: service.remarks || ''
+    remarks: service.remarks || '',
+    outside: !!(service.outside || service.immunization_outside || service.is_outside || service.isOutside)
   }
 
-  // Open modal for editing
-  showVaccinationModal.value = true
+  // Open form for editing
+  showVaccinationForm.value = true
 
   // Store the index being edited for later update
   vaccinationForm.value.editingIndex = index
@@ -1015,54 +1096,45 @@ const saveVisit = async () => {
       }
     }
 
-    // If adding to existing visit, save services directly
+    // If adding to existing visit, save services directly or update visit if editMode
     if (props.existingVisitId) {
-      if (!localCollectedVaccinations.value || localCollectedVaccinations.value.length === 0) {
-        addToast({ title: 'No Services', message: 'Please add at least one service to save.', type: 'warning' })
-        loading.value = false
-        return
+      console.log('🔄 [VISIT_SAVE_FRONTEND] Updating existing visit:', props.existingVisitId)
+
+      // Prepare update payload for visit (exclude vitals)
+      const updatePayload = {
+        recorded_by: form.value.recorded_by,
+        visit_date: form.value.visit_date,
+        findings: form.value.findings,
+        service_rendered: form.value.service_rendered,
+        updated_by: form.value.recorded_by
       }
-      console.log('🔄 [VISIT_SAVE_FRONTEND] Adding services to existing visit:', props.existingVisitId)
-
-      // Get current visit to append services
-      const currentVisit = await api.get(`/visits/${props.existingVisitId}`)
-      const visitData = currentVisit.data?.data || currentVisit.data || {}
-
-      // Build additional service_rendered and findings from collected vaccinations
-      let additionalServiceRendered = []
-      let additionalFindings = []
-
-  if (localCollectedVaccinations.value.length > 0) {
-        additionalServiceRendered.push('Vaccine Administration')
-        for (const vacc of localCollectedVaccinations.value) {
-          if (vacc.remarks) {
-            additionalFindings.push(`Vaccine Administration -- ${vacc.remarks}`)
-          }
-        }
-      }
-
-      // Append to existing
-      const updatedServiceRendered = [visitData.service_rendered, ...additionalServiceRendered].filter(Boolean).join(', ')
-      const updatedFindings = [visitData.findings, ...additionalFindings].filter(Boolean).join(', ')
 
       // Update the visit
-      await api.put(`/visits/${props.existingVisitId}`, {
-        service_rendered: updatedServiceRendered,
-        findings: updatedFindings,
-        updated_by: form.value.recorded_by
-      })
+      await api.put(`/visits/${props.existingVisitId}`, updatePayload)
 
-      // Post each collected vaccination as immunization
-  const promises = localCollectedVaccinations.value.map(vacc => 
-        api.post('/immunizations', {
-          ...vacc,
-          visit_id: props.existingVisitId,
-          patient_id: form.value.patient_id
-        })
-      )
-      await Promise.all(promises)
-      console.log('✅ [VISIT_SAVE_FRONTEND] Services added to existing visit successfully')
-      addToast({ title: 'Saved', message: 'Services added to visit successfully', type: 'success' })
+      // Update vitals separately
+      try {
+        await api.put(`/vitals/${props.existingVisitId}`, form.value.vitals)
+        console.log('✅ [VISIT_SAVE_FRONTEND] Vitals updated successfully')
+      } catch (vitalsErr) {
+        console.warn('⚠️ [VISIT_SAVE_FRONTEND] Failed to update vitals:', vitalsErr)
+        // Don't fail the entire operation for vitals update failure
+      }
+
+      // If there are new services to add, post them as immunizations
+      if (localCollectedVaccinations.value && localCollectedVaccinations.value.length > 0) {
+        const promises = localCollectedVaccinations.value.map(vacc => 
+          api.post('/immunizations', {
+            ...vacc,
+            visit_id: props.existingVisitId,
+            patient_id: form.value.patient_id
+          })
+        )
+        await Promise.all(promises)
+      }
+
+      console.log('✅ [VISIT_SAVE_FRONTEND] Visit updated successfully')
+      addToast({ title: 'Saved', message: 'Visit updated successfully', type: 'success' })
       emit('saved')
       emit('close')
       return
@@ -1107,39 +1179,54 @@ const formatDate = (dateString) => {
 
 const calculateAgeAtDate = (birthDate, targetDate) => {
   if (!birthDate || !targetDate) return ''
-  
+
   const birth = new Date(birthDate)
   const target = new Date(targetDate)
-  
-  let years = target.getFullYear() - birth.getFullYear()
-  let months = target.getMonth() - birth.getMonth()
+
+  // If target date is before birth date, clamp to 0 days old
+  if (target < birth) return '0 days old'
+
+  // Compute total months and remaining days similar to VaccinationRecordEditor logic
+  let totalMonths = (target.getFullYear() - birth.getFullYear()) * 12 + (target.getMonth() - birth.getMonth())
   let days = target.getDate() - birth.getDate()
-  
+
   if (days < 0) {
-    months--
-    const lastMonth = new Date(target.getFullYear(), target.getMonth() - 1, birth.getDate())
-    days += Math.round((target - lastMonth) / (1000 * 60 * 60 * 24))
+    totalMonths--
+    // Days in the previous month relative to target
+    const prevMonthLastDay = new Date(target.getFullYear(), target.getMonth(), 0)
+    const daysInPrevMonth = prevMonthLastDay.getDate()
+    days += daysInPrevMonth
   }
-  
-  if (months < 0) {
-    years--
-    months += 12
-  }
-  
-  // Return in months and days format
+
+  if (totalMonths < 0) totalMonths = 0
+
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+
+  // Format string (retain years, months, days like existing UI)
   if (years === 0) {
     if (months === 0) {
       return `${days} day${days !== 1 ? 's' : ''} old`
-    } else {
-      return `${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
     }
-  } else {
-    return `${years} year${years !== 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
+    return `${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
   }
+  return `${years} year${years !== 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
 }
 
 onMounted(() => {
   console.log('🏁 [VISIT_EDITOR] Component mounted, initializing...')
+  console.log('🏁 [VISIT_EDITOR] Props received:', {
+    embedded: props.embedded,
+    existingVisitId: props.existingVisitId,
+    initialPatientId: props.initialPatientId,
+    viewMode: props.viewMode,
+    editMode: props.editMode,
+    recordMode: props.recordMode
+  })
+  console.log('🏁 [VISIT_EDITOR] Props types:', {
+    existingVisitId: typeof props.existingVisitId,
+    initialPatientId: typeof props.initialPatientId
+  })
   fetchPatients()
   fetchHealthWorkers()
   fetchVaccineOptions()
@@ -1161,23 +1248,63 @@ watch(() => form.value.patient_id, (newPatientId) => {
   }
 })
 
-watch(() => props.existingVisitId, (newId) => {
-  if (newId) {
-    fetchExistingVisit(String(newId))
-  }
-})
-
 const fetchExistingVisit = async (visitId) => {
   console.log('🔄 [VISIT_EDITOR] Fetching existing visit:', visitId)
+  console.log('🔄 [VISIT_EDITOR] API endpoint:', `/visits/${visitId}`)
   try {
     loading.value = true
+    console.log('🔄 [VISIT_EDITOR] Making API request...')
     const res = await api.get(`/visits/${visitId}`)
+    console.log('🔄 [VISIT_EDITOR] Raw API response:', res)
+    console.log('🔄 [VISIT_EDITOR] Response data:', res.data)
     const data = res.data?.data || res.data || {}
-    console.log('✅ [VISIT_EDITOR] Fetched visit data:', data)
-    form.value.patient_id = String(data.patient_id || form.value.patient_id || props.initialPatientId || '')
-    form.value.recorded_by = String(data.recorded_by || '')
-    console.log('✅ [VISIT_EDITOR] Set recorded_by to:', form.value.recorded_by)
+    console.log('🔄 [VISIT_EDITOR] Extracted visit data:', data)
+    console.log('🔄 [VISIT_EDITOR] Visit data keys:', Object.keys(data))
+    console.log('🔄 [VISIT_EDITOR] Visit data values:', Object.values(data))
+
+    const patientId = String(data.patient_id || form.value.patient_id || props.initialPatientId || '')
+    console.log('🔄 [VISIT_EDITOR] Patient ID from data:', patientId)
     
+    // Use patient_name from visits_view if available, otherwise fetch patient details
+    if (data.patient_name) {
+      // Create a temporary patient object for display purposes
+      selectedPatientData.value = {
+        patient_id: patientId,
+        firstname: data.patient_name.split(' ')[0] || '',
+        middlename: data.patient_name.split(' ').slice(1, -1).join(' ') || '',
+        surname: data.patient_name.split(' ').slice(-1)[0] || ''
+      }
+      console.log('✅ [VISIT_EDITOR] Used patient_name from visits_view:', data.patient_name)
+    } else {
+      // Fallback to fetching patient details if patient_name not available
+      if (patientId) {
+        fetchSelectedPatientData(patientId)
+      }
+    }
+    
+    // Ensure the current patient is in the patients list for proper display
+    if (patientId && patients.value.length > 0) {
+      const existingPatient = patients.value.find(p => p.id === patientId)
+      if (!existingPatient && selectedPatientData.value) {
+        // Add the current patient to the list temporarily for display
+        const currentPatient = {
+          id: patientId,
+          childInfo: { 
+            name: [selectedPatientData.value.firstname, selectedPatientData.value.middlename, selectedPatientData.value.surname]
+              .filter(Boolean).join(' ').trim() 
+          }
+        }
+        patients.value.unshift(currentPatient)
+        console.log('✅ [VISIT_EDITOR] Added current patient to patients list for display')
+      }
+    }
+
+    // Now set the form patient_id after ensuring the patient is in the options
+    form.value.patient_id = patientId
+    console.log('🔄 [VISIT_EDITOR] Set patient_id to:', form.value.patient_id)
+    form.value.recorded_by = String(data.recorded_by || '')
+    console.log('🔄 [VISIT_EDITOR] Set recorded_by to:', form.value.recorded_by)
+
     // If recorded_by is a name, find the corresponding user_id
     if (data.recorded_by && isNaN(data.recorded_by)) {
       // It's a name, find the health worker
@@ -1190,11 +1317,22 @@ const fetchExistingVisit = async (visitId) => {
       }
     }
     form.value.visit_date = data.visit_date ? utcToPH(data.visit_date).format('YYYY-MM-DD') : form.value.visit_date
+    console.log('🔄 [VISIT_EDITOR] Set visit_date to:', form.value.visit_date, 'from:', data.visit_date)
     form.value.findings = data.findings || ''
+    console.log('🔄 [VISIT_EDITOR] Set findings to:', form.value.findings)
     form.value.service_rendered = data.service_rendered || ''
-    
-    // Vitals are included in the visit data
+    console.log('🔄 [VISIT_EDITOR] Set service_rendered to:', form.value.service_rendered)
+    // Determine if any immunization linked to this visit was taken outside
+    try {
+      const ims = Array.isArray(data.immunizations_given) ? data.immunizations_given : (Array.isArray(data.immunizations) ? data.immunizations : [])
+      hasOutsideInVisit.value = ims.some(im => !!(im?.outside || im?.immunization_outside || im?.is_outside || im?.isOutside || im?.outside_immunization))
+    } catch {
+      hasOutsideInVisit.value = false
+    }
+
+    // Vitals mapping from multiple possible shapes
     if (data.vitals) {
+      // Already nested under data.vitals
       form.value.vitals = {
         temperature: data.vitals.temperature ?? '',
         muac: data.vitals.muac ?? '',
@@ -1202,9 +1340,38 @@ const fetchExistingVisit = async (visitId) => {
         weight: data.vitals.weight ?? '',
         height: data.vitals.height ?? ''
       }
+      console.log('🔄 [VISIT_EDITOR] Mapped vitals from data.vitals:', form.value.vitals)
+    } else if (data.vital_signs) {
+      // visits_view exposes vitals as vital_signs JSON column
+      const vs = data.vital_signs
+      form.value.vitals = {
+        temperature: vs.temperature ?? '',
+        muac: vs.muac ?? '',
+        respiration: vs.respiration_rate ?? '',  // Note: API uses respiration_rate
+        weight: vs.weight ?? '',
+        height: vs.height_length ?? ''  // Note: API uses height_length
+      }
+      console.log('🔄 [VISIT_EDITOR] Mapped vitals from data.vital_signs:', form.value.vitals)
+    } else if (
+      data.temperature !== undefined ||
+      data.muac !== undefined ||
+      data.respiration_rate !== undefined ||
+      data.weight !== undefined ||
+      data.height_length !== undefined
+    ) {
+      // visits_view exposes vitals as top-level columns
+      form.value.vitals = {
+        temperature: data.temperature ?? '',
+        muac: data.muac ?? '',
+        respiration: (data.respiration_rate ?? data.respiration) ?? '',
+        weight: data.weight ?? '',
+        height: (data.height_length ?? data.height) ?? ''
+      }
+      console.log('🔄 [VISIT_EDITOR] Mapped vitals from visits_view columns:', form.value.vitals)
     } else {
-      // Fetch vitals from separate endpoint
+      // Fetch vitals from separate endpoint as fallback
       try {
+        console.log('🔄 [VISIT_EDITOR] No vitals in visit data, fetching from separate endpoint...')
         const vitalsRes = await api.get(`/vitals/${visitId}`)
         const v = vitalsRes.data?.data || vitalsRes.data || {}
         form.value.vitals = {
@@ -1214,18 +1381,27 @@ const fetchExistingVisit = async (visitId) => {
           weight: v.weight ?? '',
           height: v.height ?? ''
         }
-        console.log('✅ [VISIT_EDITOR] Fetched vitals:', form.value.vitals)
+        console.log('🔄 [VISIT_EDITOR] Fetched vitals from separate endpoint:', form.value.vitals)
       } catch (e) {
         console.warn('Failed to fetch vitals for visit', e)
         form.value.vitals = { temperature: '', muac: '', respiration: '', weight: '', height: '' }
+        console.log('🔄 [VISIT_EDITOR] Set empty vitals due to error')
       }
     }
-    
-    if (form.value.patient_id) {
+
+    if (form.value.patient_id && !data.patient_name) {
       fetchSelectedPatientData(form.value.patient_id)
     }
     console.log('✅ [VISIT_EDITOR] Form populated with visit data')
-    
+    console.log('✅ [VISIT_EDITOR] Final form state:', {
+      patient_id: form.value.patient_id,
+      recorded_by: form.value.recorded_by,
+      visit_date: form.value.visit_date,
+      findings: form.value.findings,
+      service_rendered: form.value.service_rendered,
+      vitals: form.value.vitals
+    })
+
     // For existing visit mode, prefill vaccination form with visit's health worker
     if (existingVisitMode.value) {
       vaccinationForm.value.healthWorkerId = form.value.recorded_by
@@ -1236,6 +1412,28 @@ const fetchExistingVisit = async (visitId) => {
     loading.value = false
   }
 }
+
+watch(() => props.existingVisitId, async (newId) => {
+  console.log('🔍 [VISIT_EDITOR] existingVisitId prop changed:', {
+    newId,
+    type: typeof newId,
+    isValid: !!newId,
+    propsExistingVisitId: props.existingVisitId
+  })
+  if (newId) {
+    // Ensure patients and health workers are loaded before fetching visit data
+    if (patients.value.length === 0) {
+      console.log('🔄 [VISIT_EDITOR] Patients not loaded yet, fetching first...')
+      await fetchPatients()
+    }
+    if (healthWorkers.value.length === 0) {
+      console.log('🔄 [VISIT_EDITOR] Health workers not loaded yet, fetching first...')
+      await fetchHealthWorkers()
+    }
+    console.log('🔄 [VISIT_EDITOR] All data loaded, now fetching visit with:', String(newId))
+    fetchExistingVisit(String(newId))
+  }
+}, { immediate: true })
 
 // Watch for vaccination date changes to recalculate age
 watch(() => vaccinationForm.value.dateAdministered, (newDate) => {
@@ -1252,6 +1450,15 @@ watch(() => vaccinationForm.value.inventoryId, (val) => {
 })
 watch(() => vaccinationForm.value.vaccineId, (val) => {
   if (val) updateAgeCalculation()
+})
+
+// Watch for outside toggle changes to refresh vaccine list
+watch(() => vaccinationForm.value.outside, (isOutside) => {
+  if (isOutside) {
+    fetchVaccineCatalog()
+  } else {
+    fetchVaccineOptions()
+  }
 })
 
 // When switching modes, ensure proper lists are loaded

@@ -16,7 +16,7 @@
 
     <!-- Medical History Table -->
     <div v-else class="table-responsive">
-      <table class="table table-hover table-striped">
+  <table class="table table-hover table-striped">
         <thead>
           <tr>
             <th>Checkup Date</th>
@@ -28,7 +28,13 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="visit in sortedVisits" :key="visit.visit_id || visit.id">
+          <tr
+            v-for="visit in sortedVisits"
+            :key="visit.visit_id || visit.id"
+            @click="openVisitDetails(visit)"
+            style="cursor: pointer;"
+            title="Click to edit visit details"
+          >
             <td>
               <i class="bi bi-calendar-event me-1"></i>
               {{ formatDate(visit.visit_date) }}
@@ -97,7 +103,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/services/api'
+
+const router = useRouter()
 
 const props = defineProps({
   patientId: {
@@ -145,13 +154,22 @@ const getWorkerName = (visit) => {
 }
 
 const getVitals = (visit) => {
-  // visits_view returns vital_signs object
-  return visit.vital_signs || {}
+  // Support multiple shapes from visits_view:
+  // 1) Nested vital_signs object
+  // 2) Top-level columns: height_length, weight, temperature, respiration_rate, muac
+  if (visit && visit.vital_signs) return visit.vital_signs
+  return {
+    height_length: visit?.height_length ?? visit?.height ?? null,
+    weight: visit?.weight ?? null,
+    temperature: visit?.temperature ?? null,
+    respiration_rate: visit?.respiration_rate ?? visit?.respiration ?? null,
+    muac: visit?.muac ?? null
+  }
 }
 
 const hasVitals = (visit) => {
   const v = getVitals(visit)
-  return v && (v.height_length || v.weight || v.temperature || v.respiration_rate || v.muac)
+  return !!(v && (v.height_length || v.weight || v.temperature || v.respiration_rate || v.muac))
 }
 
 const truncateText = (text, maxLength) => {
@@ -192,6 +210,13 @@ const fetchVisits = async () => {
 onMounted(() => {
   fetchVisits()
 })
+
+const openVisitDetails = (visit) => {
+  const id = String(visit.visit_id || visit.id || '')
+  if (!id) return
+  // Navigate to visit summary page instead of edit page
+  router.push(`/admin/patients/${props.patientId}/visits/${id}`)
+}
 </script>
 
 <style scoped>

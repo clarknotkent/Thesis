@@ -3,6 +3,7 @@
     <AdminAddRecordModal 
       :embeddedPage="true" 
       :initial-patient-id="$route.query.patientId || ''"
+      :lock-patient-when-prefilled="!!$route.query.patientId"
       :default-record-mode="String($route.query.outside).toLowerCase() === 'true'"
       :initial-visit-id="$route.query.visitId || ''"
     />

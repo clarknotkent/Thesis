@@ -28,4 +28,21 @@
   --shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
   --shadow-md: 0 .5rem 1rem rgba(0,0,0,.15);
   --transition-fast: .15s ease-in-out;
+
+  /* Role Badge Colors */
+  --role-admin-bg: #601fc2;
+  --role-admin-text: #ffffff;
+  --role-admin-border: #dee2e6;
+
+  --role-parent-bg: #bc4e1e;
+  --role-parent-text: #ffffff;
+  --role-parent-border: #dee2e6;
+
+  --role-healthstaff-bg: #00b2e3;
+  --role-healthstaff-text: #ffffff;
+  --role-healthstaff-border: #dee2e6;
+
+  --role-system-bg: #ff3a3a;
+  --role-system-text: #ffffff;
+  --role-system-border: #dee2e6;
 }

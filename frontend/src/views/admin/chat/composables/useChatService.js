@@ -30,42 +30,27 @@ const otherParticipantNames = (conv, currentUserId) => {
 // Get conversation title
 export const getConversationTitle = (conv, currentUserId) => {
   if (!conv) return 'Conversation';
-  
-  // Prefer participant_name from backend
-  if (typeof conv.participant_name === 'string' && conv.participant_name.trim()) {
-    const pn = conv.participant_name.trim();
-    
-    // Check if participant_name is current user's name
-    let myName = '';
-    if (Array.isArray(conv.participants)) {
-      const myId = String(getUserKey({ user_id: currentUserId, id: currentUserId }));
-      const me = conv.participants.find(p => String(getUserKey(p)) === myId);
-      if (me) myName = getParticipantDisplayName(me) || '';
-    }
-    
-    const eq = (a, b) => (a || '').toString().trim().toLowerCase() === (b || '').toString().trim().toLowerCase();
-    if (eq(pn, myName) && (conv.latest_message_sender_name || '').toString().trim()) {
-      return conv.latest_message_sender_name.toString().trim();
-    }
-    return pn;
-  }
-  
-  if ((conv.subject || '').trim()) return conv.subject;
-  
-  // Backend-provided other participant name fields
-  const viewOther = conv.other_participant_name || conv.other_participants || conv.other_name || '';
-  if (typeof viewOther === 'string' && viewOther.trim()) return viewOther.trim();
-  
-  if (Array.isArray(conv.other_participant_names) && conv.other_participant_names.length) {
-    const joined = conv.other_participant_names.filter(Boolean).join(', ').trim();
-    if (joined) return joined;
-  }
-  
+
+  // Compute based on actual participants excluding current user, and display up to two names + "+N"
   const names = otherParticipantNames(conv, currentUserId);
+  if (names.length === 0) {
+    // Fallbacks if no participant objects present
+    const pn = (conv.participant_name || '').toString().trim();
+    if (pn) return pn;
+    if ((conv.subject || '').trim()) return conv.subject;
+    const viewOther = conv.other_participant_name || conv.other_participants || conv.other_name || '';
+    if (typeof viewOther === 'string' && viewOther.trim()) return viewOther.trim();
+    if (Array.isArray(conv.other_participant_names) && conv.other_participant_names.length) {
+      const joined = conv.other_participant_names.filter(Boolean).join(', ').trim();
+      if (joined) return joined;
+    }
+    return 'Conversation';
+  }
   if (names.length === 1) return names[0];
-  if (names.length > 1) return names.slice(0, 3).join(', ') + (names.length > 3 ? '…' : '');
-  
-  return 'Conversation';
+  // Show first two names, then +N for the rest
+  const firstTwo = names.slice(0, 2);
+  const remaining = names.length - 2;
+  return remaining > 0 ? `${firstTwo[0]}, ${firstTwo[1]}, +${remaining}` : `${firstTwo[0]}, ${firstTwo[1]}`;
 };
 
 // Load conversations

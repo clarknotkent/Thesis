@@ -122,12 +122,6 @@
               <div v-if="activeTab === 'visits'">
                 <VisitHistory :patient-id="patientId" :embedded-page="true" />
                 <div class="d-flex justify-content-end mt-3">
-                  <button 
-                    @click="handleEditMedicalHistory"
-                    class="btn btn-primary btn-sm"
-                  >
-                    <i class="bi bi-pencil-square me-2"></i>Edit Medical History
-                  </button>
                 </div>
               </div>
             </div>

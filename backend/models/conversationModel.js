@@ -1,6 +1,76 @@
 const supabase = require('../db');
 const { createMessage } = require('./messageModel');
 
+// Utility: normalize to string UUIDs and sort for stable signatures
+const toId = (v) => (v == null ? '' : String(v));
+const makeParticipantSignature = (ids = []) => ids.map(toId).sort().join('|');
+
+// Find an active conversation whose ACTIVE participant set exactly equals targetIds
+const findActiveConversationByParticipantSet = async (targetIds = []) => {
+  const target = Array.from(new Set((targetIds || []).map(toId))).filter(Boolean);
+  if (!target.length) return null;
+
+  // 1) find conversations that include ALL target members as active participants
+  const { data: rowsWithTarget, error: rowsErr } = await supabase
+    .from('conversationparticipants')
+    .select('conversation_id, user_id')
+    .is('left_at', null)
+    .in('user_id', target);
+  if (rowsErr) {
+    console.warn('[findActiveConversationByParticipantSet] query1 failed:', rowsErr.message);
+    return null;
+  }
+  if (!rowsWithTarget || rowsWithTarget.length === 0) return null;
+
+  // Group by conversation and count how many target ids are present
+  const byConv = rowsWithTarget.reduce((acc, r) => {
+    const cid = r.conversation_id;
+    if (!acc[cid]) acc[cid] = new Set();
+    acc[cid].add(toId(r.user_id));
+    return acc;
+  }, {});
+
+  const candidateConvIds = Object.entries(byConv)
+    .filter(([, set]) => set.size === target.length && target.every(t => set.has(t)))
+    .map(([cid]) => cid);
+  if (!candidateConvIds.length) return null;
+
+  // 2) For these candidates, ensure they have NO extra active participants beyond target
+  const { data: activeRows, error: activeErr } = await supabase
+    .from('conversationparticipants')
+    .select('conversation_id, user_id')
+    .is('left_at', null)
+    .in('conversation_id', candidateConvIds);
+  if (activeErr) {
+    console.warn('[findActiveConversationByParticipantSet] query2 failed:', activeErr.message);
+    return null;
+  }
+  const activeByConv = activeRows.reduce((acc, r) => {
+    const cid = r.conversation_id;
+    if (!acc[cid]) acc[cid] = new Set();
+    acc[cid].add(toId(r.user_id));
+    return acc;
+  }, {});
+
+  const exactMatches = Object.entries(activeByConv)
+    .filter(([, set]) => set.size === target.length && target.every(t => set.has(t)))
+    .map(([cid]) => cid);
+  if (!exactMatches.length) return null;
+
+  // 3) If multiple, pick the one with the most recent activity
+  const { data: convRows } = await supabase
+    .from('conversations_view')
+    .select('conversation_id, latest_message_time, last_message_at, created_at')
+    .in('conversation_id', exactMatches);
+  if (!Array.isArray(convRows) || convRows.length === 0) return exactMatches[0];
+  const pick = convRows.reduce((best, r) => {
+    const t = new Date(r.latest_message_time || r.last_message_at || r.created_at || 0).getTime();
+    if (!best || t > best.t) return { cid: r.conversation_id, t };
+    return best;
+  }, null);
+  return pick?.cid || exactMatches[0];
+};
+
 /**
  * Fetches all conversations for a specific user from the corrected conversations_view_v2.
  * This view provides conversation summaries, including the other participant's name,
@@ -87,7 +157,7 @@ const listConversations = async (filters = {}, page = 1, limit = 20) => {
           const { data, count } = result;
 
           // Enrich conversations with participants, latest message/time (when missing), and unread counts
-          const items = Array.isArray(data) ? [...data] : [];
+          let items = Array.isArray(data) ? [...data] : [];
           const convIds = items.map(i => i.conversation_id || i.id).filter(Boolean);
 
           if (convIds.length) {
@@ -179,6 +249,10 @@ const listConversations = async (filters = {}, page = 1, limit = 20) => {
                   it.participant_name = joined || null;
                 }
               }
+              // Fallback title: prefer explicit title, then participant_name
+              if (!it.title) {
+                it.title = it.participant_name || it.title || null;
+              }
               // Attach unread count if not present
               if (typeof it.unread_count === 'undefined' || it.unread_count === null) {
                 it.unread_count = unreadByConv[cid] || 0;
@@ -198,6 +272,20 @@ const listConversations = async (filters = {}, page = 1, limit = 20) => {
                   it.latest_message_time = it.latest_message_time || lastMsgRow.created_at || hasTime || null;
                 }
               }
+            }
+
+            // 4) Deduplicate: keep only one conversation per active participant set (including current user)
+            if (filters.user_id) {
+              const grouped = {};
+              for (const it of items) {
+                const activeIds = (it.participants || []).map(p => toId(p.user_id));
+                const sig = makeParticipantSignature(activeIds);
+                const t = new Date(it.latest_message_time || it.last_message_at || it.created_at || 0).getTime();
+                if (!grouped[sig] || t > grouped[sig]._t) {
+                  grouped[sig] = { ...it, _t: t };
+                }
+              }
+              items = Object.values(grouped).map(({ _t, ...rest }) => rest);
             }
           }
 
@@ -334,9 +422,27 @@ const startConversationWithMessage = async ({ subject = null, created_by, partic
     throw new Error('message_content or attachment_url is required');
   }
 
-  // 1) Create conversation and participants
-  const conv = await createConversation({ subject, created_by, participants });
-  const conversation_id = conv.conversation_id || conv.id;
+  // Normalize participant set to include creator for matching and creation
+  const desiredParticipants = Array.from(new Set([...(participants || []), created_by])).filter(Boolean);
+
+  // 0) Try to find an existing active conversation with the exact same participant set
+  let conversation_id = await findActiveConversationByParticipantSet(desiredParticipants);
+  let conv = null;
+  let createdNew = false;
+  if (!conversation_id) {
+    // 1) Create conversation and participants
+    conv = await createConversation({ subject, created_by, participants });
+    conversation_id = conv.conversation_id || conv.id;
+    createdNew = true;
+  } else {
+    // Fetch conversation row for return consistency
+    const { data: convRow } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('conversation_id', conversation_id)
+      .maybeSingle();
+    conv = convRow || { conversation_id };
+  }
 
   // 2) Create first message; suppress per-message notifications (we'll send one-time conversation notification)
   try {
@@ -395,11 +501,13 @@ const startConversationWithMessage = async ({ subject = null, created_by, partic
     return { conversation: conv, message };
   } catch (e) {
     // Best-effort cleanup to avoid empty conversation
-    try {
-      await supabase.from('conversationparticipants').delete().eq('conversation_id', conversation_id);
-      await supabase.from('conversations').delete().eq('conversation_id', conversation_id);
-    } catch (cleanupErr) {
-      console.warn('[startConversationWithMessage] cleanup failed after message error:', cleanupErr?.message || cleanupErr);
+    if (createdNew && conv && conv.conversation_id) {
+      try {
+        await supabase.from('conversationparticipants').delete().eq('conversation_id', conv.conversation_id);
+        await supabase.from('conversations').delete().eq('conversation_id', conv.conversation_id);
+      } catch (cleanupErr) {
+        console.warn('[startConversationWithMessage] cleanup failed after message error:', cleanupErr?.message || cleanupErr);
+      }
     }
     throw e;
   }

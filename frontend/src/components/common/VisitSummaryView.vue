@@ -1,0 +1,453 @@
+<template>
+  <div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="h3 mb-1">Visit Summary</h1>
+        <p class="text-muted mb-0">Patient visit record and medical history</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary" @click="enableEditMode">
+          <i class="bi bi-pencil-square me-2"></i>
+          Edit Visit
+        </button>
+        <button type="button" class="btn btn-outline-secondary" @click="$router.go(-1)">
+          <i class="bi bi-arrow-left me-2"></i>
+          Back
+        </button>
+      </div>
+    </div>
+
+    <!-- Visit Summary Card -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-primary text-white">
+        <h6 class="card-title mb-0">
+          <i class="bi bi-clipboard-data me-2"></i>
+          Visit Information
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-person-circle text-primary me-3 fs-4"></i>
+              <div>
+                <small class="text-muted d-block">Patient</small>
+                <strong class="text-dark">{{ patientDisplayName }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-calendar-event text-success me-3 fs-4"></i>
+              <div>
+                <small class="text-muted d-block">Visit Date</small>
+                <strong class="text-dark">{{ formatDate(form.visit_date) }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-person-badge text-info me-3 fs-4"></i>
+              <div>
+                <small class="text-muted d-block">Health Staff</small>
+                <strong class="text-dark">{{ healthStaffName }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i :class="hasOutsideInVisit ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'" class="me-3 fs-4"></i>
+              <div>
+                <small class="text-muted d-block">Service Location</small>
+                <span :class="hasOutsideInVisit ? 'badge bg-warning text-dark' : 'badge bg-secondary'">
+                  {{ hasOutsideInVisit ? 'Outside Facility' : 'In-Facility' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="col-12" v-if="form.findings">
+            <div class="d-flex align-items-start">
+              <i class="bi bi-journal-text text-info me-3 fs-4 mt-1"></i>
+              <div class="flex-grow-1">
+                <small class="text-muted d-block">Clinical Findings</small>
+                <p class="text-dark mb-0">{{ form.findings }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services Provided Card -->
+    <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-success text-white">
+        <h6 class="card-title mb-0">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          Services Provided
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-12">
+            <div v-for="(service, index) in localCollectedVaccinations" :key="index" class="service-item mb-3 p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-shield-check text-success me-3 fs-5"></i>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1 text-dark">{{ service.vaccine_name || service.antigen_name || 'Unknown Vaccine' }}</h6>
+                  <div class="service-details text-muted small">
+                    <span class="badge bg-success me-2">Vaccination</span>
+                    <span>Dose {{ service.dose_number || 'N/A' }}</span>
+                    <span class="ms-2">• </span>
+                    <span>{{ formatDate(service.administered_date) }}</span>
+                    <span v-if="service.outside" class="ms-2">• </span>
+                    <span v-if="service.outside" class="badge bg-warning text-dark ms-1">Outside Facility</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vital Signs Card -->
+    <div v-if="hasVitalSigns" class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-info text-white">
+        <h6 class="card-title mb-0">
+          <i class="bi bi-heart-pulse me-2"></i>
+          Vital Signs
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div v-if="form.vitals.temperature" class="col-md-6 col-lg-4">
+            <div class="vital-sign-item p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-thermometer-half text-danger me-3 fs-4"></i>
+                <div>
+                  <small class="text-muted d-block">Temperature</small>
+                  <strong class="text-dark fs-5">{{ form.vitals.temperature }}°C</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="form.vitals.muac" class="col-md-6 col-lg-4">
+            <div class="vital-sign-item p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-rulers text-warning me-3 fs-4"></i>
+                <div>
+                  <small class="text-muted d-block">MUAC</small>
+                  <strong class="text-dark fs-5">{{ form.vitals.muac }} cm</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="form.vitals.respiration" class="col-md-6 col-lg-4">
+            <div class="vital-sign-item p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-lungs text-success me-3 fs-4"></i>
+                <div>
+                  <small class="text-muted d-block">Respiration</small>
+                  <strong class="text-dark fs-5">{{ form.vitals.respiration }} breaths/min</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="form.vitals.weight" class="col-md-6 col-lg-4">
+            <div class="vital-sign-item p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-speedometer2 text-primary me-3 fs-4"></i>
+                <div>
+                  <small class="text-muted d-block">Weight</small>
+                  <strong class="text-dark fs-5">{{ form.vitals.weight }} kg</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-if="form.vitals.height" class="col-md-6 col-lg-4">
+            <div class="vital-sign-item p-3 bg-light rounded">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-arrows-vertical text-info me-3 fs-4"></i>
+                <div>
+                  <small class="text-muted d-block">Height</small>
+                  <strong class="text-dark fs-5">{{ form.vitals.height }} cm</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Services Message -->
+    <div v-else-if="!localCollectedVaccinations || localCollectedVaccinations.length === 0" class="card border-0 shadow-sm mb-4">
+      <div class="card-body text-center py-5">
+        <i class="bi bi-info-circle text-muted fs-1 mb-3"></i>
+        <h5 class="text-muted">No Services Recorded</h5>
+        <p class="text-muted mb-0">This visit has no recorded services or vaccinations.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import api from '@/services/api'
+import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+
+const route = useRoute()
+const router = useRouter()
+
+const props = defineProps({
+  existingVisitId: { type: [String, Number], required: false }
+})
+
+const emit = defineEmits(['enable-edit-mode'])
+
+const patients = ref([])
+const loading = ref(false)
+const selectedPatientData = ref(null)
+const hasOutsideInVisit = ref(false)
+
+const localCollectedVaccinations = ref([])
+
+const form = ref({
+  patient_id: '',
+  recorded_by: '',
+  visit_date: '',
+  vitals: {
+    temperature: '',
+    muac: '',
+    respiration: '',
+    weight: '',
+    height: ''
+  },
+  findings: '',
+  service_rendered: ''
+})
+
+// Display name for the selected patient
+const patientDisplayName = computed(() => {
+  if (selectedPatientData.value) {
+    const p = selectedPatientData.value
+    const parts = [
+      p.firstname || p.first_name || p.firstName,
+      p.middlename || p.middle_name || p.middleName,
+      p.surname || p.last_name || p.lastName
+    ].filter(Boolean)
+    const name = parts.join(' ').trim()
+    if (name) return name
+  }
+  try {
+    const opt = (patients.value || []).find(o => String(o.id) === String(form.value.patient_id))
+    return opt?.childInfo?.name || '—'
+  } catch {
+    return '—'
+  }
+})
+
+// Check if any vital signs are recorded
+const hasVitalSigns = computed(() => {
+  const v = form.value.vitals || {}
+  return [v.temperature, v.muac, v.respiration, v.weight, v.height].some(x => x !== '' && x !== null && typeof x !== 'undefined')
+})
+
+// Get health staff name from recorded_by (visits_view already returns the name)
+const healthStaffName = computed(() => {
+  return form.value.recorded_by || '—'
+})
+
+const fetchPatients = async () => {
+  try {
+    const params = { limit: 100 }
+    const res = await api.get('/patients', { params })
+    const payload = res.data?.data || {}
+    const list = payload.patients || payload.items || payload || []
+    patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
+  } catch (err) {
+    console.error('Failed to load patients', err)
+    patients.value = []
+  }
+}
+
+const fetchSelectedPatientData = async (patientId) => {
+  if (!patientId) return
+
+  try {
+    const response = await api.get(`/patients/${patientId}`)
+    selectedPatientData.value = response.data?.data || null
+  } catch (error) {
+    console.error('Error fetching patient details', error)
+    selectedPatientData.value = null
+  }
+}
+
+const fetchExistingVisit = async (visitId) => {
+  try {
+    loading.value = true
+    const res = await api.get(`/visits/${visitId}`)
+    const data = res.data?.data || res.data || {}
+
+    form.value.patient_id = String(data.patient_id || '')
+    form.value.recorded_by = String(data.recorded_by || '')
+    form.value.visit_date = data.visit_date ? utcToPH(data.visit_date).format('YYYY-MM-DD') : ''
+    form.value.findings = data.findings || ''
+    form.value.service_rendered = data.service_rendered || ''
+
+    // Determine if any immunization was recorded as outside
+    try {
+      const immunizations = Array.isArray(data.immunizations_given) ? data.immunizations_given : (Array.isArray(data.immunizations) ? data.immunizations : [])
+      hasOutsideInVisit.value = immunizations.some(im => im?.outside === true)
+    } catch {
+      hasOutsideInVisit.value = false
+    }
+
+    // Vitals mapping
+    if (data.vitals) {
+      form.value.vitals = {
+        temperature: data.vitals.temperature ?? '',
+        muac: data.vitals.muac ?? '',
+        respiration: data.vitals.respiration ?? '',
+        weight: data.vitals.weight ?? '',
+        height: data.vitals.height ?? ''
+      }
+    } else if (data.vital_signs) {
+      const vs = data.vital_signs
+      form.value.vitals = {
+        temperature: vs.temperature ?? '',
+        muac: vs.muac ?? '',
+        respiration: vs.respiration_rate ?? '',
+        weight: vs.weight ?? '',
+        height: vs.height_length ?? ''
+      }
+    } else if (data.temperature !== undefined || data.muac !== undefined || data.respiration_rate !== undefined || data.weight !== undefined || data.height_length !== undefined) {
+      form.value.vitals = {
+        temperature: data.temperature ?? '',
+        muac: data.muac ?? '',
+        respiration: (data.respiration_rate ?? data.respiration) ?? '',
+        weight: data.weight ?? '',
+        height: (data.height_length ?? data.height) ?? ''
+      }
+    } else {
+      try {
+        const vitalsRes = await api.get(`/vitals/${visitId}`)
+        const v = vitalsRes.data?.data || vitalsRes.data || {}
+        form.value.vitals = {
+          temperature: v.temperature ?? '',
+          muac: v.muac ?? '',
+          respiration: v.respiration ?? '',
+          weight: v.weight ?? '',
+          height: v.height ?? ''
+        }
+      } catch (e) {
+        form.value.vitals = { temperature: '', muac: '', respiration: '', weight: '', height: '' }
+      }
+    }
+
+    if (form.value.patient_id) {
+      fetchSelectedPatientData(form.value.patient_id)
+    }
+
+    // Populate immunizations
+    try {
+      const immunizations = Array.isArray(data.immunizations_given) ? data.immunizations_given : (Array.isArray(data.immunizations) ? data.immunizations : [])
+      if (immunizations.length > 0) {
+        localCollectedVaccinations.value = immunizations.map(im => ({
+          patient_id: im.patient_id || form.value.patient_id,
+          vaccine_id: im.vaccine_id,
+          inventory_id: im.inventory_id,
+          vaccine_name: im.vaccine_name || im.antigen_name || im.vaccineName,
+          disease_prevented: im.disease_prevented,
+          dose_number: im.dose_number || im.doseNumber,
+          administered_date: im.administered_date,
+          age_at_administration: im.age_at_administration,
+          administered_by: im.administered_by,
+          facility_name: im.facility_name,
+          remarks: im.remarks,
+          outside: im.outside || false
+        }))
+      } else {
+        localCollectedVaccinations.value = []
+      }
+    } catch (e) {
+      console.warn('Failed to populate immunizations', e)
+      localCollectedVaccinations.value = []
+    }
+  } catch (e) {
+    console.warn('Failed to load existing visit details', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  return new Date(dateString).toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const enableEditMode = () => {
+  const patientId = route.params.patientId
+  const visitId = route.params.visitId || props.existingVisitId
+  router.push(`/admin/patients/${patientId}/visits/${visitId}/edit`)
+}
+
+onMounted(() => {
+  fetchPatients()
+  const visitId = route.params.visitId || props.existingVisitId
+  if (visitId) {
+    fetchExistingVisit(String(visitId))
+  }
+})
+
+watch(() => props.existingVisitId, (newId) => {
+  if (newId) {
+    fetchExistingVisit(String(newId))
+  }
+})
+
+watch(() => route.params.visitId, (newId) => {
+  if (newId) {
+    fetchExistingVisit(String(newId))
+  }
+})
+</script>
+
+<style scoped>
+.service-item {
+  border-left: 4px solid #198754;
+  transition: all 0.2s ease;
+}
+
+.service-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.service-details .badge {
+  font-size: 0.75em;
+}
+
+.vital-sign-item {
+  border-left: 4px solid #0dcaf0;
+  transition: all 0.2s ease;
+}
+
+.vital-sign-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.text-primary { color: #0d6efd !important; }
+.text-success { color: #198754 !important; }
+.text-info { color: #0dcaf0 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-secondary { color: #6c757d !important; }
+.text-danger { color: #dc3545 !important; }
+</style>

@@ -267,7 +267,8 @@
       }
 
       function selectVisit(v) {
-        selected.value = v
+        // Navigate to summary view instead of edit page
+        router.push(`/admin/patients/${props.patientId}/visits/${v.visit_id}`)
       }
 
       function onClose() {

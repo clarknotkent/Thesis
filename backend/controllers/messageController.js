@@ -73,6 +73,45 @@ const getMessages = async (req, res) => {
                 .is('delivered_at', null);
             }
           } catch (_) {}
+
+          // Additionally: mark read for this user's receipts in this conversation when fetching
+          try {
+            // Only receipts for this user that are still unread
+            const { data: unreadRows } = await supabase
+              .from('message_receipts')
+              .select('message_id')
+              .eq('user_id', user_id)
+              .is('read_at', null)
+              .in('message_id', ids);
+            const unreadIds = (unreadRows || []).map(r => r.message_id);
+            if (unreadIds.length) {
+              // Mark user's receipts as read now
+              await supabase
+                .from('message_receipts')
+                .update({ read_at: nowIso, delivered_at: nowIso })
+                .eq('user_id', user_id)
+                .in('message_id', unreadIds);
+
+              // For any messages where all receipts are now read, set messages.read_at
+              try {
+                // Find messages that still have at least one unread receipt
+                const { data: stillUnread } = await supabase
+                  .from('message_receipts')
+                  .select('message_id')
+                  .in('message_id', unreadIds)
+                  .is('read_at', null);
+                const stillUnreadSet = new Set((stillUnread || []).map(r => r.message_id));
+                const fullyRead = unreadIds.filter(id => !stillUnreadSet.has(id));
+                if (fullyRead.length) {
+                  await supabase
+                    .from('messages')
+                    .update({ read_at: nowIso })
+                    .in('message_id', fullyRead)
+                    .is('read_at', null);
+                }
+              } catch (_) {}
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {}

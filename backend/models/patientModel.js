@@ -343,7 +343,80 @@ const patientModel = {
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
-      return data;
+
+      // Compute status updates based on dates and update database
+      const updates = [];
+      const processedData = data.map(schedule => {
+        const dbStatus = schedule.status;
+
+        // Only override status for Pending, Rescheduled, or Scheduled
+        if (['Pending', 'Rescheduled', 'Scheduled'].includes(dbStatus)) {
+          const scheduledDate = new Date(schedule.scheduled_date);
+          const today = new Date();
+
+          // Normalize to date only (remove time)
+          const scheduledDateOnly = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate());
+          const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+          let newStatus = dbStatus;
+
+          // Check if scheduled date is today
+          if (scheduledDateOnly.getTime() === todayOnly.getTime()) {
+            newStatus = 'Due';
+          }
+          // Check if scheduled date is in the future
+          else if (scheduledDateOnly > todayOnly && dbStatus !== 'Rescheduled') {
+            newStatus = 'Scheduled';
+          }
+          // Check if scheduled date is in the past but within the same week (before Sunday)
+          else if (scheduledDateOnly < todayOnly) {
+            // Find Sunday of the same week as scheduled_date
+            const dayOfWeek = scheduledDateOnly.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const sundayOfWeek = new Date(scheduledDateOnly);
+            sundayOfWeek.setDate(scheduledDateOnly.getDate() - dayOfWeek + 7); // Next Sunday
+
+            // If today is before or on Sunday of the scheduled week, mark as Overdue
+            if (todayOnly <= sundayOfWeek) {
+              newStatus = 'Overdue';
+            }
+          }
+
+          // If status changed, add to update queue
+          if (newStatus !== dbStatus) {
+            updates.push({
+              patient_schedule_id: schedule.patient_schedule_id,
+              new_status: newStatus
+            });
+          }
+
+          return { ...schedule, status: newStatus };
+        }
+
+        // Return original schedule if no status override
+        return schedule;
+      });
+
+      // Perform database updates for status changes
+      if (updates.length > 0) {
+        console.log(`[Patient Schedule] Updating ${updates.length} schedule statuses for patient ${patientId}`);
+
+        for (const update of updates) {
+          const { error: updateError } = await supabase
+            .from('patientschedule')
+            .update({
+              status: update.new_status,
+              updated_at: new Date().toISOString()
+            })
+            .eq('patient_schedule_id', update.patient_schedule_id);
+
+          if (updateError) {
+            console.error(`Failed to update schedule ${update.patient_schedule_id}:`, updateError);
+            // Continue with other updates even if one fails
+          }
+        }
+      }
+
+      return processedData;
     } catch (error) {
       console.error('Error fetching patient schedule:', error);
       throw error;

@@ -105,8 +105,10 @@
 import { ref, watch } from 'vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { addToast } = useToast()
+const { confirm } = useConfirm()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -320,11 +322,15 @@ const saveEdit = async (item) => {
     }
 
     if (warning) {
-      // Prompt: continue with cascade or cancel (revert)
-      const proceed = window.confirm(
-        `${warning}\n\nClick OK to Continue and cascade related schedule adjustments, or Cancel to revert and keep the original date.`
-      )
-      if (proceed) {
+      // Prompt: continue with cascade or cancel (revert) using app modal
+      try {
+        await confirm({
+          title: 'Cascade effects detected',
+          message: `${warning}\n\nContinue and cascade related schedule adjustments?`,
+          variant: 'warning',
+          confirmText: 'Continue',
+          cancelText: 'Cancel'
+        })
         // Call again with cascade=true
         const cascadePayload = { ...payload, cascade: true }
         const cascadeResp = await api.post('/immunizations/manual-reschedule', cascadePayload)
@@ -337,35 +343,37 @@ const saveEdit = async (item) => {
         }
         addToast({ title: 'Success', message: 'Schedule rescheduled and related doses adjusted.', type: 'success' })
         emit('updated')
-      } else if (originalScheduledISO) {
-        // Revert to original date (no cascade)
-        try {
-          const revertPayload = { 
-            p_patient_schedule_id: item.patient_schedule_id,
-            p_new_scheduled_date: originalScheduledISO,
-            p_user_id,
-            cascade: false
+      } catch {
+        if (originalScheduledISO) {
+          // Revert to original date (no cascade)
+          try {
+            const revertPayload = { 
+              p_patient_schedule_id: item.patient_schedule_id,
+              p_new_scheduled_date: originalScheduledISO,
+              p_user_id,
+              cascade: false
+            }
+            const revertResp = await api.post('/immunizations/manual-reschedule', revertPayload)
+            const revertData = revertResp?.data || {}
+            const revertRow = revertData?.data || null
+            if (revertRow) {
+              Object.assign(item, revertRow)
+              item._editedDate = formatForInput(revertRow.scheduled_date)
+              item.status = revertRow.status
+            } else {
+              // Fallback to original value locally if API shape changes
+              item._editedDate = formatForInput(originalScheduledISO)
+            }
+            addToast({ title: 'Cancelled', message: 'Changes cancelled. Original date restored.', type: 'info' })
+            emit('updated')
+          } catch (revertErr) {
+            console.error('[ScheduleEditor] Revert failed:', revertErr)
+            addToast({ title: 'Warning', message: 'Cancelled cascade, but failed to restore original date automatically. Please retry.', type: 'warning' })
           }
-          const revertResp = await api.post('/immunizations/manual-reschedule', revertPayload)
-          const revertData = revertResp?.data || {}
-          const revertRow = revertData?.data || null
-          if (revertRow) {
-            Object.assign(item, revertRow)
-            item._editedDate = formatForInput(revertRow.scheduled_date)
-            item.status = revertRow.status
-          } else {
-            // Fallback to original value locally if API shape changes
-            item._editedDate = formatForInput(originalScheduledISO)
-          }
-          addToast({ title: 'Cancelled', message: 'Changes cancelled. Original date restored.', type: 'info' })
-          emit('updated')
-        } catch (revertErr) {
-          console.error('[ScheduleEditor] Revert failed:', revertErr)
-          addToast({ title: 'Warning', message: 'Cancelled cascade, but failed to restore original date automatically. Please retry.', type: 'warning' })
+        } else {
+          // No known original date; just notify
+          addToast({ title: 'Cancelled', message: 'Changes cancelled.', type: 'info' })
         }
-      } else {
-        // No known original date; just notify
-        addToast({ title: 'Cancelled', message: 'Changes cancelled.', type: 'info' })
       }
       return
     }
@@ -419,13 +427,15 @@ const saveEdit = async (item) => {
 }
 
 const getStatusBadgeClass = (status) => {
-  switch (status) {
-    case 'Completed': return 'bg-success'
-    case 'Pending': return 'bg-warning text-dark'
-    case 'Missed': return 'bg-danger'
-    case 'Rescheduled': return 'bg-info'
-    default: return 'bg-secondary'
-  }
+  if (!status) return 'bg-primary'
+  const s = String(status).toLowerCase()
+  if (s === 'scheduled') return 'bg-primary'
+  if (s === 'rescheduled') return 'bg-orange'
+  if (s === 'overdue') return 'bg-danger'
+  if (s === 'missed') return 'bg-danger'
+  if (s === 'pending') return 'bg-warning text-dark'
+  if (s.includes('completed') || s.includes('administered')) return 'bg-success'
+  return 'bg-secondary'
 }
 </script>
 
@@ -433,4 +443,5 @@ const getStatusBadgeClass = (status) => {
 .modal.show {
   display: block;
 }
+.bg-orange { background-color: #fd7e14 !important; color: #fff !important; }
 </style>

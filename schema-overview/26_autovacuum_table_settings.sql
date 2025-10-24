@@ -65,6 +65,7 @@ ORDER BY schema, table_name;
 | public   | schedule_master               | null       | null             |
 | public   | timestamp_normalization_audit | null       | null             |
 | public   | user_mapping                  | null       | null             |
+| public   | user_sessions                 | null       | null             |
 | public   | users                         | null       | null             |
 | public   | users_history                 | null       | null             |
 | public   | v_dob                         | null       | null             |

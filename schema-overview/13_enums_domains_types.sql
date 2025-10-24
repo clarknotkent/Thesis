@@ -924,6 +924,8 @@ ORDER BY kind, schema, name, detail;
 | composite | public     | timestamp_normalization_audit | table_name                           | text                            |
 | composite | public     | user_mapping                  | user_id                              | bigint                          |
 | composite | public     | user_mapping                  | uuid                                 | uuid                            |
+| composite | public     | user_sessions                 | last_activity                        | timestamp with time zone        |
+| composite | public     | user_sessions                 | user_id                              | bigint                          |
 | composite | public     | users                         | address                              | text                            |
 | composite | public     | users                         | birthdate                            | date                            |
 | composite | public     | users                         | contact_number                       | character varying(20)           |

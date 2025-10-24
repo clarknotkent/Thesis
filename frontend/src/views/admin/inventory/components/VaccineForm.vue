@@ -16,17 +16,6 @@
           <div class="col-xl-6 col-lg-6 col-md-6">
             <label for="antigenName" class="form-label">Antigen Name: <span class="text-danger">*</span></label>
             <div class="input-group">
-              <select
-                class="form-select"
-                v-model="selectedAntigen"
-                @change="onAntigenSelect"
-                :disabled="readOnly"
-              >
-                <option value="">-- Select or type antigen --</option>
-                <option v-for="antigen in antigenOptions" :key="antigen" :value="antigen">
-                  {{ antigen }}
-                </option>
-              </select>
               <input
                 type="text"
                 class="form-control"
@@ -38,7 +27,7 @@
                 :readonly="readOnly"
               >
             </div>
-            <small class="text-muted">Select from dropdown or type manually to add new antigen</small>
+            <small class="text-muted">Type to edit antigen name</small>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
             <label for="brandName" class="form-label">Brand Name: <span class="text-danger">*</span></label>
@@ -66,33 +55,6 @@
               >
             </div>
             <small class="text-muted">Select from dropdown or type manually to add new brand</small>
-          </div>
-          <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="manufacturer" class="form-label">Manufacturer: <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <select
-                class="form-select"
-                v-model="selectedManufacturer"
-                @change="onManufacturerSelect"
-                :disabled="readOnly"
-              >
-                <option value="">-- Select or type manufacturer --</option>
-                <option v-for="manufacturer in manufacturerOptions" :key="manufacturer" :value="manufacturer">
-                  {{ manufacturer }}
-                </option>
-              </select>
-              <input
-                type="text"
-                class="form-control"
-                id="manufacturer"
-                v-model="localForm.manufacturer"
-                @input="onManufacturerInput"
-                placeholder="e.g., Pfizer Inc., Moderna Inc."
-                required
-                :readonly="readOnly"
-              >
-            </div>
-            <small class="text-muted">Select from dropdown or type manually to add new manufacturer</small>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
             <label for="diseasePrevented" class="form-label">Disease Prevented: <span class="text-danger">*</span></label>
@@ -292,7 +254,6 @@ const localForm = ref({ ...props.initialData })
 // Dropdown selections
 const selectedAntigen = ref('')
 const selectedBrand = ref('')
-const selectedManufacturer = ref('')
 const selectedDisease = ref('')
 
 // Options for dropdowns
@@ -328,20 +289,7 @@ const brandOptions = [
   'Bharat Biotech'
 ]
 
-const manufacturerOptions = [
-  'Pfizer Inc.',
-  'Moderna Inc.',
-  'Sinovac Biotech',
-  'AstraZeneca',
-  'Johnson & Johnson',
-  'Sanofi Pasteur',
-  'GlaxoSmithKline (GSK)',
-  'Merck & Co.',
-  'Serum Institute of India',
-  'Bharat Biotech',
-  'Novartis',
-  'Wyeth Pharmaceuticals'
-]
+// Manufacturer field removed from UI per requirements
 
 const diseaseOptions = [
   'COVID-19',
@@ -391,15 +339,7 @@ const onBrandInput = () => {
   selectedBrand.value = ''
 }
 
-const onManufacturerSelect = () => {
-  if (selectedManufacturer.value) {
-    localForm.value.manufacturer = selectedManufacturer.value
-  }
-}
-
-const onManufacturerInput = () => {
-  selectedManufacturer.value = ''
-}
+// Manufacturer handlers removed per requirements
 
 const onDiseaseSelect = () => {
   if (selectedDisease.value) {

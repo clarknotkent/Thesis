@@ -152,7 +152,7 @@
                   <td>{{ user.name }}</td>
                   <td>{{ user.email }}</td>
                   <td>
-                    <span class="badge" :class="getRoleBadgeClass(user.role)">
+                    <span class="badge role-badge" :class="getRoleBadgeClass(user.role)">
                       {{ getRoleDisplayName(user.role) }}
                     </span>
                   </td>
@@ -171,11 +171,19 @@
                         <i class="bi bi-eye me-1"></i>View
                       </router-link>
                       <button 
+                        v-if="user.status === 'active'"
                         class="btn btn-sm btn-danger" 
                         @click="confirmDeleteUser(user)"
-                        :disabled="user.role === 'admin' && user.id === currentUserId"
+                        :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : ''"
                       >
                         <i class="bi bi-trash me-1"></i>Delete
+                      </button>
+                      <button
+                        v-else
+                        class="btn btn-sm btn-success"
+                        @click="openRestoreModal(user)"
+                      >
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                       </button>
                     </div>
                   </td>
@@ -184,7 +192,7 @@
             </table>
             <div v-if="users.length === 0" class="text-center py-4">
               <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
-              <p class="text-muted mt-2">No users found</p>
+              <p class="text-muted mt-2">{{ showDeleted ? 'No deleted users found' : 'No users found' }}</p>
             </div>
           </div>
         </div>
@@ -415,6 +423,22 @@
           </button>
         </div>
       </AppModal>
+
+      <!-- Restore Confirmation Modal -->
+      <AppModal
+        :show="showRestoreModal"
+        title="Confirm Restore"
+        @close="closeRestoreModal"
+      >
+        <p>Restore the user "{{ userToRestore?.name }}"?</p>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="btn btn-secondary" @click="closeRestoreModal">Cancel</button>
+          <button class="btn btn-success" @click="performRestore" :disabled="restoring">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>
+            {{ restoring ? 'Restoring...' : 'Restore User' }}
+          </button>
+        </div>
+      </AppModal>
     </div>
   </AdminLayout>
 </template>
@@ -429,6 +453,7 @@ import api from '@/services/api'
 import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 import DateInput from '@/components/common/DateInput.vue'
 import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
+import { useToast } from '@/composables/useToast'
 
 // Backend-driven; remove mock data
 
@@ -441,6 +466,9 @@ const saving = ref(false)
 const datePickerBirthdate = ref(null)
 const deleting = ref(false)
 const resettingPassword = ref(false)
+const restoring = ref(false)
+const showRestoreModal = ref(false)
+const userToRestore = ref(null)
 const searchQuery = ref('')
 const activeFilter = ref('all')
 const showDeleted = ref(false)
@@ -460,6 +488,7 @@ const isEditing = ref(false)
 const userToDelete = ref(null)
 const userToResetPassword = ref(null)
 const newPassword = ref('')
+const { addToast } = useToast()
 
 // Form data
 const userForm = ref({
@@ -506,7 +535,9 @@ const fetchUsers = async () => {
   loading.value = true
   try {
     const role = activeFilter.value !== 'all' ? activeFilter.value : ''
-    const status = showDeleted.value ? '' : 'active'
+    // When "Show Deleted" is ON, request only soft-deleted users (status = 'inactive').
+    // Otherwise, default to active users only.
+    const status = showDeleted.value ? 'inactive' : 'active'
     const { users: rows, pagination } = await apiListUsers({
       page: currentPage.value,
       limit: itemsPerPage,
@@ -606,9 +637,7 @@ const openUserModal = async (user = null) => {
         id: user.id,
         firstName: user.firstName || '',
         lastName: user.lastName || '',
-        middleName: user.middleName || '',
         email: user.email,
-        role: mapBackendRoleToOption(user.role),
         hwType: user.hwType || '',
         status: user.status,
         password: '',
@@ -701,7 +730,11 @@ const saveUser = async () => {
     closeUserModal()
     await fetchUsers()
     await fetchRecentActivity()
-    alert(isEditing.value ? 'User updated successfully!' : 'User created successfully!')
+    addToast({
+      title: 'Success',
+      message: isEditing.value ? 'User updated successfully!' : 'User created successfully!',
+      type: 'success'
+    })
   } catch (error) {
     console.error('Error saving user:', error)
     const data = error?.response?.data
@@ -715,7 +748,7 @@ const saveUser = async () => {
     } else if (error?.message) {
       msg = error.message
     }
-    alert(msg)
+    addToast({ title: 'Error', message: msg || 'Error saving user.', type: 'error' })
   } finally {
     saving.value = false
   }
@@ -726,6 +759,15 @@ const editUser = (user) => {
 }
 
 const confirmDeleteUser = (user) => {
+  // Prevent deletes with clear feedback rather than disabling the button
+  if (isAdminRole(user.role)) {
+    addToast({ title: 'Not allowed', message: 'Admin accounts cannot be deleted.', type: 'error' })
+    return
+  }
+  if (user.id === currentUserId.value) {
+    addToast({ title: 'Not allowed', message: 'You cannot delete your own account.', type: 'error' })
+    return
+  }
   userToDelete.value = user
   showDeleteModal.value = true
 }
@@ -743,11 +785,11 @@ const deleteUser = async () => {
     await apiDeleteUser(userToDelete.value.id)
     closeDeleteModal()
     await fetchUsers()
-  await fetchRecentActivity()
-    alert('User deleted successfully!')
+    await fetchRecentActivity()
+    addToast({ title: 'Success', message: 'User deleted successfully!', type: 'success' })
   } catch (error) {
     console.error('Error deleting user:', error)
-    alert('Error deleting user. Please try again.')
+    addToast({ title: 'Error', message: 'Error deleting user. Please try again.', type: 'error' })
   } finally {
     deleting.value = false
   }
@@ -769,43 +811,61 @@ const updatePassword = async () => {
   if (!userToResetPassword.value || !newPassword.value) return
   resettingPassword.value = true
   try {
-    await apiResetPassword(userToResetPassword.value.id, newPassword.value)
+    const res = await apiResetPassword(userToResetPassword.value.id, newPassword.value)
     closePasswordModal()
-  await fetchRecentActivity()
-    alert('Password reset successfully!')
+    await fetchRecentActivity()
+    const msg = (res && (res.message || res.msg)) || 'Password reset successfully!'
+    addToast({ title: 'Success', message: msg, type: 'success' })
   } catch (error) {
     console.error('Error resetting password:', error)
-    alert(error?.response?.data?.message || 'Error resetting password.')
+    const msg = error?.response?.data?.message || error?.message || 'Error resetting password.'
+    addToast({ title: 'Error', message: msg, type: 'error' })
   } finally {
     resettingPassword.value = false
   }
 }
 
-const restore = async (user) => {
+const openRestoreModal = (user) => {
+  userToRestore.value = user
+  showRestoreModal.value = true
+}
+
+const closeRestoreModal = () => {
+  showRestoreModal.value = false
+  userToRestore.value = null
+}
+
+const performRestore = async () => {
+  if (!userToRestore.value) return
+  restoring.value = true
   try {
-    await apiRestoreUser(user.id)
+    const res = await apiRestoreUser(userToRestore.value.id)
+    closeRestoreModal()
     await fetchUsers()
-  await fetchRecentActivity()
-    alert('User restored successfully!')
+    await fetchRecentActivity()
+    const msg = (res && (res.message || res.msg)) || 'User restored successfully!'
+    addToast({ title: 'Success', message: msg, type: 'success' })
   } catch (e) {
     console.error('Restore failed', e)
-    alert('Failed to restore user.')
+    const msg = e?.response?.data?.message || e?.message || 'Failed to restore user.'
+    addToast({ title: 'Error', message: msg, type: 'error' })
+  } finally {
+    restoring.value = false
   }
 }
 
 const getRoleBadgeClass = (role) => {
-  switch (role) {
-    case 'admin': return 'bg-warning text-dark'
-    case 'health_worker': return 'bg-success'
-    case 'parent': return 'bg-info text-dark'
-    default: return 'bg-secondary'
-  }
+  const r = (role || '').toLowerCase().replace(/[-\s]+/g,'_')
+  if (r === 'admin') return 'role-admin'
+  if (r === 'parent' || r === 'guardian') return 'role-parent'
+  if (r === 'health_worker' || r === 'healthstaff' || r === 'health_staff') return 'role-healthstaff'
+  return 'role-healthstaff'
 }
 
 const getRoleDisplayName = (role) => {
   switch (role) {
     case 'health_worker': return 'Health Worker'
-    case 'parent': return 'Parent'
+    case 'parent': return 'Guardian'
     case 'admin': return 'Admin'
     default: {
       // Fallback: attempt to prettify unforeseen variants
@@ -820,9 +880,21 @@ const formatDate = (date) => {
   return formatPHDateTime(date)
 }
 
-// Explicit PH timezone formatting for activity logs (Asia/Manila)
+// Explicit PH timezone formatting (treat timezone-less ISO as UTC -> PH)
 const formatDatePH = (date) => {
   if (!date) return 'Never'
+  // If string looks like ISO but without timezone (e.g., 2025-10-24T05:12:33.123456), treat as UTC
+  if (typeof date === 'string') {
+    const hasTz = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(date)
+    const looksIso = /^\d{4}-\d{2}-\d{2}T/.test(date)
+    if (!hasTz && looksIso) {
+      try {
+        return utcToPH(date + 'Z').format('MMM DD, YYYY hh:mm A')
+      } catch (_) {
+        // fall through to default formatter
+      }
+    }
+  }
   return formatPHDateTime(date)
 }
 
@@ -909,6 +981,13 @@ onMounted(() => {
   fetchUsers()
   fetchRecentActivity()
 })
+
+// Normalize role and detect admin variants for consistent UI behavior
+const isAdminRole = (role) => {
+  const raw = (role || '').toString().toLowerCase().trim()
+  const norm = raw.replace(/[-\s]+/g, '_')
+  return norm === 'admin' || norm === 'administrator' || norm === 'super_admin' || norm === 'superadmin'
+}
 </script>
 
 <style scoped>

@@ -24,4 +24,45 @@ const getVitalsignsByVisitId = async (visitId, client) => {
   };
 };
 
-module.exports = { getVitalsignsByVisitId };
+const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
+  const supabase = withClient(client);
+  
+  // Check if vitals exist for this visit
+  const existing = await getVitalsignsByVisitId(visitId, supabase);
+  
+  const vitalsPayload = {
+    temperature: vitalsData.temperature || null,
+    muac: vitalsData.muac || null,
+    respiration_rate: vitalsData.respiration || null,
+    weight: vitalsData.weight || null,
+    height_length: vitalsData.height || null,
+    updated_at: new Date().toISOString()
+  };
+  
+  if (existing) {
+    // Update existing vitals
+    const { data, error } = await supabase
+      .from('vitalsigns')
+      .update(vitalsPayload)
+      .eq('visit_id', visitId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } else {
+    // Create new vitals for this visit
+    const { data, error } = await supabase
+      .from('vitalsigns')
+      .insert({
+        visit_id: visitId,
+        ...vitalsPayload,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+};
+
+module.exports = { getVitalsignsByVisitId, updateVitalsignsByVisitId };

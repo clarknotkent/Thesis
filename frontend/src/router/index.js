@@ -127,6 +127,26 @@ const routes = [
     }
   },
   {
+    path: '/admin/patients/:patientId/visits/:visitId',
+    name: 'VisitSummary',
+    component: () => import('@/views/admin/patient-records/VisitSummaryPage.vue'),
+    meta: {
+      title: 'Visit Summary - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/patients/:patientId/visits/:visitId/edit',
+    name: 'EditVisitRecord',
+    component: () => import('@/views/admin/patient-records/VisitEditorPage.vue'),
+    meta: {
+      title: 'Edit Visit Record - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
     path: '/admin/patients/:id/vaccinations',
     name: 'PatientVaccinations',
     component: () => import('@/views/admin/patient-records/VaccinationEditorPage.vue'),

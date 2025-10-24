@@ -115,6 +115,11 @@ const props = defineProps({
   returnObject: {
     type: Boolean,
     default: false
+  },
+  // Limit number of options shown; set to 0 or negative to show all
+  maxResults: {
+    type: Number,
+    default: 50
   }
 })
 
@@ -165,17 +170,17 @@ const getOptionValue = (option) => {
 
 // Filter options based on search term
 const filteredOptions = computed(() => {
+  const limit = Number.isFinite(props.maxResults) ? props.maxResults : 50
   if (!searchTerm.value) {
-    return props.options.slice(0, 50) // Limit to 50 items when no search
+    return limit > 0 ? props.options.slice(0, limit) : props.options
   }
-  
+
   const term = searchTerm.value.toLowerCase()
-  return props.options
-    .filter(option => {
-      const label = getOptionLabel(option).toLowerCase()
-      return label.includes(term)
-    })
-    .slice(0, 50) // Limit results
+  const filtered = props.options.filter(option => {
+    const label = getOptionLabel(option).toLowerCase()
+    return label.includes(term)
+  })
+  return limit > 0 ? filtered.slice(0, limit) : filtered
 })
 
 // Check if there's an exact match
@@ -187,8 +192,8 @@ const exactMatch = computed(() => {
   )
 })
 
-// Initialize search term from model value
-watch(() => props.modelValue, (newVal) => {
+// Helper function to update search term
+const updateSearchTerm = (newVal) => {
   if (!newVal) {
     searchTerm.value = ''
     return
@@ -208,6 +213,16 @@ watch(() => props.modelValue, (newVal) => {
   } else if (typeof newVal === 'string' || typeof newVal === 'number') {
     searchTerm.value = String(newVal)
   }
+}
+
+// Initialize search term from model value
+watch(() => props.modelValue, (newVal) => {
+  updateSearchTerm(newVal)
+}, { immediate: true })
+
+// Also watch for options changes to update display when options are loaded
+watch(() => props.options, () => {
+  updateSearchTerm(props.modelValue)
 }, { immediate: true })
 
 const handleInput = () => {

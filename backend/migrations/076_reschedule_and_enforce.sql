@@ -497,7 +497,7 @@ BEGIN
     -- Hard-stop: if requested date exceeds same-vaccine max interval bound, block manual reschedule
     IF v_prev_ref IS NOT NULL AND v_max_same IS NOT NULL THEN
         IF v_candidate > (v_prev_ref + (v_max_same * INTERVAL '1 day'))::date THEN
-            RAISE EXCEPTION 'Cannot schedule within max_interval_days window (% days from previous dose).', v_max_same;
+            RAISE EXCEPTION 'Cannot schedule beyond max_interval_days window (% days from previous dose).', v_max_same;
         END IF;
     END IF;
 

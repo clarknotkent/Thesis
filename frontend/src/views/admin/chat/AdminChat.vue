@@ -51,6 +51,7 @@
                 :conversation="selectedConversation"
                 :participant-list="participantList"
                 :leaving="leaving"
+                :current-user-id="currentUserId"
                 @leave="handleLeave"
                 @close="selectedConversation = null"
               />
@@ -324,7 +325,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .admin-content {
-  padding: 1.5rem;
+  padding: 0;
 }
 
 .chat-container {
@@ -356,7 +357,7 @@ onBeforeUnmount(() => {
   }
   
   .admin-content {
-    padding: 1rem;
+    padding: 0%;
   }
 }
 </style>

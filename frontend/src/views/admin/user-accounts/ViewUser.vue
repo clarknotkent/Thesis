@@ -59,7 +59,7 @@
           </div>
         </div>
 
-        <div class="col-lg-4">
+  <div class="col-lg-4">
           <!-- Account Stats -->
           <div class="card shadow mb-4">
             <div class="card-header py-3">
@@ -68,7 +68,7 @@
             <div class="card-body">
               <div class="mb-3">
                 <small class="text-muted d-block">Role</small>
-                <span class="badge" :class="roleBadgeClass">
+                <span class="badge role-badge" :class="roleBadgeClass">
                   {{ roleDisplayName }}
                 </span>
               </div>
@@ -98,20 +98,27 @@
                 </router-link>
                 <button 
                   class="btn btn-warning"
-                  @click="handleResetPassword"
+                  @click="openPasswordModal"
                 >
                   <i class="bi bi-key me-2"></i>Reset Password
                 </button>
                 <button 
+                  v-if="userData?.status === 'active'"
                   class="btn btn-danger"
-                  @click="handleDelete"
-                  :disabled="userData?.role === 'admin'"
+                  @click="openDeleteModal"
                 >
                   <i class="bi bi-trash me-2"></i>Delete User
                 </button>
+                <button
+                  v-else
+                  class="btn btn-success"
+                  @click="openRestoreModal"
+                >
+                  <i class="bi bi-arrow-counterclockwise me-2"></i>Restore User
+                </button>
               </div>
               
-              <div v-if="userData?.role === 'admin'" class="alert alert-warning mt-3 mb-0 small">
+              <div v-if="isAdmin" class="alert alert-warning mt-3 mb-0 small">
                 <i class="bi bi-exclamation-triangle me-1"></i>
                 Admin accounts cannot be deleted
               </div>
@@ -125,6 +132,64 @@
         <i class="bi bi-exclamation-circle me-2"></i>
         Failed to load user data. <router-link to="/admin/users">Go back to user list</router-link>
       </div>
+
+      <!-- Password Reset Modal -->
+      <AppModal
+        :show="showPasswordModal"
+        title="Reset Password"
+        @close="closePasswordModal"
+      >
+        <p>Reset password for user "{{ userFullName }}"?</p>
+        <div class="mb-3">
+          <label class="form-label">New Password</label>
+          <input
+            type="password"
+            class="form-control"
+            v-model="newPassword"
+            placeholder="Enter new password"
+          >
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="btn btn-secondary" @click="closePasswordModal">Cancel</button>
+          <button class="btn btn-primary" @click="submitPasswordReset" :disabled="resettingPassword">
+            <i class="bi bi-key me-1"></i>
+            {{ resettingPassword ? 'Resetting...' : 'Reset Password' }}
+          </button>
+        </div>
+      </AppModal>
+
+      <!-- Delete Confirmation Modal -->
+      <AppModal
+        :show="showDeleteModal"
+        title="Confirm Delete"
+        @close="closeDeleteModal"
+      >
+        <p>Are you sure you want to delete the user "{{ userFullName }}"?</p>
+        <p class="text-danger small">This action cannot be undone.</p>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="btn btn-secondary" @click="closeDeleteModal">Cancel</button>
+          <button class="btn btn-danger" @click="performDelete" :disabled="deleting">
+            <i class="bi bi-trash me-1"></i>
+            {{ deleting ? 'Deleting...' : 'Delete User' }}
+          </button>
+        </div>
+      </AppModal>
+
+      <!-- Restore Confirmation Modal -->
+      <AppModal
+        :show="showRestoreModal"
+        title="Confirm Restore"
+        @close="closeRestoreModal"
+      >
+        <p>Restore the user "{{ userFullName }}"?</p>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="btn btn-secondary" @click="closeRestoreModal">Cancel</button>
+          <button class="btn btn-success" @click="performRestore" :disabled="restoring">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>
+            {{ restoring ? 'Restoring...' : 'Restore User' }}
+          </button>
+        </div>
+      </AppModal>
     </div>
   </AdminLayout>
 </template>
@@ -133,19 +198,25 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AppModal from '@/components/common/AppModal.vue'
 import UserForm from './components/UserForm.vue'
-import { getUser, deleteUser, resetPassword } from '@/services/users'
+import { getUser, deleteUser, resetPassword, restoreUser } from '@/services/users'
 import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
-const { confirm } = useConfirm()
 
 const userData = ref(null)
 const loading = ref(true)
 const userId = computed(() => route.params.id)
+const showPasswordModal = ref(false)
+const newPassword = ref('')
+const resettingPassword = ref(false)
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const showRestoreModal = ref(false)
+const restoring = ref(false)
 
 onMounted(async () => {
   await fetchUserData()
@@ -171,7 +242,7 @@ const fetchUserData = async () => {
       role: user.role || '',
       // prefer new hs_type field, but fall back to older names for compatibility
       hsType: user.hs_type || user.hsType || user.hw_type || user.hwType || '',
-      status: user.status || 'active',
+  status: user.is_deleted ? 'inactive' : (user.status || 'active'),
       licenseNumber: user.professional_license_no || user.license_number || user.licenseNumber || '',
       employeeId: user.employee_id || user.employeeId || '',
       phoneNumber: user.phone_number || user.phoneNumber || '',
@@ -184,7 +255,7 @@ const fetchUserData = async () => {
     }
   } catch (error) {
     console.error('Error fetching user data:', error)
-    addToast('Error loading user data', 'error')
+    addToast({ title: 'Error', message: 'Error loading user data', type: 'error' })
     userData.value = null
   } finally {
     loading.value = false
@@ -216,12 +287,12 @@ const statusBadgeClass = computed(() => {
 })
 
 const roleBadgeClass = computed(() => {
-  if (!userData.value) return 'bg-secondary'
-  const role = userData.value.role
-  if (role === 'admin') return 'bg-danger'
-  if (role === 'health_worker' || role === 'health_staff' || role === 'HealthStaff') return 'bg-primary'
-  if (role === 'parent') return 'bg-info'
-  return 'bg-secondary'
+  if (!userData.value) return 'role-healthstaff'
+  const role = (userData.value.role || '').toLowerCase().replace(/[-\s]+/g,'_')
+  if (role === 'admin') return 'role-admin'
+  if (role === 'parent' || role === 'guardian') return 'role-parent'
+  if (role === 'health_worker' || role === 'healthstaff' || role === 'health_staff') return 'role-healthstaff'
+  return 'role-healthstaff'
 })
 
 const formatDate = (dateString) => {
@@ -236,42 +307,95 @@ const formatDate = (dateString) => {
   })
 }
 
-const handleResetPassword = async () => {
-  const confirmed = await confirm(
-    'Reset Password',
-    'Are you sure you want to reset this user\'s password? A new password will be generated.'
-  )
-  
-  if (!confirmed) return
-  
+// Robust admin detection to cover variants like 'Admin', 'administrator', 'super admin'
+const isAdmin = computed(() => {
+  const raw = (userData.value?.role || '').toString().toLowerCase().trim()
+  const norm = raw.replace(/[-\s]+/g, '_')
+  return norm === 'admin' || norm === 'administrator' || norm === 'super_admin' || norm === 'superadmin'
+})
+
+const openPasswordModal = () => {
+  newPassword.value = ''
+  showPasswordModal.value = true
+}
+
+const closePasswordModal = () => {
+  showPasswordModal.value = false
+  newPassword.value = ''
+}
+
+const submitPasswordReset = async () => {
+  if (!newPassword.value) return
+  resettingPassword.value = true
   try {
-    const newPassword = prompt('Enter new password:')
-    if (!newPassword) return
-    
-    await resetPassword(userId.value, newPassword)
-    addToast('Password reset successfully!', 'success')
+    const res = await resetPassword(userId.value, newPassword.value)
+    closePasswordModal()
+    const msg = (res && (res.message || res.msg)) || 'Password reset successfully!'
+    addToast({ title: 'Success', message: msg, type: 'success' })
   } catch (error) {
     console.error('Error resetting password:', error)
-    addToast('Error resetting password', 'error')
+    const msg = error?.response?.data?.message || error?.message || 'Error resetting password.'
+    addToast({ title: 'Error', message: msg, type: 'error' })
+  } finally {
+    resettingPassword.value = false
   }
 }
 
-const handleDelete = async () => {
-  const userName = `${userData.value.firstName} ${userData.value.lastName}`
-  const confirmed = await confirm(
-    'Delete User',
-    `Are you sure you want to delete ${userName}? This action cannot be undone.`
-  )
-  
-  if (!confirmed) return
-  
+const userFullName = computed(() => {
+  if (!userData.value) return ''
+  return `${userData.value.firstName || ''} ${userData.value.lastName || ''}`.trim()
+})
+
+const openDeleteModal = () => {
+  if (isAdmin.value) {
+    addToast({ title: 'Not allowed', message: 'Admin accounts cannot be deleted.', type: 'error' })
+    return
+  }
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false
+}
+
+const performDelete = async () => {
+  deleting.value = true
   try {
     await deleteUser(userId.value)
-    addToast('User deleted successfully!', 'success')
+    addToast({ title: 'Success', message: 'User deleted successfully!', type: 'success' })
     router.push('/admin/users')
   } catch (error) {
     console.error('Error deleting user:', error)
-    addToast('Error deleting user', 'error')
+    const msg = error?.response?.data?.message || error?.message || 'Error deleting user'
+    addToast({ title: 'Error', message: msg, type: 'error' })
+  } finally {
+    deleting.value = false
+    showDeleteModal.value = false
+  }
+}
+
+const openRestoreModal = () => {
+  showRestoreModal.value = true
+}
+
+const closeRestoreModal = () => {
+  showRestoreModal.value = false
+}
+
+const performRestore = async () => {
+  restoring.value = true
+  try {
+    const res = await restoreUser(userId.value)
+    const msg = (res && (res.message || res.msg)) || 'User restored successfully!'
+    addToast({ title: 'Success', message: msg, type: 'success' })
+    await fetchUserData()
+  } catch (error) {
+    console.error('Error restoring user:', error)
+    const msg = error?.response?.data?.message || error?.message || 'Failed to restore user.'
+    addToast({ title: 'Error', message: msg, type: 'error' })
+  } finally {
+    restoring.value = false
+    showRestoreModal.value = false
   }
 }
 </script>
@@ -288,7 +412,5 @@ const handleDelete = async () => {
   color: #6c757d;
 }
 
-.badge {
-  text-transform: capitalize;
-}
+.badge { text-transform: capitalize; }
 </style>

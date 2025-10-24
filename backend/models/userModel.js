@@ -130,7 +130,7 @@ const userModel = {
     try {
       const { data, error } = await supabase
         .from('users_with_uuid')
-  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid')
+  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid, is_deleted')
         .eq('user_id', id)
         .single();
 

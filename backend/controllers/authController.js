@@ -299,9 +299,19 @@ const loginUser = async (req, res) => {
     }
 
     // Issue application JWT for frontend
-    const token = jwt.sign({ id: appUser.user_id, role: appUser.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Use longer absolute exp (7d); inactivity is enforced server-side via user_sessions
+    const token = jwt.sign({ id: appUser.user_id, role: appUser.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     console.log(`Login success: user_id=${appUser.user_id} role=${appUser.role} identifier=${identifier}`);
     res.json({ token, user: appUser });
+
+    // Update last_activity on login (treat as activity)
+    try {
+      await supabase
+        .from('user_sessions')
+        .upsert({ user_id: appUser.user_id, last_activity: new Date().toISOString() }, { onConflict: 'user_id' });
+    } catch (_) {
+      // Non-fatal
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Login failed' });
@@ -366,8 +376,17 @@ const refreshToken = async (req, res) => {
   try {
     const { token } = req.body;
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const newToken = jwt.sign({ id: decoded.id, role: decoded.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const newToken = jwt.sign({ id: decoded.id, role: decoded.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token: newToken });
+
+    // Update last_activity on refresh (treat as activity)
+    try {
+      await supabase
+        .from('user_sessions')
+        .upsert({ user_id: decoded.id, last_activity: new Date().toISOString() }, { onConflict: 'user_id' });
+    } catch (_) {
+      // Non-fatal
+    }
   } catch (error) {
     console.error(error);
     res.status(401).json({ message: 'Token refresh failed' });

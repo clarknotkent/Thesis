@@ -383,7 +383,7 @@ const fetchExistingVaccines = async () => {
       : []
   } catch (e) {
     console.error('Error fetching vaccines', e)
-    addToast('Error loading vaccines', 'error')
+  addToast({ title: 'Error', message: 'Error loading vaccines', type: 'error' })
   }
 }
 
@@ -437,7 +437,7 @@ const fetchSchedule = async () => {
     scheduleLoaded.value = true
   } catch (error) {
     console.error('Error fetching schedule:', error)
-    addToast('Error loading schedule data', 'error')
+  addToast({ title: 'Error', message: 'Error loading schedule data', type: 'error' })
     scheduleLoaded.value = false
   } finally {
     loading.value = false
@@ -518,17 +518,26 @@ function buildPayload() {
 }
 
 const handleSubmit = async () => {
-  if (!selectedVaccine.vaccine_id) return
-  
+  // Accept either vaccine_id (preferred) or id fallback; deref ref correctly
+  const v = selectedVaccine?.value || {}
+  const vid = v.vaccine_id || v.id
+  if (!vid) {
+  addToast({ title: 'Error', message: 'Missing vaccine identifier for this schedule.', type: 'error' })
+    return
+  }
+
   submitting.value = true
   try {
     const payload = buildPayload()
-    await api.put(`/vaccines/${selectedVaccine.vaccine_id}/schedule`, payload)
-    addToast('Schedule updated successfully!', 'success')
+    const res = await api.put(`/vaccines/${vid}/schedule`, payload)
+    // Prefer server message when provided; fallback to default
+  const okMsg = (res?.data?.message ? String(res.data.message).trim() : '') || 'Schedule updated successfully!'
+  addToast({ title: 'Success', message: okMsg, type: 'success' })
     router.push('/admin/vaccines')
   } catch (error) {
     console.error('Error updating schedule:', error)
-    addToast(error.response?.data?.message || 'Error updating schedule', 'error')
+  const errMsg = (error?.response?.data?.message ? String(error.response.data.message).trim() : '') || 'Error updating schedule'
+  addToast({ title: 'Error', message: errMsg, type: 'error' })
   } finally {
     submitting.value = false
   }

@@ -23,8 +23,6 @@
 - In Guardian UI, Guardians can edit their profile (include occupation and alt phone number)
 - Once Inventory Stock is deleted, should we be able to restore it? (or no need for restoration?)
 
-- Make sure that all fields are well-mapped (must prefill/occupy/populate necessary fields)`
-
 
 ---- BACKEND ----
 

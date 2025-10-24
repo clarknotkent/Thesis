@@ -84,3 +84,31 @@
 .bg-gradient-purple { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%) !important; }
 .bg-gradient-emergency { background:linear-gradient(135deg,#ff6b6b 0%,#ee5a52 100%) !important; }
 .bg-gradient-soft { background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%) !important; }
+
+/* Role badge utilities (standardize across app) */
+.role-badge { 
+  display:inline-block; 
+  border-radius: 999px; 
+  padding: .35rem .6rem; 
+  font-weight: 600; 
+  line-height: 1; 
+  font-size: .75rem;
+}
+.role-admin { 
+  background: var(--role-admin-bg); 
+  color: var(--role-admin-text); 
+  border: 1px solid var(--role-admin-border);
+}
+.role-parent, .role-guardian { 
+  background: var(--role-parent-bg); 
+  color: var(--role-parent-text);
+}
+.role-healthstaff, .role-health_worker, .role-health-worker { 
+  background: var(--role-healthstaff-bg); 
+  color: var(--role-healthstaff-text);
+}
+.role-system {
+  background: var(--role-system-bg);
+  color: var(--role-system-text);
+  border: 1px solid var(--role-system-border);
+}

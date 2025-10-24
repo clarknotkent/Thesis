@@ -59,10 +59,32 @@
           <form @submit.prevent="saveAllRecords">
             <div v-for="(dose, index) in doseRecords" :key="dose.id" class="dose-card mb-4">
               <div class="dose-header">
-                <span class="badge bg-primary">Dose {{ dose.doseNumber }}</span>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="badge bg-primary">Dose {{ dose.doseNumber }}</span>
+                  <span class="badge" :class="dose.isOutside ? 'bg-warning text-dark' : 'bg-success'">
+                    <i class="bi" :class="dose.isOutside ? 'bi-geo-alt' : 'bi-building'"></i>
+                    {{ dose.isOutside ? 'Outside' : 'In-facility' }}
+                  </span>
+                </div>
               </div>
               
               <div class="row g-3 mt-2">
+                <!-- Vaccine Inventory Selection -->
+                <div class="col-md-6" v-if="!dose.isOutside">
+                  <label class="form-label">Vaccine Inventory: <span class="text-danger">*</span></label>
+                  <SearchableSelect
+                    v-model="dose.selectedInventoryId"
+                    :options="dose.inventoryOptions || []"
+                    placeholder="Select vaccine inventory"
+                    label-key="displayLabel"
+                    value-key="id"
+                    :max-results="0"
+                    :required="true"
+                    @update:modelValue="onInventoryChange(index, $event)"
+                  />
+                  <small class="text-muted">Select vaccine inventory to update manufacturer and lot number</small>
+                </div>
+
                 <!-- Date Administered -->
                 <div class="col-md-6">
                   <label class="form-label">Date Administered: <span class="text-danger">*</span></label>
@@ -86,7 +108,7 @@
                 </div>
 
                 <!-- Administered By -->
-                <div class="col-md-6">
+                <div class="col-md-6" v-if="!dose.isOutside">
                   <label class="form-label">Administered By: <span class="text-danger">*</span></label>
                   <SearchableSelect
                     v-model="dose.administeredBy"
@@ -95,7 +117,19 @@
                     label-key="name"
                     value-key="user_id"
                     :required="true"
+                    :disabled="true"
                   />
+                  <small class="text-muted">Cannot be edited for existing records</small>
+                </div>
+                <div class="col-md-6" v-else>
+                  <label class="form-label">Administered By:</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    v-model="dose.administeredByDisplay"
+                    placeholder="Name of vaccinator or provider"
+                  >
+                  <small class="text-muted">Editable for outside records; included in remarks on save</small>
                 </div>
 
                 <!-- Site of Administration -->
@@ -119,15 +153,32 @@
                   >
                 </div>
 
-                <!-- Status -->
+                <!-- Manufacturer -->
                 <div class="col-md-6">
-                  <label class="form-label">Status:</label>
-                  <select class="form-select" v-model="dose.status">
-                    <option value="Completed">Completed</option>
-                    <option value="Administered">Administered</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Missed">Missed</option>
-                  </select>
+                  <label class="form-label">Manufacturer:</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    v-model="dose.manufacturer"
+                    placeholder="Vaccine manufacturer"
+                    :readonly="!dose.isOutside"
+                  >
+                  <small class="text-muted" v-if="!dose.isOutside">Auto-filled from selected inventory</small>
+                  <small class="text-muted" v-else>Editable for outside records; included in remarks on save</small>
+                </div>
+
+                <!-- Lot Number -->
+                <div class="col-md-6">
+                  <label class="form-label">Lot Number:</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    v-model="dose.lotNumber"
+                    placeholder="Vaccine lot/batch number"
+                    :readonly="!dose.isOutside"
+                  >
+                  <small class="text-muted" v-if="!dose.isOutside">Auto-filled from selected inventory</small>
+                  <small class="text-muted" v-else>Editable for outside records; included in remarks on save</small>
                 </div>
 
                 <!-- Remarks -->
@@ -199,10 +250,14 @@ const doseRecords = ref([])
 const diseasePrevented = ref('—')
 
 const isFormValid = computed(() => {
-  return doseRecords.value.every(dose => 
-    dose.dateAdministered && 
-    dose.administeredBy
-  )
+  return doseRecords.value.every(dose => {
+    const isOutside = isDoseOutside(dose)
+    const hasRequiredFields = dose.dateAdministered
+    const hasAdministeredBy = isOutside ? true : dose.administeredBy
+    const hasInventorySelected = isOutside ? true : dose.selectedInventoryId // Outside records don't require inventory
+    
+    return hasRequiredFields && hasAdministeredBy && hasInventorySelected
+  })
 })
 
 const goBack = () => {
@@ -278,29 +333,168 @@ const formatDateForAPI = (dateString) => {
   }
 }
 
-const deriveSite = (record) => {
-  const remarks = record?.remarks || record?.notes || ''
-  if (remarks) {
-    const match = remarks.match(/(?:site|injection site)\s*[:\-]\s*([^;,.\n]+)/i)
-    if (match && match[1]) return match[1].trim()
-    if (/deltoid|thigh|vastus|buttock|arm|left|right|intramuscular|subcutaneous/i.test(remarks)) {
-      return remarks
-    }
-  }
-  return record?.site || record?.site_of_administration || record?.siteOfAdministration || ''
+// Resolve a display name for Administered By
+const getAdministeredByDisplay = (dose) => {
+  if (!dose) return ''
+  if (dose.isOutside) return dose.administeredByDisplay || ''
+  const v = dose.administeredBy
+  if (!v) return ''
+  if (typeof v === 'string') return v
+  const hw = Array.isArray(healthWorkers.value)
+    ? healthWorkers.value.find(h => h?.user_id === v || h?.id === v)
+    : null
+  return hw?.name || ''
 }
 
-const deriveFacility = (record) => {
-  const isOutside = !!(record?.immunization_outside || record?.is_outside || record?.isOutside || record?.outside_immunization)
-  if (isOutside) return 'Outside'
-  return (
-    record?.immunization_facility_name ||
-    record?.facility_name ||
-    record?.facilityName ||
-    record?.health_center ||
-    record?.healthCenter ||
-    ''
-  )
+// Build structured remarks: main remarks + labeled fields
+const buildStructuredRemarks = (dose) => {
+  const main = (dose.remarks && dose.remarks.trim()) ? dose.remarks.trim() : ''
+  const parts = []
+  if (dose.siteOfAdministration) parts.push(`Site: ${dose.siteOfAdministration}`)
+  if (dose.facilityName) parts.push(`Facility: ${dose.facilityName}`)
+  const adminByName = getAdministeredByDisplay(dose)
+  if (adminByName) parts.push(`Administered by: ${adminByName}`)
+  if (dose.manufacturer) parts.push(`Manufacturer: ${dose.manufacturer}`)
+  if (dose.lotNumber) parts.push(`Lot: ${dose.lotNumber}`)
+  const finalRemarks = [main, ...parts].filter(Boolean).join(' | ')
+  console.log('[RemarksCompose] Dose', {
+    id: dose.id,
+    doseNumber: dose.doseNumber,
+    isOutside: dose.isOutside,
+    main,
+    site: dose.siteOfAdministration,
+    facility: dose.facilityName,
+    administeredBy: adminByName,
+    manufacturer: dose.manufacturer,
+    lot: dose.lotNumber,
+    finalRemarks
+  })
+  return finalRemarks
+}
+
+const onInventoryChange = (doseIndex, selectedInventoryId) => {
+  const dose = doseRecords.value[doseIndex]
+  if (!dose || !selectedInventoryId) return
+
+  // Find the selected inventory option
+  const selectedOption = dose.inventoryOptions?.find(opt => opt.id === selectedInventoryId)
+  if (selectedOption) {
+    // Update manufacturer and lot number from selected inventory
+    dose.manufacturer = selectedOption.manufacturer || ''
+    dose.lotNumber = selectedOption.lotNumber || ''
+    // IMPORTANT: Do NOT overwrite dose.inventoryId here; keep original for change detection in save
+    // We'll only persist the change during saveAllRecords when invChanged is true
+    console.log(
+      `[InventorySelect] Dose ${dose.doseNumber} (id=${dose.id}) selectedInventoryId=${selectedInventoryId}, originalInventoryId=${dose.inventoryId}`
+    )
+    
+    console.log(`Updated dose ${dose.doseNumber} with inventory ${selectedInventoryId}: Manufacturer: ${dose.manufacturer}, Lot: ${dose.lotNumber}`)
+  }
+}
+
+const isDoseOutside = (dose) => {
+  // Check if this dose was administered outside
+  return !!(dose?.immunization_outside || dose?.is_outside || dose?.isOutside || dose?.outside_immunization || dose?.outside)
+}
+
+const parseRemarksForOutside = (remarks) => {
+  const result = {
+    site: '',
+    facility: '',
+    manufacturer: '',
+    lot: '',
+    administeredBy: '',
+    otherRemarks: ''
+  }
+
+  if (!remarks) return result
+
+  const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+  const aliases = {
+    site: ['site', 'injectionsite'],
+    facility: ['facility', 'center', 'clinic', 'hospital', 'healthcenter', 'healthcentre'],
+    manufacturer: ['manufacturer', 'mfr', 'brand'],
+    lot: ['lot', 'lotnumber', 'batch'],
+  administeredBy: ['administeredby', 'vaccinator', 'givenby', 'admin', 'adm', 'vaccinatedby']
+  }
+
+  const parts = remarks.split('|').map(p => p.trim()).filter(Boolean)
+  const unmatched = []
+
+  for (const part of parts) {
+    // Prefer explicit label: value
+    const idx = part.indexOf(':')
+    if (idx > -1) {
+      const labelRaw = part.slice(0, idx).trim()
+      const valueRaw = part.slice(idx + 1).trim()
+      const key = normalize(labelRaw)
+      let handled = false
+
+      if (aliases.site.includes(key)) {
+        result.site = valueRaw
+        handled = true
+      } else if (aliases.facility.includes(key)) {
+        result.facility = valueRaw
+        handled = true
+      } else if (aliases.manufacturer.includes(key)) {
+        result.manufacturer = valueRaw
+        handled = true
+      } else if (aliases.lot.includes(key)) {
+        result.lot = valueRaw
+        handled = true
+      } else if (aliases.administeredBy.includes(key)) {
+        result.administeredBy = valueRaw
+        handled = true
+      }
+
+      if (!handled) {
+        // Try fuzzy: if label contains any alias
+        const keyLoose = normalize(labelRaw)
+        if (aliases.site.some(a => keyLoose.includes(a))) {
+          result.site = valueRaw
+          handled = true
+        } else if (aliases.facility.some(a => keyLoose.includes(a))) {
+          result.facility = valueRaw
+          handled = true
+        } else if (aliases.manufacturer.some(a => keyLoose.includes(a))) {
+          result.manufacturer = valueRaw
+          handled = true
+        } else if (aliases.lot.some(a => keyLoose.includes(a))) {
+          result.lot = valueRaw
+          handled = true
+        } else if (aliases.administeredBy.some(a => keyLoose.includes(a))) {
+          result.administeredBy = valueRaw
+          handled = true
+        }
+      }
+
+      if (!handled) {
+        unmatched.push(part)
+      }
+    } else {
+      // No colon: keep as unmatched for now
+      unmatched.push(part)
+    }
+  }
+
+  // Fallback regex scan on unmatched blob for any missing fields
+  const remaining = unmatched.join(' | ')
+  const applyMatch = (regex, setter) => {
+    const m = remaining.match(regex)
+    if (m && m[1]) setter(m[1].trim())
+  }
+  if (!result.site) applyMatch(/(?:site|injection site)\s*[-]?\s*([^;|,\n]+)/i, (v) => (result.site = v))
+  if (!result.facility) applyMatch(/(?:facility|center|clinic|hospital)\s*[-]?\s*([^;|,\n]+)/i, (v) => (result.facility = v))
+  if (!result.manufacturer) applyMatch(/(?:manufacturer|mfr|brand)\s*[-]?\s*([^;|,\n]+)/i, (v) => (result.manufacturer = v))
+  if (!result.lot) applyMatch(/(?:lot(?:\s*number)?|batch)\s*[-]?\s*([^;|,\n]+)/i, (v) => (result.lot = v))
+  if (!result.administeredBy) applyMatch(/(?:administered\s*by|vaccinator|given\s*by)\s*[-]?\s*([^;|,\n]+)/i, (v) => (result.administeredBy = v))
+
+  // Other remarks are what's left unmatched
+  result.otherRemarks = remaining.replace(/^\s*[\(\[\{]\s*|\s*[\)\]\}]\s*$/g, '').trim()
+
+  console.log('[RemarksParse] Split parts:', parts)
+  console.log('[RemarksParse] Parsed outside remarks:', { input: remarks, parsed: result })
+  return result
 }
 
 const fetchPatientData = async () => {
@@ -323,6 +517,112 @@ const fetchHealthWorkers = async () => {
   }
 }
 
+const fetchVaccineAndInventoryData = async () => {
+  try {
+    // Fetch all available vaccine inventory stocks
+    try {
+      const inventoryResponse = await api.get('/vaccines/inventory')
+      const allInventory = inventoryResponse.data?.data || inventoryResponse.data || []
+      
+      // Group inventory by vaccine_id to get vaccine information
+      const vaccineIds = [...new Set(allInventory.map(inv => inv.vaccine_id).filter(id => id))]
+      
+      // Fetch vaccine data for all vaccines that have inventory
+      const vaccineData = {}
+      if (vaccineIds.length > 0) {
+        const vaccinePromises = vaccineIds.map(id => api.get(`/vaccines/${id}`))
+        const vaccineResponses = await Promise.all(vaccinePromises)
+        
+        vaccineResponses.forEach((response, index) => {
+          const vaccine = response.data.data || response.data
+          vaccineData[vaccineIds[index]] = vaccine
+        })
+      }
+
+      // Create inventory options for all doses (both in-facility and outside)
+      doseRecords.value.forEach(dose => {
+        // Filter inventory to only show stocks for the current vaccine antigen
+        const filteredInventory = allInventory.filter(inv => {
+          const vaccine = vaccineData[inv.vaccine_id] || {}
+          const antigenName = inv.antigen_name || inv.antigenName || vaccine.antigen_name || vaccine.antigenName || ''
+          return antigenName === vaccineName.value
+        })
+
+        // Create inventory options from filtered inventory
+        dose.inventoryOptions = filteredInventory.map(inv => {
+          const vaccine = vaccineData[inv.vaccine_id] || {}
+          const antigenName = inv.antigen_name || inv.antigenName || vaccine.antigen_name || vaccine.antigenName || 'Unknown Antigen'
+          const brandName = inv.brand_name || inv.brandName || vaccine.brand_name || vaccine.brandName || 'Unknown Brand'
+          const lotNumber = inv.lot_number || inv.lotNumber || 'No Lot'
+          const manufacturer = inv.vaccinemaster?.manufacturer || inv.brand_name || 'Unknown Manufacturer'
+          
+          return {
+            id: inv.id || inv.inventory_id,
+            displayLabel: `${antigenName}, ${brandName}, ${manufacturer}, ${lotNumber}`,
+            lotNumber: lotNumber,
+            manufacturer: manufacturer,
+            expiryDate: inv.expiry_date || inv.expiryDate,
+            quantity: inv.quantity || 0,
+            antigenName: antigenName,
+            brandName: brandName,
+            vaccineId: inv.vaccine_id
+          }
+        })
+
+        // For in-facility records, pre-select the current inventory if it exists
+        if (!dose.isOutside && dose.inventoryId) {
+          dose.selectedInventoryId = dose.inventoryId
+        }
+
+        console.log(`Filtered inventory options for dose ${dose.doseNumber} (antigen: ${vaccineName.value}):`, dose.inventoryOptions)
+      })
+    } catch (invErr) {
+      console.error('Error fetching all inventory:', invErr)
+      // Set empty options for all doses
+      doseRecords.value.forEach(dose => {
+        dose.inventoryOptions = []
+      })
+    }
+
+    // For existing records, ensure manufacturer and lot are populated from current inventory
+    const inventoryIds = [...new Set(doseRecords.value.map(d => d.inventoryId).filter(id => id))]
+    if (inventoryIds.length > 0) {
+      try {
+        const inventoryPromises = inventoryIds.map(id => api.get(`/vaccines/inventory/${id}`))
+        const inventoryResponses = await Promise.all(inventoryPromises)
+        
+        const inventoryData = {}
+        inventoryResponses.forEach((response, index) => {
+          const inventory = response.data.data || response.data
+          inventoryData[inventoryIds[index]] = inventory
+          console.log(`Inventory data for ID ${inventoryIds[index]}:`, inventory) // Debug: see inventory data
+        })
+
+        // Update dose records with inventory lot number data (for records that don't have it yet)
+        doseRecords.value.forEach(dose => {
+          if (!dose.isOutside && dose.inventoryId && inventoryData[dose.inventoryId]) {
+            const inventory = inventoryData[dose.inventoryId]
+            const newLotNumber = inventory.lot_number || inventory.lotNumber || ''
+            const newManufacturer = inventory.manufacturer || inventory.brand_name || ''
+            if (!dose.lotNumber && newLotNumber) {
+              dose.lotNumber = newLotNumber
+              console.log(`Updated lot number for dose ${dose.doseNumber}: ${newLotNumber}`)
+            }
+            if (!dose.manufacturer && newManufacturer) {
+              dose.manufacturer = newManufacturer
+              console.log(`Updated manufacturer for dose ${dose.doseNumber}: ${newManufacturer}`)
+            }
+          }
+        })
+      } catch (err) {
+        console.error('Error fetching inventory data:', err)
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching vaccine and inventory data:', err)
+  }
+}
+
 const fetchVaccinationRecords = async () => {
   try {
     loading.value = true
@@ -335,6 +635,8 @@ const fetchVaccinationRecords = async () => {
     const response = await api.get(`/patients/${patientId.value}`)
     const patient = response.data.data || response.data
     
+    console.log('Patient data from backend:', patient) // Debug: see patient data structure
+    
     let vaccinations = patient.vaccinationHistory || patient.vaccination_history || patient.immunizations || []
 
     // If not in patient payload, fetch from immunizations endpoint
@@ -342,6 +644,7 @@ const fetchVaccinationRecords = async () => {
       try {
         const vaccRes = await api.get('/immunizations', { params: { patient_id: patientId.value, limit: 200 } })
         vaccinations = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
+        console.log('Vaccinations from immunizations endpoint:', vaccinations) // Debug: see immunizations data
       } catch (e) {
         vaccinations = []
       }
@@ -369,17 +672,55 @@ const fetchVaccinationRecords = async () => {
     })
 
     // Map to editable records
-    doseRecords.value = filteredVaccinations.map(record => ({
-      id: record.immunization_id || record.id,
-      doseNumber: record.dose_number || record.doseNumber || record.dose || '',
-      dateAdministered: formatDateForInput(record.administered_date || record.date_administered || record.dateAdministered),
-      ageAtAdministration: record.age_at_administration || record.ageAtAdministration || '',
-      administeredBy: record.administered_by || record.administered_by_id || record.healthWorkerId || '',
-      siteOfAdministration: deriveSite(record),
-      facilityName: deriveFacility(record),
-      status: record.status || 'Completed',
-      remarks: record.remarks || record.notes || ''
-    }))
+  doseRecords.value = filteredVaccinations.map(record => {
+      const isOutside = isDoseOutside(record)
+      const parsedRemarks = parseRemarksForOutside(record.remarks || record.notes || '')
+      
+      console.log('Backend record data:', record) // Debug: see what backend sends
+      
+  const base = {
+        id: record.immunization_id || record.id,
+        doseNumber: record.dose_number || record.doseNumber || record.dose || '',
+        dateAdministered: formatDateForInput(record.administered_date || record.date_administered || record.dateAdministered),
+        ageAtAdministration: record.age_at_administration || record.ageAtAdministration || '',
+        administeredBy: record.administered_by_name || record.administered_by_id || record.healthWorkerId || '',
+        siteOfAdministration: parsedRemarks.site || record.site_of_administration || record.siteOfAdministration || '',
+        facilityName: parsedRemarks.facility || (record.immunization_facility_name || record.facility_name || record.facilityName || record.health_center || record.healthCenter || ''),
+        // Remarks: for outside, always use the cleaned main remarks (no labeled parts)
+        // For in-facility, use cleaned if available, else fallback to original
+        remarks: isOutside
+          ? (parsedRemarks.otherRemarks ?? '')
+          : (parsedRemarks.otherRemarks || (record.remarks || record.notes || '')),
+        // Store original outside status
+        isOutside: isOutside,
+        // Store manufacturer and lot - default from record
+        manufacturer: record.vaccine_manufacturer || record.manufacturer || '',
+        lotNumber: record.inventory_lot_number || record.lot_number || record.lotNumber || '',
+        // Store vaccine and inventory IDs for reference
+        vaccineId: record.vaccine_id || record.vaccineId,
+        inventoryId: record.inventory_id || record.inventoryId,
+        // Inventory selection fields
+        selectedInventoryId: record.inventory_id || record.inventoryId || null,
+        inventoryOptions: []
+      }
+
+      // For outside records, prefill manufacturer/lot and administeredBy display from remarks
+      if (isOutside) {
+        if (parsedRemarks.manufacturer) base.manufacturer = parsedRemarks.manufacturer
+        if (parsedRemarks.lot) base.lotNumber = parsedRemarks.lot
+        base.administeredByDisplay = parsedRemarks.administeredBy || base.administeredBy || ''
+        console.log('[OutsidePrefill] Prefilled from remarks:', {
+          id: base.id,
+          manufacturer: base.manufacturer,
+          lotNumber: base.lotNumber,
+          administeredByDisplay: base.administeredByDisplay,
+          site: base.siteOfAdministration,
+          facility: base.facilityName
+        })
+      }
+
+      return base
+    })
 
     // Calculate ages if not set
     doseRecords.value.forEach((dose, index) => {
@@ -387,6 +728,9 @@ const fetchVaccinationRecords = async () => {
         calculateAge(index)
       }
     })
+
+    // Fetch additional vaccine and inventory data for in-facility records
+    await fetchVaccineAndInventoryData()
 
   } catch (err) {
     console.error('Error fetching vaccination records:', err)
@@ -404,33 +748,80 @@ const fetchVaccinationRecords = async () => {
 const saveAllRecords = async () => {
   try {
     saving.value = true
+    console.log('Starting save operation for all records...') // Debug: save start
 
     // Update each dose record
     const updatePromises = doseRecords.value.map(async (dose) => {
-      // Prepare remarks - keep site info in remarks if present
-      const remarksWithSite = dose.siteOfAdministration 
-        ? `${dose.remarks || ''} (Site: ${dose.siteOfAdministration})`.trim()
-        : dose.remarks || ''
+      const isOutside = dose.isOutside
+      console.log(`Processing dose ${dose.doseNumber} (ID: ${dose.id}, Outside: ${isOutside})`) // Debug: individual dose processing
+      
+      // Build structured remarks for both in-facility and outside
+      const remarks = buildStructuredRemarks(dose)
+
+      console.log(`Final remarks for dose ${dose.doseNumber}: "${remarks}"`) // Debug: reconstructed remarks
+
+      // If inventory changed (in-facility only), adjust stock: RETURN to old, ISSUE from new
+      const oldInventoryId = dose.inventoryId
+      const newInventoryId = dose.selectedInventoryId || dose.inventoryId
+      const invChanged = !!(newInventoryId && oldInventoryId && newInventoryId !== oldInventoryId)
+      console.log(
+        `[InventoryChange] Dose ${dose.doseNumber} (id=${dose.id}) oldInventoryId=${oldInventoryId}, selectedInventoryId=${dose.selectedInventoryId}, newInventoryId=${newInventoryId}, invChanged=${invChanged}, isOutside=${isOutside}`
+      )
+      if (!isOutside && invChanged) {
+        try {
+          console.log(`[InventoryAdjust] Returning 1 to old lot ${oldInventoryId} for immunization ${dose.id}...`)
+          const returnRes = await api.post(`/vaccines/inventory/${oldInventoryId}/adjust`, {
+            type: 'RECEIVE',
+            quantity: 1,
+            note: `Immunization ${dose.id}: inventory changed, return to old lot`
+          })
+          console.log(`[InventoryAdjust] RETURN response:`, { status: returnRes.status, data: returnRes.data })
+          console.log(`[InventoryAdjust] Issuing 1 from new lot ${newInventoryId} for immunization ${dose.id}...`)
+          const issueRes = await api.post(`/vaccines/inventory/${newInventoryId}/adjust`, {
+            type: 'ISSUE',
+            quantity: 1,
+            note: `Immunization ${dose.id}: inventory changed, issue from new lot`
+          })
+          console.log(`[InventoryAdjust] ISSUE response:`, { status: issueRes.status, data: issueRes.data })
+          console.log(`Adjusted inventory: returned to ${oldInventoryId}, issued from ${newInventoryId}`)
+        } catch (adjErr) {
+          console.error('Inventory adjustment failed for dose', dose.id, adjErr)
+          throw adjErr
+        }
+      }
 
       const updateData = {
         administered_date: formatDateForAPI(dose.dateAdministered),
-        dose_number: parseInt(dose.doseNumber),
-        site_of_administration: dose.siteOfAdministration || null,
-        administered_by: dose.administeredBy,
-        facility_name: dose.facilityName || null,
-        remarks: remarksWithSite
+        remarks: remarks,
+      }
+      // Only include inventory_id when changed (to avoid unnecessary writes)
+      // For outside records, do NOT update inventory_id even if selected locally
+      if (!isOutside && invChanged) {
+        updateData.inventory_id = newInventoryId
+      }
+      // Include facility_name for in-facility records
+      if (!isOutside) {
+        updateData.facility_name = dose.facilityName || null
       }
 
-      // Only include status if it's a valid value
-      if (dose.status) {
-        updateData.status = dose.status
-      }
+      // Note: administered_by, facility_name, and site_of_administration are readonly and should not be updated
 
-      console.log('Updating immunization:', dose.id, updateData)
-      return api.put(`/immunizations/${dose.id}`, updateData)
+      if (isOutside) {
+        console.log('[OutsideRecord] Only updating remarks and administered_date. Skipping inventory_id and facility_name.')
+      }
+      console.log('[ImmunizationUpdate] PUT payload for immunization', dose.id, updateData)
+      const putRes = await api.put(`/immunizations/${dose.id}`, updateData)
+      console.log(`[ImmunizationUpdate] Response for immunization ${dose.id}:`, { status: putRes.status, data: putRes.data })
+      // After successful update, sync local state inventoryId if changed
+      if (invChanged) {
+        console.log(`[StateSync] Updating local inventoryId for dose ${dose.doseNumber} from ${oldInventoryId} to ${newInventoryId}`)
+        dose.inventoryId = newInventoryId
+      }
+      return putRes
     })
 
     await Promise.all(updatePromises)
+    console.log('All update promises completed successfully') // Debug: all updates done
 
     addToast({
       title: 'Success',
@@ -443,10 +834,10 @@ const saveAllRecords = async () => {
 
   } catch (err) {
     console.error('Error saving vaccination records:', err)
-    const errorMessage = err.response?.data?.message || 'Failed to update vaccination records. Please try again.'
+    console.log('Error details:', err.response?.data) // Debug: error details
     addToast({
       title: 'Error',
-      message: errorMessage,
+      message: err.response?.data?.message || err.message || 'Failed to save vaccination records',
       type: 'error'
     })
   } finally {
@@ -457,6 +848,7 @@ const saveAllRecords = async () => {
 onMounted(() => {
   fetchVaccinationRecords()
 })
+
 </script>
 
 <style scoped>

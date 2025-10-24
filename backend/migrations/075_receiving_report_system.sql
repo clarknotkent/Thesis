@@ -101,7 +101,7 @@ $$ LANGUAGE plpgsql;
 -- Function: create_inventory_from_report
 CREATE OR REPLACE FUNCTION create_inventory_from_report(p_report_id BIGINT, p_user_id BIGINT)
 RETURNS VOID AS $$
-DECLARE item_record RECORD; new_inventory_id BIGINT; BEGIN
+DECLARE item_record RECORD; new_inventory_id BIGINT; reused_is_deleted BOOLEAN; BEGIN
     FOR item_record IN
         SELECT * FROM receiving_report_items
         WHERE report_id = p_report_id AND inventory_created = FALSE AND is_deleted = FALSE
@@ -154,32 +154,66 @@ DECLARE item_record RECORD; new_inventory_id BIGINT; BEGIN
             RAISE EXCEPTION 'Receiving Report item % is missing vaccine identity (antigen/brand/manufacturer)', item_record.item_id;
         END IF;
 
-        INSERT INTO inventory (
-            vaccine_id, lot_number, expiration_date, initial_quantity, current_stock_level,
-            received_date, storage_location, created_by, updated_by
-        ) VALUES (
-            item_record.vaccine_id,
-            item_record.lot_number,
-            item_record.expiration_date,
-            item_record.quantity_received,
-            item_record.quantity_received,
-            (SELECT delivery_date FROM receiving_reports WHERE report_id = p_report_id),
-            COALESCE(item_record.storage_location, ''),
-            p_user_id, p_user_id
-        ) RETURNING inventory_id INTO new_inventory_id;
+        -- Try to reuse a soft-deleted or existing matching inventory (same vaccine_id + lot + expiry + storage)
+    SELECT inventory_id, is_deleted INTO new_inventory_id, reused_is_deleted
+        FROM inventory
+        WHERE vaccine_id = item_record.vaccine_id
+          AND lot_number = item_record.lot_number
+          AND expiration_date = item_record.expiration_date
+          AND COALESCE(storage_location, '') = COALESCE(item_record.storage_location, '')
+        LIMIT 1;
 
-        INSERT INTO inventorytransactions (
-            inventory_id, transaction_type, quantity, balance_after, performed_by, created_by, remarks, date
-        ) VALUES (
-            new_inventory_id, 'RECEIVE', item_record.quantity_received, item_record.quantity_received,
-            p_user_id, null, null,
-            'Received via Receiving Report #' || (SELECT report_number FROM receiving_reports WHERE report_id = p_report_id),
-            CURRENT_TIMESTAMP
-        );
+        IF new_inventory_id IS NOT NULL THEN
+            -- If previously deleted, revive it
+            IF reused_is_deleted IS TRUE THEN
+                UPDATE inventory
+                SET is_deleted = FALSE, deleted_at = NULL, deleted_by = NULL, updated_by = p_user_id, updated_at = NOW()
+                WHERE inventory_id = new_inventory_id;
+            END IF;
 
-        UPDATE receiving_report_items
-        SET inventory_id = new_inventory_id, inventory_created = TRUE
-        WHERE item_id = item_record.item_id;
+            -- Insert a RECEIVE transaction into the existing inventory; trigger will update stock/balance_after
+            INSERT INTO inventorytransactions (
+                inventory_id, transaction_type, quantity, performed_by, created_by, remarks, date
+            ) VALUES (
+                new_inventory_id, 'RECEIVE', item_record.quantity_received,
+                p_user_id, NULL,
+                'Received via Receiving Report #' || (SELECT report_number FROM receiving_reports WHERE report_id = p_report_id),
+                NOW()
+            );
+
+            -- Link item to reused inventory
+            UPDATE receiving_report_items
+            SET inventory_id = new_inventory_id, inventory_created = TRUE
+            WHERE item_id = item_record.item_id;
+        ELSE
+            -- No match: create a new inventory row then insert the RECEIVE transaction
+            INSERT INTO inventory (
+                vaccine_id, lot_number, expiration_date, initial_quantity, current_stock_level,
+                received_date, storage_location, created_by, updated_by
+            ) VALUES (
+                item_record.vaccine_id,
+                item_record.lot_number,
+                item_record.expiration_date,
+                item_record.quantity_received,
+                item_record.quantity_received,
+                (SELECT delivery_date FROM receiving_reports WHERE report_id = p_report_id),
+                COALESCE(item_record.storage_location, ''),
+                p_user_id, p_user_id
+            ) RETURNING inventory_id INTO new_inventory_id;
+
+            INSERT INTO inventorytransactions (
+                inventory_id, transaction_type, quantity, balance_after, performed_by, created_by, remarks, date
+            ) VALUES (
+                new_inventory_id, 'RECEIVE', item_record.quantity_received, item_record.quantity_received,
+                p_user_id, NULL,
+                'Received via Receiving Report #' || (SELECT report_number FROM receiving_reports WHERE report_id = p_report_id),
+                CURRENT_TIMESTAMP
+            );
+
+            UPDATE receiving_report_items
+            SET inventory_id = new_inventory_id, inventory_created = TRUE
+            WHERE item_id = item_record.item_id;
+        END IF;
     END LOOP;
 
     UPDATE receiving_reports

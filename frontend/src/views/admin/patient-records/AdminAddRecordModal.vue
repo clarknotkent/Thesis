@@ -19,11 +19,6 @@
           </h2>
           <p class="text-muted mb-0">Record Patient On-Site or Outside Immunization</p>
         </div>
-        <!-- Page-level toggle to switch between Outside record (record-only) vs In-facility visit -->
-        <div class="form-check form-switch ms-4" title="Toggle outside vs in-facility mode">
-          <input class="form-check-input" type="checkbox" id="pageRecordModeToggle" v-model="recordMode">
-          <label class="form-check-label" for="pageRecordModeToggle">Outside record</label>
-        </div>
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary" @click="goBack">
