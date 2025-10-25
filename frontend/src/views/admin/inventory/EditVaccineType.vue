@@ -46,18 +46,38 @@
               <div class="row g-3">
                 <div class="col-xl-6 col-lg-6 col-md-8">
                   <label for="vaccineSelect" class="form-label">Vaccine Type: <span class="text-danger">*</span></label>
-                  <select
-                    class="form-select"
-                    id="vaccineSelect"
-                    v-model="selectedVaccineId"
-                    @change="onVaccineSelect"
-                    required
-                  >
-                    <option value="">-- Select a Vaccine Type to Edit --</option>
-                    <option v-for="vaccine in existingVaccines" :key="vaccine.id" :value="vaccine.id">
-                      {{ vaccine.antigen_name }} - {{ vaccine.brand_name }}
-                    </option>
-                  </select>
+                  <div class="vaccine-dropdown-wrapper" v-click-outside="() => dropdownOpen = false">
+                    <input
+                      type="text"
+                      class="form-control"
+                      v-model="vaccineSearch"
+                      @input="onVaccineInput"
+                      @focus="openDropdown"
+                      placeholder="Type or select a vaccine type..."
+                      autocomplete="off"
+                      :ref="el => inputRef = el"
+                    />
+                    <div
+                      v-if="dropdownOpen"
+                      class="vaccine-dropdown-menu"
+                      :style="dropdownPosition"
+                    >
+                      <div
+                        class="vaccine-dropdown-item"
+                        @click="selectVaccine(null)"
+                      >
+                        -- Select a Vaccine Type to Edit --
+                      </div>
+                      <div
+                        v-for="vaccine in getFilteredVaccines().slice(0, 4)"
+                        :key="vaccine.id"
+                        class="vaccine-dropdown-item"
+                        @click="selectVaccine(vaccine)"
+                      >
+                        {{ vaccine.antigen_name }} - {{ vaccine.brand_name }}
+                      </div>
+                    </div>
+                  </div>
                   <small class="text-muted">Choose the vaccine type you want to modify</small>
                 </div>
               </div>
@@ -101,6 +121,21 @@ import VaccineForm from './components/VaccineForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
+// Click outside directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.body.addEventListener('click', el.clickOutsideEvent)
+  },
+  unmounted(el) {
+    document.body.removeEventListener('click', el.clickOutsideEvent)
+  }
+}
+
 const router = useRouter()
 const { addToast } = useToast()
 
@@ -109,6 +144,12 @@ const selectedVaccineId = ref('')
 const vaccineData = ref(null)
 const loading = ref(true)
 const submitting = ref(false)
+
+// Dropdown state
+const vaccineSearch = ref('')
+const dropdownOpen = ref(false)
+const inputRef = ref(null)
+const dropdownPosition = ref({})
 
 onMounted(async () => {
   await fetchExistingVaccines()
@@ -139,6 +180,48 @@ const fetchExistingVaccines = async () => {
     console.error('Error fetching existing vaccines:', error)
     existingVaccines.value = []
   }
+}
+
+function openDropdown(event) {
+  dropdownOpen.value = true
+  if (inputRef.value) {
+    const rect = inputRef.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      position: 'fixed',
+      top: `${rect.bottom + window.scrollY}px`,
+      left: `${rect.left + window.scrollX}px`,
+      minWidth: `${rect.width}px`
+    }
+  }
+}
+
+function onVaccineInput() {
+  dropdownOpen.value = true
+  selectedVaccineId.value = ''
+}
+
+function getFilteredVaccines() {
+  if (!vaccineSearch.value || vaccineSearch.value.trim() === '') {
+    return existingVaccines.value
+  }
+  const search = vaccineSearch.value.toLowerCase()
+  return existingVaccines.value.filter(v =>
+    v.antigen_name.toLowerCase().includes(search) ||
+    v.brand_name.toLowerCase().includes(search)
+  )
+}
+
+function selectVaccine(vaccine) {
+  if (!vaccine) {
+    selectedVaccineId.value = ''
+    vaccineSearch.value = ''
+    vaccineData.value = null
+  } else {
+    selectedVaccineId.value = vaccine.id
+    vaccineSearch.value = `${vaccine.antigen_name} - ${vaccine.brand_name}`
+    onVaccineSelect()
+  }
+  dropdownOpen.value = false
 }
 
 const onVaccineSelect = async () => {
@@ -226,5 +309,48 @@ const handleCancel = () => {
 
 .text-gray-800 {
   color: #5a5c69 !important;
+}
+
+.vaccine-dropdown-wrapper {
+  position: relative;
+}
+
+.vaccine-dropdown-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  max-height: none;
+  overflow: visible;
+  min-width: 300px;
+}
+
+.vaccine-dropdown-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.vaccine-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.vaccine-dropdown-item:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.vaccine-dropdown-item:first-child {
+  font-style: italic;
+  color: #6c757d;
+}
+
+.vaccine-dropdown-item:first-child:hover {
+  background-color: #e9ecef;
+  color: #6c757d;
 }
 </style>

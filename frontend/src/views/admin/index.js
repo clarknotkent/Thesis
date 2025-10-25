@@ -8,10 +8,10 @@ export { Dashboard } from './dashboard'
 export { PatientRecords } from './patient-records'
 
 // Vaccine Inventory
-export { VaccineInventory } from './inventory'
+export { VaccineInventory, ReceivingReports } from './inventory'
 
 // Reports & Analytics
-export { Reports, ReceivingReports } from './reports-analytics'
+export { Reports } from './reports-analytics'
 
 // SMS Logs
 export { SMSLogs } from './sms'

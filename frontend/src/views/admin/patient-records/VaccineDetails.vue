@@ -66,14 +66,15 @@
             <table class="table table-bordered table-hover">
               <thead class="table-light">
                 <tr>
-                  <th style="width: 10%;">Dose</th>
+                  <th style="width: 8%;">Dose</th>
                   <th style="width: 12%;">Date Administered<br><small class="text-muted">MM/DD/YYYY</small></th>
-                  <th style="width: 12%;">Age at Administration</th>
-                  <th style="width: 15%;">Administered By</th>
-                  <th style="width: 12%;">Site</th>
+                  <th style="width: 10%;">Age at Administration</th>
+                  <th style="width: 12%;">Batch Number</th>
+                  <th style="width: 13%;">Administered By</th>
+                  <th style="width: 10%;">Site</th>
                   <th style="width: 12%;">Facility</th>
-                  <th style="width: 10%;">Status</th>
-                  <th style="width: 17%;">Remarks</th>
+                  <th style="width: 8%;">Status</th>
+                  <th style="width: 15%;">Remarks</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,6 +84,9 @@
                   </td>
                   <td>{{ formatShortDate(dose.administeredDate) }}</td>
                   <td>{{ dose.ageAtAdministration }}</td>
+                  <td>
+                    <span class="badge bg-info text-dark">{{ dose.batchNumber }}</span>
+                  </td>
                   <td>{{ dose.administeredBy }}</td>
                   <td>{{ dose.site }}</td>
                   <td>{{ dose.facility }}</td>
@@ -210,16 +214,48 @@ const fetchVaccineDetails = async () => {
       return vName === vaccineName.value
     }) : []
 
+    // Fetch inventory data to get batch numbers
+    let inventoryMap = {}
+    try {
+      const inventoryResponse = await api.get('/vaccines/inventory')
+      const inventoryItems = inventoryResponse.data?.data || inventoryResponse.data || []
+      
+      // Create a map of inventory_id to batch/lot number
+      if (Array.isArray(inventoryItems)) {
+        inventoryItems.forEach(item => {
+          const id = item.inventory_id || item.id
+          const batchNo = item.lot_number || item.batch_number || item.lotNumber || item.batchNumber
+          if (id && batchNo) {
+            inventoryMap[id] = batchNo
+          }
+        })
+      }
+    } catch (e) {
+      console.error('Error fetching inventory for batch numbers:', e)
+    }
+
     // Process doses
     doses.value = filteredVaccinations.map(vaccination => {
       if (!diseasePrevented.value || diseasePrevented.value === '—') {
         diseasePrevented.value = vaccination.disease_prevented || '—'
       }
       
+      // Get batch number from inventory using inventory_id
+      const inventoryId = vaccination.inventory_id || vaccination.inventoryId
+      let batchNumber = '—'
+      
+      if (inventoryId && inventoryMap[inventoryId]) {
+        batchNumber = inventoryMap[inventoryId]
+      } else {
+        // Fallback to direct batch number field if available
+        batchNumber = vaccination.batch_number || vaccination.batchNumber || vaccination.lot_number || vaccination.lotNumber || '—'
+      }
+      
       return {
         doseNumber: vaccination.dose_number || vaccination.doseNumber || vaccination.dose || '—',
         administeredDate: vaccination.administered_date || vaccination.date_administered || vaccination.dateAdministered,
         ageAtAdministration: vaccination.age_at_administration || vaccination.ageAtAdministration || '—',
+        batchNumber: batchNumber,
         administeredBy: vaccination.administered_by_name || vaccination.administeredBy || vaccination.health_worker_name || 'Taken Outside',
         site: deriveSite(vaccination),
         facility: deriveFacility(vaccination),

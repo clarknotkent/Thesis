@@ -57,7 +57,7 @@
                 <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
-                <label class="form-label">Respiration (breaths/min)</label>
+                <label class="form-label">Respiration (Beats/min)</label>
                 <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
               </div>
               <div class="col-md-4">
@@ -205,18 +205,15 @@
         <div class="mb-3">
           <label class="form-label">Service Options</label>
           <div class="d-flex gap-2 align-items-center">
-            <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Vaccine</button>
-            <button type="button" class="btn btn-outline-secondary" @click="openDewormModal">Deworm</button>
-            <button type="button" class="btn btn-outline-info" @click="openVitAModal">Vitamin A</button>
+            <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Record</button>
           </div>
-          <small class="text-muted">Check to default new services to outside facility. Individual vaccines can override this setting.</small>
         </div>
 
         <!-- Vaccination Form Section -->
         <div v-if="showVaccinationForm" class="mb-3 border rounded p-3 bg-light">
           <h6 class="mb-3">
             <i class="bi bi-plus-circle me-2"></i>
-            {{ recordMode ? 'Add Vaccine to Record' : 'Add Vaccine to Visit' }}
+            {{ recordMode ? 'Add Vaccine to Record' : 'Add Service to Record' }}
             <button type="button" class="btn btn-sm btn-outline-secondary float-end" @click="closeVaccinationForm">
               <i class="bi bi-x"></i> Cancel
             </button>
@@ -256,7 +253,7 @@
                 <div class="form-check form-switch mt-2">
                   <input class="form-check-input" type="checkbox" id="vaccinationOutsideToggle" v-model="vaccinationForm.outside">
                   <label class="form-check-label small" for="vaccinationOutsideToggle">
-                    Administer outside facility
+                    Administered from outside facility
                   </label>
                 </div>
               </div>
@@ -329,7 +326,7 @@
               <button type="button" class="btn btn-secondary me-2" @click="closeVaccinationForm">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="savingVaccination">
                 <span v-if="savingVaccination" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ savingVaccination ? 'Adding...' : (recordMode ? 'Add to Record' : 'Add to Visit') }}
+                {{ savingVaccination ? 'Adding...' : 'Add to Record' }}
               </button>
             </div>
             

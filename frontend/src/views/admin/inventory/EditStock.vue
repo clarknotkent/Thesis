@@ -57,10 +57,86 @@
             <h6 class="text-primary fw-bold mb-3">
               <i class="bi bi-arrow-left-right me-2"></i>Stock Adjustment
             </h6>
-            <div class="alert alert-warning">
-              <i class="bi bi-exclamation-triangle me-2"></i>
-              To adjust stock levels, use the <router-link :to="`/admin/vaccines/adjust/${$route.params.id}`" class="alert-link">Adjust Stock</router-link> page.
+            
+            <div class="row">
+              <div class="col-md-4">
+                <div class="mb-3 p-3 bg-light rounded">
+                  <div class="text-muted small mb-1">Current Stock</div>
+                  <div class="h4 mb-0 text-primary">{{ inventoryData.quantity || 0 }} doses</div>
+                </div>
+              </div>
             </div>
+
+            <form @submit.prevent="handleAdjustment">
+              <div class="mb-3">
+                <label class="form-label">Transaction Type <span class="text-danger">*</span></label>
+                <select class="form-select" v-model="adjustForm.type" required>
+                  <option value="">-- Select Type --</option>
+                  <option value="ADJUST">ADJUST (Set to exact quantity)</option>
+                  <option value="RETURN">RETURN (Remove from stock)</option>
+                  <option value="EXPIRED">EXPIRED (Mark as expired)</option>
+                </select>
+                <div class="form-text" v-if="adjustForm.type === 'ADJUST'">
+                  ADJUST sets the stock to the exact quantity you enter.
+                </div>
+                <div class="form-text" v-else-if="adjustForm.type === 'RETURN'">
+                  RETURN reduces the current stock by the quantity entered.
+                </div>
+                <div class="form-text" v-else-if="adjustForm.type === 'EXPIRED'">
+                  EXPIRED removes expired stock from inventory.
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  class="form-control" 
+                  v-model.number="adjustForm.quantity" 
+                  required 
+                  placeholder="Enter quantity"
+                />
+                <div class="form-text">
+                  <span v-if="adjustForm.type === 'ADJUST'">
+                    New stock level will be: <strong>{{ adjustForm.quantity || 0 }}</strong> doses
+                  </span>
+                  <span v-else-if="adjustForm.type === 'RETURN' && adjustForm.quantity">
+                    Stock after return: <strong>{{ Math.max(0, inventoryData.quantity - adjustForm.quantity) }}</strong> doses
+                  </span>
+                  <span v-else-if="adjustForm.type === 'EXPIRED' && adjustForm.quantity">
+                    Stock after removal: <strong>{{ Math.max(0, inventoryData.quantity - adjustForm.quantity) }}</strong> doses
+                  </span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Note (Optional)</label>
+                <textarea 
+                  class="form-control" 
+                  rows="3" 
+                  v-model="adjustForm.note" 
+                  placeholder="Reason or remarks for this adjustment"
+                ></textarea>
+              </div>
+
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Warning:</strong> This action will update the inventory stock level and cannot be undone.
+              </div>
+
+              <div class="d-flex justify-content-end gap-2">
+                <button 
+                  type="submit" 
+                  class="btn btn-primary" 
+                  :disabled="!adjustForm.type || adjustForm.quantity === 0 || adjusting"
+                >
+                  <span v-if="adjusting" class="spinner-border spinner-border-sm me-2"></span>
+                  <i v-else class="bi bi-check-circle me-2"></i>
+                  Apply Adjustment
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -75,21 +151,30 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import StockForm from './components/StockForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
+const { confirm } = useConfirm()
 
 const vaccines = ref([])
 const inventoryData = ref(null)
 const loading = ref(true)
 const submitting = ref(false)
+const adjusting = ref(false)
+
+const adjustForm = ref({
+  type: '',
+  quantity: 0,
+  note: ''
+})
 
 const goBack = () => {
   router.back()
@@ -169,8 +254,46 @@ const handleSubmit = async (formData) => {
   }
 }
 
-const handleCancel = () => {
+const handleCancel = () => {x``
   router.push('/admin/vaccines')
+}
+
+const handleAdjustment = async () => {
+  if (!adjustForm.value.type || adjustForm.value.quantity === 0) {
+    addToast('Please select transaction type and enter quantity', 'warning')
+    return
+  }
+
+  const confirmed = await confirm({
+    title: 'Confirm Stock Adjustment',
+    message: `Are you sure you want to ${adjustForm.value.type.toLowerCase()} the stock?`,
+    variant: 'warning'
+  })
+
+  if (!confirmed) return
+
+  adjusting.value = true
+  try {
+    const id = route.params.id
+    await api.post(`/vaccines/inventory/${id}/adjust`, adjustForm.value)
+    addToast('Stock adjusted successfully!', 'success')
+    
+    // Refresh inventory data to show new stock level
+    await fetchInventory()
+    
+    // Reset adjustment form
+    adjustForm.value = {
+      type: '',
+      quantity: 0,
+      note: ''
+    }
+  } catch (error) {
+    console.error('Error adjusting stock:', error)
+    const errorMessage = error.response?.data?.message || 'Error adjusting stock. Please try again.'
+    addToast(errorMessage, 'error')
+  } finally {
+    adjusting.value = false
+  }
 }
 </script>
 

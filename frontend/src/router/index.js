@@ -9,9 +9,10 @@ import LandingPage from '@/views/LandingPage.vue'
 import AdminDashboard from '@/views/admin/dashboard/Dashboard.vue'
 import PatientRecords from '@/views/admin/patient-records/PatientRecords.vue'
 import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
+import InventoryOverview from '@/views/admin/inventory/InventoryOverview.vue'
+import ReceivingReportPage from '@/views/admin/inventory/ReceivingReportPage.vue'
 import SMSLogs from '@/views/admin/sms/SMSLogs.vue'
 import Reports from '@/views/admin/reports-analytics/Reports.vue'
-import ReceivingReportPage from '@/views/admin/reports-analytics/ReceivingReportPage.vue'
 import UserAccounts from '@/views/admin/user-accounts/UserAccounts.vue'
 import ActivityLogs from '@/views/admin/activity-logs/ActivityLogs.vue'
 import Profile from '@/views/admin/profile/Profile.vue'
@@ -189,9 +190,19 @@ const routes = [
   {
     path: '/admin/vaccines',
     name: 'VaccineInventory',
-    component: VaccineInventory,
+    component: InventoryOverview,
     meta: {
       title: 'Vaccine Inventory - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/inventory',
+    name: 'InventoryOverview',
+    component: InventoryOverview,
+    meta: {
+      title: 'Inventory Overview - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }

@@ -43,93 +43,93 @@
       <div v-else-if="scheduleData" class="card shadow mb-4">
         <div class="card-body p-4">
           <!-- Basic Info -->
-          <div class="row g-4 mb-4">
+          <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <div class="form-text">Schedule Name</div>
-              <div class="fw-semibold fs-5">{{ scheduleData.name }}</div>
+              <label class="form-label text-muted small mb-1">Schedule Name</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.name" readonly>
             </div>
             <div class="col-md-6">
-              <div class="form-text">Schedule Code</div>
-              <div class="fw-semibold">{{ scheduleData.code || '-' }}</div>
+              <label class="form-label text-muted small mb-1">Schedule Code</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.code || '-'" readonly>
             </div>
-            <div class="col-md-6">
-              <div class="form-text">Vaccine Type</div>
-              <div class="fw-semibold">{{ scheduleData.vaccine?.antigen_name || '-' }} ({{ scheduleData.vaccine?.brand_name || '-' }})</div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-text">Total Doses</div>
-              <div class="fw-semibold fs-4 text-primary">{{ scheduleData.total_doses }}</div>
+            <div class="col-md-8">
+              <label class="form-label text-muted small mb-1">Vaccine Type</label>
+              <input type="text" class="form-control form-control-sm" :value="`${scheduleData.vaccine?.antigen_name || '-'} (${scheduleData.vaccine?.brand_name || '-'})`" readonly>
             </div>
             <div class="col-md-4">
-              <div class="form-text">Concurrent Allowed</div>
-              <div class="fw-semibold">{{ scheduleData.concurrent_allowed ? 'Yes' : 'No' }}</div>
+              <label class="form-label text-muted small mb-1">Total Doses</label>
+              <input type="text" class="form-control form-control-sm fw-bold text-primary" :value="scheduleData.total_doses" readonly>
             </div>
             <div class="col-md-4">
-              <div class="form-text">Minimum Age (days)</div>
-              <div class="fw-semibold">{{ scheduleData.min_age_days }}</div>
+              <label class="form-label text-muted small mb-1">Concurrent Allowed</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.concurrent_allowed ? 'Yes' : 'No'" readonly>
             </div>
             <div class="col-md-4">
-              <div class="form-text">Maximum Age (days)</div>
-              <div class="fw-semibold">{{ scheduleData.max_age_days || 'Not set' }}</div>
+              <label class="form-label text-muted small mb-1">Minimum Age (days)</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.min_age_days" readonly>
             </div>
-            <div class="col-12">
-              <div class="form-text">Catch-up Strategy</div>
-              <div class="fw-semibold">{{ scheduleData.catchup_strategy || '-' }}</div>
+            <div class="col-md-4">
+              <label class="form-label text-muted small mb-1">Maximum Age (days)</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.max_age_days || 'Not set'" readonly>
             </div>
-            <div class="col-12">
-              <div class="form-text">Notes</div>
-              <div class="fw-semibold">{{ scheduleData.notes || '-' }}</div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small mb-1">Catch-up Strategy</label>
+              <input type="text" class="form-control form-control-sm" :value="scheduleData.catchup_strategy || '-'" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small mb-1">Notes</label>
+              <textarea class="form-control form-control-sm" :value="scheduleData.notes || '-'" rows="1" readonly></textarea>
             </div>
           </div>
 
           <!-- Doses -->
-          <hr>
-          <h5 class="mb-3">
+          <hr class="my-3">
+          <h6 class="mb-3">
             <i class="bi bi-list-ol me-2"></i>Dose Configuration
-          </h5>
-          <div v-if="doses.length > 0" class="row g-3">
+          </h6>
+          <div v-if="doses.length > 0" class="row g-2">
             <div v-for="(dose, index) in doses" :key="index" class="col-12">
               <div class="card">
-                <div class="card-header bg-light">
-                  <strong>Dose {{ dose.dose_number }}</strong>
+                <div class="card-header bg-light py-2">
+                  <strong class="small">Dose {{ dose.dose_number }}</strong>
                 </div>
-                <div class="card-body">
-                  <div class="row g-3">
+                <div class="card-body p-3">
+                  <div class="row g-2">
                     <div class="col-md-3">
-                      <small class="text-muted">Due After Days</small>
-                      <div class="fw-semibold">{{ dose.due_after_days }}</div>
+                      <label class="form-label text-muted small mb-1">Due After Days</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.due_after_days" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Min Interval (days)</small>
-                      <div class="fw-semibold">{{ dose.min_interval_days || '-' }}</div>
+                      <label class="form-label text-muted small mb-1">Min Interval (days)</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.min_interval_days || '-'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Max Interval (days)</small>
-                      <div class="fw-semibold">{{ dose.max_interval_days || '-' }}</div>
+                      <label class="form-label text-muted small mb-1">Max Interval (days)</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.max_interval_days || '-'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Min Interval Other Vax</small>
-                      <div class="fw-semibold">{{ dose.min_interval_other_vax || '-' }}</div>
+                      <label class="form-label text-muted small mb-1">Min Interval Other Vax</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.min_interval_other_vax || '-'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Requires Previous</small>
-                      <div class="fw-semibold">{{ dose.requires_previous ? 'Yes' : 'No' }}</div>
+                      <label class="form-label text-muted small mb-1">Requires Previous</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.requires_previous ? 'Yes' : 'No'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Skippable</small>
-                      <div class="fw-semibold">{{ dose.skippable ? 'Yes' : 'No' }}</div>
+                      <label class="form-label text-muted small mb-1">Skippable</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.skippable ? 'Yes' : 'No'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Grace Period (days)</small>
-                      <div class="fw-semibold">{{ dose.grace_period_days || '-' }}</div>
+                      <label class="form-label text-muted small mb-1">Grace Period (days)</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.grace_period_days || '-'" readonly>
                     </div>
                     <div class="col-md-3">
-                      <small class="text-muted">Absolute Latest (days)</small>
-                      <div class="fw-semibold">{{ dose.absolute_latest_days || '-' }}</div>
+                      <label class="form-label text-muted small mb-1">Absolute Latest (days)</label>
+                      <input type="text" class="form-control form-control-sm" :value="dose.absolute_latest_days || '-'" readonly>
                     </div>
                     <div class="col-12" v-if="dose.notes">
-                      <small class="text-muted">Notes</small>
-                      <div class="fw-semibold">{{ dose.notes }}</div>
+                      <label class="form-label text-muted small mb-1">Notes</label>
+                      <textarea class="form-control form-control-sm" :value="dose.notes" rows="1" readonly></textarea>
                     </div>
                   </div>
                 </div>
@@ -141,10 +141,10 @@
           </div>
 
           <!-- Action Buttons -->
-          <div class="d-flex justify-content-end gap-2 mt-4 pt-4 border-top">
+          <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
             <router-link 
               :to="`/admin/vaccines/schedules/edit/${scheduleId}`" 
-              class="btn btn-primary"
+              class="btn btn-primary btn-sm"
             >
               <i class="bi bi-pencil me-2"></i>Edit Schedule
             </router-link>
@@ -232,5 +232,17 @@ const fetchSchedule = async () => {
 
 .text-gray-800 {
   color: #5a5c69 !important;
+}
+
+.form-control[readonly] {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  cursor: default;
+}
+
+.form-control[readonly]:focus {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  box-shadow: none;
 }
 </style>

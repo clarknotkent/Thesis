@@ -38,12 +38,39 @@
           <form @submit.prevent="handleSubmit">
             <div class="mb-3">
               <label class="form-label">Select Vaccine Type *</label>
-              <select v-model="selectedVaccine" class="form-select" required>
-                <option value="">-- Select Vaccine --</option>
-                <option v-for="v in unscheduledVaccines" :key="v.id" :value="v.id">
-                  {{ v.antigen_name }} ({{ v.brand_name }})
-                </option>
-              </select>
+              <div class="vaccine-dropdown-wrapper" v-click-outside="() => dropdownOpen = false">
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="vaccineSearch"
+                  @input="onVaccineInput"
+                  @focus="openDropdown"
+                  placeholder="Type or select a vaccine..."
+                  autocomplete="off"
+                  :ref="el => inputRef = el"
+                  required
+                />
+                <div
+                  v-if="dropdownOpen"
+                  class="vaccine-dropdown-menu"
+                  :style="dropdownPosition"
+                >
+                  <div
+                    class="vaccine-dropdown-item"
+                    @click="selectVaccine(null)"
+                  >
+                    -- Select Vaccine --
+                  </div>
+                  <div
+                    v-for="v in getFilteredVaccines().slice(0, 4)"
+                    :key="v.id"
+                    class="vaccine-dropdown-item"
+                    @click="selectVaccine(v)"
+                  >
+                    {{ v.antigen_name }} ({{ v.brand_name }})
+                  </div>
+                </div>
+              </div>
               <small v-if="existingVaccines.length > 0 && unscheduledVaccines.length === 0" class="text-muted d-block mt-1">
                 All vaccine types already have schedules configured.
               </small>
@@ -326,6 +353,21 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
+// Click outside directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.body.addEventListener('click', el.clickOutsideEvent)
+  },
+  unmounted(el) {
+    document.body.removeEventListener('click', el.clickOutsideEvent)
+  }
+}
+
 const router = useRouter()
 const { addToast } = useToast()
 
@@ -334,6 +376,12 @@ const schedules = ref([])
 const selectedVaccine = ref('')
 const currentDoseIndex = ref(0)
 const submitting = ref(false)
+
+// Dropdown state
+const vaccineSearch = ref('')
+const dropdownOpen = ref(false)
+const inputRef = ref(null)
+const dropdownPosition = ref({})
 
 const schedulingFields = ref({
   name: '',
@@ -402,6 +450,46 @@ const unscheduledVaccines = computed(() => {
     .map(v => ({ ...v, id: v.vaccine_id || v.id }))
     .filter(v => !scheduledIds.has(v.id))
 })
+
+function openDropdown(event) {
+  dropdownOpen.value = true
+  if (inputRef.value) {
+    const rect = inputRef.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      position: 'fixed',
+      top: `${rect.bottom + window.scrollY}px`,
+      left: `${rect.left + window.scrollX}px`,
+      minWidth: `${rect.width}px`
+    }
+  }
+}
+
+function onVaccineInput() {
+  dropdownOpen.value = true
+  selectedVaccine.value = ''
+}
+
+function getFilteredVaccines() {
+  if (!vaccineSearch.value || vaccineSearch.value.trim() === '') {
+    return unscheduledVaccines.value
+  }
+  const search = vaccineSearch.value.toLowerCase()
+  return unscheduledVaccines.value.filter(v =>
+    v.antigen_name.toLowerCase().includes(search) ||
+    v.brand_name.toLowerCase().includes(search)
+  )
+}
+
+function selectVaccine(vaccine) {
+  if (!vaccine) {
+    selectedVaccine.value = ''
+    vaccineSearch.value = ''
+  } else {
+    selectedVaccine.value = vaccine.id
+    vaccineSearch.value = `${vaccine.antigen_name} (${vaccine.brand_name})`
+  }
+  dropdownOpen.value = false
+}
 
 function ensureDosesCount(count) {
   const n = Number(count) || 0
@@ -525,5 +613,48 @@ const handleCancel = () => {
 
 .text-gray-800 {
   color: #5a5c69 !important;
+}
+
+.vaccine-dropdown-wrapper {
+  position: relative;
+}
+
+.vaccine-dropdown-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  max-height: none;
+  overflow: visible;
+  min-width: 300px;
+}
+
+.vaccine-dropdown-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.vaccine-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.vaccine-dropdown-item:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.vaccine-dropdown-item:first-child {
+  font-style: italic;
+  color: #6c757d;
+}
+
+.vaccine-dropdown-item:first-child:hover {
+  background-color: #e9ecef;
+  color: #6c757d;
 }
 </style>

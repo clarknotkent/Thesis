@@ -158,67 +158,75 @@
             </div>
             <div class="card-body">
               <!-- Current Stock Info -->
-              <div class="alert alert-light border">
-                <div class="row">
-                  <div class="col-6">
-                    <small class="text-muted d-block">Current Stock</small>
-                    <strong class="fs-4 text-primary">{{ inventoryData.currentStock }}</strong>
-                  </div>
-                  <div class="col-6 text-end">
-                    <small class="text-muted d-block">New Stock</small>
-                    <strong class="fs-4" :class="getCalculatedClass()">
-                      {{ calculatedNewStock }}
-                    </strong>
-                  </div>
-                </div>
+              <div class="alert alert-light border mb-3">
+                <small class="text-muted d-block">Current Stock</small>
+                <strong class="fs-4 text-primary">{{ inventoryData.currentStock }}</strong> doses
               </div>
 
               <form @submit.prevent="handleAdjustStock">
                 <!-- Transaction Type -->
                 <div class="mb-3">
-                  <label class="form-label fw-semibold">Transaction Type</label>
+                  <label class="form-label fw-semibold">Transaction Type <span class="text-danger">*</span></label>
                   <select 
                     class="form-select" 
                     v-model="adjustForm.type"
                     required
                   >
-                    <option value="">Select type...</option>
-                    <option value="ADJUST">Adjust (Add/Remove)</option>
-                    <option value="RETURN">Return</option>
-                    <option value="EXPIRED">Mark as Expired</option>
+                    <option value="">-- Select Type --</option>
+                    <option value="ADJUST">ADJUST (Set to exact quantity)</option>
+                    <option value="RETURN">RETURN (Remove from stock)</option>
+                    <option value="EXPIRED">EXPIRED (Mark as expired)</option>
                   </select>
+                  <div class="form-text" v-if="adjustForm.type === 'ADJUST'">
+                    ADJUST sets the stock to the exact quantity you enter.
+                  </div>
+                  <div class="form-text" v-else-if="adjustForm.type === 'RETURN'">
+                    RETURN reduces the current stock by the quantity entered.
+                  </div>
+                  <div class="form-text" v-else-if="adjustForm.type === 'EXPIRED'">
+                    EXPIRED removes expired stock from inventory.
+                  </div>
                 </div>
 
                 <!-- Quantity -->
                 <div class="mb-3">
-                  <label class="form-label fw-semibold">Quantity Change</label>
+                  <label class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
                   <input 
                     type="number" 
+                    min="0"
                     class="form-control" 
                     v-model.number="adjustForm.quantity"
-                    placeholder="Enter positive or negative number"
+                    placeholder="Enter quantity"
                     required
                   >
-                  <small class="form-text text-muted">
-                    Use positive numbers to add stock, negative to remove
-                  </small>
+                  <div class="form-text">
+                    <span v-if="adjustForm.type === 'ADJUST'">
+                      New stock level will be: <strong>{{ adjustForm.quantity || 0 }}</strong> doses
+                    </span>
+                    <span v-else-if="adjustForm.type === 'RETURN' && adjustForm.quantity">
+                      Stock after return: <strong>{{ Math.max(0, inventoryData.currentStock - adjustForm.quantity) }}</strong> doses
+                    </span>
+                    <span v-else-if="adjustForm.type === 'EXPIRED' && adjustForm.quantity">
+                      Stock after removal: <strong>{{ Math.max(0, inventoryData.currentStock - adjustForm.quantity) }}</strong> doses
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Notes -->
                 <div class="mb-3">
-                  <label class="form-label fw-semibold">Notes (Optional)</label>
+                  <label class="form-label fw-semibold">Note (Optional)</label>
                   <textarea 
                     class="form-control" 
                     v-model="adjustForm.note"
                     rows="3"
-                    placeholder="Enter adjustment reason or notes..."
+                    placeholder="Reason or remarks for this adjustment"
                   ></textarea>
                 </div>
 
-                <!-- Warning for Expired -->
-                <div v-if="adjustForm.type === 'EXPIRED'" class="alert alert-danger">
+                <!-- Warning -->
+                <div class="alert alert-warning">
                   <i class="bi bi-exclamation-triangle me-2"></i>
-                  <strong>Warning:</strong> This will mark the stock as expired and cannot be undone.
+                  <strong>Warning:</strong> This action will update the inventory stock level and cannot be undone.
                 </div>
 
                 <button 
@@ -231,7 +239,7 @@
                     Adjusting...
                   </span>
                   <span v-else>
-                    <i class="bi bi-arrow-left-right me-2"></i>Apply Adjustment
+                    <i class="bi bi-check-circle me-2"></i>Apply Adjustment
                   </span>
                 </button>
               </form>
@@ -321,20 +329,6 @@ const fetchInventoryData = async () => {
   }
 }
 
-const calculatedNewStock = computed(() => {
-  const current = inventoryData.value.currentStock || 0
-  const change = adjustForm.value.quantity || 0
-  return current + change
-})
-
-const getCalculatedClass = () => {
-  const newStock = calculatedNewStock.value
-  if (newStock < 0) return 'text-danger'
-  if (newStock === 0) return 'text-secondary'
-  if (newStock < inventoryData.value.currentStock) return 'text-warning'
-  return 'text-success'
-}
-
 const updateVaccineDetails = async () => {
   submittingDetails.value = true
   try {
@@ -366,13 +360,9 @@ const handleAdjustStock = async () => {
     return
   }
 
-  const confirmMessage = adjustForm.value.type === 'EXPIRED'
-    ? `Are you sure you want to mark ${Math.abs(adjustForm.value.quantity)} doses as EXPIRED? This cannot be undone.`
-    : `Confirm ${adjustForm.value.type}: ${adjustForm.value.quantity > 0 ? '+' : ''}${adjustForm.value.quantity} doses?`
-
   const confirmed = await confirm({
     title: 'Confirm Stock Adjustment',
-    message: confirmMessage,
+    message: `Are you sure you want to ${adjustForm.value.type.toLowerCase()} the stock?`,
     variant: 'warning'
   })
 
