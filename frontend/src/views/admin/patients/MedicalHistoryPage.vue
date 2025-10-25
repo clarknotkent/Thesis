@@ -6,9 +6,9 @@
         <button class="btn btn-outline-secondary ms-auto" @click="$router.back()">Back</button>
       </div>
       <div class="card shadow-sm">
-            <div class="card-body">
-                <VisitHistory :patient-id="$route.params.id" :embedded-page="true" />
-              </div>
+        <div class="card-body">
+          <MedicalHistory :patient-id="$route.params.id" :embedded-page="true" />
+        </div>
       </div>
     </div>
   </AdminLayout>
@@ -16,5 +16,5 @@
 
 <script setup>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VisitHistory from '@/features/patient-management/VisitHistoryModal.vue'
+import MedicalHistory from '@/features/patients/MedicalHistoryModal.vue'
 </script>

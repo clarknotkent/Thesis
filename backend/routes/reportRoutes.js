@@ -7,7 +7,8 @@ const {
   getDefaultersReport,
   getDueSoonReport,
   getInventoryLowStockReport,
-  getTCLReport
+  getTCLReport,
+  getMonthlyImmunizationReport
 } = require('../controllers/reportController');
 
 // GET /api/reports/monthly - Get monthly report
@@ -28,6 +29,7 @@ router.get('/low-stock', authenticateRequest, checkUserMapping, getInventoryLowS
 // GET /api/reports/tcl - Get Target Client List report
 router.get('/tcl', authenticateRequest, checkUserMapping, getTCLReport);
 
-
+// GET /api/reports/monthly-immunization - Get comprehensive monthly immunization report
+router.get('/monthly-immunization', authenticateRequest, checkUserMapping, getMonthlyImmunizationReport);
 
 module.exports = router;

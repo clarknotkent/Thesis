@@ -1,5 +1,5 @@
 <template>
-  <div class="visit-history">
+  <div class="medical-history-table">
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -16,7 +16,7 @@
 
     <!-- Medical History Table -->
     <div v-else class="table-responsive">
-  <table class="table table-hover table-striped">
+      <table class="table table-hover table-striped">
         <thead>
           <tr>
             <th>Checkup Date</th>
@@ -29,11 +29,11 @@
         </thead>
         <tbody>
           <tr
-            v-for="visit in sortedVisits"
+            v-for="visit in visits"
             :key="visit.visit_id || visit.id"
-            @click="openVisitDetails(visit)"
+            @click="$emit('select-visit', visit)"
             style="cursor: pointer;"
-            title="Click to edit visit details"
+            title="Click to view visit details"
           >
             <td>
               <i class="bi bi-calendar-event me-1"></i>
@@ -41,7 +41,7 @@
             </td>
             <td>
               <i class="bi bi-person-badge me-1"></i>
-              {{ visit.recorded_by || getWorkerName(visit) }}
+              {{ getWorkerName(visit) }}
             </td>
             <td>
               <div class="d-flex flex-column gap-1">
@@ -58,7 +58,8 @@
             <td>
               <div v-if="Array.isArray(visit.immunizations_given) && visit.immunizations_given.length > 0">
                 <small class="d-block" v-for="(im, idx) in visit.immunizations_given" :key="idx">
-                  <i class="bi bi-syringe me-1"></i>{{ im.antigen_name }} <span v-if="im.dose_number">(Dose {{ im.dose_number }})</span>
+                  <i class="bi bi-syringe me-1"></i>{{ im.antigen_name }} 
+                  <span v-if="im.dose_number">(Dose {{ im.dose_number }})</span>
                 </small>
               </div>
               <span v-else class="text-muted">—</span>
@@ -102,125 +103,42 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import api from '@/services/api'
-
-const router = useRouter()
-
-const props = defineProps({
-  patientId: {
-    type: [String, Number],
+defineProps({
+  visits: {
+    type: Array,
+    default: () => []
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  formatDate: {
+    type: Function,
+    required: true
+  },
+  getWorkerName: {
+    type: Function,
+    required: true
+  },
+  getVitals: {
+    type: Function,
+    required: true
+  },
+  hasVitals: {
+    type: Function,
+    required: true
+  },
+  truncateText: {
+    type: Function,
     required: true
   }
 })
 
-const visits = ref([])
-const loading = ref(true)
-
-const sortedVisits = computed(() => {
-  if (!visits.value || visits.value.length === 0) return []
-  return [...visits.value].sort((a, b) => {
-    const dateA = new Date(a.visit_date)
-    const dateB = new Date(b.visit_date)
-    return dateB - dateA // Sort descending (most recent first)
-  })
-})
-
-const formatDate = (dateString) => {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleDateString('en-PH', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const getWorkerName = (visit) => {
-  // visits_view exposes recorded_by (users.full_name)
-  if (visit.recorded_by) return visit.recorded_by
-  // Fallbacks for any legacy shapes
-  if (visit.health_worker_name) return visit.health_worker_name
-  if (visit.healthWorkerName) return visit.healthWorkerName
-  if (visit.worker_name) return visit.worker_name
-  if (visit.workerName) return visit.workerName
-  if (visit.worker) {
-    if (typeof visit.worker === 'string') return visit.worker
-    if (visit.worker.name) return visit.worker.name
-    if (visit.worker.username) return visit.worker.username
-  }
-  return '—'
-}
-
-const getVitals = (visit) => {
-  // Support multiple shapes from visits_view:
-  // 1) Nested vital_signs object
-  // 2) Top-level columns: height_length, weight, temperature, respiration_rate, muac
-  if (visit && visit.vital_signs) return visit.vital_signs
-  return {
-    height_length: visit?.height_length ?? visit?.height ?? null,
-    weight: visit?.weight ?? null,
-    temperature: visit?.temperature ?? null,
-    respiration_rate: visit?.respiration_rate ?? visit?.respiration ?? null,
-    muac: visit?.muac ?? null
-  }
-}
-
-const hasVitals = (visit) => {
-  const v = getVitals(visit)
-  return !!(v && (v.height_length || v.weight || v.temperature || v.respiration_rate || v.muac))
-}
-
-const truncateText = (text, maxLength) => {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength) + '...'
-}
-
-const fetchVisits = async () => {
-  try {
-    loading.value = true
-    const pageSize = 200
-    let page = 1
-    let collected = []
-    let totalPages = 1
-    do {
-      const resp = await api.get(`/visits?patient_id=${props.patientId}&page=${page}&limit=${pageSize}`)
-      const raw = resp.data
-      let batch = []
-      if (Array.isArray(raw)) batch = raw
-      else if (Array.isArray(raw?.data)) batch = raw.data
-      else if (Array.isArray(raw?.items)) batch = raw.items
-      else if (Array.isArray(raw?.visits)) batch = raw.visits
-      else if (Array.isArray(raw?.data?.items)) batch = raw.data.items
-      collected = collected.concat((batch || []).filter(v => v && (v.visit_date || v.visitDate)))
-      totalPages = Number(raw?.totalPages || raw?.data?.totalPages || 1)
-      page += 1
-    } while (page <= totalPages)
-    visits.value = collected
-  } catch (err) {
-    console.error('Error fetching medical history:', err)
-    visits.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  fetchVisits()
-})
-
-const openVisitDetails = (visit) => {
-  const id = String(visit.visit_id || visit.id || '')
-  if (!id) return
-  // Navigate to visit summary page instead of edit page
-  router.push(`/admin/patients/${props.patientId}/visits/${id}`)
-}
+defineEmits(['select-visit'])
 </script>
 
 <style scoped>
-.visit-history {
+.medical-history-table {
   min-height: 200px;
 }
 

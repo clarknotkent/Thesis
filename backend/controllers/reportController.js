@@ -131,6 +131,29 @@ const getTCLReport = async (req, res) => {
   }
 };
 
+// Get Monthly Immunization Report (Comprehensive)
+const getMonthlyImmunizationReport = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    if (!month || !year) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Month and year parameters are required' 
+      });
+    }
+    
+    const report = await reportModel.fetchMonthlyImmunizationReport(parseInt(month), parseInt(year));
+    res.json({ success: true, data: report });
+  } catch (error) {
+    console.error('Error generating monthly immunization report:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to generate monthly immunization report', 
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getMonthlyReport,
   getAnnualReport,
@@ -138,4 +161,5 @@ module.exports = {
   getDueSoonReport,
   getInventoryLowStockReport,
   getTCLReport,
+  getMonthlyImmunizationReport,
 };
