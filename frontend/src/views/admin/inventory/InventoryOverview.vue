@@ -4,24 +4,17 @@
       <!-- Breadcrumb -->
       <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
+          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
           <li class="breadcrumb-item active" aria-current="page">Vaccine Inventory</li>
         </ol>
       </nav>
 
       <!-- Header -->
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 class="mb-1">
-            <i class="bi bi-capsule me-2"></i>Vaccine Inventory Management
-          </h2>
-          <p class="text-muted mb-0">Manage vaccine stock, receiving reports, and schedules</p>
-        </div>
-        <div class="d-flex gap-2">
-          <router-link to="/admin/dashboard" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
-          </router-link>
-        </div>
+      <div class="mb-4">
+        <h2 class="mb-1">
+          <i class="bi bi-capsule me-2"></i>Vaccine Inventory Management
+        </h2>
+        <p class="text-muted mb-0">Manage vaccine stock, receiving reports, and schedules</p>
       </div>
 
       <!-- Loading State -->

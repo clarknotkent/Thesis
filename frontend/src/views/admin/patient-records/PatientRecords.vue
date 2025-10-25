@@ -2,64 +2,20 @@
   <AdminLayout>
     <div class="container-fluid">
       <ToastContainer />
-      <AppPageHeader 
-        title="Patient Records" 
-        subtitle="Manage patient information and vaccination history"
-      >
-        <template #actions>
-          <router-link to="/admin/patients/add" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Add New Patient
-          </router-link>
-          <AppButton variant="outline-primary" icon="bi-file-medical" class="ms-2" @click="() => openAddRecord()">
-            Add Patient Record
-          </AppButton>
-        </template>
-      </AppPageHeader>
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
+          <li class="breadcrumb-item active" aria-current="page">Patient Records</li>
+        </ol>
+      </nav>
 
-      <!-- Search & Filter -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <div class="input-group">
-                <span class="input-group-text">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  placeholder="Search patients..."
-                  v-model="searchQuery"
-                  @input="debouncedSearch"
-                >
-              </div>
-            </div>
-            <div class="col-md-3">
-              <select class="form-select" v-model="selectedStatus" @change="applyFilters">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="due">Vaccination Due</option>
-                <option value="completed">Up to Date</option>
-                <option value="fic">FIC (Fully Immunized Child)</option>
-                <option value="cic">CIC (Completely Immunized Child)</option>
-                <option value="defaulter">Defaulter</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <select class="form-select" v-model="selectedGender" @change="applyFilters">
-                <option value="">All Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <button class="btn btn-outline-secondary w-100" @click="resetFilters">
-                <i class="bi bi-arrow-clockwise"></i> Reset
-              </button>
-            </div>
-          </div>
-        </div>
+      <!-- Header -->
+      <div class="mb-4">
+        <h2 class="mb-1">
+          <i class="bi bi-people me-2"></i>Patient Records Management
+        </h2>
+        <p class="text-muted mb-0">Manage patient information and vaccination history</p>
       </div>
 
       <!-- Loading State -->
@@ -67,101 +23,172 @@
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading patients...</span>
         </div>
+        <p class="text-muted mt-2">Loading patient information...</p>
       </div>
 
-      <!-- Patient List -->
-      <div v-if="!loading" class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-          <h6 class="m-0 fw-bold text-primary">Patient List</h6>
-          <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">
-              {{ totalItems }} total patients
-              <span v-if="totalPages > 1">
-                (Page {{ currentPage }} of {{ totalPages }})
-              </span>
-            </small>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" @click="exportData" title="Export">
-                <i class="bi bi-download"></i>
-              </button>
-              <button class="btn btn-outline-primary" @click="printData" title="Print">
-                <i class="bi bi-printer"></i>
-              </button>
+      <!-- Patient Management with Tabs -->
+      <div v-if="!loading" class="row">
+        <!-- Main Content -->
+        <div class="col-lg-12 mb-4">
+          <div class="card shadow">
+            <div class="card-header py-3 bg-white">
+              <!-- Tabs Navigation -->
+              <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                  <button 
+                    class="nav-link active"
+                  >
+                    <i class="bi bi-people me-2"></i>Patient List
+                  </button>
+                </li>
+              </ul>
             </div>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead class="table-light">
-                <tr>
-                  <th>Patient ID</th>
-                  <th>Child Name</th>
-                  <th>Sex</th>
-                  <th>Birth Date</th>
-                  <th>Age</th>
-                  <th>Mother</th>
-                  <th>Contact</th>
-                  <th>Last Vaccination</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="patient in patients" :key="patient.id">
-                  <td class="fw-semibold text-primary">{{ patient.id }}</td>
-                  <td class="fw-semibold">{{ patient.childInfo.name }}</td>
-                  <td>{{ patient.childInfo.sex }}</td>
-                  <td>{{ formatDate(patient.childInfo.birthDate) }}</td>
-                  <td>{{ calculateAge(patient.childInfo.birthDate) }}</td>
-                  <td>{{ patient.motherInfo.name }}</td>
-                  <td>
-                    <span v-if="patient.guardian_contact_number || patient.childInfo.phoneNumber">
-                      <i class="bi bi-telephone me-1"></i>{{ patient.guardian_contact_number || patient.childInfo.phoneNumber }}
-                    </span>
-                    <span v-else class="text-muted">—</span>
-                  </td>
-                  <td>
-                    <span v-if="patient.lastVaccination" class="text-muted">
-                      {{ formatDate(patient.lastVaccination) }}
-                    </span>
-                    <span v-else class="text-warning">No records</span>
-                  </td>
-                  <td>
-                    <div class="d-flex gap-2">
-                      <router-link 
-                        :to="`/admin/patients/view/${patient.id}`"
-                        class="btn btn-sm btn-primary"
+            <div class="card-body p-4">
+              <!-- Patient List Section -->
+              <div>
+                <!-- Header Section -->
+                <div class="mb-3">
+                  <h5 class="mb-0">
+                    <i class="bi bi-list-ul me-2"></i>All Patients
+                  </h5>
+                </div>
+
+                <!-- Search and Filter Section -->
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+                  <div class="d-flex gap-2 align-items-center flex-grow-1">
+                    <!-- Search Bar -->
+                    <div class="input-group" style="max-width: 300px;">
+                      <input 
+                        type="text" 
+                        class="form-control form-control-sm" 
+                        placeholder="Search patients..." 
+                        v-model="searchQuery"
+                        @input="debouncedSearch"
                       >
-                        <i class="bi bi-eye me-1"></i>View
-                      </router-link>
-                      <button 
-                        class="btn btn-sm btn-danger" 
-                        @click="deletePatient(patient)"
-                      >
-                        <i class="bi bi-trash me-1"></i>Delete
+                      <button class="btn btn-sm btn-outline-primary" type="button">
+                        <i class="bi bi-search"></i>
                       </button>
                     </div>
-                  </td>
-                </tr>
-                <tr v-if="patients.length === 0">
-                  <td colspan="9" class="text-center text-muted py-4">
-                    No patients found
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    
+                    <!-- Status Filter -->
+                    <div class="dropdown">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                        Filter: {{ selectedStatus || 'All Status' }}
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="statusFilter">
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = ''; applyFilters()">All Status</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'active'; applyFilters()">Active</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'inactive'; applyFilters()">Inactive</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'due'; applyFilters()">Vaccination Due</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'completed'; applyFilters()">Up to Date</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'fic'; applyFilters()">FIC</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'cic'; applyFilters()">CIC</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'defaulter'; applyFilters()">Defaulter</a></li>
+                      </ul>
+                    </div>
+                    
+                    <!-- Gender Filter -->
+                    <div class="dropdown">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="genderFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                        Gender: {{ selectedGender || 'All' }}
+                      </button>
+                      <ul class="dropdown-menu" aria-labelledby="genderFilter">
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = ''; applyFilters()">All Gender</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = 'male'; applyFilters()">Male</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = 'female'; applyFilters()">Female</a></li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-sm btn-outline-primary" @click="resetFilters">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                    </button>
+                    <router-link to="/admin/patients/add" class="btn btn-sm btn-primary">
+                      <i class="bi bi-plus-circle me-1"></i>Add Patient
+                    </router-link>
+                  </div>
+                </div>
+
+                <!-- Patient Table -->
+                <div class="table-responsive">
+                  <table class="table table-hover table-bordered">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="text-center">Patient ID</th>
+                        <th class="text-center">Child Name</th>
+                        <th class="text-center">Sex</th>
+                        <th class="text-center">Birth Date</th>
+                        <th class="text-center">Age</th>
+                        <th class="text-center">Mother</th>
+                        <th class="text-center">Contact</th>
+                        <th class="text-center">Last Vaccination</th>
+                        <th class="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="patient in patients" :key="patient.id">
+                        <td class="text-center align-middle fw-semibold text-primary">{{ patient.id }}</td>
+                        <td class="text-center align-middle fw-semibold">{{ patient.childInfo.name }}</td>
+                        <td class="text-center align-middle">{{ patient.childInfo.sex }}</td>
+                        <td class="text-center align-middle">{{ formatDate(patient.childInfo.birthDate) }}</td>
+                        <td class="text-center align-middle">{{ calculateAge(patient.childInfo.birthDate) }}</td>
+                        <td class="text-center align-middle">{{ patient.motherInfo.name }}</td>
+                        <td class="text-center align-middle">
+                          <span v-if="patient.guardian_contact_number || patient.childInfo.phoneNumber">
+                            <i class="bi bi-telephone me-1"></i>{{ patient.guardian_contact_number || patient.childInfo.phoneNumber }}
+                          </span>
+                          <span v-else class="text-muted">—</span>
+                        </td>
+                        <td class="text-center align-middle">
+                          <span v-if="patient.lastVaccination" class="text-muted">
+                            {{ formatDate(patient.lastVaccination) }}
+                          </span>
+                          <span v-else class="text-warning">No records</span>
+                        </td>
+                        <td class="text-center align-middle">
+                          <div class="d-flex gap-2 justify-content-center">
+                            <router-link 
+                              :to="`/admin/patients/view/${patient.id}`"
+                              class="btn btn-sm btn-outline-primary"
+                              title="View Details"
+                            >
+                              <i class="bi bi-eye me-1"></i>View
+                            </router-link>
+                            <button 
+                              class="btn btn-sm btn-outline-danger" 
+                              @click="deletePatient(patient)"
+                              title="Delete Patient"
+                            >
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-if="patients.length === 0">
+                        <td colspan="9" class="text-center text-muted py-4">
+                          <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                          <p class="mb-0 mt-2">No patients found</p>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div v-if="patients.length > 0" class="pagination-footer border-top mt-3 pt-3">
+                  <AppPagination
+                    :currentPage="currentPage"
+                    :totalPages="totalPages"
+                    :totalItems="totalItems"
+                    :itemsPerPage="itemsPerPage"
+                    @page-changed="changePage"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <!-- Pagination -->
-        <div class="card-footer" v-if="totalPages > 1">
-          <AppPagination
-            :current-page="currentPage"
-            :total-pages="totalPages"
-            :total-items="totalItems"
-            :items-per-page="itemsPerPage"
-            @page-changed="changePage"
-          />
         </div>
       </div>
 
@@ -176,11 +203,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppPageHeader from '@/components/common/AppPageHeader.vue'
-import AppButton from '@/components/common/AppButton.vue'
 import AppPagination from '@/components/common/AppPagination.vue'
-// Page-only flow: remove modal components
-// AdminAddRecordModal is now used as a standalone page via route '/admin/patients/add-record'
 import api from '@/services/api'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast'
@@ -407,24 +430,94 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.cursor-pointer {
-  cursor: pointer;
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
 }
 
-.cursor-pointer:hover {
-  background-color: #f8f9fa;
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
+/* Tabs Styling */
+.nav-tabs {
+  border-bottom: none;
+}
+
+.nav-tabs .nav-link {
+  color: #6c757d;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+  background-color: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+  color: #0d6efd;
+  border-bottom-color: #dee2e6;
+  background-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: transparent;
+  border-bottom: 3px solid #0d6efd;
+  font-weight: 600;
+}
+
+.card-header-tabs {
+  margin-bottom: -0.75rem;
+}
+
+.card-header {
+  background-color: white !important;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Table Styling */
+.table {
+  margin-bottom: 0;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pagination Footer */
+.pagination-footer {
+  padding: 1rem 0;
+  background-color: transparent;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: center;
+}
+
+/* Shadow */
+.shadow {
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
 }
 
 .text-gray-800 {
   color: #5a5c69 !important;
-}
-
-.btn-group .btn {
-  border-radius: 0.25rem;
-  margin-right: 0.125rem;
-}
-
-.btn-group .btn:last-child {
-  margin-right: 0;
 }
 </style>
