@@ -12,5 +12,5 @@
 
 <script setup>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AdminAddRecordModal from './AdminAddRecordModal.vue'
+import AdminAddRecordModal from '@/features/patient-management/AdminAddRecordModal.vue'
 </script>

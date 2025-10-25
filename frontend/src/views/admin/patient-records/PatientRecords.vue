@@ -105,6 +105,9 @@
                     <button class="btn btn-sm btn-outline-primary" @click="resetFilters">
                       <i class="bi bi-arrow-clockwise me-1"></i>Reset
                     </button>
+                    <router-link to="/admin/patients/add-record" class="btn btn-sm btn-outline-success">
+                      <i class="bi bi-file-medical me-1"></i>Add Vaccination Record
+                    </router-link>
                     <router-link to="/admin/patients/add" class="btn btn-sm btn-primary">
                       <i class="bi bi-plus-circle me-1"></i>Add Patient
                     </router-link>
@@ -203,9 +206,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
-import ToastContainer from '@/components/common/ToastContainer.vue'
+import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -351,27 +354,6 @@ const debouncedSearch = () => {
   }, 500)
 }
 
-const viewPatient = (patient) => {
-  router.push({ name: 'ViewPatient', params: { id: patient.id } })
-}
-
-const editVaccinations = (patient) => {
-  // Navigate to the vaccination editor page for the selected patient
-  router.push({ name: 'PatientVaccinations', params: { id: patient.id }, query: { visitContext: false, outside: false } })
-}
-
-const openVaccinationFromVisit = (patientId, patientData = null) => {
-  // Open vaccination editor page with visit context
-  router.push({ name: 'PatientVaccinations', params: { id: patientId }, query: { visitContext: true, outside: false } })
-}
-
-// Removed modal handlers; pages handle their own flows
-
-const openAddRecord = (patient = null) => {
-  // Navigate to the add-record page and pass patientId as query if provided
-  router.push({ name: 'AddPatientRecord', query: { patientId: patient?.id || '' } })
-}
-
 const deletePatient = async (patient) => {
   const patientName = patient.childInfo?.name || 'this patient'
   
@@ -411,17 +393,6 @@ const deletePatient = async (patient) => {
     // User cancelled
   }
 }
-
-
-const exportData = () => {
-  console.log('Exporting data...')
-  // Implement export functionality
-}
-
-const printData = () => {
-  window.print()
-}
-
 
 // Lifecycle
 onMounted(() => {

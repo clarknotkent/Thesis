@@ -166,9 +166,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VaccineStockSection from './components/VaccineStockSection.vue'
-import ReceivingReportsSection from './components/ReceivingReportsSection.vue'
-import VaccineScheduleSection from './components/VaccineScheduleSection.vue'
+import VaccineStockSection from '@/features/inventory-management/VaccineStockSection.vue'
+import ReceivingReportsSection from '@/features/inventory-management/ReceivingReportsSection.vue'
+import VaccineScheduleSection from '@/features/inventory-management/VaccineScheduleSection.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
@@ -195,7 +195,6 @@ onMounted(() => {
   }
   
   loadInventoryData()
-  loadScheduleData()
 })
 
 // Update URL hash when tab changes
@@ -277,20 +276,6 @@ const loadInventoryData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const loadScheduleData = async () => {
-  // This will be handled by the VaccineScheduleSection component
-  // Just here as a placeholder for potential future use
-}
-
-const goToCreateReceiving = () => {
-  router.push('/admin/vaccines/inventory-history')
-}
-
-const openScheduleModal = () => {
-  // Emit event to child component or handle modal
-  // This will be handled by the VaccineScheduleSection component
 }
 </script>
 

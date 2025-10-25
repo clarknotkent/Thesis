@@ -184,8 +184,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import DateInput from '@/components/common/DateInput.vue'
-import SearchableSelect from '@/components/common/SearchableSelect.vue'
+import DateInput from '@/components/ui/form/DateInput.vue'
+import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 

@@ -93,11 +93,11 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
-import ConversationsList from './components/ConversationsList.vue';
-import ChatHeader from './components/ChatHeader.vue';
-import MessagesList from './components/MessagesList.vue';
-import MessageComposer from './components/MessageComposer.vue';
-import NewConversationModal from './components/NewConversationModal.vue';
+import ConversationsList from '@/features/chat/ConversationsList.vue';
+import ChatHeader from '@/features/chat/ChatHeader.vue';
+import MessagesList from '@/features/chat/MessagesList.vue';
+import MessageComposer from '@/features/chat/MessageComposer.vue';
+import NewConversationModal from '@/features/chat/NewConversationModal.vue';
 import { getUsers } from '@/services/userService';
 import { useToast } from '@/composables/useToast';
 import { getUserId } from '@/services/auth';
@@ -110,7 +110,7 @@ import {
   getConversationTitle,
   getParticipantList,
   processConversations
-} from './composables/useChatService';
+} from '@/features/chat/useChatService';
 
 const { addToast } = useToast();
 

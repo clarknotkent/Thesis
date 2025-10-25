@@ -248,10 +248,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { formatPHDate } from '@/utils/dateUtils'
@@ -324,7 +324,6 @@ const paginatedHistory = computed(() => {
 })
 
 // Watch for search/sort changes and reset to page 1
-import { watch } from 'vue'
 watch([searchQuery, filterType, sortOrder], () => {
   currentPage.value = 1
 })

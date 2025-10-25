@@ -34,8 +34,8 @@
 import { computed } from 'vue'
 import TopNavbar from './TopNavbar.vue'
 import BottomNavbar from './BottomNavbar.vue'
-import ToastContainer from '@/components/common/ToastContainer.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
+import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
 

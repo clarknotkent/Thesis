@@ -97,7 +97,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 
 const router = useRouter()

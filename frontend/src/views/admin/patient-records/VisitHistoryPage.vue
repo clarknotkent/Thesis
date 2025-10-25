@@ -16,5 +16,5 @@
 
 <script setup>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VisitHistory from '@/components/common/VisitHistoryModal.vue'
+import VisitHistory from '@/features/patient-management/VisitHistoryModal.vue'
 </script>

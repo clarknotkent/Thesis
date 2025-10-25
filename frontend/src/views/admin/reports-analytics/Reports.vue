@@ -344,9 +344,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import DateInput from '@/components/common/DateInput.vue'
-import AppPageHeader from '@/components/common/AppPageHeader.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
+import DateInput from '@/components/ui/form/DateInput.vue'
+import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import { nowPH, formatPHDate, formatPHDateTime, utcToPH, getCurrentPHISO } from '@/utils/dateUtils'
 

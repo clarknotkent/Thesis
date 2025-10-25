@@ -1,0 +1,11 @@
+// Patient Management Feature Components
+export { default as VisitEditor } from './VisitEditor.vue'
+export { default as VaccinationRecordEditor } from './VaccinationRecordEditor.vue'
+export { default as VisitHistoryModal } from './VisitHistoryModal.vue'
+export { default as VisitSummaryView } from './VisitSummaryView.vue'
+export { default as AdminAddRecordModal } from './AdminAddRecordModal.vue'
+export { default as PatientForm } from './PatientForm.vue'
+export { default as GuardianSelector } from './GuardianSelector.vue'
+export { default as ScheduledVaccinations } from './ScheduledVaccinations.vue'
+export { default as VaccinationHistory } from './VaccinationHistory.vue'
+export { default as VisitHistory } from './VisitHistory.vue'

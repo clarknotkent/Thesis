@@ -117,7 +117,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VaccineForm from './components/VaccineForm.vue'
+import VaccineForm from '@/features/inventory-management/VaccineForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 

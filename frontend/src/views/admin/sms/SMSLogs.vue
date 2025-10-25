@@ -378,10 +378,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppPageHeader from '@/components/common/AppPageHeader.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
+import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
-import DateInput from '@/components/common/DateInput.vue'
+import DateInput from '@/components/ui/form/DateInput.vue'
 
 // Reactive data
 const loading = ref(true)

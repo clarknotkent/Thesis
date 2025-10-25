@@ -53,5 +53,5 @@
 
 <script setup>
 import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
-import AppCard from '@/components/common/AppCard.vue'
+import AppCard from '@/components/ui/base/AppCard.vue'
 </script>

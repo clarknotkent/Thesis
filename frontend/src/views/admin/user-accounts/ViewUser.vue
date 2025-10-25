@@ -198,8 +198,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppModal from '@/components/common/AppModal.vue'
-import UserForm from './components/UserForm.vue'
+import AppModal from '@/components/ui/base/AppModal.vue'
+import UserForm from '@/features/user-management/UserForm.vue'
 import { getUser, deleteUser, resetPassword, restoreUser } from '@/services/users'
 import { useToast } from '@/composables/useToast'
 

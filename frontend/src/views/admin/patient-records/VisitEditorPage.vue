@@ -24,7 +24,7 @@
 
 <script setup>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VisitEditor from '@/components/common/VisitEditor.vue'
+import VisitEditor from '@/features/patient-management/VisitEditor.vue'
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 

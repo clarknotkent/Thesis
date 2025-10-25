@@ -40,8 +40,8 @@ import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
 import Navbar from './Navbar.vue'
 import Sidebar from './Sidebar.vue'
-import ToastContainer from '@/components/common/ToastContainer.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
+import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 
 const { confirmState, handleConfirm, handleCancel } = useConfirm()
 

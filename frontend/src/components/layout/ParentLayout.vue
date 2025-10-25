@@ -76,8 +76,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import ToastContainer from '@/components/common/ToastContainer.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
+import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 import { useConfirm } from '@/composables/useConfirm'
 
 const { confirmState, handleConfirm, handleCancel } = useConfirm()

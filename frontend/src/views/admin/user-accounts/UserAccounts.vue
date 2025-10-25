@@ -446,12 +446,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import AppSpinner from '@/components/common/AppSpinner.vue'
-import AppPagination from '@/components/common/AppPagination.vue'
-import AppModal from '@/components/common/AppModal.vue'
+import AppSpinner from '@/components/ui/base/AppSpinner.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
+import AppModal from '@/components/ui/base/AppModal.vue'
 import api from '@/services/api'
 import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
-import DateInput from '@/components/common/DateInput.vue'
+import DateInput from '@/components/ui/form/DateInput.vue'
 import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
 import { useToast } from '@/composables/useToast'
 
