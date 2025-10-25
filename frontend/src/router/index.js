@@ -7,14 +7,14 @@ import LandingPage from '@/views/LandingPage.vue'
 
 // Admin Views
 import AdminDashboard from '@/views/admin/dashboard/Dashboard.vue'
-import PatientRecords from '@/views/admin/patient-records/PatientRecords.vue'
+import PatientRecords from '@/views/admin/patients/PatientRecords.vue'
 import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
 import InventoryOverview from '@/views/admin/inventory/InventoryOverview.vue'
 import ReceivingReportPage from '@/views/admin/inventory/ReceivingReportPage.vue'
 import SMSLogs from '@/views/admin/sms/SMSLogs.vue'
-import Reports from '@/views/admin/reports-analytics/Reports.vue'
-import UserAccounts from '@/views/admin/user-accounts/UserAccounts.vue'
-import ActivityLogs from '@/views/admin/activity-logs/ActivityLogs.vue'
+import Reports from '@/views/admin/reports/Reports.vue'
+import UserAccounts from '@/views/admin/users/UserAccounts.vue'
+import ActivityLogs from '@/views/admin/activity/ActivityLogs.vue'
 import Profile from '@/views/admin/profile/Profile.vue'
 import Settings from '@/views/admin/settings/Settings.vue'
 import NotificationsInbox from '@/views/admin/notifications/NotificationsInbox.vue'
@@ -80,7 +80,7 @@ const routes = [
   {
     path: '/admin/patients/add',
     name: 'AdminAddPatient',
-    component: () => import('@/views/admin/patient-records/AddPatient.vue'),
+    component: () => import('@/views/admin/patients/AddPatient.vue'),
     meta: {
       title: 'Add Patient - ImmunizeMe',
       requiresAuth: true,
@@ -90,7 +90,7 @@ const routes = [
   {
     path: '/admin/patients/add-record',
     name: 'AddPatientRecord',
-    component: () => import('@/views/admin/patient-records/AddPatientRecord.vue'),
+    component: () => import('@/views/admin/patients/AddPatientRecord.vue'),
     meta: {
       title: 'Add Patient Record - ImmunizeMe',
       requiresAuth: true,
@@ -100,7 +100,7 @@ const routes = [
   {
     path: '/admin/patients/edit/:id',
     name: 'EditPatient',
-    component: () => import('@/views/admin/patient-records/EditPatient.vue'),
+    component: () => import('@/views/admin/patients/EditPatient.vue'),
     meta: {
       title: 'Edit Patient - ImmunizeMe',
       requiresAuth: true,
@@ -110,7 +110,7 @@ const routes = [
   {
     path: '/admin/patients/view/:id',
     name: 'ViewPatient',
-    component: () => import('@/views/admin/patient-records/ViewPatient.vue'),
+    component: () => import('@/views/admin/patients/ViewPatient.vue'),
     meta: {
       title: 'View Patient - ImmunizeMe',
       requiresAuth: true,
@@ -119,18 +119,23 @@ const routes = [
   },
   {
     path: '/admin/patients/:id/visits',
-    name: 'PatientVisitHistory',
-    component: () => import('@/views/admin/patient-records/VisitHistoryPage.vue'),
+    name: 'PatientMedicalHistory',
+    component: () => import('@/views/admin/patients/MedicalHistoryPage.vue'),
     meta: {
       title: 'Medical History - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
   },
+  // Backwards compatibility route (deprecated)
+  {
+    path: '/admin/patients/:id/visit-history',
+    redirect: to => ({ name: 'PatientMedicalHistory', params: to.params })
+  },
   {
     path: '/admin/patients/:patientId/visits/:visitId',
     name: 'VisitSummary',
-    component: () => import('@/views/admin/patient-records/VisitSummaryPage.vue'),
+    component: () => import('@/views/admin/patients/VisitSummaryPage.vue'),
     meta: {
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
@@ -140,7 +145,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/visits/:visitId/edit',
     name: 'EditVisitRecord',
-    component: () => import('@/views/admin/patient-records/VisitEditorPage.vue'),
+    component: () => import('@/views/admin/patients/VisitEditorPage.vue'),
     meta: {
       title: 'Edit Visit Record - ImmunizeMe',
       requiresAuth: true,
@@ -150,7 +155,7 @@ const routes = [
   {
     path: '/admin/patients/:id/vaccinations',
     name: 'PatientVaccinations',
-    component: () => import('@/views/admin/patient-records/VaccinationEditorPage.vue'),
+    component: () => import('@/views/admin/patients/VaccinationEditorPage.vue'),
     meta: {
       title: 'Vaccinations - ImmunizeMe',
       requiresAuth: true,
@@ -160,7 +165,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/vaccinations/:recordId/edit',
     name: 'EditVaccinationRecord',
-    component: () => import('@/views/admin/patient-records/EditVaccinationRecord.vue'),
+    component: () => import('@/views/admin/patients/EditVaccinationRecord.vue'),
     meta: {
       title: 'Edit Vaccination Record - ImmunizeMe',
       requiresAuth: true,
@@ -170,7 +175,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/vaccine/:vaccine/edit',
     name: 'EditVaccineRecords',
-    component: () => import('@/views/admin/patient-records/EditVaccineRecords.vue'),
+    component: () => import('@/views/admin/patients/EditVaccineRecords.vue'),
     meta: {
       title: 'Edit Vaccine Records - ImmunizeMe',
       requiresAuth: true,
@@ -180,7 +185,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/vaccine-details',
     name: 'VaccineDetails',
-    component: () => import('@/views/admin/patient-records/VaccineDetails.vue'),
+    component: () => import('@/views/admin/patients/VaccineDetails.vue'),
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
@@ -322,7 +327,7 @@ const routes = [
     name: 'Reports',
     component: Reports,
     meta: {
-      title: 'Reports - ImmunizeMe',
+      title: 'Monthly Immunization Report - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }
@@ -360,7 +365,7 @@ const routes = [
   {
     path: '/admin/users/add',
     name: 'AddUser',
-    component: () => import('@/views/admin/user-accounts/AddUser.vue'),
+    component: () => import('@/views/admin/users/AddUser.vue'),
     meta: {
       title: 'Add User - ImmunizeMe',
       requiresAuth: true,
@@ -370,7 +375,7 @@ const routes = [
   {
     path: '/admin/users/edit/:id',
     name: 'EditUser',
-    component: () => import('@/views/admin/user-accounts/EditUser.vue'),
+    component: () => import('@/views/admin/users/EditUser.vue'),
     meta: {
       title: 'Edit User - ImmunizeMe',
       requiresAuth: true,
@@ -380,7 +385,7 @@ const routes = [
   {
     path: '/admin/users/view/:id',
     name: 'ViewUser',
-    component: () => import('@/views/admin/user-accounts/ViewUser.vue'),
+    component: () => import('@/views/admin/users/ViewUser.vue'),
     meta: {
       title: 'View User - ImmunizeMe',
       requiresAuth: true,
@@ -388,7 +393,7 @@ const routes = [
     }
   },
   {
-    path: '/admin/activity-logs',
+    path: '/admin/activity',
     name: 'ActivityLogs',
     component: ActivityLogs,
     meta: {
@@ -398,9 +403,9 @@ const routes = [
     }
   },
   {
-    path: '/admin/activity-logs/:id',
+    path: '/admin/activity/:id',
     name: 'ActivityLogDetails',
-    component: () => import('@/views/admin/activity-logs/ActivityLogDetails.vue'),
+    component: () => import('@/views/admin/activity/ActivityLogDetails.vue'),
     meta: {
       title: 'Activity Log Details - ImmunizeMe',
       requiresAuth: true,

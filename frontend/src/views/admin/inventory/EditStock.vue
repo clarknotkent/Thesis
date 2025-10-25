@@ -154,7 +154,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import StockForm from '@/features/inventory-management/StockForm.vue'
+import StockForm from '@/features/inventory/components/StockForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'

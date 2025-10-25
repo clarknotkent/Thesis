@@ -120,7 +120,7 @@
 
               <!-- Medical History Tab -->
               <div v-if="activeTab === 'visits'">
-                <VisitHistory :patient-id="patientId" :embedded-page="true" />
+                <MedicalHistory :patient-id="patientId" :embedded-page="true" />
                 <div class="d-flex justify-content-end mt-3">
                 </div>
               </div>
@@ -195,10 +195,10 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import PatientForm from '@/features/patient-management/PatientForm.vue'
-import VaccinationHistory from '@/features/patient-management/VaccinationHistory.vue'
-import ScheduledVaccinations from '@/features/patient-management/ScheduledVaccinations.vue'
-import VisitHistory from '@/features/patient-management/VisitHistory.vue'
+import PatientForm from '@/features/patients/PatientForm.vue'
+import VaccinationHistory from '@/features/patients/VaccinationHistory.vue'
+import ScheduledVaccinations from '@/features/patients/ScheduledVaccinations.vue'
+import MedicalHistory from '@/features/patients/MedicalHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -364,7 +364,7 @@ const handleEditVaccinations = () => {
 
 const handleEditMedicalHistory = () => {
   // Navigate to medical history page
-  router.push({ name: 'PatientVisitHistory', params: { id: patientId.value } })
+  router.push({ name: 'PatientMedicalHistory', params: { id: patientId.value } })
 }
 
 const handleDelete = async () => {

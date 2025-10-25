@@ -166,9 +166,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VaccineStockSection from '@/features/inventory-management/VaccineStockSection.vue'
-import ReceivingReportsSection from '@/features/inventory-management/ReceivingReportsSection.vue'
-import VaccineScheduleSection from '@/features/inventory-management/VaccineScheduleSection.vue'
+import VaccineStockSection from '@/features/inventory/components/VaccineStockSection.vue'
+import ReceivingReportsSection from '@/features/inventory/components/ReceivingReportsSection.vue'
+import VaccineScheduleSection from '@/features/inventory/components/VaccineScheduleSection.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 

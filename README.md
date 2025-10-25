@@ -422,11 +422,16 @@ GET    /api/reports/activity-logs  # Activity logs
 - Conversation history
 
 #### **Reports & Analytics**
-- Vaccination coverage reports
+- Monthly immunization reports (currently placeholder - awaiting backend fix)
+- Vaccination coverage reports with sample data
+- Color-coded coverage indicators (Green/Blue/Yellow/Red)
+- Gender-based statistics (Male/Female breakdown)
 - Defaulter lists
 - Inventory consumption reports
 - Activity logs (user actions, timestamps)
 - Export reports (PDF, Excel)
+
+> **Note:** Monthly Immunization Report page currently displays sample placeholder data while backend logic errors are being resolved. See `Reports.vue.backup` for original implementation.
 
 #### **Settings**
 - Barangay information
