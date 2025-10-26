@@ -6,5 +6,5 @@
 
 <script setup>
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VisitSummaryView from '@/features/patients/VisitSummaryView.vue'
+import VisitSummaryView from '@/features/admin/patients/VisitSummaryView.vue'
 </script>

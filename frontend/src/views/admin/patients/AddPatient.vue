@@ -61,7 +61,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import PatientForm from '@/features/patients/PatientForm.vue'
+import PatientForm from '@/features/admin/patients/PatientForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 

@@ -18,7 +18,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VaccinationRecordEditor from '@/features/patients/VaccinationRecordEditor.vue'
+import VaccinationRecordEditor from '@/features/admin/patients/VaccinationRecordEditor.vue'
 
 const router = useRouter()
 // Honor query ?outside=true only as an initial hint; no page-level toggle
