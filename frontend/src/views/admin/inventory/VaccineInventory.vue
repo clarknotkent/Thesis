@@ -79,7 +79,7 @@ import {
   InventoryTable,
   ReceivingReportsTable,
   VaccineScheduleSection
-} from '@/features/inventory'
+} from '@/features/admin/inventory'
 
 const router = useRouter()
 

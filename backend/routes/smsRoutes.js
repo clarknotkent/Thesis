@@ -9,7 +9,14 @@ const {
 	getSMSDeliveryStatus,
 	sendBulkSMS,
 	getSMSTemplates,
-	createSMSTemplate
+	createSMSTemplate,
+	updateSMSTemplate,
+	deleteSMSTemplate,
+	getGuardianAutoSendSettings,
+	toggleGuardianAutoSend,
+	bulkToggleAutoSend,
+	getSMSStatistics,
+	previewTemplate
 } = require('../controllers/smsController');
 
 // POST /api/sms - Send an SMS notification
@@ -35,5 +42,26 @@ router.get('/templates', authenticateRequest, checkUserMapping, authorizeRole(['
 
 // POST /api/sms/templates - Create SMS template
 router.post('/templates', authenticateRequest, checkUserMapping, authorizeRole(['admin']), createSMSTemplate);
+
+// PUT /api/sms/templates/:id - Update SMS template
+router.put('/templates/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateSMSTemplate);
+
+// DELETE /api/sms/templates/:id - Delete SMS template
+router.delete('/templates/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteSMSTemplate);
+
+// GET /api/sms/guardians - Get guardian auto-send settings
+router.get('/guardians', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getGuardianAutoSendSettings);
+
+// PUT /api/sms/guardians/:guardianId - Toggle guardian auto-send
+router.put('/guardians/:guardianId', authenticateRequest, checkUserMapping, authorizeRole(['admin']), toggleGuardianAutoSend);
+
+// POST /api/sms/guardians/bulk-toggle - Bulk toggle auto-send
+router.post('/guardians/bulk-toggle', authenticateRequest, checkUserMapping, authorizeRole(['admin']), bulkToggleAutoSend);
+
+// GET /api/sms/statistics - Get SMS statistics
+router.get('/statistics', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getSMSStatistics);
+
+// POST /api/sms/templates/preview - Preview template with variables
+router.post('/templates/preview', authenticateRequest, checkUserMapping, authorizeRole(['admin', 'health_worker']), previewTemplate);
 
 module.exports = router;

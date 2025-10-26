@@ -61,7 +61,7 @@
 import { ref, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import VisitEditor from '@/features/patients/VisitEditor.vue'
+import VisitEditor from '@/features/admin/patients/VisitEditor.vue'
 
 const router = useRouter()
 const route = useRoute()

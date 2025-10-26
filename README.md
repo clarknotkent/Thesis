@@ -28,7 +28,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - **Patient Record Management** - Digital health records for children and guardians
 - **Vaccination Tracking** - Scheduled and completed vaccinations with history
 - **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
-- **SMS Notifications** - Automated reminders for upcoming vaccinations
+- **SMS Management** - Comprehensive SMS notification system with PhilSMS integration
 - **Reporting & Analytics** - Dashboard insights and activity logs
 - **Multi-User Access** - Role-based access for admins, health workers, and parents
 
@@ -53,7 +53,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - **Database:** PostgreSQL (Supabase)
 - **Authentication:** JWT (JSON Web Tokens)
 - **File Upload:** Multer
-- **SMS Integration:** Semaphore API
+- **SMS Integration:** PhilSMS API
 - **Security:** bcrypt, CORS, helmet
 
 ### **Database**
@@ -78,11 +78,10 @@ frontend/src/
 │       └── feedback/        # User feedback (toasts, confirm dialogs)
 │
 ├── features/                # Business domain modules
-│   ├── analytics/           # Charts and data visualization
-│   ├── chat/                # Admin messaging system
-│   ├── inventory-management/# Vaccine stock and receiving reports
-│   ├── patient-management/  # Patient records, visits, vaccinations
-│   └── user-management/     # User account forms
+│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)
+│   ├── health-worker/       # Health worker components
+│   ├── parent/              # Parent portal components
+│   └── shared/              # Shared components across roles
 │
 ├── views/                   # Page components (routes)
 │   ├── admin/               # Admin portal pages
@@ -102,7 +101,7 @@ backend/
 ├── controllers/             # Request handlers
 ├── middleware/              # Authentication, validation, error handling
 ├── routes/                  # API route definitions
-├── services/                # Business logic
+├── services/                # Business logic (SMS, notifications)
 ├── utils/                   # Helper functions
 ├── config/                  # Configuration files
 └── uploads/                 # File storage (QR codes, exports)
@@ -115,7 +114,8 @@ db/                          # Database migrations (version control)
 ├── 2025-09-28_*.sql         # Table schema, RLS, triggers
 ├── 2025-09-29_*.sql         # Constraints, views
 ├── 2025-10-13_*.sql         # Notifications, reminders
-└── 2025-10-24_*.sql         # Latest updates
+├── 2025-10-24_*.sql         # Latest updates
+└── 2025-10-27_*.sql         # SMS management tables
 ```
 
 ---
@@ -159,8 +159,9 @@ db/                          # Database migrations (version control)
    JWT_SECRET=your_jwt_secret_key_here
    JWT_EXPIRES_IN=7d
    
-   # SMS API (Semaphore)
-   SEMAPHORE_API_KEY=your_semaphore_api_key
+   # SMS API (PhilSMS)
+   PHILSMS_API_KEY=your_philsms_api_key
+   PHILSMS_SENDER_ID=YourSenderID
    
    # Frontend URL (CORS)
    FRONTEND_URL=http://localhost:5173
@@ -205,6 +206,40 @@ db/                          # Database migrations (version control)
 ## 📁 Project Structure
 
 ### **Frontend - Feature Modules**
+
+#### **SMS Management** (`features/admin/sms/`)
+**Purpose:** Complete SMS notification system with PhilSMS integration
+
+**Components:**
+- `MessageLogs.vue` - SMS history table with filtering and search
+- `MessageTemplates.vue` - Manage SMS templates with variables
+- `AutoSendSettings.vue` - Per-guardian auto-send toggle settings
+
+**Features:**
+- Send manual SMS to guardians
+- Template-based messages with variable replacement
+- Auto-calculated greeting time (Day: 6am-6pm, Evening: 6pm-6am)
+- Auto-calculated guardian title (Mr./Ms. based on gender)
+- Template variables: `{greeting_time}`, `{guardian_title}`, `{guardian_last_name}`, `{patient_name}`, `{vaccine_name}`, `{dose_number}`, `{appointment_date}`
+- Three trigger types: 1-week, 3-days, 1-day before vaccination
+- SMS delivery tracking and logs
+- Template preview before sending
+- Guardian-level auto-send preferences
+
+**Backend Integration:**
+- PhilSMS API integration (`services/smsService.js`)
+- 14 API endpoints for SMS operations
+- Database tables: `sms_logs`, `sms_templates`, `guardian_auto_send_settings`
+
+**Documentation:**
+- `ForJapeth.md` - Complete setup instructions
+- `SMS_BACKEND_README.md` - API documentation
+- `SMS_TEMPLATE_SPECS.md` - Template specifications
+
+**Pages Using Module:**
+- SMS Management (tabbed interface with Message Logs, Templates, Auto-Send Settings)
+
+---
 
 #### **1. Patient Management** (`features/patient-management/`)
 **Purpose:** Complete patient care workflow
@@ -350,9 +385,18 @@ DELETE /api/users/:id              # Delete user
 
 #### **SMS Routes** (`/api/sms`)
 ```
-GET    /api/sms/logs               # Get SMS logs
-POST   /api/sms/send               # Send SMS
-POST   /api/sms/send-reminder      # Send vaccination reminder
+POST   /api/sms                       # Send SMS (manual or template-based)
+POST   /api/sms/bulk                  # Send bulk SMS
+GET    /api/sms/history               # Get SMS logs (with filters)
+GET    /api/sms/statistics            # Get SMS statistics
+POST   /api/sms/templates/preview     # Preview template with variables
+GET    /api/sms/templates             # Get all templates
+POST   /api/sms/templates             # Create new template
+PUT    /api/sms/templates/:id         # Update template
+DELETE /api/sms/templates/:id         # Delete template
+GET    /api/sms/guardians             # Get guardian auto-send settings
+PUT    /api/sms/guardians/:guardianId # Toggle guardian auto-send
+POST   /api/sms/guardians/bulk-toggle # Bulk toggle auto-send
 ```
 
 #### **Report Routes** (`/api/reports`)
@@ -414,6 +458,21 @@ GET    /api/reports/activity-logs  # Activity logs
 - Notify parents of upcoming appointments
 - View SMS logs and delivery status
 - Configure SMS templates
+
+#### **SMS Management**
+- Comprehensive SMS notification system
+- Template-based messaging with variable replacement
+- Auto-calculated greeting time (Day/Evening based on 6am-6pm schedule)
+- Auto-calculated guardian title (Mr./Ms. based on gender)
+- Template variables: greeting, title, names, vaccine, dose, appointment date
+- Three trigger types: 1-week, 3-days, 1-day before vaccination
+- Manual SMS sending to individual guardians
+- Bulk SMS operations
+- SMS delivery tracking and history logs
+- Template preview before sending
+- Guardian-level auto-send preferences (enable/disable per guardian)
+- SMS statistics dashboard (total sent, delivered, failed)
+- PhilSMS API integration for reliable delivery
 
 #### **Messaging System**
 - Internal chat between admins and users
@@ -802,8 +861,16 @@ describe('Patient API', () => {
 - Columns: log_id, user_id, action, table_name, timestamp
 
 #### **sms_logs**
-- SMS notification history
-- Columns: sms_id, recipient_number, message, status, sent_at
+- SMS message history and delivery tracking
+- Columns: id, guardian_id, patient_id, phone_number, message, type, status, template_id, error_message, sent_at
+
+#### **sms_templates**
+- Reusable SMS templates with variable support
+- Columns: id, name, template, trigger_type, time_range, is_active
+
+#### **guardian_auto_send_settings**
+- Per-guardian SMS auto-send preferences
+- Columns: id, guardian_id, auto_send_enabled
 
 ---
 

@@ -12,6 +12,7 @@ import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
 import InventoryOverview from '@/views/admin/inventory/InventoryOverview.vue'
 import ReceivingReportPage from '@/views/admin/inventory/ReceivingReportPage.vue'
 import SMSLogs from '@/views/admin/sms/SMSLogs.vue'
+import SMSManagement from '@/views/admin/sms/SMSManagement.vue'
 import Reports from '@/views/admin/reports/Reports.vue'
 import UserAccounts from '@/views/admin/users/UserAccounts.vue'
 import ActivityLogs from '@/views/admin/activity/ActivityLogs.vue'
@@ -318,6 +319,16 @@ const routes = [
     component: SMSLogs,
     meta: {
       title: 'SMS Logs - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  {
+    path: '/admin/sms-management',
+    name: 'SMSManagement',
+    component: SMSManagement,
+    meta: {
+      title: 'SMS Management - ImmunizeMe',
       requiresAuth: true,
       role: 'admin'
     }

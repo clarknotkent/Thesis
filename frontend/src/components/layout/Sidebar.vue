@@ -69,7 +69,7 @@ const menuItems = computed(() => {
       { name: 'vaccines', path: '/admin/vaccines', label: 'Vaccine Inventory', icon: 'bi bi-box-seam' },
       { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
       { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' },
-      { name: 'sms', path: '/admin/sms', label: 'SMS Logs', icon: 'bi bi-chat-dots' },
+      { name: 'sms-management', path: '/admin/sms-management', label: 'SMS Management', icon: 'bi bi-chat-dots' },
       { name: 'faqs', path: '/admin/faqs', label: 'FAQ Manager', icon: 'bi bi-question-circle' },
       { name: 'activity-logs', path: '/admin/activity-logs', label: 'Activity Logs', icon: 'bi bi-activity' }
     ],
@@ -90,7 +90,7 @@ const menuItems = computed(() => {
 
 const mainSection = computed(() => menuItems.value.filter(item => ['dashboard', 'chat', 'notifications-inbox'].includes(item.name)))
 const patientManagementGroup = computed(() => menuItems.value.filter(item => ['patients', 'vaccines', 'reports'].includes(item.name)))
-const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms', 'faqs', 'activity-logs'].includes(item.name)))
+const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms-management', 'faqs', 'activity-logs'].includes(item.name)))
 </script>
 
 <style scoped>

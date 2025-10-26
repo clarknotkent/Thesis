@@ -50,7 +50,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import UserForm from '@/features/user-management/UserForm.vue'
+import UserForm from '@/features/admin/user-management/UserForm.vue'
 import { createUser } from '@/services/users'
 import { useToast } from '@/composables/useToast'
 
