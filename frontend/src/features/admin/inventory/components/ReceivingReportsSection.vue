@@ -26,7 +26,7 @@
         
         <!-- Status Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('status')">
             {{ currentStatusFilter }}
           </button>
           <ul class="dropdown-menu" aria-labelledby="statusFilter">
@@ -183,10 +183,42 @@ const totalPages = computed(() => Math.ceil(filteredReports.value.length / items
 const setStatusFilter = (status) => {
   currentStatusFilter.value = status
   currentPage.value = 1
+  closeDropdown('status')
 }
 
 const applyFilters = () => {
   currentPage.value = 1
+}
+
+// Debug dropdown clicks
+const debugDropdown = (type) => {
+  console.log(`Dropdown ${type} clicked`)
+  const button = document.getElementById(`${type}Filter`) || document.getElementById(`${type}Dropdown`)
+  if (button) {
+    console.log(`Button found:`, button)
+    console.log(`Button classes:`, button.className)
+    console.log(`Button data-bs-toggle:`, button.getAttribute('data-bs-toggle'))
+    
+    // Try to manually toggle the dropdown
+    const menu = button.nextElementSibling
+    if (menu && menu.classList.contains('dropdown-menu')) {
+      console.log('Found dropdown menu, toggling visibility')
+      menu.classList.toggle('show')
+      button.setAttribute('aria-expanded', menu.classList.contains('show'))
+    }
+  }
+}
+
+// Close dropdown menu
+const closeDropdown = (type) => {
+  const button = document.getElementById(`${type}Filter`) || document.getElementById(`${type}Dropdown`)
+  if (button) {
+    const menu = button.nextElementSibling
+    if (menu && menu.classList.contains('dropdown-menu')) {
+      menu.classList.remove('show')
+      button.setAttribute('aria-expanded', 'false')
+    }
+  }
 }
 
 onMounted(() => {

@@ -450,7 +450,7 @@ async function fetchReport() {
       manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
       lot_number: x.lot_number,
       expiration_date: x.expiration_date,
-      quantity_received: x.quantity_received,
+      quantity_received: Number(x.quantity_received) || 0,
       storage_location: x.storage_location,
       is_deleted: false
     }))
@@ -467,8 +467,23 @@ async function save() {
       delivery_date: toISO(form.value.delivery_date),
       delivered_by: form.value.delivered_by,
       supplier_notes: form.value.supplier_notes,
-      items: visibleItems.value.map(it => ({ ...it, expiration_date: toISO(it.expiration_date) }))
+      items: visibleItems.value.map(it => ({ 
+        ...it, 
+        expiration_date: toISO(it.expiration_date),
+        quantity_received: Number(it.quantity_received) || 0
+      }))
     }
+    
+    // Debug: Log the payload being sent
+    console.log('[DEBUG] Saving report with payload:', {
+      ...payload,
+      items: payload.items.map(item => ({
+        item_id: item.item_id,
+        quantity_received: item.quantity_received,
+        quantity_type: typeof item.quantity_received,
+        vaccine_id: item.vaccine_id
+      }))
+    })
     if (isNew.value) {
       const { data } = await api.post('/receiving-reports', payload)
       form.value = data.data.header || data.data
@@ -481,7 +496,7 @@ async function save() {
         manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
         lot_number: x.lot_number,
         expiration_date: x.expiration_date,
-        quantity_received: x.quantity_received,
+        quantity_received: Number(x.quantity_received) || 0,
         storage_location: x.storage_location,
         is_deleted: false
       }))
@@ -500,7 +515,7 @@ async function save() {
         manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
         lot_number: x.lot_number,
         expiration_date: x.expiration_date,
-        quantity_received: x.quantity_received,
+        quantity_received: Number(x.quantity_received) || 0,
         storage_location: x.storage_location,
         is_deleted: false
       }))

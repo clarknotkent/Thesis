@@ -1,6 +1,7 @@
 const smsModel = require('../models/smsModel');
 const smsService = require('../services/smsService');
-const db = require('../db');
+// Use Supabase client for DB access (no direct PG connection required)
+const supabase = require('../db');
 
 // Send SMS notification
 const sendSMSNotification = async (req, res) => {
@@ -19,12 +20,13 @@ const sendSMSNotification = async (req, res) => {
     
     // If templateId is provided, use template and replace variables
     if (templateId) {
-      const templateResult = await db.query(
-        'SELECT template FROM sms_templates WHERE id = $1',
-        [templateId]
-      );
-      
-      if (templateResult.rows.length === 0) {
+      const { data: templateRow, error: templateErr } = await supabase
+        .from('sms_templates')
+        .select('template')
+        .eq('id', templateId)
+        .single();
+
+      if (templateErr || !templateRow) {
         return res.status(404).json({ 
           success: false,
           message: 'Template not found' 
@@ -33,7 +35,7 @@ const sendSMSNotification = async (req, res) => {
       
       // Replace variables in template
       finalMessage = smsService.replaceTemplateVariables(
-        templateResult.rows[0].template,
+        templateRow.template,
         variables || {}
       );
     }
@@ -48,23 +50,19 @@ const sendSMSNotification = async (req, res) => {
     // Send SMS via PhilSMS
     const result = await smsService.sendSMS(phoneNumber, finalMessage);
     
-    if (result.success) {
-      // Log to database
-      await db.query(
-        `INSERT INTO sms_logs 
-         (guardian_id, patient_id, phone_number, message, type, status, template_id, sent_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-        [guardianId || null, patientId || null, result.recipient, finalMessage, type, 'sent', templateId || null]
-      );
-    } else {
-      // Log failed attempt
-      await db.query(
-        `INSERT INTO sms_logs 
-         (guardian_id, patient_id, phone_number, message, type, status, error_message, template_id, sent_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-        [guardianId || null, patientId || null, result.recipient, finalMessage, type, 'failed', result.error, templateId || null]
-      );
-    }
+    // Log to database (sent or failed)
+    const insertPayload = {
+      guardian_id: guardianId || null,
+      patient_id: patientId || null,
+      phone_number: result.recipient,
+      message: finalMessage,
+      type,
+      status: result.success ? 'sent' : 'failed',
+      template_id: templateId || null,
+      error_message: result.success ? null : result.error,
+      // sent_at defaults to NOW() in DB, but we can pass explicitly if needed
+    };
+    await supabase.from('sms_logs').insert(insertPayload);
     
     res.json({ 
       success: result.success,
@@ -97,108 +95,39 @@ const getSMSHistory = async (req, res) => {
     const { status, type, startDate, endDate, search, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
     
-    let query = `
-      SELECT 
-        sl.id,
-        sl.guardian_id,
-        sl.patient_id,
-        sl.phone_number,
-        sl.message,
-        sl.type,
-        sl.status,
-        sl.error_message,
-        sl.sent_at,
-        g.first_name || ' ' || g.last_name AS guardian_name,
-        p.first_name || ' ' || p.last_name AS patient_name
-      FROM sms_logs sl
-      LEFT JOIN guardians g ON sl.guardian_id = g.id
-      LEFT JOIN patients p ON sl.patient_id = p.id
-      WHERE 1=1
-    `;
-    
-    const params = [];
-    let paramCount = 1;
-    
-    if (status) {
-      query += ` AND sl.status = $${paramCount}`;
-      params.push(status);
-      paramCount++;
-    }
-    
-    if (type) {
-      query += ` AND sl.type = $${paramCount}`;
-      params.push(type);
-      paramCount++;
-    }
-    
-    if (startDate) {
-      query += ` AND sl.sent_at >= $${paramCount}`;
-      params.push(startDate);
-      paramCount++;
-    }
-    
-    if (endDate) {
-      query += ` AND sl.sent_at <= $${paramCount}`;
-      params.push(endDate);
-      paramCount++;
-    }
-    
+    // Build supabase query
+    let query = supabase
+      .from('sms_logs')
+      .select(
+        'id, guardian_id, patient_id, phone_number, message, type, status, error_message, sent_at'
+      )
+      .order('sent_at', { ascending: false })
+      .range(offset, offset + Number(limit) - 1);
+
+    if (status) query = query.eq('status', status);
+    if (type) query = query.eq('type', type);
+    if (startDate) query = query.gte('sent_at', startDate);
+    if (endDate) query = query.lte('sent_at', endDate);
     if (search) {
-      query += ` AND (sl.phone_number ILIKE $${paramCount} OR sl.message ILIKE $${paramCount} OR g.first_name ILIKE $${paramCount} OR g.last_name ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
-      paramCount++;
+      // Apply ilike on phone_number or message
+      // Supabase doesn't support OR easily in one call; do broad filter on message then refine in JS
+      query = query.or(`phone_number.ilike.%${search}%,message.ilike.%${search}%`);
     }
-    
-    query += ` ORDER BY sl.sent_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-    params.push(limit, offset);
-    
-    const result = await db.query(query, params);
-    
-    // Get total count
-    let countQuery = 'SELECT COUNT(*) FROM sms_logs sl LEFT JOIN guardians g ON sl.guardian_id = g.id WHERE 1=1';
-    const countParams = [];
-    let countParamCount = 1;
-    
-    if (status) {
-      countQuery += ` AND sl.status = $${countParamCount}`;
-      countParams.push(status);
-      countParamCount++;
-    }
-    
-    if (type) {
-      countQuery += ` AND sl.type = $${countParamCount}`;
-      countParams.push(type);
-      countParamCount++;
-    }
-    
-    if (startDate) {
-      countQuery += ` AND sl.sent_at >= $${countParamCount}`;
-      countParams.push(startDate);
-      countParamCount++;
-    }
-    
-    if (endDate) {
-      countQuery += ` AND sl.sent_at <= $${countParamCount}`;
-      countParams.push(endDate);
-      countParamCount++;
-    }
-    
-    if (search) {
-      countQuery += ` AND (sl.phone_number ILIKE $${countParamCount} OR sl.message ILIKE $${countParamCount} OR g.first_name ILIKE $${countParamCount} OR g.last_name ILIKE $${countParamCount})`;
-      countParams.push(`%${search}%`);
-    }
-    
-    const countResult = await db.query(countQuery, countParams);
-    
-    res.json({ 
-      success: true, 
-      data: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(countResult.rows[0].count)
-      }
-    });
+
+    const { data: rows, error } = await query;
+    if (error) throw error;
+
+    // Total count
+    let countQ = supabase.from('sms_logs').select('id', { count: 'exact', head: true });
+    if (status) countQ = countQ.eq('status', status);
+    if (type) countQ = countQ.eq('type', type);
+    if (startDate) countQ = countQ.gte('sent_at', startDate);
+    if (endDate) countQ = countQ.lte('sent_at', endDate);
+    if (search) countQ = countQ.or(`phone_number.ilike.%${search}%,message.ilike.%${search}%`);
+    const { count: totalCount, error: countErr } = await countQ;
+    if (countErr) throw countErr;
+
+    res.json({ success: true, data: rows || [], pagination: { page: Number(page), limit: Number(limit), total: totalCount || 0 } });
   } catch (error) {
     console.error('Error fetching SMS history:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch SMS history', error: error.message });
@@ -246,12 +175,12 @@ const sendBulkSMS = async (req, res) => {
 // Get SMS templates
 const getSMSTemplates = async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT * FROM sms_templates 
-      ORDER BY created_at DESC
-    `);
-    
-    res.json({ success: true, data: result.rows });
+    const { data, error } = await supabase
+      .from('sms_templates')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ success: true, data: data || [] });
   } catch (error) {
     console.error('Error fetching SMS templates:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch SMS templates', error: error.message });
@@ -270,14 +199,13 @@ const createSMSTemplate = async (req, res) => {
       });
     }
     
-    const result = await db.query(
-      `INSERT INTO sms_templates (name, template, trigger_type, time_range, is_active, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) 
-       RETURNING *`,
-      [name, template, trigger_type, time_range, is_active]
-    );
-    
-    res.status(201).json({ success: true, message: 'Template created successfully', data: result.rows[0] });
+    const { data, error } = await supabase
+      .from('sms_templates')
+      .insert({ name, template, trigger_type, time_range, is_active })
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ success: true, message: 'Template created successfully', data });
   } catch (error) {
     console.error('Error creating SMS template:', error);
     res.status(500).json({ success: false, message: 'Failed to create SMS template', error: error.message });
@@ -290,19 +218,17 @@ const updateSMSTemplate = async (req, res) => {
     const { id } = req.params;
     const { name, template, trigger_type, time_range, is_active } = req.body;
     
-    const result = await db.query(
-      `UPDATE sms_templates 
-       SET name = $1, template = $2, trigger_type = $3, time_range = $4, is_active = $5, updated_at = NOW()
-       WHERE id = $6
-       RETURNING *`,
-      [name, template, trigger_type, time_range, is_active, id]
-    );
-    
-    if (result.rows.length === 0) {
+    const { data, error } = await supabase
+      .from('sms_templates')
+      .update({ name, template, trigger_type, time_range, is_active })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) {
       return res.status(404).json({ success: false, message: 'Template not found' });
     }
-    
-    res.json({ success: true, message: 'Template updated successfully', data: result.rows[0] });
+    res.json({ success: true, message: 'Template updated successfully', data });
   } catch (error) {
     console.error('Error updating SMS template:', error);
     res.status(500).json({ success: false, message: 'Failed to update SMS template', error: error.message });
@@ -314,12 +240,16 @@ const deleteSMSTemplate = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const result = await db.query('DELETE FROM sms_templates WHERE id = $1 RETURNING *', [id]);
-    
-    if (result.rows.length === 0) {
+    const { data, error } = await supabase
+      .from('sms_templates')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) {
       return res.status(404).json({ success: false, message: 'Template not found' });
     }
-    
     res.json({ success: true, message: 'Template deleted successfully' });
   } catch (error) {
     console.error('Error deleting SMS template:', error);
@@ -332,44 +262,39 @@ const getGuardianAutoSendSettings = async (req, res) => {
   try {
     const { search, status } = req.query;
     
-    let query = `
-      SELECT 
-        g.id,
-        g.first_name || ' ' || g.last_name AS name,
-        g.relationship,
-        g.phone_number AS phone,
-        COALESCE(gas.auto_send_enabled, false) AS auto_send_enabled,
-        COUNT(DISTINCT p.id) AS children_count,
-        COUNT(DISTINCT CASE WHEN vs.status = 'pending' THEN vs.id END) AS pending_vaccines
-      FROM guardians g
-      LEFT JOIN guardian_auto_send_settings gas ON g.id = gas.guardian_id
-      LEFT JOIN patients p ON g.id = p.guardian_id
-      LEFT JOIN vaccination_schedules vs ON p.id = vs.patient_id
-      WHERE 1=1
-    `;
-    
-    const params = [];
-    let paramCount = 1;
-    
+    // Fetch guardians
+    let gq = supabase
+      .from('guardians')
+      .select('guardian_id, first_name, last_name, relationship, phone_number');
     if (search) {
-      query += ` AND (g.first_name ILIKE $${paramCount} OR g.last_name ILIKE $${paramCount} OR g.phone_number ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
-      paramCount++;
+      gq = gq.or(
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone_number.ilike.%${search}%`
+      );
     }
-    
-    query += ` GROUP BY g.id, g.first_name, g.last_name, g.relationship, g.phone_number, gas.auto_send_enabled`;
-    
-    if (status === 'enabled') {
-      query += ` HAVING COALESCE(gas.auto_send_enabled, false) = true`;
-    } else if (status === 'disabled') {
-      query += ` HAVING COALESCE(gas.auto_send_enabled, false) = false`;
-    }
-    
-    query += ` ORDER BY g.last_name, g.first_name`;
-    
-    const result = await db.query(query, params);
-    
-    res.json({ success: true, data: result.rows });
+    const { data: guardians, error: gErr } = await gq;
+    if (gErr) throw gErr;
+
+    // Fetch auto-send settings
+    const { data: settings, error: sErr } = await supabase
+      .from('guardian_auto_send_settings')
+      .select('guardian_id, auto_send_enabled');
+    if (sErr) throw sErr;
+    const settingsMap = new Map((settings || []).map(s => [s.guardian_id, s.auto_send_enabled]));
+
+    // Optionally filter by status
+    let rows = (guardians || []).map(g => ({
+      id: g.guardian_id,
+      name: `${g.first_name} ${g.last_name}`.trim(),
+      relationship: g.relationship,
+      phone: g.phone_number,
+      auto_send_enabled: settingsMap.get(g.guardian_id) || false,
+      children_count: 0,
+      pending_vaccines: 0,
+    }));
+    if (status === 'enabled') rows = rows.filter(r => r.auto_send_enabled);
+    if (status === 'disabled') rows = rows.filter(r => !r.auto_send_enabled);
+
+    res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching guardian auto-send settings:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch guardian settings', error: error.message });
@@ -382,19 +307,16 @@ const toggleGuardianAutoSend = async (req, res) => {
     const { guardianId } = req.params;
     const { auto_send_enabled } = req.body;
     
-    const result = await db.query(
-      `INSERT INTO guardian_auto_send_settings (guardian_id, auto_send_enabled, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (guardian_id) 
-       DO UPDATE SET auto_send_enabled = $2, updated_at = NOW()
-       RETURNING *`,
-      [guardianId, auto_send_enabled]
-    );
-    
+    const { data, error } = await supabase
+      .from('guardian_auto_send_settings')
+      .upsert({ guardian_id: Number(guardianId), auto_send_enabled })
+      .select()
+      .single();
+    if (error) throw error;
     res.json({ 
       success: true, 
       message: `Auto-send ${auto_send_enabled ? 'enabled' : 'disabled'} successfully`, 
-      data: result.rows[0] 
+      data 
     });
   } catch (error) {
     console.error('Error toggling guardian auto-send:', error);
@@ -411,19 +333,11 @@ const bulkToggleAutoSend = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Guardian IDs array is required' });
     }
     
-    const values = guardianIds.map((id, index) => 
-      `($${index * 2 + 1}, $${index * 2 + 2}, NOW())`
-    ).join(', ');
-    
-    const params = guardianIds.flatMap(id => [id, auto_send_enabled]);
-    
-    await db.query(
-      `INSERT INTO guardian_auto_send_settings (guardian_id, auto_send_enabled, updated_at)
-       VALUES ${values}
-       ON CONFLICT (guardian_id) 
-       DO UPDATE SET auto_send_enabled = EXCLUDED.auto_send_enabled, updated_at = NOW()`,
-      params
-    );
+    const payload = guardianIds.map(id => ({ guardian_id: Number(id), auto_send_enabled }));
+    const { error } = await supabase
+      .from('guardian_auto_send_settings')
+      .upsert(payload);
+    if (error) throw error;
     
     res.json({ 
       success: true, 
@@ -438,31 +352,43 @@ const bulkToggleAutoSend = async (req, res) => {
 // Get SMS statistics
 const getSMSStatistics = async (req, res) => {
   try {
-    const stats = await db.query(`
-      SELECT 
-        COUNT(CASE WHEN status = 'sent' THEN 1 END) AS sent_count,
-        COUNT(CASE WHEN status = 'failed' THEN 1 END) AS failed_count,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending_count,
-        COUNT(*) AS total_count,
-        COUNT(CASE WHEN type = 'auto' AND sent_at > NOW() - INTERVAL '30 days' THEN 1 END) AS auto_sent_30days
-      FROM sms_logs
-    `);
-    
-    const guardianStats = await db.query(`
-      SELECT 
-        COUNT(*) AS total_guardians,
-        COUNT(CASE WHEN gas.auto_send_enabled = true THEN 1 END) AS enabled_count,
-        COUNT(CASE WHEN gas.auto_send_enabled = false OR gas.auto_send_enabled IS NULL THEN 1 END) AS disabled_count
-      FROM guardians g
-      LEFT JOIN guardian_auto_send_settings gas ON g.id = gas.guardian_id
-    `);
-    
-    res.json({ 
-      success: true, 
-      data: {
-        sms: stats.rows[0],
-        guardians: guardianStats.rows[0]
+    // Compute SMS counts
+    const countBy = async (filter) => {
+      let q = supabase.from('sms_logs').select('id', { count: 'exact', head: true });
+      if (filter.status) q = q.eq('status', filter.status);
+      if (filter.type) q = q.eq('type', filter.type);
+      if (filter.recentDays) {
+        const since = new Date(Date.now() - filter.recentDays * 24 * 60 * 60 * 1000).toISOString();
+        q = q.gte('sent_at', since);
       }
+      const { count } = await q;
+      return count || 0;
+    };
+
+    const [sent_count, failed_count, pending_count, total_count, auto_sent_30days] = await Promise.all([
+      countBy({ status: 'sent' }),
+      countBy({ status: 'failed' }),
+      countBy({ status: 'pending' }),
+      countBy({}),
+      countBy({ type: 'auto', recentDays: 30 }),
+    ]);
+
+    // Guardians stats
+    const { count: total_guardians } = await supabase
+      .from('guardians')
+      .select('guardian_id', { count: 'exact', head: true });
+    const { data: sRows } = await supabase
+      .from('guardian_auto_send_settings')
+      .select('auto_send_enabled');
+    const enabled_count = (sRows || []).filter(r => r.auto_send_enabled === true).length;
+    const disabled_count = (total_guardians || 0) - enabled_count;
+
+    res.json({
+      success: true,
+      data: {
+        sms: { sent_count, failed_count, pending_count, total_count, auto_sent_30days },
+        guardians: { total_guardians, enabled_count, disabled_count },
+      },
     });
   } catch (error) {
     console.error('Error fetching SMS statistics:', error);
@@ -482,19 +408,17 @@ const previewTemplate = async (req, res) => {
       });
     }
     
-    const templateResult = await db.query(
-      'SELECT * FROM sms_templates WHERE id = $1',
-      [templateId]
-    );
-    
-    if (templateResult.rows.length === 0) {
+    const { data: template, error } = await supabase
+      .from('sms_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+    if (error || !template) {
       return res.status(404).json({ 
         success: false, 
         message: 'Template not found' 
       });
     }
-    
-    const template = templateResult.rows[0];
     const previewMessage = smsService.replaceTemplateVariables(
       template.template,
       variables || {}

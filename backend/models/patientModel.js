@@ -58,14 +58,39 @@ const patientModel = {
 
       // Additional tag/status filters
       if (filters.status) {
-        // Map friendly status to view columns or derived logic if present
-        // FIC: Fully Immunized Child (example heuristic: tags = 'FIC' or up-to-date)
-        if (filters.status.toLowerCase() === 'fic') {
+        const status = String(filters.status).toLowerCase();
+        if (status === 'fic' || status === 'completed' || status === 'up_to_date' || status === 'uptodate' || status === 'up-to-date') {
+          // Treat 'completed' as FIC
           query = query.ilike('tags', '%FIC%');
-        } else if (filters.status.toLowerCase() === 'cic') {
+        } else if (status === 'cic') {
           query = query.ilike('tags', '%CIC%');
-        } else if (filters.status.toLowerCase() === 'defaulter') {
+        } else if (status === 'defaulter') {
           query = query.ilike('tags', '%Defaulter%');
+        } else if (status === 'active') {
+          // Active patients (not deleted). Fallback to is_deleted=false if present
+          query = query.eq('is_deleted', false);
+        } else if (status === 'inactive') {
+          // Inactive (soft-deleted) patients
+          query = query.eq('is_deleted', true);
+        } else if (status === 'due') {
+          // Patients who have at least one schedule with status 'Due' or 'Overdue'
+          const { data: sch, error: schErr } = await supabase
+            .from('patientschedule_view')
+            .select('patient_id')
+            .in('status', ['Due', 'Overdue']);
+          if (schErr) throw schErr;
+          const ids = Array.from(new Set((sch || []).map(r => r.patient_id).filter(v => v != null)));
+          if (ids.length === 0) {
+            // No matches; short-circuit with empty result
+            return {
+              patients: [],
+              totalCount: 0,
+              page: parseInt(page),
+              limit: parseInt(limit),
+              totalPages: 0
+            };
+          }
+          query = query.in('patient_id', ids);
         }
       }
 

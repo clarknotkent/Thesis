@@ -19,7 +19,13 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   
   // User role filter
   if (filters.user_role) {
-    query = query.eq('user_role', filters.user_role);
+    const role = String(filters.user_role).trim();
+    if (role.toLowerCase() === 'system') {
+      // Include rows where user_role is 'System' OR user_id is NULL (system-generated)
+      query = query.or('user_role.eq.System,user_id.is.null');
+    } else {
+      query = query.eq('user_role', role);
+    }
   }
   
   // Search filter (search in user name, action type, or description)
@@ -28,32 +34,64 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   }
   
   // Date range filters
-  if (filters.date_range) {
+  // Precedence: if explicit from/to provided, honor them regardless of date_range
+  const hasExplicitFrom = !!filters.from_date;
+  const hasExplicitTo = !!filters.to_date;
+  if (hasExplicitFrom || hasExplicitTo) {
+    if (hasExplicitFrom) {
+      const fromRaw = filters.from_date;
+      if (typeof fromRaw === 'string') {
+        // Use provided string as-is to avoid timezone shifts (DB may use timestamp without time zone)
+        query = query.gte('timestamp', fromRaw);
+      } else {
+        query = query.gte('timestamp', new Date(fromRaw).toISOString());
+      }
+    }
+    if (hasExplicitTo) {
+      const toRaw = filters.to_date;
+      if (typeof toRaw === 'string') {
+        // If caller passed date-only (YYYY-MM-DD), ensure end-of-day inclusivity if not already time-specified
+        const hasTime = /\d{2}:\d{2}/.test(toRaw);
+        const value = hasTime ? toRaw : `${toRaw} 23:59:59`;
+        query = query.lte('timestamp', value);
+      } else {
+        const toDate = new Date(toRaw);
+        query = query.lte('timestamp', toDate.toISOString());
+      }
+    }
+  } else if (filters.date_range) {
     const now = new Date();
-    let startDate;
-    
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
     switch (filters.date_range) {
-      case 'today':
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        query = query.gte('timestamp', startDate.toISOString());
+      case 'today': {
+        query = query.gte('timestamp', todayStart.toISOString())
+                     .lte('timestamp', todayEnd.toISOString());
         break;
-      case 'week':
-        startDate = new Date(now.setDate(now.getDate() - 7));
-        query = query.gte('timestamp', startDate.toISOString());
+      }
+      case 'week': {
+        // Start from Sunday of the current week
+        const day = now.getDay(); // 0 = Sunday
+        const diffToSunday = day; // days since Sunday
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - diffToSunday);
+        weekStart.setHours(0, 0, 0, 0);
+        // Inclusive up to end of today
+        query = query.gte('timestamp', weekStart.toISOString())
+                     .lte('timestamp', todayEnd.toISOString());
         break;
-      case 'month':
-        startDate = new Date(now.setMonth(now.getMonth() - 1));
-        query = query.gte('timestamp', startDate.toISOString());
+      }
+      case 'month': {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        query = query.gte('timestamp', monthStart.toISOString())
+                     .lte('timestamp', todayEnd.toISOString());
         break;
+      }
       case 'custom':
-        if (filters.from_date) {
-          query = query.gte('timestamp', new Date(filters.from_date).toISOString());
-        }
-        if (filters.to_date) {
-          const endDate = new Date(filters.to_date);
-          endDate.setHours(23, 59, 59, 999);
-          query = query.lte('timestamp', endDate.toISOString());
-        }
+      case 'all':
+      default:
+        // 'all' or unknown -> no date constraints
         break;
     }
   }
@@ -85,3 +123,37 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
 };
 
 module.exports = { listActivityLogs };
+ 
+// Fetch single activity log by id from view
+const getActivityLogByIdModel = async (id) => {
+  const { data, error } = await supabase
+    .from('activitylogs_view')
+    .select('*')
+    .eq('log_id', id)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('Supabase getActivityLogById error:', error);
+    throw error;
+  }
+  return data || null;
+};
+
+// Delete activity logs older than N days from base table
+const clearOldLogsModel = async (days) => {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffIso = cutoff.toISOString();
+  const { error, count } = await supabase
+    .from('activitylogs')
+    .delete({ count: 'exact' })
+    .lt('timestamp', cutoffIso);
+  if (error) {
+    console.error('Supabase clearOldLogs error:', error);
+    throw error;
+  }
+  return { count: count || 0 };
+};
+
+module.exports.getActivityLogByIdModel = getActivityLogByIdModel;
+module.exports.clearOldLogsModel = clearOldLogsModel;

@@ -71,33 +71,23 @@
                     </div>
                     
                     <!-- Status Filter -->
-                    <div class="dropdown">
-                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false">
-                        Filter: {{ selectedStatus || 'All Status' }}
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="statusFilter">
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = ''; applyFilters()">All Status</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'active'; applyFilters()">Active</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'inactive'; applyFilters()">Inactive</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'due'; applyFilters()">Vaccination Due</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'completed'; applyFilters()">Up to Date</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'fic'; applyFilters()">FIC</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'cic'; applyFilters()">CIC</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedStatus = 'defaulter'; applyFilters()">Defaulter</a></li>
-                      </ul>
-                    </div>
+                    <select class="form-select form-select-sm" style="max-width: 150px;" v-model="selectedStatus" @change="applyFilters">
+                      <option value="">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="due">Vaccination Due</option>
+                      <option value="completed">Up to Date</option>
+                      <option value="fic">FIC</option>
+                      <option value="cic">CIC</option>
+                      <option value="defaulter">Defaulter</option>
+                    </select>
                     
                     <!-- Gender Filter -->
-                    <div class="dropdown">
-                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="genderFilter" data-bs-toggle="dropdown" aria-expanded="false">
-                        Gender: {{ selectedGender || 'All' }}
-                      </button>
-                      <ul class="dropdown-menu" aria-labelledby="genderFilter">
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = ''; applyFilters()">All Gender</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = 'male'; applyFilters()">Male</a></li>
-                        <li><a class="dropdown-item" href="#" @click.prevent="selectedGender = 'female'; applyFilters()">Female</a></li>
-                      </ul>
-                    </div>
+                    <select class="form-select form-select-sm" style="max-width: 120px;" v-model="selectedGender" @change="applyFilters">
+                      <option value="">All Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
                   </div>
 
                   <!-- Action Buttons -->
@@ -124,7 +114,7 @@
                         <th class="text-center">Sex</th>
                         <th class="text-center">Birth Date</th>
                         <th class="text-center">Age</th>
-                        <th class="text-center">Mother</th>
+                        <th class="text-center">Guardian</th>
                         <th class="text-center">Contact</th>
                         <th class="text-center">Last Vaccination</th>
                         <th class="text-center">Actions</th>

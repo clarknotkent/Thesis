@@ -24,6 +24,7 @@ export function useVaccineInventory() {
   // Search and Filter
   const searchTerm = ref('')
   const currentFilter = ref('All')
+  const currentSort = ref('Name A-Z')
 
   // Modals
   const showAddModal = ref(false)
@@ -129,12 +130,50 @@ export function useVaccineInventory() {
   const itemsPerPage = ref(5)
   
   const filteredVaccines = computed(() => {
-    if (!searchTerm.value) return vaccines.value
-    return vaccines.value.filter(vaccine =>
-      vaccine.vaccineName.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
-      vaccine.manufacturer.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
-      vaccine.batchNo.toLowerCase().includes(searchTerm.value.toLowerCase())
-    )
+    let list = [...vaccines.value]
+
+    // Frontend category filter (in case backend ignores is_nip)
+    if (currentFilter.value === 'NIP') {
+      list = list.filter(v => v.is_nip === true)
+    } else if (currentFilter.value === 'Others') {
+      list = list.filter(v => v.is_nip === false)
+    }
+
+    // Search
+    if (searchTerm.value) {
+      const q = searchTerm.value.toLowerCase()
+      list = list.filter(vaccine =>
+        (vaccine.vaccineName || '').toLowerCase().includes(q) ||
+        (vaccine.brandName || '').toLowerCase().includes(q) ||
+        (vaccine.manufacturer || '').toLowerCase().includes(q) ||
+        (vaccine.batchNo || '').toLowerCase().includes(q)
+      )
+    }
+
+    // Sorting
+    switch (currentSort.value) {
+      case 'Name A-Z':
+        list.sort((a, b) => (a.vaccineName || '').localeCompare(b.vaccineName || ''))
+        break
+      case 'Name Z-A':
+        list.sort((a, b) => (b.vaccineName || '').localeCompare(a.vaccineName || ''))
+        break
+      case 'Quantity Low-High':
+        list.sort((a, b) => (a.quantity || 0) - (b.quantity || 0))
+        break
+      case 'Quantity High-Low':
+        list.sort((a, b) => (b.quantity || 0) - (a.quantity || 0))
+        break
+      case 'Expiry Date':
+        list.sort((a, b) => {
+          const da = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity
+          const db = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity
+          return da - db
+        })
+        break
+    }
+
+    return list
   })
 
   const {
@@ -187,6 +226,7 @@ export function useVaccineInventory() {
           brandName: v.vaccinemaster?.brand_name || v.vaccine?.brand_name || v.brand_name || '',
           manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
           category: v.vaccinemaster?.category || v.category || '',
+          is_nip: v.is_nip === true || v.is_nip === 'true' || v.vaccinemaster?.is_nip === true || v.vaccinemaster?.is_nip === 'true' || v.vaccine?.is_nip === true || v.vaccine?.is_nip === 'true' || false,
           batchNo: v.lot_number || v.batch_number || '',
           expiryDate: v.expiration_date || v.expiry_date || '',
           storageLocation: v.storage_location || v.storageLocation || '',
@@ -510,7 +550,13 @@ export function useVaccineInventory() {
 
   const setFilter = (filter) => {
     currentFilter.value = filter
+    goToPage(1)
     fetchVaccines()
+  }
+
+  const setSort = (sort) => {
+    currentSort.value = sort
+    goToPage(1)
   }
 
   const resetPagination = () => {
@@ -597,7 +643,8 @@ export function useVaccineInventory() {
     schedules,
     stats,
     searchTerm,
-    currentFilter,
+  currentFilter,
+  currentSort,
     
     // Modals
     showAddModal,
@@ -677,7 +724,8 @@ export function useVaccineInventory() {
     closeHistoryModal,
     formatDate,
     convertToISODate,
-    setFilter,
+  setFilter,
+  setSort,
     resetPagination,
     watchSearchTerm,
     onVaccineSelect,

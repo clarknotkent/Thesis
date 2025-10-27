@@ -256,6 +256,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 
 const { addToast } = useToast()
 
@@ -264,35 +265,7 @@ const searchQuery = ref('')
 const filterType = ref('')
 const filterStatus = ref('')
 
-const templates = ref([
-  {
-    id: 1,
-    name: '1 Week Reminder - Day',
-    trigger_type: '1-week',
-    time_range: 'day',
-    template: 'Good Day, {title} {guardian_name}.\nYour child, {patient_name}, is scheduled for vaccination on {scheduled_date}\nfor {vaccine_name} Dose {dose_number}.',
-    preview: 'Good Day, Mr. Dela Cruz.\nYour child, Maria, is scheduled for vaccination on October 28, 2025\nfor BCG Dose 1.',
-    is_active: true
-  },
-  {
-    id: 2,
-    name: '3 Days Reminder - Day',
-    trigger_type: '3-days',
-    time_range: 'day',
-    template: 'Good Day, {title} {guardian_name}.\nYour child, {patient_name}, is scheduled for vaccination on {scheduled_date}\nfor {vaccine_name} Dose {dose_number}.',
-    preview: 'Good Day, Ms. Santos.\nYour child, Pedro, is scheduled for vaccination on November 2, 2025\nfor DPT-HiB-HepB Dose 2.',
-    is_active: true
-  },
-  {
-    id: 3,
-    name: '1 Day Reminder - Day',
-    trigger_type: '1-day',
-    time_range: 'day',
-    template: 'Good Day, {title} {guardian_name}.\nYour child, {patient_name}, is scheduled for vaccination tomorrow, {scheduled_date}\nfor {vaccine_name} Dose {dose_number}.',
-    preview: 'Good Day, Mr. Reyes.\nYour child, Sofia, is scheduled for vaccination tomorrow, October 29, 2025\nfor MMR Dose 1.',
-    is_active: true
-  }
-])
+const templates = ref([])
 
 const editingTemplate = ref({
   name: '',
@@ -404,46 +377,65 @@ const duplicateTemplate = (template) => {
   showModal()
 }
 
-const deleteTemplate = (template) => {
-  if (confirm(`Are you sure you want to delete "${template.name}"?`)) {
-    const index = templates.value.findIndex(t => t.id === template.id)
-    if (index > -1) {
-      templates.value.splice(index, 1)
-      addToast('Template deleted successfully', 'success')
-    }
+const deleteTemplate = async (template) => {
+  if (!confirm(`Are you sure you want to delete "${template.name}"?`)) return
+  try {
+    await api.delete(`/sms/templates/${template.id}`)
+    templates.value = templates.value.filter(t => t.id !== template.id)
+    addToast('Template deleted successfully', 'success')
+  } catch (err) {
+    console.error('Failed to delete template', err)
+    addToast('Failed to delete template', 'danger')
   }
 }
 
-const saveTemplate = () => {
-  if (editingTemplate.value.id) {
-    // Update existing
-    const index = templates.value.findIndex(t => t.id === editingTemplate.value.id)
-    if (index > -1) {
-      templates.value[index] = {
-        ...editingTemplate.value,
-        preview: previewMessage.value
+const saveTemplate = async () => {
+  try {
+    if (editingTemplate.value.id) {
+      // Update existing
+      const { data } = await api.put(`/sms/templates/${editingTemplate.value.id}` , {
+        name: editingTemplate.value.name,
+        template: editingTemplate.value.template,
+        trigger_type: editingTemplate.value.trigger_type,
+        time_range: editingTemplate.value.time_range,
+        is_active: editingTemplate.value.is_active,
+      })
+      const updated = data?.data
+      if (updated) {
+        const idx = templates.value.findIndex(t => t.id === updated.id)
+        if (idx > -1) templates.value[idx] = updated
       }
       addToast('Template updated successfully', 'success')
+    } else {
+      // Create new
+      const { data } = await api.post('/sms/templates', {
+        name: editingTemplate.value.name,
+        template: editingTemplate.value.template,
+        trigger_type: editingTemplate.value.trigger_type,
+        time_range: editingTemplate.value.time_range,
+        is_active: editingTemplate.value.is_active,
+      })
+      const created = data?.data
+      if (created) templates.value.unshift(created)
+      addToast('Template created successfully', 'success')
     }
-  } else {
-    // Create new
-    templates.value.push({
-      ...editingTemplate.value,
-      id: Date.now(),
-      preview: previewMessage.value
-    })
-    addToast('Template created successfully', 'success')
+  } catch (err) {
+    console.error('Failed to save template', err)
+    addToast('Failed to save template', 'danger')
+  } finally {
+    hideModal()
   }
-  
-  hideModal()
 }
 
-const toggleTemplateStatus = (template) => {
-  // TODO: API call to update status
-  addToast(
-    `Template ${template.is_active ? 'activated' : 'deactivated'}`,
-    'success'
-  )
+const toggleTemplateStatus = async (template) => {
+  try {
+    await api.put(`/sms/templates/${template.id}`, { ...template })
+    addToast(`Template ${template.is_active ? 'activated' : 'deactivated'}`, 'success')
+  } catch (err) {
+    console.error('Failed to toggle template status', err)
+    template.is_active = !template.is_active // revert
+    addToast('Failed to update status', 'danger')
+  }
 }
 
 const showModal = () => {
@@ -460,8 +452,20 @@ const hideModal = () => {
 }
 
 // Lifecycle
+const fetchTemplates = async () => {
+  try {
+    const { data } = await api.get('/sms/templates')
+    templates.value = (data?.data || []).map(t => ({
+      ...t,
+      preview: undefined,
+    }))
+  } catch (err) {
+    console.error('Failed to load templates', err)
+  }
+}
+
 onMounted(() => {
-  // TODO: Fetch templates from API
+  fetchTemplates()
 })
 </script>
 

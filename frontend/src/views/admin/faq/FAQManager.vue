@@ -4,10 +4,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h1 class="h3 mb-0 text-gray-800">FAQ Manager</h1>
-          <p class="text-muted mb-0">Create and manage frequently asked questions</p>
-        </div>
-        <div class="d-flex align-items-center gap-2 header-actions">
-          <button class="btn btn-sm btn-outline-primary" @click="load">Refresh</button>
+          <p class="text-muted mb-0">Create, edit and manage frequently asked questions</p>
         </div>
       </div>
 
