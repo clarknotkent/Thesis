@@ -97,6 +97,44 @@
                 </tr>
               </thead>
               <tbody>
+                <!-- Section: Newborns/Infants vaccinated with -->
+                <tr class="table-secondary">
+                  <td class="fw-bold" colspan="5">Part I A - Immunization and Nutrition Services · Newborns/Infants vaccinated with</td>
+                </tr>
+
+                <!--
+                  DO NOT REMOVE: HIDDEN UNTIL SHOWN
+                  The rows below (BCG within/after 24 hours) are retained in the template
+                  and continue to fetch data from the backend via `getCustomData(...)`.
+                  These are hidden by default (v-if="false") so they do not display, but
+                  they must remain in the file because they are part of the barangay DB
+                  and may be re-enabled later by switching the v-if to true.
+                -->
+                <template v-if="false">
+                  <tr>
+                    <td class="fw-semibold">BCG, within 24 hours - Total</td>
+                    <td class="text-center">{{ getCustomData('bcgWithin24').male }}</td>
+                    <td class="text-center">{{ getCustomData('bcgWithin24').female }}</td>
+                    <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getCustomData('bcgWithin24').total }}</td>
+                    <td class="text-center">
+                      <span class="badge" :class="getCoverageBadge(getCustomData('bcgWithin24').coverage)">
+                        {{ getCustomData('bcgWithin24').coverage }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="fw-semibold">BCG, After 24 hours - Total</td>
+                    <td class="text-center">{{ getCustomData('bcgAfter24').male }}</td>
+                    <td class="text-center">{{ getCustomData('bcgAfter24').female }}</td>
+                    <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getCustomData('bcgAfter24').total }}</td>
+                    <td class="text-center">
+                      <span class="badge" :class="getCoverageBadge(getCustomData('bcgAfter24').coverage)">
+                        {{ getCustomData('bcgAfter24').coverage }}%
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+
                 <!-- BCG -->
                 <tr>
                   <td class="fw-semibold">BCG</td>
@@ -110,7 +148,37 @@
                   </td>
                 </tr>
 
-                <!-- HepB1 -->
+                <!-- HepB1 with timing -->
+                <!--
+                  DO NOT REMOVE: HIDDEN UNTIL SHOWN
+                  HepB1 within/after rows are retained for data completeness. Hidden by default.
+                -->
+                <template v-if="false">
+                  <tr>
+                    <td class="fw-semibold">HepB1, within 24 hours - Total</td>
+                    <td class="text-center">{{ getCustomData('hepb1Within24').male }}</td>
+                    <td class="text-center">{{ getCustomData('hepb1Within24').female }}</td>
+                    <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getCustomData('hepb1Within24').total }}</td>
+                    <td class="text-center">
+                      <span class="badge" :class="getCoverageBadge(getCustomData('hepb1Within24').coverage)">
+                        {{ getCustomData('hepb1Within24').coverage }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="fw-semibold">HepB1, After 24 hours - Total</td>
+                    <td class="text-center">{{ getCustomData('hepb1After24').male }}</td>
+                    <td class="text-center">{{ getCustomData('hepb1After24').female }}</td>
+                    <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getCustomData('hepb1After24').total }}</td>
+                    <td class="text-center">
+                      <span class="badge" :class="getCoverageBadge(getCustomData('hepb1After24').coverage)">
+                        {{ getCustomData('hepb1After24').coverage }}%
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+
+                <!-- HepB1 (overall) -->
                 <tr>
                   <td class="fw-semibold">Hepatitis B 1 (HepB1)</td>
                   <td class="text-center">{{ getVaccineData('HepB', 1).male }}</td>
@@ -256,6 +324,17 @@
                   </td>
                 </tr>
                 <tr>
+                  <td class="fw-semibold">IPV 2 (Catch-Up) - Total</td>
+                  <td class="text-center">{{ getCustomData('ipv2CatchUp').male }}</td>
+                  <td class="text-center">{{ getCustomData('ipv2CatchUp').female }}</td>
+                  <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getCustomData('ipv2CatchUp').total }}</td>
+                  <td class="text-center">
+                    <span class="badge" :class="getCoverageBadge(getCustomData('ipv2CatchUp').coverage)">
+                      {{ getCustomData('ipv2CatchUp').coverage }}%
+                    </span>
+                  </td>
+                </tr>
+                <tr>
                   <td class="fw-semibold">IPV 3</td>
                   <td class="text-center">{{ getVaccineData('IPV', 3).male }}</td>
                   <td class="text-center">{{ getVaccineData('IPV', 3).female }}</td>
@@ -302,9 +381,9 @@
                   </td>
                 </tr>
 
-                <!-- MMR -->
+                <!-- MCV (aliasing MMR data) -->
                 <tr>
-                  <td class="fw-semibold">MMR 1</td>
+                  <td class="fw-semibold">MCV 1</td>
                   <td class="text-center">{{ getVaccineData('MMR', 1).male }}</td>
                   <td class="text-center">{{ getVaccineData('MMR', 1).female }}</td>
                   <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getVaccineData('MMR', 1).total }}</td>
@@ -315,7 +394,7 @@
                   </td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">MMR 2</td>
+                  <td class="fw-semibold">MCV 2</td>
                   <td class="text-center">{{ getVaccineData('MMR', 2).male }}</td>
                   <td class="text-center">{{ getVaccineData('MMR', 2).female }}</td>
                   <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ getVaccineData('MMR', 2).total }}</td>
@@ -558,6 +637,36 @@ const getVaccineData = (vaccineName, dose = null) => {
   return { male: 0, female: 0, total: 0, coverage: 0 }
 }
 
+// Retrieve custom fields that may come from backend or default to zero
+const getCustomData = (key) => {
+  const base = reportData.value || {}
+  const data = base[key] || base?.vaccines?.[key]
+  return data || { male: 0, female: 0, total: 0, coverage: 0 }
+}
+
+// School-based immunization helpers
+const getSchoolBasedData = (grade, vaccine) => {
+  const sb = reportData.value?.schoolBased?.[grade]?.[vaccine]
+  return sb || { male: 0, female: 0, total: 0 }
+}
+
+const getSchoolLearners = (grade) => {
+  const learners = reportData.value?.schoolBased?.[grade]?.learners
+  if (typeof learners === 'number') {
+    return { male: 0, female: 0, total: learners }
+  }
+  return learners || { male: 0, female: 0, total: 0 }
+}
+
+/*
+  DO NOT REMOVE: Hidden report rows
+
+  The UI includes timing-specific rows (e.g. BCG/HepB within/after 24 hours) that are
+  required by the barangay database and must remain in the template and export.
+  They are intentionally hidden from display by wrapping in <template v-if="false">.
+  When these need to be shown again, change the v-if to true or remove the wrapper.
+*/
+
 const getCoverageBadge = (coverage) => {
   if (coverage >= 95) return 'bg-success'
   if (coverage >= 80) return 'bg-primary'
@@ -584,7 +693,11 @@ const exportReport = () => {
     
     // Add vaccine data
     const vaccines = [
+      { name: 'BCG, within 24 hours - Total', key: 'bcgWithin24' },
+      { name: 'BCG, After 24 hours - Total', key: 'bcgAfter24' },
       { name: 'BCG', key: 'BCG', dose: null },
+      { name: 'HepB1, within 24 hours - Total', key: 'hepb1Within24' },
+      { name: 'HepB1, After 24 hours - Total', key: 'hepb1After24' },
       { name: 'Hepatitis B 1 (HepB1)', key: 'HepB', dose: 1 },
       { name: 'Newborn Screening Test', key: 'newbornScreening' },
       { name: 'Newborn Hearing Screening Test', key: 'hearingScreening' },
@@ -597,12 +710,13 @@ const exportReport = () => {
       { name: 'OPV 3', key: 'OPV', dose: 3 },
       { name: 'IPV 1', key: 'IPV', dose: 1 },
       { name: 'IPV 2', key: 'IPV', dose: 2 },
+      { name: 'IPV 2 (Catch-Up) - Total', key: 'ipv2CatchUp' },
       { name: 'IPV 3', key: 'IPV', dose: 3 },
       { name: 'PCV 1', key: 'PCV', dose: 1 },
       { name: 'PCV 2', key: 'PCV', dose: 2 },
       { name: 'PCV 3', key: 'PCV', dose: 3 },
-      { name: 'MMR 1', key: 'MMR', dose: 1 },
-      { name: 'MMR 2', key: 'MMR', dose: 2 }
+      { name: 'MCV 1', key: 'MMR', dose: 1 },
+      { name: 'MCV 2', key: 'MMR', dose: 2 }
     ]
 
     vaccines.forEach(vaccine => {
@@ -612,7 +726,7 @@ const exportReport = () => {
       } else if (vaccine.key in (reportData.value || {})) {
         data = reportData.value[vaccine.key]
       } else {
-        data = getVaccineData(vaccine.key)
+        data = getCustomData(vaccine.key)
       }
       
       csv += `${vaccine.name},${data.male || 0},${data.female || 0},${data.total || 0},${data.coverage || 0}\n`
@@ -621,6 +735,20 @@ const exportReport = () => {
     csv += '\n'
     csv += `Fully Immunized Child,,,${reportData.value.fullyImmunizedCount || 0},${reportData.value.fullyImmunizedCoverage || 0}\n`
     csv += `Completely Immunized Child (13-23 months),,,${reportData.value.completelyImmunizedCount || 0},${reportData.value.completelyImmunizedCoverage || 0}\n`
+
+    // School-based immunization rows in CSV
+    const g1 = getSchoolLearners('grade1')
+    const g7 = getSchoolLearners('grade7')
+    csv += `Total Grade 1 Learners,${g1.male},${g1.female},${g1.total},\n`
+    const g1td = getSchoolBasedData('grade1','td')
+    csv += `Td - Total (Grade 1),${g1td.male},${g1td.female},${g1td.total},\n`
+    const g1mr = getSchoolBasedData('grade1','mr')
+    csv += `MR - Total (Grade 1),${g1mr.male},${g1mr.female},${g1mr.total},\n`
+    csv += `Total Grade 7 Learners,${g7.male},${g7.female},${g7.total},\n`
+    const g7td = getSchoolBasedData('grade7','td')
+    csv += `Td - Total (Grade 7),${g7td.male},${g7td.female},${g7td.total},\n`
+    const g7mr = getSchoolBasedData('grade7','mr')
+    csv += `MR - Total (Grade 7),${g7mr.male},${g7mr.female},${g7mr.total},\n`
 
     // Download CSV
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })

@@ -143,7 +143,9 @@ const fetchPatientData = async () => {
       attendant_at_birth: (p.medical_history && (p.medical_history.attendant_at_birth || p.medical_history.attendantAtBirth)) || p.attendant_at_birth || '',
       type_of_delivery: (p.medical_history && (p.medical_history.type_of_delivery || p.medical_history.typeOfDelivery)) || p.type_of_delivery || '',
       ballards_score: (p.medical_history && (p.medical_history.ballards_score || p.medical_history.ballardsScore)) || p.ballards_score || '',
-      newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || ''
+      newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
+      hearing_test_date: formatForInput((p.medical_history && (p.medical_history.hearing_test_date || p.medical_history.hearingTestDate)) || p.hearing_test_date),
+      newborn_screening_date: formatForInput((p.medical_history && (p.medical_history.newborn_screening_date || p.medical_history.newbornScreeningDate)) || p.newborn_screening_date)
     }
 
     // If family number missing but guardian selected, prefill from guardians list
@@ -213,7 +215,9 @@ const handleSubmit = async (formData) => {
         attendant_at_birth: formData.attendant_at_birth,
         type_of_delivery: formData.type_of_delivery,
         ballards_score: formData.ballards_score,
-        newborn_screening_result: formData.newborn_screening_result
+        newborn_screening_result: formData.newborn_screening_result,
+        hearing_test_date: convertToISODate(formData.hearing_test_date) || formData.hearing_test_date,
+        newborn_screening_date: convertToISODate(formData.newborn_screening_date) || formData.newborn_screening_date
       }
     }
 

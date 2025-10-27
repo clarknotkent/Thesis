@@ -317,6 +317,22 @@
               :disabled="readOnly"
             >
           </div>
+          <div class="col-xl-3 col-lg-4 col-md-6">
+            <label class="form-label">Hearing Test Date:</label>
+            <DateInput
+              v-model="formData.hearing_test_date"
+              :disabled="readOnly"
+              output-format="iso"
+            />
+          </div>
+          <div class="col-xl-3 col-lg-4 col-md-6">
+            <label class="form-label">Newborn Screening Date:</label>
+            <DateInput
+              v-model="formData.newborn_screening_date"
+              :disabled="readOnly"
+              output-format="iso"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -405,7 +421,9 @@ const formData = ref({
   attendant_at_birth: '',
   type_of_delivery: '',
   ballards_score: '',
-  newborn_screening_result: ''
+  newborn_screening_result: '',
+  hearing_test_date: '',
+  newborn_screening_date: ''
 })
 
 // Keep the last selected guardian object for autofill purposes

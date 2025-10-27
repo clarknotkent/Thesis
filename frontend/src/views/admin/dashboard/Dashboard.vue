@@ -105,7 +105,7 @@
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
               <h6 class="m-0 fw-bold text-primary">Vaccine Data</h6>
-              <small class="text-muted">Doses Administered (Last 7 Days)</small>
+              <small class="text-muted">Doses Administered This Month</small>
             </div>
             <div class="card-body">
               <BarChart 
@@ -151,7 +151,10 @@
                       <td class="fw-semibold">{{ vaccination.patientName }}</td>
                       <td>{{ vaccination.parentName }}</td>
                       <td>{{ vaccination.vaccineName }}</td>
-                      <td>{{ vaccination.healthWorker }}</td>
+                      <td>
+                        <span v-if="vaccination.outside"><em>(Taken Outside)</em></span>
+                        <span v-else>{{ vaccination.healthWorker || '—' }}</span>
+                      </td>
                       <td>{{ formatDate(vaccination.dateAdministered) }}</td>
                       <td>
                         <span 
@@ -169,6 +172,20 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <!-- Pagination controls for Recent Vaccinations -->
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                  <small class="text-muted">Showing page {{ recentPage }} of {{ Math.max(1, Math.ceil(totalRecentItems / pageSize)) }} — {{ totalRecentItems }} total</small>
+                </div>
+                <div class="btn-group" role="group" aria-label="Pagination">
+                  <button class="btn btn-sm btn-outline-secondary" :disabled="recentPage <= 1 || isLoadingRecent" @click.prevent="fetchRecentPage(recentPage - 1)">
+                    Prev
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" :disabled="(recentPage * pageSize) >= totalRecentItems || isLoadingRecent" @click.prevent="fetchRecentPage(recentPage + 1)">
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -195,6 +212,13 @@ const stats = ref({
 const recentVaccinations = ref([])
 const vaccineChartData = ref([])
 
+// Pagination state for Recent Vaccinations (client-side)
+const recentPage = ref(1)
+const pageSize = ref(8) // display 8 per page as requested
+const totalRecentItems = ref(0)
+const isLoadingRecent = ref(false)
+const allRecentItems = ref([]) // cached full list for client-side paging
+
 const lastUpdated = computed(() => {
   try {
     return new Date().toLocaleString('en-PH', {
@@ -213,18 +237,95 @@ const lastUpdated = computed(() => {
 })
 
 // Methods
+// Map a row from the immunizationhistory_view to the UI shape
+function mapVaccRow(row) {
+  return {
+    id: row.immunization_id || row.id || null,
+    patientName: row.patient_full_name || row.patientName || '—',
+    parentName: row.patient_guardian_full_name || row.parentName || row.guardian_name || row.parent_name || '—',
+    vaccineName: row.vaccine_antigen_name || row.vaccineName || row.vaccine_name || '—',
+    healthWorker: row.administered_by_name || row.administered_by || null,
+    dateAdministered: row.administered_date || row.date_administered || null,
+    status: row.status || (row.immunization_is_deleted ? 'deleted' : 'completed'),
+    outside: !!row.immunization_outside || !!row.outside
+  }
+}
+
+const fetchRecentPage = async (page = 1) => {
+  try {
+    isLoadingRecent.value = true
+
+    // If we haven't loaded all items yet, fetch them once (no limit) and cache
+    if (!allRecentItems.value || allRecentItems.value.length === 0) {
+      let resp
+      try {
+        resp = await api.get('/immunizations')
+      } catch (e) {
+        // Fallback: try a large limit if server rejects no-limit
+        resp = await api.get('/immunizations', { params: { limit: 10000 } })
+      }
+
+      let fetched = []
+      if (resp && Array.isArray(resp.data)) {
+        fetched = resp.data
+      } else if (resp && resp.data && resp.data.success && Array.isArray(resp.data.data)) {
+        fetched = resp.data.data.slice()
+        const total = Number(resp.data.meta?.total || fetched.length)
+        const perPage = Number(resp.data.meta?.pageSize || fetched.length || 1000)
+        if (total > fetched.length) {
+          // fetch remaining pages (page-based) in batches
+          const pages = Math.ceil(total / perPage)
+          for (let p = 2; p <= pages; p++) {
+            try {
+              const r = await api.get('/immunizations', { params: { page: p, limit: perPage, sort: 'administered_date:desc' } })
+              if (r && r.data && r.data.success && Array.isArray(r.data.data)) {
+                fetched.push(...r.data.data)
+              } else if (r && Array.isArray(r.data)) {
+                fetched.push(...r.data)
+              } else {
+                break
+              }
+            } catch (_) {
+              break
+            }
+          }
+        }
+      }
+
+      allRecentItems.value = (fetched || []).map(mapVaccRow)
+      totalRecentItems.value = allRecentItems.value.length
+    }
+
+    // Compute slice for current page (client-side)
+    const p = Number(page) || 1
+    const start = (p - 1) * pageSize.value
+    const end = start + pageSize.value
+    recentVaccinations.value = allRecentItems.value.slice(start, end)
+    totalRecentItems.value = allRecentItems.value.length
+    recentPage.value = p
+  } catch (err) {
+    console.error('Failed to load recent vaccinations (client-side pagination):', err)
+    recentVaccinations.value = []
+    totalRecentItems.value = 0
+    allRecentItems.value = []
+  } finally {
+    isLoadingRecent.value = false
+  }
+}
+
 const fetchDashboardData = async () => {
   try {
     loading.value = true
-    
-    // Fetch dashboard overview data
+
+    // Fetch dashboard overview data (stats + chart)
     const response = await api.get('/dashboard/overview')
     const data = response.data.data
-    
+
     stats.value = data.stats
-    recentVaccinations.value = data.recentVaccinations
     vaccineChartData.value = data.chartData
-    
+
+    // Fetch the paginated recent vaccinations separately (first page)
+    await fetchRecentPage(1)
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
     // Fallback to empty data
