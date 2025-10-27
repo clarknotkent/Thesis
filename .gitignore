@@ -65,3 +65,30 @@ coverage/
 *.bak
 *_backup/
 frontend_backup/
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.out/
+.next/
+.vercel/
+coverage/
+
+# Vite cache
+.vite/
+**/.vite/
+
+# Env files and local editor files
+.env
+.env.*
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
