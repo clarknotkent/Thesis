@@ -681,7 +681,8 @@ const fetchVaccineOptions = async () => {
     console.log('✅ [VisitEditor] Vaccine inventory API response:', res.data)
     const payload = res.data?.data || []
     console.log('💉 [VisitEditor] Vaccine inventory list:', payload)
-    vaccineOptions.value = payload.map(v => ({
+    // Map inventory items to option shape
+    let mapped = payload.map(v => ({
       inventory_id: v.inventory_id || v.id,
       vaccine_id: v.vaccine_id,
       display_name: `${v.vaccinemaster?.antigen_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Exp: ${v.expiration_date ? formatDate(v.expiration_date) : 'N/A'}`,
@@ -691,7 +692,40 @@ const fetchVaccineOptions = async () => {
       lot_number: v.lot_number,
       expiration_date: v.expiration_date
     }))
-    console.log('🎯 [VisitEditor] Processed vaccine options:', vaccineOptions.value)
+    console.log('🎯 [VisitEditor] Processed vaccine options (unfiltered):', mapped)
+
+    // If a patient is selected, fetch their immunizations and filter out vaccines
+    // the patient already has a record for (so they won't appear in dropdown)
+    if (form.value.patient_id) {
+      try {
+        const immRes = await api.get('/immunizations', { params: { patient_id: form.value.patient_id, limit: 500 } })
+        const immData = immRes.data?.data || immRes.data || []
+        const patientVaccineIds = new Set()
+        const patientAntigenNames = new Set()
+        if (Array.isArray(immData)) {
+          immData.forEach(i => {
+            if (i.vaccine_id) patientVaccineIds.add(String(i.vaccine_id))
+            const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
+            if (name) patientAntigenNames.add(String(name).toLowerCase())
+          })
+        }
+
+        // Filter mapped options: exclude inventory items whose vaccine_id or antigen name is already present
+        mapped = mapped.filter(opt => {
+          const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
+          const aname = opt.vaccine_name ? String(opt.vaccine_name).toLowerCase() : ''
+          if (vid && patientVaccineIds.has(vid)) return false
+          if (aname && patientAntigenNames.has(aname)) return false
+          return true
+        })
+        console.log('🔍 [VisitEditor] Filtered vaccine options based on patient immunizations:', mapped)
+      } catch (e) {
+        console.warn('⚠️ [VisitEditor] Failed to fetch patient immunizations for filtering:', e)
+      }
+    }
+
+    vaccineOptions.value = mapped
+    console.log('🎯 [VisitEditor] Vaccine options ready (filtered):', vaccineOptions.value)
   } catch (err) {
     console.error('❌ [VisitEditor] Failed to load vaccine options:', err)
     vaccineOptions.value = []
@@ -709,12 +743,43 @@ const fetchVaccineCatalog = async () => {
     const list = Array.isArray(payload?.vaccines)
       ? payload.vaccines
       : (Array.isArray(res.data?.vaccines) ? res.data.vaccines : (Array.isArray(res.data) ? res.data : []))
-    vaccineCatalog.value = list.map(v => ({
+    // Map catalog items
+    let mapped = list.map(v => ({
       vaccine_id: v.vaccine_id || v.id,
       antigen_name: v.antigen_name || v.name || 'Unknown',
       disease_prevented: v.disease_prevented || '',
       manufacturer: v.manufacturer || ''
     }))
+
+    // If a patient is selected, fetch their immunizations and filter out vaccines
+    if (form.value.patient_id) {
+      try {
+        const immRes = await api.get('/immunizations', { params: { patient_id: form.value.patient_id, limit: 500 } })
+        const immData = immRes.data?.data || immRes.data || []
+        const patientVaccineIds = new Set()
+        const patientAntigenNames = new Set()
+        if (Array.isArray(immData)) {
+          immData.forEach(i => {
+            if (i.vaccine_id) patientVaccineIds.add(String(i.vaccine_id))
+            const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
+            if (name) patientAntigenNames.add(String(name).toLowerCase())
+          })
+        }
+
+        mapped = mapped.filter(opt => {
+          const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
+          const aname = opt.antigen_name ? String(opt.antigen_name).toLowerCase() : ''
+          if (vid && patientVaccineIds.has(vid)) return false
+          if (aname && patientAntigenNames.has(aname)) return false
+          return true
+        })
+        console.log('🔍 [VisitEditor] Filtered vaccine catalog based on patient immunizations:', mapped)
+      } catch (e) {
+        console.warn('⚠️ [VisitEditor] Failed to fetch patient immunizations for catalog filtering:', e)
+      }
+    }
+
+    vaccineCatalog.value = mapped
   } catch (e) {
     console.error('❌ [VisitEditor] Failed to load vaccine catalog:', e)
     vaccineCatalog.value = []

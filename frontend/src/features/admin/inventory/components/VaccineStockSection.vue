@@ -64,6 +64,12 @@
             <li><a class="dropdown-item" href="#" @click.prevent="setSort('Expiry Date')">Expiry Date</a></li>
           </ul>
         </div>
+
+        <!-- Removed from view toggle -->
+        <div class="form-check form-switch ms-2">
+          <input class="form-check-input" type="checkbox" id="toggleRemovedFromView" v-model="showRemovedFromView">
+          <label class="form-check-label" for="toggleRemovedFromView">Removed from view</label>
+        </div>
       </div>
 
       <!-- Action Buttons -->
@@ -169,6 +175,7 @@ const currentStatusFilter = ref('All Status')
 const currentSort = ref('Name A-Z')
 const currentPage = ref(1)
 const itemsPerPage = 7
+const showRemovedFromView = ref(false)
 
 // Label to display for current category filter
 const currentCategoryLabel = computed(() => {
@@ -198,10 +205,21 @@ const filteredInventory = computed(() => {
   } else if (currentCategoryFilter.value === 'Others') {
     filtered = filtered.filter(item => item.is_nip === false)
   }
+
+  // Removed-from-view mode
+  // Criteria: Out of Stock AND on or beyond expiry date (expiry <= today)
+  // - If toggle is OFF: hide removed items
+  // - If toggle is ON: show ONLY removed items
+  if (showRemovedFromView.value) {
+    filtered = filtered.filter(item => isRemovedFromView(item))
+  } else {
+    filtered = filtered.filter(item => !isRemovedFromView(item))
+  }
   
   // Apply status filter
-  if (currentStatusFilter.value !== 'All Status') {
-    filtered = filtered.filter(item => item.status === currentStatusFilter.value)
+  // When viewing removed-only, ignore status filter to show all removed items
+  if (!showRemovedFromView.value && currentStatusFilter.value !== 'All Status') {
+    filtered = filtered.filter(item => getStatus(item) === currentStatusFilter.value)
   }
   
   // Apply sorting
@@ -323,20 +341,6 @@ const loadInventory = async () => {
     // Map to the same format as VaccineInventory.vue
     inventory.value = filteredItems.map(v => {
       const qty = (v.current_stock_level ?? v.quantity ?? 0)
-      // Derive status considering expiry first, then quantity
-      const exp = v.expiration_date || v.expiry_date || null
-      const now = new Date()
-      let status = v.status || null
-      if (exp) {
-        const d = new Date(exp)
-        if (!isNaN(d)) {
-          const in30 = new Date(now.getTime() + 30*24*60*60*1000)
-          if (d < now) status = 'Expired'
-          else if (d >= now && d <= in30) status = 'Expiring Soon'
-        }
-      }
-      if (!status) status = (qty > 0 ? (qty < 10 ? 'Low Stock' : 'Available') : 'Out of Stock')
-      
       return {
         id: v.inventory_id || v.id,
         vaccine_id: v.vaccinemaster?.vaccine_id || v.vaccine_id || v.vaccine?.vaccine_id,
@@ -350,8 +354,7 @@ const loadInventory = async () => {
         expiration_date: v.expiration_date || v.expiry_date || '',
         storage_location: v.storage_location || v.storageLocation || '',
         quantity: qty,
-        minimum_stock: v.minimum_stock || 10,
-        status
+        minimum_stock: v.minimum_stock || 10
       }
     })
     
@@ -405,17 +408,35 @@ const getStatusBadgeClass = (item) => {
 }
 
 const getStatus = (item) => {
-  if (!item.expiration_date) return 'Unknown'
-  
+  // If no expiration date, base solely on quantity/minimum
+  if (!item.expiration_date) {
+    if (item.quantity <= 0) return 'Out of Stock'
+    if (item.quantity <= (item.minimum_stock || 10)) return 'Low Stock'
+    return 'Available'
+  }
+
   const expDate = new Date(item.expiration_date)
   const today = new Date()
   const daysUntilExpiration = Math.floor((expDate - today) / (1000 * 60 * 60 * 24))
-  
+
+  // Show Out of Stock first to match UI expectations
   if (item.quantity <= 0) return 'Out of Stock'
   if (daysUntilExpiration < 0) return 'Expired'
   if (daysUntilExpiration <= 30) return 'Expiring Soon'
   if (item.quantity <= (item.minimum_stock || 10)) return 'Low Stock'
   return 'Available'
+}
+
+// Helper: determine if item should be considered removed from view
+// Rule: stock is Out of Stock AND on or beyond expiry date (expiry <= today)
+const isRemovedFromView = (item) => {
+  if (!item?.expiration_date) return false
+  const expDate = new Date(item.expiration_date)
+  const today = new Date()
+  const daysUntilExpiration = Math.floor((expDate - today) / (1000 * 60 * 60 * 24))
+  const isOutOfStock = (item.quantity || 0) <= 0
+  const isOnOrBeyondExpiry = daysUntilExpiration <= 0
+  return isOutOfStock && isOnOrBeyondExpiry
 }
 
 const viewDetails = (item) => {

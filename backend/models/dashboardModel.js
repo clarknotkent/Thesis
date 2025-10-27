@@ -61,20 +61,47 @@ const fetchDashboardMetrics = async () => {
       }
     }
     
-    // Get recent vaccinations (simplified - handle table if it exists)
+    // Get recent vaccinations from enriched view (if available)
   let recentVaccinations = [];
     try {
-      const { data, error } = await supabase
-        .from('immunizations')
-        .select('*')
-        .order('date_administered', { ascending: false })
-        .limit(5);
-        
-      if (!error) {
-        recentVaccinations = data || [];
+      // include guardian id and outside flag if available in the view
+      const { data: recentData, error: recentErr } = await supabase
+        .from('immunizationhistory_view')
+        .select('immunization_id, patient_full_name, patient_guardian_id, administered_by_name, vaccine_antigen_name, administered_date, immunization_is_deleted, immunization_outside')
+        .order('administered_date', { ascending: false })
+        .limit(10);
+
+      if (!recentErr && Array.isArray(recentData)) {
+        // collect guardian ids to fetch guardian names
+        const guardianIds = Array.from(new Set(recentData.map(r => r.patient_guardian_id).filter(Boolean)));
+        let guardianMap = {};
+        if (guardianIds.length > 0) {
+          const { data: guardiansData, error: gErr } = await supabase
+            .from('guardians')
+            .select('guardian_id, firstname, middlename, surname')
+            .in('guardian_id', guardianIds);
+
+          if (!gErr && Array.isArray(guardiansData)) {
+            guardiansData.forEach(g => {
+              const full = [g.surname, g.firstname, g.middlename].filter(Boolean).join(' ');
+              guardianMap[g.guardian_id] = full || '';
+            });
+          }
+        }
+
+        recentVaccinations = recentData.map((r) => ({
+          id: r.immunization_id,
+          patientName: r.patient_full_name || 'Unknown',
+          parentName: r.patient_guardian_id ? (guardianMap[r.patient_guardian_id] || '') : '',
+          vaccineName: r.vaccine_antigen_name || 'Unknown',
+          healthWorker: r.administered_by_name || null,
+          dateAdministered: r.administered_date || r.administered_date || null,
+          status: r.immunization_is_deleted ? 'deleted' : 'completed',
+          outside: !!r.immunization_outside
+        }));
       }
     } catch (e) {
-      console.warn('Recent vaccinations not available:', e.message);
+      console.warn('Recent vaccinations not available:', e.message || e);
     }
     
     // Calculate inventory statistics
@@ -94,23 +121,77 @@ const fetchDashboardMetrics = async () => {
     const totalVaccineTypes = vaccineTypes?.length || 0;
     const totalAvailableDoses = inventoryStats?.reduce((sum, item) => sum + (item.current_stock_level || 0), 0) || 0;
     
-    // Format recent vaccinations data (simplified format)
-    const formattedVaccinations = recentVaccinations?.map((vacc, index) => ({
-      id: vacc.immunization_id || index,
-      patientName: 'Patient ' + (index + 1),
-      parentName: 'Guardian',
-      vaccineName: 'Vaccination Record',
-      healthWorker: 'Health Worker',
-      dateAdministered: vacc.date_administered || new Date().toISOString(),
-      status: vacc.status || 'completed'
-    })) || [];
+    // Format recent vaccinations data for frontend using fetched recentVaccinations
+    const formattedVaccinations = (recentVaccinations || []).map((vacc, index) => ({
+      id: vacc.id || index,
+      patientName: vacc.patientName || `Patient ${index + 1}`,
+      parentName: vacc.parentName || '',
+      vaccineName: vacc.vaccineName || 'Vaccination Record',
+      healthWorker: vacc.healthWorker || null,
+      dateAdministered: vacc.dateAdministered || null,
+      status: vacc.status || 'completed',
+      outside: !!vacc.outside
+    }));
     
+    // Build chart data: Doses administered per day for current month (uses administered_date)
+    let chartData = [];
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      const startDateStr = startOfMonth.toISOString().slice(0, 10); // YYYY-MM-DD
+      const endDateStr = startOfNextMonth.toISOString().slice(0, 10);
+
+      const { data: immunizationsThisMonth, error: immError } = await supabase
+        .from('immunizations')
+        .select('immunization_id, administered_date')
+        .gte('administered_date', startDateStr)
+        .lt('administered_date', endDateStr)
+        .order('administered_date', { ascending: true });
+
+      if (immError) {
+        console.warn('Error fetching immunizations for chart:', immError.message || immError);
+      }
+
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const countsByDay = Array.from({ length: daysInMonth }, () => 0);
+
+      if (immunizationsThisMonth && Array.isArray(immunizationsThisMonth)) {
+        immunizationsThisMonth.forEach((rec) => {
+          const d = rec.administered_date ? new Date(rec.administered_date) : null;
+          if (d && d.getMonth() === now.getMonth()) {
+            countsByDay[d.getDate() - 1] = (countsByDay[d.getDate() - 1] || 0) + 1;
+          }
+        });
+      }
+
+      chartData = countsByDay.map((count, idx) => ({ label: String(idx + 1), value: count }));
+    } catch (e) {
+      console.warn('Failed to build chartData:', e.message || e);
+      chartData = [];
+    }
+
     // Return enhanced dashboard data with frontend-compatible field names
+    // Compute vaccinationsToday by counting immunizations with today's administered_date
+    let vaccinationsTodayCount = 0;
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data: todayData, error: todayErr } = await supabase
+        .from('immunizations')
+        .select('immunization_id', { count: 'exact' })
+        .eq('administered_date', todayStr);
+
+      if (!todayErr) vaccinationsTodayCount = Array.isArray(todayData) ? todayData.length : 0;
+    } catch (e) {
+      console.warn('Error counting vaccinations today:', e.message || e);
+    }
+
     return {
       stats: {
-        vaccinationsToday: dashboardData.total_vaccinations_today || 0,
+        vaccinationsToday: vaccinationsTodayCount || 0,
         totalPatients: dashboardData.total_patients || 0,
-        activeHealthWorkers: (dashboardData.total_healthworkers || 0) + (dashboardData.total_nurses || 0) + (dashboardData.total_nutritionists || 0),
+        activeHealthWorkers: (dashboardData.total_healthstaff || 0) + (dashboardData.total_nurses || 0) + (dashboardData.total_nutritionists || 0),
         pendingAppointments: dashboardData.total_due_soon || 0,
         totalVaccineTypes: totalVaccineTypes,
         totalInventoryItems: inventoryCount,
@@ -122,7 +203,7 @@ const fetchDashboardMetrics = async () => {
       },
       inventoryItems: displayItems || [],
       recentVaccinations: formattedVaccinations,
-      chartData: [] // Placeholder for chart data - can be enhanced later
+      chartData: chartData
     };
   } catch (error) {
     console.error('Error in fetchDashboardMetrics:', error);

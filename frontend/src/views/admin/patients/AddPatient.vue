@@ -155,7 +155,9 @@ const handleSubmit = async (formData) => {
         attendant_at_birth: formData.attendant_at_birth,
         type_of_delivery: formData.type_of_delivery,
         ballards_score: formData.ballards_score,
-        newborn_screening_result: formData.newborn_screening_result
+        newborn_screening_result: formData.newborn_screening_result,
+        hearing_test_date: convertToISODate(formData.hearing_test_date) || formData.hearing_test_date,
+        newborn_screening_date: convertToISODate(formData.newborn_screening_date) || formData.newborn_screening_date
       }
     }
 
