@@ -24,12 +24,31 @@
             data-bs-toggle="dropdown" 
             aria-expanded="false"
           >
-            Filter: {{ currentFilter }}
+            Filter: {{ filterLabel }}
           </button>
           <ul class="dropdown-menu" aria-labelledby="filterDropdown">
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'All')">All</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'NIP')">NIP</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'Others')">Others</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'All')">All Vaccines</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'NIP')">NIP Vaccines</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'Others')">Other Vaccines</a></li>
+          </ul>
+        </div>
+        <!-- Sort Dropdown -->
+        <div class="dropdown ms-2">
+          <button 
+            class="btn btn-outline-secondary dropdown-toggle" 
+            type="button" 
+            id="sortDropdown" 
+            data-bs-toggle="dropdown" 
+            aria-expanded="false"
+          >
+            Sort: {{ currentSort }}
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Name A-Z')">Name A-Z</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Name Z-A')">Name Z-A</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Quantity Low-High')">Quantity Low-High</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Quantity High-Low')">Quantity High-Low</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Expiry Date')">Expiry Date</a></li>
           </ul>
         </div>
       </div>
@@ -103,9 +122,10 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 
-defineProps({
+const props = defineProps({
   paginatedVaccines: {
     type: Array,
     required: true
@@ -117,6 +137,10 @@ defineProps({
   currentFilter: {
     type: String,
     default: 'All'
+  },
+  currentSort: {
+    type: String,
+    default: 'Name A-Z'
   },
   currentPage: {
     type: Number,
@@ -148,5 +172,13 @@ defineProps({
   }
 })
 
-defineEmits(['update:searchTerm', 'filter-change', 'delete', 'page-changed'])
+const filterLabel = computed(() => {
+  switch (props.currentFilter) {
+    case 'NIP': return 'NIP Vaccines'
+    case 'Others': return 'Other Vaccines'
+    default: return 'All Vaccines'
+  }
+})
+
+defineEmits(['update:searchTerm', 'filter-change', 'sort-change', 'delete', 'page-changed'])
 </script>

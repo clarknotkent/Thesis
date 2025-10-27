@@ -26,19 +26,19 @@
         
         <!-- Category Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="categoryFilter" data-bs-toggle="dropdown" aria-expanded="false">
-            Filter: {{ currentCategoryFilter }}
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="categoryFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('category')">
+            Filter: {{ currentCategoryLabel }}
           </button>
           <ul class="dropdown-menu" aria-labelledby="categoryFilter">
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('All')">All</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('NIP')">NIP</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('Others')">Others</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('All')">All Vaccines</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('NIP')">NIP Vaccines</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('Others')">Other Vaccines</a></li>
           </ul>
         </div>
         
         <!-- Type/Status Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('status')">
             Type: {{ currentStatusFilter }}
           </button>
           <ul class="dropdown-menu" aria-labelledby="statusFilter">
@@ -53,7 +53,7 @@
         
         <!-- Sort Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('sort')">
             Sort: {{ currentSort }}
           </button>
           <ul class="dropdown-menu" aria-labelledby="sortDropdown">
@@ -170,6 +170,13 @@ const currentSort = ref('Name A-Z')
 const currentPage = ref(1)
 const itemsPerPage = 7
 
+// Label to display for current category filter
+const currentCategoryLabel = computed(() => {
+  if (currentCategoryFilter.value === 'NIP') return 'NIP Vaccines'
+  if (currentCategoryFilter.value === 'Others') return 'Other Vaccines'
+  return 'All Vaccines'
+})
+
 // Computed: Filtered inventory based on search and filters
 const filteredInventory = computed(() => {
   let filtered = [...inventory.value]
@@ -185,11 +192,11 @@ const filteredInventory = computed(() => {
     )
   }
   
-  // Apply category filter (NIP/Others)
+  // Apply category filter using is_nip boolean
   if (currentCategoryFilter.value === 'NIP') {
-    filtered = filtered.filter(item => item.category === 'VACCINE' || item.category === 'NIP')
+    filtered = filtered.filter(item => item.is_nip === true)
   } else if (currentCategoryFilter.value === 'Others') {
-    filtered = filtered.filter(item => item.category !== 'VACCINE' && item.category !== 'NIP')
+    filtered = filtered.filter(item => item.is_nip === false)
   }
   
   // Apply status filter
@@ -243,18 +250,52 @@ onMounted(() => {
 const setCategoryFilter = (filter) => {
   currentCategoryFilter.value = filter
   currentPage.value = 1 // Reset to first page
+  closeDropdown('category')
 }
 
 // Set status filter
 const setStatusFilter = (filter) => {
   currentStatusFilter.value = filter
   currentPage.value = 1 // Reset to first page
+  closeDropdown('status')
 }
 
 // Set sort option
 const setSort = (sortOption) => {
   currentSort.value = sortOption
   currentPage.value = 1 // Reset to first page
+  closeDropdown('sort')
+}
+
+// Debug dropdown clicks
+const debugDropdown = (type) => {
+  console.log(`Dropdown ${type} clicked`)
+  const button = document.getElementById(`${type}Filter`) || document.getElementById(`${type}Dropdown`)
+  if (button) {
+    console.log(`Button found:`, button)
+    console.log(`Button classes:`, button.className)
+    console.log(`Button data-bs-toggle:`, button.getAttribute('data-bs-toggle'))
+    
+    // Try to manually toggle the dropdown
+    const menu = button.nextElementSibling
+    if (menu && menu.classList.contains('dropdown-menu')) {
+      console.log('Found dropdown menu, toggling visibility')
+      menu.classList.toggle('show')
+      button.setAttribute('aria-expanded', menu.classList.contains('show'))
+    }
+  }
+}
+
+// Close dropdown menu
+const closeDropdown = (type) => {
+  const button = document.getElementById(`${type}Filter`) || document.getElementById(`${type}Dropdown`)
+  if (button) {
+    const menu = button.nextElementSibling
+    if (menu && menu.classList.contains('dropdown-menu')) {
+      menu.classList.remove('show')
+      button.setAttribute('aria-expanded', 'false')
+    }
+  }
 }
 
 // Edit vaccine type navigation
@@ -303,6 +344,7 @@ const loadInventory = async () => {
         brand_name: v.vaccinemaster?.brand_name || v.vaccine?.brand_name || v.brand_name || '',
         manufacturer: v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || '',
         category: v.vaccinemaster?.category || v.category || '',
+        is_nip: v.is_nip === true || v.is_nip === 'true' || v.vaccinemaster?.is_nip === true || v.vaccinemaster?.is_nip === 'true' || v.vaccine?.is_nip === true || v.vaccine?.is_nip === 'true' || false,
         batch_number: v.lot_number || v.batch_number || '',
         lot_number: v.lot_number || v.batch_number || '',
         expiration_date: v.expiration_date || v.expiry_date || '',

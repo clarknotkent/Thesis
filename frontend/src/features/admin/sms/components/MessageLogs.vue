@@ -224,6 +224,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
+import api from '@/services/api'
 
 // State
 const loading = ref(false)
@@ -236,59 +237,8 @@ const itemsPerPage = ref(10)
 const selectedMessage = ref(null)
 const messageModal = ref(null)
 
-// Sample data (replace with API call)
-const logs = ref([
-  {
-    id: 1,
-    sent_at: '2025-10-26T14:30:00',
-    recipient_name: 'Mr. Juan Dela Cruz',
-    patient_name: 'Maria Dela Cruz',
-    phone_number: '+639171234567',
-    message: 'Good Day, Mr. Dela Cruz. Your child, Maria, is scheduled for vaccination on October 28, 2025 for BCG Dose 1.',
-    type: '1-day',
-    status: 'sent'
-  },
-  {
-    id: 2,
-    sent_at: '2025-10-26T09:15:00',
-    recipient_name: 'Ms. Ana Santos',
-    patient_name: 'Pedro Santos',
-    phone_number: '+639281234567',
-    message: 'Good Day, Ms. Santos. Your child, Pedro, is scheduled for vaccination on November 2, 2025 for DPT-HiB-HepB Dose 2.',
-    type: '1-week',
-    status: 'sent'
-  },
-  {
-    id: 3,
-    sent_at: '2025-10-26T16:45:00',
-    recipient_name: 'Mr. Carlos Reyes',
-    patient_name: 'Sofia Reyes',
-    phone_number: '+639391234567',
-    message: 'Good Evening, Mr. Reyes. Your child, Sofia, is scheduled for vaccination on October 29, 2025 for MMR Dose 1.',
-    type: '3-days',
-    status: 'pending'
-  },
-  {
-    id: 4,
-    sent_at: '2025-10-25T10:20:00',
-    recipient_name: 'Ms. Linda Garcia',
-    patient_name: 'Miguel Garcia',
-    phone_number: '+639451234567',
-    message: 'Good Day, Ms. Garcia. Your child, Miguel, is scheduled for vaccination on November 1, 2025 for OPV Dose 3.',
-    type: '1-week',
-    status: 'sent'
-  },
-  {
-    id: 5,
-    sent_at: '2025-10-25T15:00:00',
-    recipient_name: 'Mr. Roberto Cruz',
-    patient_name: 'Anna Cruz',
-    phone_number: '+639561234567',
-    message: 'Good Day, Mr. Cruz. Your child, Anna, is scheduled for vaccination on October 26, 2025 for Measles Dose 1.',
-    type: '1-day',
-    status: 'failed'
-  }
-])
+// Data
+const logs = ref([])
 
 // Computed
 const filteredLogs = computed(() => {
@@ -344,12 +294,35 @@ const visiblePages = computed(() => {
 })
 
 // Methods
-const loadLogs = () => {
+const loadLogs = async () => {
   loading.value = true
-  // TODO: Fetch logs from API
-  setTimeout(() => {
+  try {
+    const params = {
+      status: filterStatus.value || undefined,
+      type: filterType.value || undefined,
+      startDate: filterDate.value || undefined,
+      search: searchQuery.value || undefined,
+      page: 1,
+      limit: 100
+    }
+    const { data } = await api.get('/sms/history', { params })
+    const rows = data?.data || []
+    // Map API fields to UI fields
+    logs.value = rows.map(r => ({
+      id: r.id,
+      sent_at: r.sent_at,
+      recipient_name: r.guardian_name || '—',
+      patient_name: r.patient_name || '—',
+      phone_number: r.phone_number,
+      message: r.message,
+      type: r.type,
+      status: r.status,
+    }))
+  } catch (err) {
+    console.error('Failed to load SMS logs', err)
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const formatDateTime = (dateString) => {

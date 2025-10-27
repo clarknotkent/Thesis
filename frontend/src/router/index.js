@@ -413,9 +413,31 @@ const routes = [
       role: 'admin'
     }
   },
+  // Backward-compatible route (legacy sidebar link)
+  {
+    path: '/admin/activity-logs',
+    name: 'ActivityLogsLegacy',
+    component: ActivityLogs,
+    meta: {
+      title: 'Activity Logs - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
   {
     path: '/admin/activity/:id',
     name: 'ActivityLogDetails',
+    component: () => import('@/views/admin/activity/ActivityLogDetails.vue'),
+    meta: {
+      title: 'Activity Log Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin'
+    }
+  },
+  // Backward-compatible details route
+  {
+    path: '/admin/activity-logs/:id',
+    name: 'ActivityLogDetailsLegacy',
     component: () => import('@/views/admin/activity/ActivityLogDetails.vue'),
     meta: {
       title: 'Activity Log Details - ImmunizeMe',

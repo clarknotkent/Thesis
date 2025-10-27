@@ -33,6 +33,7 @@
           :paginatedVaccines="paginatedVaccines"
           :searchTerm="searchTerm"
           :currentFilter="currentFilter"
+          :currentSort="currentSort"
           :currentPage="currentPage"
           :totalPages="totalPages"
           :totalItems="filteredVaccines.length"
@@ -42,6 +43,7 @@
           :getStatusBadgeClass="getStatusBadgeClass"
           @update:searchTerm="searchTerm = $event; watchSearchTerm()"
           @filter-change="setFilter"
+          @sort-change="setSort"
           @delete="deleteVaccine"
           @page-changed="goToPage"
         />

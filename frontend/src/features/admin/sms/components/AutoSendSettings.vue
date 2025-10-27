@@ -337,6 +337,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 
 const { addToast } = useToast()
 
@@ -355,45 +356,14 @@ const globalSettings = ref({
 })
 
 const stats = ref({
-  total_guardians: 156,
+  total_guardians: 0,
   enabled: 0,
-  disabled: 156,
-  pending_messages: 23
+  disabled: 0,
+  pending_messages: 0
 })
 
-// Sample guardian data
-const guardians = ref([
-  {
-    id: 1,
-    name: 'Juan Dela Cruz',
-    relationship: 'Father',
-    phone: '+639171234567',
-    children_count: 2,
-    pending_vaccines: 3,
-    auto_send_enabled: false,
-    selected: false
-  },
-  {
-    id: 2,
-    name: 'Ana Santos',
-    relationship: 'Mother',
-    phone: '+639281234567',
-    children_count: 1,
-    pending_vaccines: 2,
-    auto_send_enabled: false,
-    selected: false
-  },
-  {
-    id: 3,
-    name: 'Carlos Reyes',
-    relationship: 'Father',
-    phone: '+639391234567',
-    children_count: 3,
-    pending_vaccines: 5,
-    auto_send_enabled: false,
-    selected: false
-  }
-])
+// Guardians data
+const guardians = ref([])
 
 // Computed
 const filteredGuardians = computed(() => {
@@ -434,16 +404,19 @@ const toggleGlobalAutoSend = () => {
   updateStats()
 }
 
-const toggleGuardianAutoSend = (guardian) => {
-  // TODO: API call
-  addToast(
-    `Auto-send ${guardian.auto_send_enabled ? 'enabled' : 'disabled'} for ${guardian.name}`,
-    'success'
-  )
-  updateStats()
+const toggleGuardianAutoSend = async (guardian) => {
+  try {
+    await api.put(`/sms/guardians/${guardian.id}`, { auto_send_enabled: guardian.auto_send_enabled })
+    addToast(`Auto-send ${guardian.auto_send_enabled ? 'enabled' : 'disabled'} for ${guardian.name}`, 'success')
+    updateStats()
+  } catch (err) {
+    console.error('Failed to toggle guardian auto-send', err)
+    guardian.auto_send_enabled = !guardian.auto_send_enabled // revert
+    addToast('Failed to update guardian setting', 'danger')
+  }
 }
 
-const bulkToggle = (enable) => {
+const bulkToggle = async (enable) => {
   if (enable && !globalSettings.value.enabled) {
     addToast('Please enable global auto-send first', 'warning')
     return
@@ -454,11 +427,16 @@ const bulkToggle = (enable) => {
   )
   
   if (confirmed) {
-    guardians.value.forEach(g => {
-      g.auto_send_enabled = enable
-    })
-    addToast(`Auto-send ${enable ? 'enabled' : 'disabled'} for all guardians`, 'success')
-    updateStats()
+    try {
+      const ids = guardians.value.map(g => g.id)
+      await api.post('/sms/guardians/bulk-toggle', { guardianIds: ids, auto_send_enabled: enable })
+      guardians.value.forEach(g => { g.auto_send_enabled = enable })
+      addToast(`Auto-send ${enable ? 'enabled' : 'disabled'} for all guardians`, 'success')
+      updateStats()
+    } catch (err) {
+      console.error('Failed bulk toggle', err)
+      addToast('Failed to update all guardians', 'danger')
+    }
   }
 }
 
@@ -471,6 +449,7 @@ const toggleSelectAll = () => {
 const clearFilters = () => {
   searchQuery.value = ''
   filterStatus.value = ''
+  fetchGuardians()
 }
 
 const viewGuardianDetails = (guardian) => {
@@ -483,10 +462,40 @@ const updateStats = () => {
   stats.value.disabled = guardians.value.filter(g => !g.auto_send_enabled).length
 }
 
+const fetchStats = async () => {
+  try {
+    const { data } = await api.get('/sms/statistics')
+    const s = data?.data || {}
+    stats.value.total_guardians = Number(s.guardians?.total_guardians || 0)
+    stats.value.enabled = Number(s.guardians?.enabled_count || 0)
+    stats.value.disabled = Number(s.guardians?.disabled_count || 0)
+    stats.value.pending_messages = Number(s.sms?.pending_count || 0)
+  } catch (err) {
+    console.error('Failed to load stats', err)
+  }
+}
+
+const fetchGuardians = async () => {
+  loading.value = true
+  try {
+    const params = {
+      search: searchQuery.value || undefined,
+      status: filterStatus.value || undefined,
+    }
+    const { data } = await api.get('/sms/guardians', { params })
+    guardians.value = (data?.data || []).map(g => ({ ...g, selected: false }))
+    updateStats()
+  } catch (err) {
+    console.error('Failed to load guardians', err)
+  } finally {
+    loading.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
-  // TODO: Fetch data from API
-  loading.value = false
+  fetchStats()
+  fetchGuardians()
 })
 </script>
 

@@ -132,6 +132,7 @@
                 <option value="admin">Admin</option>
                 <option value="health_staff">Health Staff</option>
                 <option value="parent">Parent</option>
+                <option value="System">System</option>
               </select>
             </div>
             <div class="col-md-6">
@@ -314,7 +315,7 @@ const clearLogsAge = ref('90')
 
 // Filters
 const filters = ref({
-  dateRange: 'week',
+  dateRange: 'all',
   fromDate: '',
   toDate: '',
   actionType: '',
@@ -447,10 +448,30 @@ const fetchLogs = async () => {
       action_type: filters.value.actionType,
       user_role: filters.value.userRole
     }
-    
-    if (filters.value.dateRange === 'custom') {
-      params.from_date = convertToISODate(filters.value.fromDate)
-      params.to_date = convertToISODate(filters.value.toDate)
+
+    // Compute accurate date bounds in PH timezone and send as UTC ISO strings
+    // Backend will honor explicit from/to regardless of date_range
+    const todayPH = nowPH()
+    if (filters.value.dateRange === 'today') {
+      params.from_date = todayPH.clone().startOf('day').format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'week') {
+      // Ensure week starts on Sunday explicitly
+      const sundayOffset = todayPH.day() // 0 = Sunday
+      const weekStart = todayPH.clone().subtract(sundayOffset, 'days').startOf('day')
+      params.from_date = weekStart.format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'month') {
+      const monthStart = todayPH.clone().startOf('month')
+      params.from_date = monthStart.clone().startOf('day').format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'custom') {
+      if (filters.value.fromDate) {
+        params.from_date = `${String(filters.value.fromDate)} 00:00:00`
+      }
+      if (filters.value.toDate) {
+        params.to_date = `${String(filters.value.toDate)} 23:59:59`
+      }
     }
 
     const response = await api.get('/activity-logs', { params })
@@ -467,7 +488,7 @@ const fetchLogs = async () => {
         timestamp: extractTimestamp(log),
         userId: log.user_id,
         userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
-        userRole: log.user_role || 'Unknown',
+  userRole: log.user_role || 'System',
         actionType: actionNorm.type,
         displayAction: actionNorm.label,
         resource: log.resource || log.table_name || 'System',
@@ -492,7 +513,7 @@ const fetchLogs = async () => {
         timestamp: extractTimestamp(log),
         userId: log.user_id,
         userFullName: log.display_user_name || log.user_fullname || log.username || 'Unknown User',
-        userRole: log.user_role || 'System',
+  userRole: log.user_role || 'System',
         actionType: actionNorm.type,
         displayAction: actionNorm.label,
         resource: log.resource || log.table_name || 'System',
@@ -577,9 +598,27 @@ const exportLogs = async () => {
       user_role: filters.value.userRole
     }
     
-    if (filters.value.dateRange === 'custom') {
-      params.from_date = convertToISODate(filters.value.fromDate)
-      params.to_date = convertToISODate(filters.value.toDate)
+    // Mirror the same date-range calculations used in list fetch
+    const todayPH = nowPH()
+    if (filters.value.dateRange === 'today') {
+      params.from_date = todayPH.clone().startOf('day').format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'week') {
+      const sundayOffset = todayPH.day()
+      const weekStart = todayPH.clone().subtract(sundayOffset, 'days').startOf('day')
+      params.from_date = weekStart.format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'month') {
+      const monthStart = todayPH.clone().startOf('month')
+      params.from_date = monthStart.clone().startOf('day').format('YYYY-MM-DD HH:mm:ss')
+      params.to_date = todayPH.clone().endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    } else if (filters.value.dateRange === 'custom') {
+      if (filters.value.fromDate) {
+        params.from_date = `${String(filters.value.fromDate)} 00:00:00`
+      }
+      if (filters.value.toDate) {
+        params.to_date = `${String(filters.value.toDate)} 23:59:59`
+      }
     }
 
     const response = await api.get('/activity-logs/export', { 

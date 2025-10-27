@@ -10,3 +10,8 @@
     padding: 0;
   }
 }
+
+/* Ensure dropdown menus appear above cards/navbars if overlapping */
+.dropdown-menu {
+  z-index: 1060; /* slightly above modal backdrop default 1050 */
+}
