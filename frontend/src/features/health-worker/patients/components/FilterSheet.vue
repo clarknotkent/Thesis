@@ -13,29 +13,6 @@
 
           <!-- Filter Content -->
           <div class="filter-content">
-            <!-- Age Range Filter -->
-            <div class="filter-section">
-              <label class="filter-label">Age Range</label>
-              <div class="filter-options">
-                <label class="filter-option">
-                  <input type="checkbox" v-model="filters.ageRanges" value="0-6months" />
-                  <span>0-6 months</span>
-                </label>
-                <label class="filter-option">
-                  <input type="checkbox" v-model="filters.ageRanges" value="6-12months" />
-                  <span>6-12 months</span>
-                </label>
-                <label class="filter-option">
-                  <input type="checkbox" v-model="filters.ageRanges" value="1-2years" />
-                  <span>1-2 years</span>
-                </label>
-                <label class="filter-option">
-                  <input type="checkbox" v-model="filters.ageRanges" value="2-5years" />
-                  <span>2-5 years</span>
-                </label>
-              </div>
-            </div>
-
             <!-- Gender Filter -->
             <div class="filter-section">
               <label class="filter-label">Gender</label>
@@ -60,29 +37,38 @@
               <label class="filter-label">Status</label>
               <div class="filter-options">
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="active" />
+                  <input type="checkbox" v-model="filters.statuses" value="All Status" />
+                  <span>All Status</span>
+                </label>
+                <label class="filter-option">
+                  <input type="checkbox" v-model="filters.statuses" value="Active" />
                   <span>Active</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="pending" />
-                  <span>Pending</span>
+                  <input type="checkbox" v-model="filters.statuses" value="Inactive" />
+                  <span>Inactive</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="completed" />
-                  <span>Completed</span>
+                  <input type="checkbox" v-model="filters.statuses" value="Vaccination Due" />
+                  <span>Vaccination Due</span>
+                </label>
+                <label class="filter-option">
+                  <input type="checkbox" v-model="filters.statuses" value="Up to Date" />
+                  <span>Up to Date</span>
+                </label>
+                <label class="filter-option">
+                  <input type="checkbox" v-model="filters.statuses" value="FIC" />
+                  <span>FIC</span>
+                </label>
+                <label class="filter-option">
+                  <input type="checkbox" v-model="filters.statuses" value="CIC" />
+                  <span>CIC</span>
+                </label>
+                <label class="filter-option">
+                  <input type="checkbox" v-model="filters.statuses" value="Defaulter" />
+                  <span>Defaulter</span>
                 </label>
               </div>
-            </div>
-
-            <!-- Barangay Filter -->
-            <div class="filter-section">
-              <label class="filter-label">Barangay</label>
-              <select v-model="filters.barangay" class="filter-select">
-                <option value="">All Barangays</option>
-                <option value="Barangay 1">Barangay 1</option>
-                <option value="Barangay 2">Barangay 2</option>
-                <option value="Barangay 3">Barangay 3</option>
-              </select>
             </div>
           </div>
 
@@ -118,10 +104,8 @@ const props = defineProps({
 const emit = defineEmits(['update:show', 'update:modelValue', 'apply'])
 
 const filters = ref({
-  ageRanges: [],
   gender: '',
-  statuses: [],
-  barangay: ''
+  statuses: []
 })
 
 // Initialize filters from modelValue
@@ -137,10 +121,8 @@ const close = () => {
 
 const clearFilters = () => {
   filters.value = {
-    ageRanges: [],
     gender: '',
-    statuses: [],
-    barangay: ''
+    statuses: []
   }
 }
 

@@ -123,10 +123,6 @@
               <span class="detail-label">Storage Location</span>
               <span class="detail-value">{{ storageLocation }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Temperature Requirement</span>
-              <span class="detail-value">{{ temperatureRequirement }}</span>
-            </div>
             <div v-if="receivedDate" class="detail-row">
               <span class="detail-label">Date Received</span>
               <span class="detail-value">{{ receivedDate }}</span>
@@ -316,12 +312,6 @@ const storageLocation = computed(() => {
   return inventory.value?.storage_location || 
          inventory.value?.location || 
          'Main Vaccine Storage'
-})
-
-const temperatureRequirement = computed(() => {
-  return inventory.value?.temperature_requirement || 
-         inventory.value?.storage_temp || 
-         '2°C to 8°C (Refrigerator)'
 })
 
 const remarks = computed(() => {

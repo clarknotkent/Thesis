@@ -5,19 +5,29 @@
       <h3 class="card-title">Patient QR Code</h3>
     </div>
     <div class="qr-code-content">
-      <div class="qr-code-placeholder">
-        <i class="bi bi-qr-code-scan qr-icon"></i>
-        <p class="qr-id">ID: {{ patient?.patient_id || patient?.id }}</p>
+      <div class="qr-code-container">
+        <canvas ref="qrCanvas" width="200" height="200"></canvas>
+        <p v-if="!qrUrl" class="qr-error">QR Code not available</p>
       </div>
-      <button class="view-qr-button" @click="openQRCode">
-        <i class="bi bi-arrows-fullscreen"></i>
-        View Full QR Code
-      </button>
+      <div v-if="qrUrl" class="qr-actions">
+        <a :href="qrUrl" target="_blank" rel="noreferrer" class="qr-link">
+          <i class="bi bi-box-arrow-up-right"></i>
+          Open Link
+        </a>
+        <button class="refresh-qr-button" @click="refreshQR">
+          <i class="bi bi-arrow-clockwise"></i>
+          Refresh QR
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import QRCode from 'qrcode'
+import api from '@/services/api'
+
 const props = defineProps({
   patient: {
     type: Object,
@@ -25,10 +35,73 @@ const props = defineProps({
   }
 })
 
-const openQRCode = () => {
-  // TODO: Implement QR code modal or full screen view
-  alert(`Open QR Code for Patient ID: ${props.patient?.patient_id || props.patient?.id}`)
+const qrCanvas = ref(null)
+const qrData = ref(null)
+
+const qrUrl = computed(() => qrData.value?.url || props.patient?.qr?.url)
+
+const renderQR = async () => {
+  if (qrCanvas.value && qrUrl.value) {
+    try {
+      await QRCode.toCanvas(qrCanvas.value, qrUrl.value, { 
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#007bff',
+          light: '#ffffff'
+        }
+      })
+      console.log('✅ QR code rendered successfully')
+    } catch (error) {
+      console.error('❌ Error rendering QR code:', error)
+      // Fallback display
+      const ctx = qrCanvas.value.getContext('2d')
+      ctx.clearRect(0, 0, qrCanvas.value.width, qrCanvas.value.height)
+      ctx.fillStyle = '#6b7280'
+      ctx.font = '14px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('QR Generation Error', 100, 90)
+      ctx.fillText('Use link below', 100, 110)
+    }
+  }
 }
+
+const refreshQR = async () => {
+  try {
+    const patientId = props.patient?.patient_id || props.patient?.id
+    const response = await api.post(`/qr/patients/${patientId}`)
+    qrData.value = response.data.data
+    await nextTick()
+    await renderQR()
+    console.log('✅ QR code refreshed')
+  } catch (error) {
+    console.error('❌ Error refreshing QR code:', error)
+    alert('Failed to refresh QR code. Please try again.')
+  }
+}
+
+// Watch for patient data changes
+watch(() => props.patient?.qr, async (newQR) => {
+  if (newQR?.url) {
+    await nextTick()
+    await renderQR()
+  }
+}, { deep: true })
+
+// Watch for qrData changes
+watch(() => qrData.value, async (newData) => {
+  if (newData?.url) {
+    await nextTick()
+    await renderQR()
+  }
+}, { deep: true })
+
+onMounted(async () => {
+  await nextTick()
+  if (qrUrl.value) {
+    await renderQR()
+  }
+})
 </script>
 
 <style scoped>
@@ -67,59 +140,87 @@ const openQRCode = () => {
   background: white;
 }
 
-.qr-code-placeholder {
-  width: 200px;
-  height: 200px;
-  border: 2px dashed #d1d5db;
-  border-radius: 0.5rem;
+.qr-code-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  background: #f9fafb;
 }
 
-.qr-icon {
-  font-size: 4rem;
-  color: #9ca3af;
+canvas {
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
 }
 
-.qr-id {
+.qr-error {
   font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280;
-  margin: 0;
+  color: #dc2626;
+  margin-top: 0.5rem;
+  text-align: center;
 }
 
-.view-qr-button {
+.qr-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.qr-link {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.875rem 2rem;
+  padding: 0.875rem 1rem;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.qr-link:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+  border-color: #9ca3af;
+}
+
+.refresh-qr-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
   background: #007bff;
   color: white;
   border: none;
   border-radius: 0.5rem;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
-.view-qr-button:hover {
+.refresh-qr-button:hover {
   background: #0056b3;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
 }
 
-.view-qr-button:active {
+.refresh-qr-button:active {
   transform: translateY(0);
 }
 
-.view-qr-button i {
-  font-size: 1.125rem;
+.refresh-qr-button i,
+.qr-link i {
+  font-size: 1rem;
 }
 
 /* Mobile optimizations */
@@ -136,19 +237,19 @@ const openQRCode = () => {
     padding: 1.5rem 1.25rem;
   }
   
-  .qr-code-placeholder {
+  canvas {
     width: 180px;
     height: 180px;
   }
   
-  .qr-icon {
-    font-size: 3.5rem;
+  .qr-actions {
+    flex-direction: column;
+    gap: 0.5rem;
   }
   
-  .view-qr-button {
+  .qr-link,
+  .refresh-qr-button {
     width: 100%;
-    justify-content: center;
-    padding: 0.875rem 1.5rem;
   }
 }
 </style>

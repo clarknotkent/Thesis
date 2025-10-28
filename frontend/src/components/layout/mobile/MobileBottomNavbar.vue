@@ -38,7 +38,7 @@ const navItems = [
   },
   {
     name: 'inventory',
-    path: '/healthworker/inventory',
+    path: '/healthworker/stock',
     label: 'Stock',
     icon: 'bi bi-box-seam-fill'
   },
