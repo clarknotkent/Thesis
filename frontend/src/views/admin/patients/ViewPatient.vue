@@ -194,7 +194,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import PatientForm from '@/features/admin/patients/PatientForm.vue'
 import VaccinationHistory from '@/features/admin/patients/VaccinationHistory.vue'
 import ScheduledVaccinations from '@/features/admin/patients/ScheduledVaccinations.vue'

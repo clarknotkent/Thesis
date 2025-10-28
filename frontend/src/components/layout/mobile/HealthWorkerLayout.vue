@@ -1,17 +1,26 @@
 <template>
   <div class="health-worker-layout mobile-first">
-    <TopNavbar 
-      :user-role="userRole || 'Health Worker'" 
-      :user-name="userName || 'Health Worker'"
+    <!-- Fixed Header: Blue TopBar + White Controls (when needed) -->
+    <MobileHeader
+      :user-role="userRole"
+      :user-name="userName"
+      :show-controls="showControls"
+      :controls-props="controlsProps"
+      @filter="$emit('filter')"
+      @scan="$emit('scan')"
+      @add="$emit('add')"
+      @update:searchQuery="$emit('update:searchQuery', $event)"
     />
 
+    <!-- Scrollable Content Area -->
     <main class="main-content mobile-main">
       <div class="health-worker-content mobile-content">
         <slot />
       </div>
     </main>
 
-    <BottomNavbar />
+    <!-- Fixed Bottom Navigation -->
+    <MobileBottomNavbar />
 
     <!-- Toast Notifications -->
     <ToastContainer />
@@ -32,12 +41,25 @@
 
 <script setup>
 import { computed } from 'vue'
-import TopNavbar from './TopNavbar.vue'
-import BottomNavbar from './BottomNavbar.vue'
+import MobileHeader from './MobileHeader.vue'
+import MobileBottomNavbar from './MobileBottomNavbar.vue'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
+
+const props = defineProps({
+  showControls: {
+    type: Boolean,
+    default: false
+  },
+  controlsProps: {
+    type: Object,
+    default: () => ({})
+  }
+})
+
+defineEmits(['filter', 'scan', 'add', 'update:searchQuery'])
 
 const { confirmState, handleConfirm, handleCancel } = useConfirm()
 
@@ -70,78 +92,53 @@ const userRole = computed(() => {
 
 <style scoped>
 .health-worker-layout.mobile-first {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background-color: #f8f9fa;
-  padding-bottom: 80px; /* Space for bottom navbar - mobile */
 }
 
 .mobile-main {
-  margin-top: 56px; /* Height of TopNavbar - mobile */
-  margin-left: 0;
-  min-height: calc(100vh - 56px - 80px);
+  flex-grow: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   width: 100%;
 }
 
 .mobile-content {
-  padding: 0.75rem 1rem;
+  padding: 0;
   max-width: 100%;
   margin: 0 auto;
+  min-height: 100%;
 }
 
 /* Larger mobile screens */
 @media (min-width: 480px) {
   .mobile-content {
-    padding: 1.25rem;
+    padding: 0;
   }
 }
 
 /* Tablets */
 @media (min-width: 768px) {
-  .health-worker-layout.mobile-first {
-    padding-bottom: 88px; /* Larger bottom navbar */
-  }
-  
-  .mobile-main {
-    margin-top: 56px;
-    min-height: calc(100vh - 56px - 88px);
-  }
-  
   .mobile-content {
-    padding: 1.5rem 2rem;
+    padding: 0;
     max-width: 1200px;
   }
 }
 
 /* Desktop */
 @media (min-width: 992px) {
-  .health-worker-layout.mobile-first {
-    padding-bottom: 96px; /* Even larger bottom navbar for desktop */
-  }
-  
-  .mobile-main {
-    margin-top: 64px; /* Larger TopNavbar height */
-    min-height: calc(100vh - 64px - 96px);
-  }
-  
   .mobile-content {
-    padding: 2rem 3rem;
+    padding: 0;
     max-width: 1400px;
   }
 }
 
 /* Large Desktop */
 @media (min-width: 1400px) {
-  .health-worker-layout.mobile-first {
-    padding-bottom: 104px; /* Maximum bottom navbar size */
-  }
-  
-  .mobile-main {
-    margin-top: 72px; /* Maximum TopNavbar height */
-    min-height: calc(100vh - 72px - 104px);
-  }
-  
   .mobile-content {
-    padding: 2.5rem 4rem;
+    padding: 0;
     max-width: 1600px;
   }
 }

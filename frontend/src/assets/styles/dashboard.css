@@ -180,13 +180,7 @@
 .wire-chart .chart-grid {
   position: absolute;
   inset: 0 0 24px 40px;
-  background: repeating-linear-gradient(
-    to top,
-    transparent,
-    transparent 24.5%,
-    var(--sidebar-border) 24.5%,
-    var(--sidebar-border) 25%
-  );
+  background: var(--sidebar-border);
   border: 1px solid var(--sidebar-border);
   border-top: none;
   border-right: none;

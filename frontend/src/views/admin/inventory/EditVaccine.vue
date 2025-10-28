@@ -60,7 +60,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccineForm from '@/features/admin/inventory/components/VaccineForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'

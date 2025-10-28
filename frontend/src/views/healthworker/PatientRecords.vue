@@ -1,132 +1,75 @@
 <template>
-  <HealthWorkerLayout>
-    <!-- Search Bar Section -->
-    <div class="search-section mb-3">
-      <div class="d-flex gap-2 align-items-center">
-        <div class="flex-grow-1">
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bi bi-search"></i>
-            </span>
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="Search patients..."
-              v-model="searchQuery"
-              @input="debouncedSearch"
-            >
-          </div>
+  <HealthWorkerLayout
+    :show-controls="true"
+    :controls-props="{
+      icon: 'folder',
+      title: 'Patient Records',
+      searchPlaceholder: 'Search by Nar...',
+      searchQuery: searchQuery,
+      hasActiveFilters: hasActiveFilters
+    }"
+    @filter="toggleFilters"
+    @scan="openQrScanner"
+    @add="goToAddPatient"
+    @update:searchQuery="searchQuery = $event"
+  >
+    <!-- Filter Sheet -->
+    <FilterSheet
+      v-model:show="showFilterSheet"
+      v-model="activeFilters"
+      @apply="applyFilters"
+    />
+
+    <!-- Content wrapper -->
+    <div class="page-content-wrapper">
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-container">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading patients...</span>
         </div>
-        <AppButton
-          variant="outline-secondary"
-          icon="bi bi-sort-down"
-          @click="toggleSort"
-          class="compact-btn"
-        >
-          Sort
-        </AppButton>
-        <AppButton
-          variant="info"
-          icon="bi bi-camera"
-          @click="openQrScanner"
-          class="compact-btn"
-        >
-          Scan
-        </AppButton>
-        <AppButton
-          variant="primary"
-          @click="goToAddPatient"
-          icon="bi bi-plus-circle"
-          class="compact-btn"
-        >
-          + Add
-        </AppButton>
+        <p class="loading-text">Loading patients...</p>
+      </div>
+
+      <!-- Patient List -->
+      <div v-else-if="filteredPatients.length > 0" class="patient-list">
+        <PatientListCard
+          v-for="patient in paginatedPatients" 
+          :key="patient.id"
+          :patient="patient"
+          @click="viewPatientDetail"
+        />
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <i class="bi bi-person-x empty-icon"></i>
+        <h4 class="empty-title">No patients found</h4>
+        <p class="empty-text">Try adjusting your search criteria or add a new patient.</p>
+        <button class="btn btn-primary mt-3" @click="goToAddPatient">
+          <i class="bi bi-plus-lg me-2"></i>Add New Patient
+        </button>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="!loading && totalPages > 1" class="pagination-container">
+        <AppPagination
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :total-items="totalItems"
+          :items-per-page="itemsPerPage"
+          @page-changed="changePage"
+        />
       </div>
     </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading patients...</span>
-      </div>
-    </div>
-
-    <!-- Patient Cards -->
-    <div v-else class="patient-cards">
-      <div 
-        v-for="patient in paginatedPatients" 
-        :key="patient.id"
-        class="patient-card"
-        @click="viewPatientDetail(patient)"
-      >
-        <div class="card-header">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="card-title mb-1">{{ patient.childInfo.name }}</h6>
-              <p class="card-subtitle mb-0">ID: {{ patient.id }}</p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <span :class="getStatusBadgeClass(getPatientStatus(patient))">
-                {{ getPatientStatus(patient) }}
-              </span>
-              <i class="bi bi-chevron-right text-muted"></i>
-            </div>
-          </div>
-        </div>
-        
-        <div class="card-body">
-          <div class="info-grid">
-            <div class="info-row">
-              <span class="info-label">Age</span>
-              <span class="info-value">{{ calculateAge(patient.childInfo.birthDate, patient) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Sex</span>
-              <span class="info-value">{{ patient.childInfo.sex }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Guardian</span>
-              <span class="info-value">{{ patient.guardianInfo.name || patient.motherInfo.name || 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Last Vaccine</span>
-              <span class="info-value">{{ getLastVaccination(patient) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Empty State -->
-    <div v-if="!loading && filteredPatients.length === 0" class="text-center py-5">
-      <i class="bi bi-person-x text-muted mb-3" style="font-size: 4rem;"></i>
-      <h4 class="text-muted">No patients found</h4>
-      <p class="text-muted">Try adjusting your search criteria or add a new patient.</p>
-    </div>
-
-    <!-- Pagination -->
-    <div v-if="!loading && totalPages > 1" class="d-flex justify-content-center mt-4">
-      <AppPagination
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :total-items="totalItems"
-        :items-per-page="itemsPerPage"
-        @page-changed="changePage"
-      />
-    </div>
-
-
-
-
   </HealthWorkerLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
-import AppCard from '@/components/ui/base/AppCard.vue'
-import AppButton from '@/components/ui/base/AppButton.vue'
+import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
+import FilterSheet from '@/features/health-worker/patients/components/FilterSheet.vue'
+import PatientListCard from '@/features/health-worker/patients/components/PatientListCard.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
@@ -142,6 +85,13 @@ const loading = ref(true)
 const saving = ref(false)
 const patients = ref([])
 const guardians = ref([])
+const showFilterSheet = ref(false)
+const activeFilters = ref({
+  ageRanges: [],
+  gender: '',
+  statuses: [],
+  barangay: ''
+})
 // Guardian search functionality
 const guardianSearchTerm = ref('')
 const showGuardianDropdown = ref(false)
@@ -149,7 +99,7 @@ const selectedGuardianName = ref('')
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const currentPage = ref(1)
-const itemsPerPage = ref(5) // Set to 5 items per page as requested
+const itemsPerPage = ref(20) // Increased for better mobile experience
 const totalItems = ref(0)
 const totalPages = ref(0)
 
@@ -160,6 +110,13 @@ const sortDirection = ref('asc') // 'asc', 'desc'
 // Remove modal states - we'll navigate to detail page instead
 
 // Computed properties for pagination
+const hasActiveFilters = computed(() => {
+  return activeFilters.value.ageRanges.length > 0 ||
+         activeFilters.value.gender !== '' ||
+         activeFilters.value.statuses.length > 0 ||
+         activeFilters.value.barangay !== ''
+})
+
 const filteredPatients = computed(() => {
   let filtered = patients.value
 
@@ -171,6 +128,44 @@ const filteredPatients = computed(() => {
       patient.guardianInfo.name.toLowerCase().includes(query) ||
       patient.id.toString().includes(query)
     )
+  }
+
+  // Apply active filters
+  if (hasActiveFilters.value) {
+    // Gender filter
+    if (activeFilters.value.gender) {
+      filtered = filtered.filter(patient => 
+        patient.childInfo.sex === activeFilters.value.gender
+      )
+    }
+
+    // Barangay filter
+    if (activeFilters.value.barangay) {
+      filtered = filtered.filter(patient => 
+        patient.childInfo.barangay === activeFilters.value.barangay
+      )
+    }
+
+    // Status filter
+    if (activeFilters.value.statuses.length > 0) {
+      // TODO: Implement status filtering based on patient vaccination history
+    }
+
+    // Age range filter
+    if (activeFilters.value.ageRanges.length > 0) {
+      filtered = filtered.filter(patient => {
+        const ageMonths = patient.age_months || 0
+        return activeFilters.value.ageRanges.some(range => {
+          switch (range) {
+            case '0-6months': return ageMonths <= 6
+            case '6-12months': return ageMonths > 6 && ageMonths <= 12
+            case '1-2years': return ageMonths > 12 && ageMonths <= 24
+            case '2-5years': return ageMonths > 24 && ageMonths <= 60
+            default: return true
+          }
+        })
+      })
+    }
   }
 
   totalItems.value = filtered.length
@@ -221,6 +216,15 @@ const form = ref({
 })
 
 // Methods
+const toggleFilters = () => {
+  showFilterSheet.value = !showFilterSheet.value
+}
+
+const applyFilters = (filters) => {
+  // Filters are already applied through v-model
+  currentPage.value = 1
+}
+
 const goToAddPatient = () => {
   router.push('/healthworker/patients/add')
 }
@@ -292,96 +296,6 @@ const fetchGuardians = async () => {
   }
 }
 
-const calculateAge = (birthDate, patient = null) => {
-  // If patient object has pre-computed age from backend, use that
-  if (patient && patient.age_months !== undefined && patient.age_days !== undefined) {
-    const months = patient.age_months || 0
-    const days = patient.age_days || 0
-    
-    // FIXED: Show age in years if >= 36 months, otherwise months and days
-    if (months >= 36) {
-      const years = Math.floor(months / 12)
-      return `${years} year${years !== 1 ? 's' : ''}`
-    } else {
-      return `${months}m ${days}d`
-    }
-  }
-  
-  // Fallback to client-side calculation
-  if (!birthDate) return '—'
-  const birth = new Date(birthDate)
-  const today = new Date()
-  if (isNaN(birth.getTime())) return '—'
-
-  // Compute months and days difference
-  let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
-  let days = today.getDate() - birth.getDate()
-
-  if (days < 0) {
-    months -= 1
-    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0) // last day of previous month
-    days += prevMonth.getDate()
-  }
-
-  if (months < 0) months = 0
-  if (days < 0) days = 0
-
-  // FIXED: Show age in years if >= 36 months, otherwise months and days
-  if (months >= 36) {
-    const years = Math.floor(months / 12)
-    return `${years} year${years !== 1 ? 's' : ''}`
-  } else {
-    const monthsPart = `${months}m`
-    const daysPart = `${days}d`
-    return `${monthsPart} ${daysPart}`
-  }
-}
-
-const getPatientStatus = (patient) => {
-  // Determine status based on vaccination history
-  if (!patient.vaccinationHistory || patient.vaccinationHistory.length === 0) {
-    return 'pending'
-  }
-  
-  // Check if patient has recent vaccinations
-  const lastVaccination = patient.vaccinationHistory[patient.vaccinationHistory.length - 1]
-  const lastVaccinationDate = new Date(lastVaccination.dateAdministered)
-  const now = new Date()
-  const daysSinceLastVaccination = (now - lastVaccinationDate) / (1000 * 60 * 60 * 24)
-  
-  if (daysSinceLastVaccination <= 30) {
-    return 'active'
-  } else if (daysSinceLastVaccination <= 90) {
-    return 'completed'
-  }
-  
-  return 'pending'
-}
-
-const getLastVaccination = (patient) => {
-  if (!patient.vaccinationHistory || patient.vaccinationHistory.length === 0) {
-    return 'None'
-  }
-  
-  const lastVaccination = patient.vaccinationHistory[patient.vaccinationHistory.length - 1]
-  const date = new Date(lastVaccination.dateAdministered).toLocaleDateString('en-PH', {
-    timeZone: 'Asia/Manila',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-  return `${lastVaccination.vaccineName} (${date})`
-}
-
-const getContact = (patient) => {
-  // Prefer guardian contact if available
-  if (patient.guardianInfo && patient.guardianInfo.contact_number) return patient.guardianInfo.contact_number
-  if (patient.motherInfo && patient.motherInfo.phone) return patient.motherInfo.phone
-  if (patient.fatherInfo && patient.fatherInfo.phone) return patient.fatherInfo.phone
-  // Fallback to child phone or empty
-  return patient.childInfo?.phoneNumber || 'N/A'
-}
-
 const changePage = (page) => {
   currentPage.value = page
 }
@@ -392,11 +306,6 @@ const viewPatientDetail = (patient) => {
 
 const resetPagination = () => {
   currentPage.value = 1
-}
-
-const applyFilters = () => {
-  currentPage.value = 1
-  fetchPatients()
 }
 
 const toggleSort = () => {
@@ -727,189 +636,103 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.search-section {
-  padding: 1rem 0;
+.page-content-wrapper {
+  padding: 20px;
+  padding-bottom: 100px; /* Space for fixed bottom navbar (70-80px + extra buffer) */
+  min-height: 100%;
 }
 
-.compact-btn {
-  white-space: nowrap;
-  min-width: 70px;
-  font-size: 0.875rem;
-  padding: 0.375rem 0.75rem;
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.cursor-pointer:hover {
-  background-color: #f8f9fa;
-}
-.patient-cards {
+.loading-container {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
   gap: 1rem;
 }
 
-.patient-card {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.loading-text {
+  color: #6b7280;
+  font-size: 0.9375rem;
+  margin: 0;
 }
 
-.patient-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #007bff;
+.patient-list {
+  background: #ffffff;
 }
 
-.patient-card:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.card-body {
-  padding: 1rem;
-}
-
-.card-title {
-  font-weight: 600;
-  color: #2c3e50;
-  font-size: 1rem;
-  margin-bottom: 0.25rem;
-}
-
-.card-subtitle {
-  color: #6c757d;
-  font-size: 0.875rem;
-  margin-bottom: 0;
-}
-
-.info-grid {
+.empty-state {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: #ffffff;
 }
 
-.info-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  font-weight: 500;
+.empty-icon {
+  font-size: 4rem;
+  color: #d1d5db;
+  margin-bottom: 1rem;
 }
 
-.info-value {
-  font-size: 0.875rem;
-  color: #2c3e50;
+.empty-title {
+  color: #374151;
+  font-size: 1.25rem;
   font-weight: 600;
-  text-align: right;
-  max-width: 60%;
-  word-break: break-word;
+  margin-bottom: 0.5rem;
 }
 
-.btn-hw-primary {
-  background-color: #1cc88a;
-  border-color: #1cc88a;
-  color: white;
+.empty-text {
+  color: #6b7280;
+  font-size: 0.9375rem;
+  margin-bottom: 0;
+  max-width: 320px;
 }
 
-.btn-hw-primary:hover {
-  background-color: #17a673;
-  border-color: #17a673;
-  color: white;
-}
-
-.modal.show {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.card-title {
-  color: #5a5c69;
-}
-
-.text-muted {
-  color: #858796 !important;
-}
-
-.fw-semibold {
-  font-weight: 600;
-}
-
-.btn-group .btn {
-  border-radius: 0.25rem;
-  margin-right: 0.125rem;
-}
-
-.btn-group .btn:last-child {
-  margin-right: 0;
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
 }
 
 /* Mobile optimizations */
 @media (max-width: 576px) {
-  .search-section .d-flex {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  .loading-container {
+    padding: 3rem 1rem;
   }
   
-  .search-section .flex-grow-1 {
-    flex: 1 1 100%;
-    margin-bottom: 0.5rem;
+  .empty-state {
+    padding: 3rem 1rem;
   }
   
-  .compact-btn {
-    flex: 1;
-    min-width: 60px;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
+  .empty-icon {
+    font-size: 3rem;
   }
   
-  .card-header,
-  .card-body {
-    padding: 0.875rem;
+  .empty-title {
+    font-size: 1.125rem;
   }
   
-  .patient-card:active {
-    background-color: rgba(0, 123, 255, 0.05);
+  .empty-text {
+    font-size: 0.875rem;
   }
   
-  .card-title {
-    font-size: 0.95rem;
-  }
-  
-  .patient-cards {
-    gap: 0.75rem;
-  }
-  
-  .info-grid {
-    gap: 0.5rem;
-  }
-  
-  .info-label,
-  .info-value {
-    font-size: 0.8rem;
+  .pagination-container {
+    padding: 1rem;
   }
 }
 
-@media (max-width: 768px) and (min-width: 577px) {
-  .compact-btn {
-    font-size: 0.8rem;
-    padding: 0.3rem 0.6rem;
-    min-width: 65px;
-  }
+/* Tablets and up */
+@media (min-width: 768px) {
+  /* No additional padding needed - flexbox handles layout */
+}
+
+/* Desktop */
+@media (min-width: 992px) {
+  /* No additional padding needed - flexbox handles layout */
 }
 </style>

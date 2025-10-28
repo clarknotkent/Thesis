@@ -3,7 +3,7 @@
 /* Login Container */
 .login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: #f8f9fa;
 }
 
 .login-form-container {
@@ -46,7 +46,7 @@
 
 /* Branding Section */
 .login-branding {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  background: var(--primary-color);
 }
 
 .login-branding .display-1 {

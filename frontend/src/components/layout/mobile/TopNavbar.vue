@@ -134,7 +134,7 @@ const logout = () => {
   .top-navbar {
     height: 64px;
     padding: 0.75rem 0;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    background: #007bff !important;
     box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
   }
   

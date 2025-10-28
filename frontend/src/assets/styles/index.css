@@ -12,10 +12,13 @@
 @import './layout.css';
 @import './auth.css';  
 @import './dashboard.css';
-@import './healthworker.css';
-@import './parent.css';
 @import './utilities.css';
-@import './admin-fix.css';
+
+/* Role-specific styles */
+@import './admin/admin-fix.css';
+@import './admin/admin-pages.css';
+@import './healthworker/healthworker-main.css';
+@import './parent/parent.css';
 
 /* Additional utility classes and overrides */
 .cursor-pointer {

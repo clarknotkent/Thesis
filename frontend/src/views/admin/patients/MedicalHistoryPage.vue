@@ -15,6 +15,6 @@
 </template>
 
 <script setup>
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import MedicalHistory from '@/features/admin/patients/MedicalHistoryModal.vue'
 </script>

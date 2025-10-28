@@ -125,7 +125,7 @@
 </template>
 
 <script>
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import { notificationAPI } from '@/services/api'
 import { usersAPI } from '@/services/users'
 import { useToast } from '@/composables/useToast'
@@ -267,7 +267,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border-radius: 0.5rem 0.5rem 0 0 !important;
 }
