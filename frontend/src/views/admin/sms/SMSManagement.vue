@@ -152,7 +152,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import MessageLogs from '@/features/admin/sms/components/MessageLogs.vue'
 import MessageTemplates from '@/features/admin/sms/components/MessageTemplates.vue'
 import AutoSendSettings from '@/features/admin/sms/components/AutoSendSettings.vue'

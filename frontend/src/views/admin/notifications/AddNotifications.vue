@@ -125,7 +125,7 @@
 </template>
 
 <script>
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import { notificationAPI } from '@/services/api'
 import { usersAPI } from '@/services/users'
 import { useToast } from '@/composables/useToast'

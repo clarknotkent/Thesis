@@ -64,7 +64,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import UserForm from '@/features/admin/user-management/UserForm.vue'
 import { getUser, updateUser } from '@/services/users'
 import { useToast } from '@/composables/useToast'

@@ -108,7 +108,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
@@ -348,7 +348,7 @@ onMounted(load)
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border: none;
   border-radius: 25px;
   padding: 0.75rem 2rem;

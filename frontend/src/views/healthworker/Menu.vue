@@ -68,7 +68,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
+import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
@@ -148,7 +148,7 @@ const logout = () => {
 }
 
 .profile-header {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  background: #007bff;
   color: white;
   padding: 2rem 1rem;
   border-radius: 0.75rem;

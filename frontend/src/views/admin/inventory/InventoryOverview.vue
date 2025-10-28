@@ -165,7 +165,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccineStockSection from '@/features/admin/inventory/components/VaccineStockSection.vue'
 import ReceivingReportsSection from '@/features/admin/inventory/components/ReceivingReportsSection.vue'
 import VaccineScheduleSection from '@/features/admin/inventory/components/VaccineScheduleSection.vue'

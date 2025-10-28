@@ -109,7 +109,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
+import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 
 const router = useRouter()
 

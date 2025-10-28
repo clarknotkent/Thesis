@@ -192,7 +192,7 @@ const isActiveRoute = (path) => {
 /* Large Desktop Scaling */
 @media (min-width: 1200px) {
   .bottom-navbar {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    background: #ffffff;
     border-top: 2px solid #007bff;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   }
@@ -217,7 +217,7 @@ const isActiveRoute = (path) => {
   }
   
   .bottom-nav-item.active {
-    background: linear-gradient(135deg, #007bff, #0056b3);
+    background: #007bff;
     color: white;
     box-shadow: 0 4px 16px rgba(0, 123, 255, 0.4);
   }

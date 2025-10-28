@@ -7,7 +7,7 @@
 
 /* Navbar Styles */
 .navbar-custom {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+  background: var(--primary-color) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   min-height: var(--navbar-height);

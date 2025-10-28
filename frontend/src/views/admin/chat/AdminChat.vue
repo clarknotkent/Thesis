@@ -92,7 +92,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import AdminLayout from '@/components/layout/AdminLayout.vue';
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue';
 import ConversationsList from '@/features/shared/chat/components/ConversationsList.vue';
 import ChatHeader from '@/features/shared/chat/components/ChatHeader.vue';
 import MessagesList from '@/features/shared/chat/components/MessagesList.vue';

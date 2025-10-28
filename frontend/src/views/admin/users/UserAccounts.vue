@@ -445,7 +445,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppSpinner from '@/components/ui/base/AppSpinner.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import AppModal from '@/components/ui/base/AppModal.vue'

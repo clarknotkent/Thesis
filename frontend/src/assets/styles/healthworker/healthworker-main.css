@@ -54,12 +54,13 @@
 
 /* Main Content Mobile-First - Remove sidebar dependencies */
 .health-worker-layout .main-content {
-  /* Mobile default - no sidebar, bottom navbar spacing */
-  margin-top: var(--navbar-height);
+  /* Mobile default - flexbox layout handles spacing */
+  margin-top: 0;
   margin-left: 0;
+  padding-top: 0;
   transition: none; /* Remove sidebar transitions */
-  min-height: calc(100vh - var(--navbar-height) - 80px); /* Account for bottom navbar */
-  padding-bottom: 80px; /* Space for bottom navbar */
+  min-height: auto; /* Let flexbox handle height */
+  padding-bottom: 0; /* No extra padding needed with flexbox */
 }
 
 /* Mobile-First Dashboard Cards */

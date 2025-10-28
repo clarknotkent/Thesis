@@ -69,7 +69,7 @@ const menuItems = computed(() => {
       { name: 'vaccines', path: '/admin/vaccines', label: 'Vaccine Inventory', icon: 'bi bi-box-seam' },
       { name: 'reports', path: '/admin/reports', label: 'Reports', icon: 'bi bi-file-earmark-text' },
       { name: 'users', path: '/admin/users', label: 'User Accounts', icon: 'bi bi-person-gear' },
-      { name: 'sms', path: '/admin/sms', label: 'SMS Logs', icon: 'bi bi-chat-dots' },
+      { name: 'sms-management', path: '/admin/sms-management', label: 'SMS Management', icon: 'bi bi-chat-dots' },
       { name: 'faqs', path: '/admin/faqs', label: 'FAQ Manager', icon: 'bi bi-question-circle' },
       { name: 'activity-logs', path: '/admin/activity-logs', label: 'Activity Logs', icon: 'bi bi-activity' }
     ],
@@ -90,10 +90,36 @@ const menuItems = computed(() => {
 
 const mainSection = computed(() => menuItems.value.filter(item => ['dashboard', 'chat', 'notifications-inbox'].includes(item.name)))
 const patientManagementGroup = computed(() => menuItems.value.filter(item => ['patients', 'vaccines', 'reports'].includes(item.name)))
-const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms', 'faqs', 'activity-logs'].includes(item.name)))
+const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms-management', 'faqs', 'activity-logs'].includes(item.name)))
 </script>
 
 <style scoped>
+.sidebar {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  width: 250px;
+  height: calc(100vh - 70px);
+  background-color: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  transition: transform 0.3s ease;
+  padding: 5px 0;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.sidebar.show {
+  transform: translateX(0);
+}
+
+.sidebar:not(.show) {
+  transform: translateX(-250px);
+}
+
+.sidebar-content {
+  padding: 0 1rem;
+}
+
 .nav-header {
   font-size: 0.875rem;
   font-weight: bold;
@@ -106,12 +132,91 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
 .nav-link {
   display: flex;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   color: #495057;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
 }
 
 .nav-link:hover {
   color: #212529;
+  background-color: #e9ecef;
+  transform: translateX(4px);
+}
+
+.nav-link.router-link-active {
+  color: #fff;
+  background-color: #007bff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.nav-link i {
+  font-size: 1.1rem;
+  width: 20px;
+}
+
+/* Desktop: Sidebar toggleable, content adjusted */
+@media (min-width: 992px) {
+  .sidebar {
+    position: fixed;
+  }
+  
+  .sidebar.show {
+    transform: translateX(0);
+  }
+  
+  .sidebar:not(.show) {
+    transform: translateX(-250px);
+  }
+}
+
+/* Tablet and below: Sidebar as overlay with backdrop */
+@media (max-width: 991px) {
+  .sidebar {
+    top: 60px;
+    height: calc(100vh - 60px);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 1040;
+  }
+  
+  .sidebar:not(.show) {
+    transform: translateX(-250px);
+  }
+  
+  .sidebar.show {
+    transform: translateX(0);
+  }
+  
+  /* Backdrop for mobile */
+  .sidebar.show::after {
+    content: '';
+    position: fixed;
+    top: 60px;
+    left: 250px;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+  }
+}
+
+/* Mobile screens */
+@media (max-width: 768px) {
+  .sidebar {
+    top: 56px;
+    height: calc(100vh - 56px);
+    width: 280px;
+  }
+  
+  .sidebar:not(.show) {
+    transform: translateX(-280px);
+  }
+  
+  .sidebar.show::after {
+    top: 56px;
+    left: 280px;
+  }
 }
 </style>

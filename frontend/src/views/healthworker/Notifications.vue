@@ -56,7 +56,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/HealthWorkerLayout.vue'
+import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { notificationAPI } from '@/services/api'
 
 const router = useRouter()

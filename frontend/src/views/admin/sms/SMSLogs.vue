@@ -377,7 +377,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'

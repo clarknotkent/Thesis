@@ -382,7 +382,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import ParentLayout from '@/components/layout/ParentLayout.vue'
+import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import AppCard from '@/components/ui/base/AppCard.vue'
 import AppButton from '@/components/ui/base/AppButton.vue'
 import api from '@/services/api'
@@ -787,7 +787,7 @@ onMounted(() => {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -804,7 +804,7 @@ onMounted(() => {
 
 /* Emergency Contact */
 .parent-emergency-card {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  background: #ff6b6b;
   color: white;
   border: none;
 }
