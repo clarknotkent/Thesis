@@ -38,8 +38,8 @@ const navItems = [
     icon: 'bi bi-people-fill'
   },
   {
-    name: 'inventory',
-    path: '/healthworker/inventory',
+    name: 'stock',
+    path: '/healthworker/stock',
     label: 'Stock',
     icon: 'bi bi-box-seam-fill'
   },

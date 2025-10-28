@@ -16,9 +16,6 @@
           </div>
         </div>
         <div class="header-actions">
-          <span :class="statusBadgeClass">
-            {{ statusText }}
-          </span>
           <i class="bi bi-chevron-right text-muted"></i>
         </div>
       </div>
@@ -27,6 +24,14 @@
     <!-- Body -->
     <div class="card-body">
       <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value">
+            <span :class="statusBadgeClass">
+              {{ statusText }}
+            </span>
+          </span>
+        </div>
         <div class="info-row">
           <span class="info-label">Age</span>
           <span class="info-value">{{ age }}</span>
@@ -202,13 +207,12 @@ const statusText = computed(() => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   flex-shrink: 0;
-  margin-left: 0.5rem;
 }
 
-.header-actions .badge {
-  white-space: nowrap;
+.header-actions i {
+  font-size: 1.25rem;
+  color: #9ca3af;
 }
 
 .card-body {
@@ -256,6 +260,11 @@ const statusText = computed(() => {
   text-align: right;
   max-width: 60%;
   word-break: break-word;
+}
+
+.info-value .badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
 }
 
 /* Mobile optimizations */
