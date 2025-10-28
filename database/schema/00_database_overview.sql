@@ -20,7 +20,7 @@ WHERE d.datname = current_database();
 
 | database | owner    | encoding | encoding_name | collation   | ctype       | locale_provider | locale | icu_locale | collversion | tablespace | database_size | server_version | timezone |
 | -------- | -------- | -------- | ------------- | ----------- | ----------- | --------------- | ------ | ---------- | ----------- | ---------- | ------------- | -------------- | -------- |
-| postgres | postgres | 6        | UTF8          | en_US.UTF-8 | en_US.UTF-8 | i               | en-US  | null       | 153.120     | pg_default | 20 MB         | 17.4           | UTC      |
+| postgres | postgres | 6        | UTF8          | en_US.UTF-8 | en_US.UTF-8 | i               | en-US  | null       | 153.120     | pg_default | 34 MB         | 17.4           | UTC      |
 
 
 

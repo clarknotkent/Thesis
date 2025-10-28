@@ -38,6 +38,8 @@ import HealthWorkerMenu from '@/views/healthworker/Menu.vue'
 import ParentDashboard from '@/views/parent/ParentDashboard.vue'
 import ChildInfo from '@/views/parent/ChildInfo.vue'
 import VaccinationSchedule from '@/views/parent/VaccinationSchedule.vue'
+// Neutral QR route that redirects to role-specific patient details
+const PatientRoute = () => import('@/views/PatientRoute.vue')
 
 const routes = [
   {
@@ -47,6 +49,16 @@ const routes = [
     meta: {
       title: 'Vaccine App - Landing',
       requiresAuth: false
+    }
+  },
+  // Neutral patient route used by QR redirects
+  {
+    path: '/patient/:id',
+    name: 'PatientRoute',
+    component: PatientRoute,
+    meta: {
+      title: 'Patient - ImmunizeMe',
+      requiresAuth: true
     }
   },
   {

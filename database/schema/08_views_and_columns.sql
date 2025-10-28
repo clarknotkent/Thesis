@@ -1236,6 +1236,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1280,11 +1290,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 2               | visit_id                             | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1335,6 +1346,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1379,11 +1400,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 3               | vaccine_id                           | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1434,6 +1456,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1478,11 +1510,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 4               | inventory_id                         | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1533,6 +1566,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1577,11 +1620,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 5               | dose_number                          | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1632,6 +1676,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1676,11 +1730,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 6               | administered_by_id                   | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1731,6 +1786,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1775,11 +1840,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 7               | administered_by_name                 | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1830,6 +1896,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1874,11 +1950,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 8               | remarks                              | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -1929,6 +2006,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -1973,11 +2060,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 9               | immunization_is_deleted              | boolean                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2028,6 +2116,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2072,11 +2170,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 10              | immunization_deleted_at              | timestamp without time zone |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2127,6 +2226,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2171,11 +2280,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 11              | immunization_deleted_by              | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2226,6 +2336,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2270,11 +2390,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 12              | immunization_created_at              | timestamp with time zone    |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2325,6 +2446,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2369,11 +2500,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 13              | immunization_created_by              | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2424,6 +2556,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2468,11 +2610,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 14              | immunization_updated_at              | timestamp with time zone    |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2523,6 +2666,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2567,11 +2720,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 15              | immunization_updated_by              | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2622,6 +2776,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2666,11 +2830,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 16              | administered_date                    | date                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2721,6 +2886,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2765,11 +2940,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 17              | age_at_administration                | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2820,6 +2996,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2864,11 +3050,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 18              | disease_prevented                    | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -2919,6 +3106,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -2963,11 +3160,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 19              | immunization_facility_name           | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3018,6 +3216,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3062,11 +3270,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 20              | immunization_outside                 | boolean                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3117,6 +3326,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3161,11 +3380,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 21              | patient_id                           | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3216,6 +3436,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3260,11 +3490,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 22              | patient_surname                      | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3315,6 +3546,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3359,11 +3600,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 23              | patient_firstname                    | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3414,6 +3656,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3458,11 +3710,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 24              | patient_middlename                   | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3513,6 +3766,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3557,11 +3820,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 25              | patient_full_name                    | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3612,6 +3876,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3656,11 +3930,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 26              | patient_date_of_birth                | date                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3711,6 +3986,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3755,11 +4040,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 27              | patient_sex                          | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3810,6 +4096,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3854,11 +4150,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 28              | patient_address                      | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -3909,6 +4206,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -3953,11 +4260,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 29              | patient_barangay                     | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4008,6 +4316,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4052,11 +4370,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 30              | patient_health_center                | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4107,6 +4426,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4151,11 +4480,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 31              | patient_family_number                | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4206,6 +4536,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4250,11 +4590,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 32              | patient_guardian_id                  | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4305,6 +4646,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4349,11 +4700,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 33              | patient_date_registered              | timestamp without time zone |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4404,6 +4756,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4448,11 +4810,12 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | immunizationhistory_view | 34              | patient_is_deleted                   | boolean                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
@@ -4503,6 +4866,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4547,12 +4920,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 35              | vaccine_antigen_name                 | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 35              | patient_tag                          | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -4602,6 +4976,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4646,12 +5030,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 36              | vaccine_brand_name                   | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 36              | patient_guardian_full_name           | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -4701,6 +5086,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4745,12 +5140,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 37              | vaccine_manufacturer                 | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 37              | vaccine_antigen_name                 | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -4800,6 +5196,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4844,12 +5250,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 38              | vaccine_type                         | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 38              | vaccine_brand_name                   | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -4899,6 +5306,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -4943,12 +5360,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 39              | vaccine_category                     | USER-DEFINED                |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 39              | vaccine_manufacturer                 | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -4998,6 +5416,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5042,12 +5470,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 40              | vaccine_is_nip                       | boolean                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 40              | vaccine_type                         | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5097,6 +5526,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5141,12 +5580,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 41              | vaccine_created_by                   | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 41              | vaccine_category                     | USER-DEFINED                |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5196,6 +5636,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5240,12 +5690,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 42              | vaccine_updated_by                   | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 42              | vaccine_is_nip                       | boolean                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5295,6 +5746,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5339,12 +5800,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 43              | schedule_id                          | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 43              | vaccine_created_by                   | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5394,6 +5856,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5438,12 +5910,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 44              | schedule_vaccine_id                  | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 44              | vaccine_updated_by                   | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5493,6 +5966,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5537,12 +6020,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 45              | schedule_total_doses                 | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 45              | schedule_id                          | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5592,6 +6076,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5636,12 +6130,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 46              | schedule_concurrent_allowed          | boolean                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 46              | schedule_vaccine_id                  | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5691,6 +6186,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5735,12 +6240,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 47              | schedule_code                        | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 47              | schedule_total_doses                 | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5790,6 +6296,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5834,12 +6350,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 48              | schedule_name                        | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 48              | schedule_concurrent_allowed          | boolean                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5889,6 +6406,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -5933,12 +6460,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 49              | schedule_min_age_days                | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 49              | schedule_code                        | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -5988,6 +6516,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6032,12 +6570,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 50              | schedule_max_age_days                | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 50              | schedule_name                        | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6087,6 +6626,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6131,12 +6680,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 51              | schedule_catchup_strategy            | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 51              | schedule_min_age_days                | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6186,6 +6736,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6230,12 +6790,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 52              | schedule_notes                       | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 52              | schedule_max_age_days                | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6285,6 +6846,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6329,12 +6900,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 53              | schedule_dose_id                     | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 53              | schedule_catchup_strategy            | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6384,6 +6956,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6428,12 +7010,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 54              | schedule_dose_schedule_id            | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 54              | schedule_notes                       | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6483,6 +7066,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6527,12 +7120,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 55              | schedule_dose_number                 | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 55              | schedule_dose_id                     | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6582,6 +7176,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6626,12 +7230,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 56              | schedule_dose_due_after_days         | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 56              | schedule_dose_schedule_id            | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6681,6 +7286,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6725,12 +7340,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 57              | schedule_dose_min_interval_days      | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 57              | schedule_dose_number                 | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6780,6 +7396,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6824,12 +7450,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 58              | schedule_dose_max_interval_days      | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 58              | schedule_dose_due_after_days         | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6879,6 +7506,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -6923,12 +7560,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 59              | schedule_dose_min_interval_other_vax | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 59              | schedule_dose_min_interval_days      | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -6978,6 +7616,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7022,12 +7670,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 60              | schedule_dose_notes                  | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 60              | schedule_dose_max_interval_days      | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7077,6 +7726,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7121,12 +7780,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 61              | patient_schedule_id                  | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 61              | schedule_dose_min_interval_other_vax | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7176,6 +7836,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7220,12 +7890,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 62              | patient_schedule_vaccine_id          | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 62              | schedule_dose_notes                  | text                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7275,6 +7946,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7319,12 +8000,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 63              | patient_schedule_dose_number         | integer                     |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 63              | patient_schedule_id                  | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7374,6 +8056,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7418,12 +8110,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 64              | patient_scheduled_date               | date                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 64              | patient_schedule_vaccine_id          | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7473,6 +8166,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7517,12 +8220,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 65              | patient_eligible_date                | date                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 65              | patient_schedule_dose_number         | integer                     |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7572,6 +8276,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7616,12 +8330,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 66              | patient_actual_date                  | date                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 66              | patient_scheduled_date               | date                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7671,6 +8386,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7715,12 +8440,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 67              | patient_schedule_status              | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 67              | patient_eligible_date                | date                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7770,6 +8496,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7814,12 +8550,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 68              | patient_schedule_created_by          | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 68              | patient_actual_date                  | date                        |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7869,6 +8606,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -7913,12 +8660,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 69              | patient_schedule_updated_by          | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 69              | patient_schedule_status              | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -7968,6 +8716,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8012,12 +8770,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 70              | admin_user_id                        | bigint                      |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 70              | patient_schedule_created_by          | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8067,6 +8826,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8111,12 +8880,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 71              | admin_username                       | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 71              | patient_schedule_updated_by          | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8166,6 +8936,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8210,12 +8990,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 72              | admin_email                          | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 72              | admin_user_id                        | bigint                      |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8265,6 +9046,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8309,12 +9100,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 73              | admin_firstname                      | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 73              | admin_username                       | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8364,6 +9156,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8408,12 +9210,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 74              | admin_surname                        | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 74              | admin_email                          | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8463,6 +9266,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8507,12 +9320,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 75              | admin_hs_type                        | text                        |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 75              | admin_firstname                      | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8562,6 +9376,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8606,12 +9430,13 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| public | immunizationhistory_view | 76              | admin_role                           | character varying           |  SELECT im.immunization_id,
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 76              | admin_surname                        | character varying           |  SELECT im.immunization_id,
     im.visit_id,
     im.vaccine_id,
     im.inventory_id,
@@ -8661,6 +9486,16 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     p.guardian_id AS patient_guardian_id,
     p.date_registered AS patient_date_registered,
     p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
     vm.antigen_name AS vaccine_antigen_name,
     vm.brand_name AS vaccine_brand_name,
     vm.manufacturer AS vaccine_manufacturer,
@@ -8705,11 +9540,232 @@ ORDER BY v.schema, v.view_name, c.ordinal_position;
     u.role AS admin_role
    FROM immunizations im
      LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
      LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
      LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
      LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
      LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
-     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 77              | admin_hs_type                        | text                        |  SELECT im.immunization_id,
+    im.visit_id,
+    im.vaccine_id,
+    im.inventory_id,
+    im.dose_number,
+    im.administered_by AS administered_by_id,
+    COALESCE(NULLIF(btrim((COALESCE(u.firstname, ''::character varying)::text ||
+        CASE
+            WHEN u.middlename IS NULL OR u.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || u.middlename::text
+        END) ||
+        CASE
+            WHEN u.surname IS NULL OR u.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || u.surname::text
+        END), ''::text), u.username::text) AS administered_by_name,
+    im.remarks,
+    im.is_deleted AS immunization_is_deleted,
+    im.deleted_at AS immunization_deleted_at,
+    im.deleted_by AS immunization_deleted_by,
+    im.created_at AS immunization_created_at,
+    im.created_by AS immunization_created_by,
+    im.updated_at AS immunization_updated_at,
+    im.updated_by AS immunization_updated_by,
+    im.administered_date,
+    im.age_at_administration,
+    im.disease_prevented,
+    im.facility_name AS immunization_facility_name,
+    im.outside AS immunization_outside,
+    im.patient_id,
+    p.surname AS patient_surname,
+    p.firstname AS patient_firstname,
+    p.middlename AS patient_middlename,
+    btrim((COALESCE(p.firstname, ''::character varying)::text ||
+        CASE
+            WHEN p.middlename IS NULL OR p.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || p.middlename::text
+        END) ||
+        CASE
+            WHEN p.surname IS NULL OR p.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || p.surname::text
+        END) AS patient_full_name,
+    p.date_of_birth AS patient_date_of_birth,
+    p.sex AS patient_sex,
+    p.address AS patient_address,
+    p.barangay AS patient_barangay,
+    p.health_center AS patient_health_center,
+    p.family_number AS patient_family_number,
+    p.guardian_id AS patient_guardian_id,
+    p.date_registered AS patient_date_registered,
+    p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
+    vm.antigen_name AS vaccine_antigen_name,
+    vm.brand_name AS vaccine_brand_name,
+    vm.manufacturer AS vaccine_manufacturer,
+    vm.vaccine_type,
+    vm.category AS vaccine_category,
+    vm.is_nip AS vaccine_is_nip,
+    vm.created_by AS vaccine_created_by,
+    vm.updated_by AS vaccine_updated_by,
+    sm.id AS schedule_id,
+    sm.vaccine_id AS schedule_vaccine_id,
+    sm.total_doses AS schedule_total_doses,
+    sm.concurrent_allowed AS schedule_concurrent_allowed,
+    sm.code AS schedule_code,
+    sm.name AS schedule_name,
+    sm.min_age_days AS schedule_min_age_days,
+    sm.max_age_days AS schedule_max_age_days,
+    sm.catchup_strategy AS schedule_catchup_strategy,
+    sm.notes AS schedule_notes,
+    sd.id AS schedule_dose_id,
+    sd.schedule_id AS schedule_dose_schedule_id,
+    sd.dose_number AS schedule_dose_number,
+    sd.due_after_days AS schedule_dose_due_after_days,
+    sd.min_interval_days AS schedule_dose_min_interval_days,
+    sd.max_interval_days AS schedule_dose_max_interval_days,
+    sd.min_interval_other_vax AS schedule_dose_min_interval_other_vax,
+    sd.notes AS schedule_dose_notes,
+    ps.patient_schedule_id,
+    ps.vaccine_id AS patient_schedule_vaccine_id,
+    ps.dose_number AS patient_schedule_dose_number,
+    ps.scheduled_date AS patient_scheduled_date,
+    ps.eligible_date AS patient_eligible_date,
+    ps.actual_date AS patient_actual_date,
+    ps.status AS patient_schedule_status,
+    ps.created_by AS patient_schedule_created_by,
+    ps.updated_by AS patient_schedule_updated_by,
+    u.user_id AS admin_user_id,
+    u.username AS admin_username,
+    u.email AS admin_email,
+    u.firstname AS admin_firstname,
+    u.surname AS admin_surname,
+    u.hs_type AS admin_hs_type,
+    u.role AS admin_role
+   FROM immunizations im
+     LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
+     LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
+     LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
+     LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
+     LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
+| public | immunizationhistory_view | 78              | admin_role                           | character varying           |  SELECT im.immunization_id,
+    im.visit_id,
+    im.vaccine_id,
+    im.inventory_id,
+    im.dose_number,
+    im.administered_by AS administered_by_id,
+    COALESCE(NULLIF(btrim((COALESCE(u.firstname, ''::character varying)::text ||
+        CASE
+            WHEN u.middlename IS NULL OR u.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || u.middlename::text
+        END) ||
+        CASE
+            WHEN u.surname IS NULL OR u.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || u.surname::text
+        END), ''::text), u.username::text) AS administered_by_name,
+    im.remarks,
+    im.is_deleted AS immunization_is_deleted,
+    im.deleted_at AS immunization_deleted_at,
+    im.deleted_by AS immunization_deleted_by,
+    im.created_at AS immunization_created_at,
+    im.created_by AS immunization_created_by,
+    im.updated_at AS immunization_updated_at,
+    im.updated_by AS immunization_updated_by,
+    im.administered_date,
+    im.age_at_administration,
+    im.disease_prevented,
+    im.facility_name AS immunization_facility_name,
+    im.outside AS immunization_outside,
+    im.patient_id,
+    p.surname AS patient_surname,
+    p.firstname AS patient_firstname,
+    p.middlename AS patient_middlename,
+    btrim((COALESCE(p.firstname, ''::character varying)::text ||
+        CASE
+            WHEN p.middlename IS NULL OR p.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || p.middlename::text
+        END) ||
+        CASE
+            WHEN p.surname IS NULL OR p.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || p.surname::text
+        END) AS patient_full_name,
+    p.date_of_birth AS patient_date_of_birth,
+    p.sex AS patient_sex,
+    p.address AS patient_address,
+    p.barangay AS patient_barangay,
+    p.health_center AS patient_health_center,
+    p.family_number AS patient_family_number,
+    p.guardian_id AS patient_guardian_id,
+    p.date_registered AS patient_date_registered,
+    p.is_deleted AS patient_is_deleted,
+    p.tags AS patient_tag,
+    btrim((COALESCE(g.firstname, ''::character varying)::text ||
+        CASE
+            WHEN g.middlename IS NULL OR g.middlename::text = ''::text THEN ''::text
+            ELSE ' '::text || g.middlename::text
+        END) ||
+        CASE
+            WHEN g.surname IS NULL OR g.surname::text = ''::text THEN ''::text
+            ELSE ' '::text || g.surname::text
+        END) AS patient_guardian_full_name,
+    vm.antigen_name AS vaccine_antigen_name,
+    vm.brand_name AS vaccine_brand_name,
+    vm.manufacturer AS vaccine_manufacturer,
+    vm.vaccine_type,
+    vm.category AS vaccine_category,
+    vm.is_nip AS vaccine_is_nip,
+    vm.created_by AS vaccine_created_by,
+    vm.updated_by AS vaccine_updated_by,
+    sm.id AS schedule_id,
+    sm.vaccine_id AS schedule_vaccine_id,
+    sm.total_doses AS schedule_total_doses,
+    sm.concurrent_allowed AS schedule_concurrent_allowed,
+    sm.code AS schedule_code,
+    sm.name AS schedule_name,
+    sm.min_age_days AS schedule_min_age_days,
+    sm.max_age_days AS schedule_max_age_days,
+    sm.catchup_strategy AS schedule_catchup_strategy,
+    sm.notes AS schedule_notes,
+    sd.id AS schedule_dose_id,
+    sd.schedule_id AS schedule_dose_schedule_id,
+    sd.dose_number AS schedule_dose_number,
+    sd.due_after_days AS schedule_dose_due_after_days,
+    sd.min_interval_days AS schedule_dose_min_interval_days,
+    sd.max_interval_days AS schedule_dose_max_interval_days,
+    sd.min_interval_other_vax AS schedule_dose_min_interval_other_vax,
+    sd.notes AS schedule_dose_notes,
+    ps.patient_schedule_id,
+    ps.vaccine_id AS patient_schedule_vaccine_id,
+    ps.dose_number AS patient_schedule_dose_number,
+    ps.scheduled_date AS patient_scheduled_date,
+    ps.eligible_date AS patient_eligible_date,
+    ps.actual_date AS patient_actual_date,
+    ps.status AS patient_schedule_status,
+    ps.created_by AS patient_schedule_created_by,
+    ps.updated_by AS patient_schedule_updated_by,
+    u.user_id AS admin_user_id,
+    u.username AS admin_username,
+    u.email AS admin_email,
+    u.firstname AS admin_firstname,
+    u.surname AS admin_surname,
+    u.hs_type AS admin_hs_type,
+    u.role AS admin_role
+   FROM immunizations im
+     LEFT JOIN patients p ON im.patient_id = p.patient_id
+     LEFT JOIN guardians g ON p.guardian_id = g.guardian_id
+     LEFT JOIN vaccinemaster vm ON im.vaccine_id = vm.vaccine_id
+     LEFT JOIN schedule_master sm ON vm.vaccine_id = sm.vaccine_id
+     LEFT JOIN schedule_doses sd ON sd.schedule_id = sm.id AND sd.dose_number = im.dose_number
+     LEFT JOIN patientschedule ps ON ps.patient_id = im.patient_id AND (ps.vaccine_id = im.vaccine_id OR ps.vaccine_id IS NULL) AND ps.dose_number = im.dose_number
+     LEFT JOIN users u ON im.administered_by = u.user_id;                                                                                                                                                                                                                               |
 | public | inventorylowstock_view   | 1               | vaccine_id                           | bigint                      |  WITH inv AS (
          SELECT i.vaccine_id,
             COALESCE(sum(i.current_stock_level), 0::bigint) AS current_stock_level,
