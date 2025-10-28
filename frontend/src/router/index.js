@@ -27,8 +27,14 @@ import AdminChat from '@/views/admin/chat/AdminChat.vue'
 import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
 import HealthWorkerPatients from '@/views/healthworker/PatientRecords.vue'
 import AddPatient from '@/views/healthworker/AddPatient.vue'
-import PatientDetail from '@/views/healthworker/PatientDetail.vue'
-import VaccineInventoryReadOnly from '@/views/healthworker/VaccineInventoryReadOnly.vue'
+import PatientDetail from '@/views/healthworker/PatientDetails.vue'
+import VisitSummary from '@/views/healthworker/VisitSummary.vue'
+import VaccineRecordDetails from '@/views/healthworker/VaccineRecordDetails.vue'
+import AddPatientImmunizationRecord from '@/views/healthworker/AddPatientImmunizationRecord.vue'
+import EditVaccinationRecord from '@/views/healthworker/EditVaccinationRecord.vue'
+import VaccineStock from '@/views/healthworker/VaccineStock.vue'
+import InventoryDetails from '@/views/healthworker/InventoryDetails.vue'
+
 import VaccineDetail from '@/views/healthworker/VaccineDetail.vue'
 import HealthWorkerMessages from '@/views/healthworker/Messages.vue'
 import HealthWorkerNotifications from '@/views/healthworker/Notifications.vue'
@@ -559,11 +565,61 @@ const routes = [
     }
   },
   {
-    path: '/healthworker/inventory',
-    name: 'VaccineInventoryReadOnly',
-    component: VaccineInventoryReadOnly,
+    path: '/healthworker/patients/:patientId/visit/:visitId',
+    name: 'VisitSummary',
+    component: VisitSummary,
     meta: {
-      title: 'Vaccine Inventory - ImmunizeMe',
+      title: 'Visit Summary - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/patients/:patientId/vaccine/:immunizationId',
+    name: 'VaccineRecordDetails',
+    component: VaccineRecordDetails,
+    meta: {
+      title: 'Vaccine Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/patients/:patientId/add-immunization',
+    name: 'AddPatientImmunizationRecord',
+    component: AddPatientImmunizationRecord,
+    meta: {
+      title: 'Add Immunization Record - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/patients/:patientId/immunizations/:recordId/edit',
+    name: 'EditVaccinationRecord',
+    component: EditVaccinationRecord,
+    meta: {
+      title: 'Edit Vaccination Record - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/stock',
+    name: 'HealthWorkerStock',
+    component: VaccineStock,
+    meta: {
+      title: 'Vaccine Stock - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/stock/:id',
+    name: 'HealthWorkerStockDetails',
+    component: InventoryDetails,
+    meta: {
+      title: 'Inventory Details - ImmunizeMe',
       requiresAuth: true,
       role: 'healthworker'
     }

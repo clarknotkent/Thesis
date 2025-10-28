@@ -103,6 +103,7 @@ const userRole = computed(() => {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
+  padding: 0 8px;
 }
 
 .mobile-content {
@@ -110,19 +111,12 @@ const userRole = computed(() => {
   max-width: 100%;
   margin: 0 auto;
   min-height: 100%;
-}
-
-/* Larger mobile screens */
-@media (min-width: 480px) {
-  .mobile-content {
-    padding: 0;
-  }
+  background: #ffffff;
 }
 
 /* Tablets */
 @media (min-width: 768px) {
   .mobile-content {
-    padding: 0;
     max-width: 1200px;
   }
 }
@@ -130,7 +124,6 @@ const userRole = computed(() => {
 /* Desktop */
 @media (min-width: 992px) {
   .mobile-content {
-    padding: 0;
     max-width: 1400px;
   }
 }
@@ -138,7 +131,6 @@ const userRole = computed(() => {
 /* Large Desktop */
 @media (min-width: 1400px) {
   .mobile-content {
-    padding: 0;
     max-width: 1600px;
   }
 }

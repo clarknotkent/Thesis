@@ -213,11 +213,25 @@ const getImmunizationById = async (id, client) => {
   const supabase = withClient(client);
   const { data, error } = await supabase
     .from('immunizations')
-    .select('*')
+    .select(`
+      *,
+      vaccines!inner(
+        antigen_name,
+        disease_prevented
+      )
+    `)
     .eq('immunization_id', id)
     .eq('is_deleted', false)
     .single();
   if (error && error.code !== 'PGRST116') throw error;
+  
+  // Flatten the vaccine data for easier access
+  if (data && data.vaccines) {
+    data.vaccine_antigen_name = data.vaccines.antigen_name;
+    data.disease_prevented = data.vaccines.disease_prevented;
+    delete data.vaccines;
+  }
+  
   return data;
 };
 
