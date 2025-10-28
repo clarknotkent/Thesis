@@ -6,7 +6,7 @@
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
           <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item"><router-link :to="`/admin/patients/${patientId}`">Patient Details</router-link></li>
+          <li class="breadcrumb-item"><router-link :to="`/admin/patients/view/${patientId}`">Patient Details</router-link></li>
           <li class="breadcrumb-item active" aria-current="page">Edit Vaccination Record</li>
         </ol>
       </nav>
