@@ -46,7 +46,7 @@
         <button class="btn btn-outline-primary btn-sm me-2" @click="loadLogs">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
         </button>
-        <button class="btn btn-warning btn-sm">
+        <button class="btn btn-warning btn-sm" @click="openManualSMS">
           <i class="bi bi-pencil-square me-1"></i>Send Manual SMS
         </button>
       </div>
@@ -218,6 +218,127 @@
         </div>
       </div>
     </div>
+
+    <!-- Manual SMS Modal -->
+    <div class="modal fade" id="manualSMSModal" tabindex="-1" ref="manualSMSModal">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-warning-subtle">
+            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Send Manual SMS</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <!-- Alerts -->
+            <div v-if="smsError" class="alert alert-danger py-2 mb-3">
+              <i class="bi bi-exclamation-triangle me-2"></i>{{ smsError }}
+            </div>
+            <div v-if="smsSuccess" class="alert alert-success py-2 mb-3">
+              <i class="bi bi-check-circle me-2"></i>{{ smsSuccess }}
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Phone Number</label>
+                <input type="text" class="form-control" placeholder="e.g. 09171234567" v-model="smsForm.phoneNumber" />
+                <small class="text-muted">We'll format to +63 automatically.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Type</label>
+                <select class="form-select" v-model="smsForm.type">
+                  <option value="manual">Manual</option>
+                  <option value="1-week">1 Week Before</option>
+                  <option value="3-days">3 Days Before</option>
+                  <option value="1-day">1 Day Before</option>
+                </select>
+              </div>
+            </div>
+
+            <hr />
+
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="useTemplateSwitch" v-model="useTemplate" />
+              <label class="form-check-label" for="useTemplateSwitch">Use Template</label>
+            </div>
+
+            <div v-if="useTemplate">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-8">
+                  <label class="form-label form-label-sm">Template</label>
+                  <select class="form-select" v-model="smsForm.templateId">
+                    <option value="">Select a template…</option>
+                    <option v-for="t in templates" :key="t.id" :value="t.id">
+                      {{ t.name }} ({{ t.trigger_type }})
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-4 text-end">
+                  <button class="btn btn-outline-secondary" :disabled="!smsForm.templateId || previewing" @click="previewTemplate">
+                    <i class="bi bi-eye me-1"></i>
+                    <span v-if="!previewing">Preview</span>
+                    <span v-else>Previewing…</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Minimal variable set for quick send -->
+              <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Guardian Last Name</label>
+                  <input type="text" class="form-control" v-model="smsForm.variables.guardianLastName" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Guardian Gender</label>
+                  <select class="form-select" v-model="smsForm.variables.guardianGender">
+                    <option value="male">Male (Mr.)</option>
+                    <option value="female">Female (Ms.)</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Patient Name</label>
+                  <input type="text" class="form-control" v-model="smsForm.variables.patientName" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Vaccine Name</label>
+                  <input type="text" class="form-control" v-model="smsForm.variables.vaccineName" placeholder="e.g. BCG" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Dose Number</label>
+                  <input type="number" min="1" class="form-control" v-model="smsForm.variables.doseNumber" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label form-label-sm">Appointment Date</label>
+                  <input type="date" class="form-control" v-model="smsForm.variables.appointmentDate" />
+                </div>
+              </div>
+
+              <div v-if="smsPreview" class="mt-3">
+                <label class="form-label form-label-sm">Preview</label>
+                <div class="border rounded p-3 bg-light">{{ smsPreview }}</div>
+                <small class="text-muted">{{ smsPreview.length }} characters</small>
+              </div>
+
+            </div>
+
+            <div v-else>
+              <label class="form-label form-label-sm">Message</label>
+              <textarea class="form-control" rows="4" placeholder="Type your SMS here…" v-model="smsForm.message"></textarea>
+              <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">{{ (smsForm.message || '').length }} / 160 chars</small>
+                <small class="text-muted">Keep it concise to avoid multi-part SMS.</small>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" :disabled="sending">Close</button>
+            <button type="button" class="btn btn-warning" :disabled="!canSend || sending" @click="sendManualSMS">
+              <i class="bi bi-send me-1"></i>
+              <span v-if="!sending">Send Now</span>
+              <span v-else>Sending…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -236,9 +357,33 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const selectedMessage = ref(null)
 const messageModal = ref(null)
+const manualSMSModal = ref(null)
 
 // Data
 const logs = ref([])
+const templates = ref([])
+
+// Manual SMS form state
+const useTemplate = ref(true)
+const smsPreview = ref('')
+const previewing = ref(false)
+const sending = ref(false)
+const smsError = ref('')
+const smsSuccess = ref('')
+const smsForm = ref({
+  phoneNumber: '',
+  type: 'manual',
+  templateId: '',
+  message: '',
+  variables: {
+    guardianLastName: '',
+    guardianGender: 'male',
+    patientName: '',
+    vaccineName: '',
+    doseNumber: '1',
+    appointmentDate: ''
+  }
+})
 
 // Computed
 const filteredLogs = computed(() => {
@@ -373,6 +518,97 @@ const viewMessage = (log) => {
   selectedMessage.value = log
   const modal = new Modal(messageModal.value)
   modal.show()
+}
+
+const openManualSMS = async () => {
+  // reset state
+  smsError.value = ''
+  smsSuccess.value = ''
+  smsPreview.value = ''
+  sending.value = false
+  previewing.value = false
+  smsForm.value = {
+    phoneNumber: '',
+    type: 'manual',
+    templateId: '',
+    message: '',
+    variables: {
+      guardianLastName: '',
+      guardianGender: 'male',
+      patientName: '',
+      vaccineName: '',
+      doseNumber: '1',
+      appointmentDate: ''
+    }
+  }
+  try {
+    // lazy-load templates
+    const { data } = await api.get('/sms/templates')
+    templates.value = data?.data || []
+  } catch (_) {}
+  const modal = new Modal(manualSMSModal.value)
+  modal.show()
+}
+
+const canSend = computed(() => {
+  if (!smsForm.value.phoneNumber) return false
+  if (useTemplate.value) {
+    return !!smsForm.value.templateId
+  }
+  return (smsForm.value.message || '').trim().length > 0
+})
+
+const previewTemplate = async () => {
+  smsError.value = ''
+  smsPreview.value = ''
+  if (!smsForm.value.templateId) return
+  previewing.value = true
+  try {
+    const { data } = await api.post('/sms/templates/preview', {
+      templateId: smsForm.value.templateId,
+      variables: smsForm.value.variables
+    })
+    smsPreview.value = data?.data?.preview || ''
+  } catch (e) {
+    smsError.value = e?.response?.data?.message || 'Failed to preview template'
+  } finally {
+    previewing.value = false
+  }
+}
+
+const sendManualSMS = async () => {
+  smsError.value = ''
+  smsSuccess.value = ''
+  sending.value = true
+  try {
+    const payload = {
+      phoneNumber: smsForm.value.phoneNumber,
+      type: smsForm.value.type
+    }
+    if (useTemplate.value && smsForm.value.templateId) {
+      payload.templateId = smsForm.value.templateId
+      payload.variables = smsForm.value.variables
+    } else {
+      payload.message = smsForm.value.message
+    }
+
+    const { data } = await api.post('/sms', payload)
+    if (data?.success) {
+      smsSuccess.value = 'SMS sent successfully.'
+      await loadLogs()
+      // Auto-close after a short delay
+      setTimeout(() => {
+        const modal = Modal.getInstance(manualSMSModal.value)
+        modal && modal.hide()
+      }, 750)
+    } else {
+      throw new Error(data?.message || 'Failed to send SMS')
+    }
+  } catch (e) {
+    smsError.value = e?.response?.data?.message || e?.message || 'Failed to send SMS'
+  } finally {
+    sending.value = false
+  }
 }
 
 // Lifecycle

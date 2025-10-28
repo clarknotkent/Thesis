@@ -4,7 +4,6 @@ WITH rels AS (
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind IN ('r','p','v','m','f')
-    AND n.nspname NOT IN ('pg_catalog','information_schema')
     AND n.nspname = 'public' -- Limit to public schema only
 ), t_comments AS (
   SELECT r.schema, r.table_name, obj_description(r.oid, 'pg_class') AS table_comment
@@ -228,6 +227,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | immunizationhistory_view      | patient_family_number                | null                                                                              |
 | column | public | immunizationhistory_view      | patient_firstname                    | null                                                                              |
 | column | public | immunizationhistory_view      | patient_full_name                    | null                                                                              |
+| column | public | immunizationhistory_view      | patient_guardian_full_name           | null                                                                              |
 | column | public | immunizationhistory_view      | patient_guardian_id                  | null                                                                              |
 | column | public | immunizationhistory_view      | patient_health_center                | null                                                                              |
 | column | public | immunizationhistory_view      | patient_id                           | null                                                                              |
@@ -242,6 +242,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | immunizationhistory_view      | patient_scheduled_date               | null                                                                              |
 | column | public | immunizationhistory_view      | patient_sex                          | null                                                                              |
 | column | public | immunizationhistory_view      | patient_surname                      | null                                                                              |
+| column | public | immunizationhistory_view      | patient_tag                          | null                                                                              |
 | column | public | immunizationhistory_view      | remarks                              | null                                                                              |
 | column | public | immunizationhistory_view      | schedule_catchup_strategy            | null                                                                              |
 | column | public | immunizationhistory_view      | schedule_code                        | null                                                                              |

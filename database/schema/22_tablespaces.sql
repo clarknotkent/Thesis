@@ -8,5 +8,5 @@ ORDER BY tablespace;
 
 | tablespace | size   | spcoptions |
 | ---------- | ------ | ---------- |
-| pg_default | 35 MB  | null       |
-| pg_global  | 845 kB | null       |
+| pg_default | 48 MB  | null       |
+| pg_global  | 853 kB | null       |
