@@ -9,6 +9,7 @@
     <!-- Action Toolbar -->
     <div class="action-toolbar">
       <button 
+        v-if="showFilterButton"
         class="toolbar-btn filter-btn"
         @click="$emit('filter')"
         :class="{ active: hasActiveFilters }"
@@ -28,6 +29,7 @@
       </div>
 
       <button 
+        v-if="showScanButton"
         class="toolbar-btn scan-btn"
         @click="$emit('scan')"
       >
@@ -35,6 +37,7 @@
       </button>
 
       <button 
+        v-if="showAddButton"
         class="toolbar-btn add-btn"
         @click="$emit('add')"
       >
@@ -65,6 +68,18 @@ defineProps({
   hasActiveFilters: {
     type: Boolean,
     default: false
+  },
+  showFilterButton: {
+    type: Boolean,
+    default: true
+  },
+  showScanButton: {
+    type: Boolean,
+    default: true
+  },
+  showAddButton: {
+    type: Boolean,
+    default: true
   }
 })
 
