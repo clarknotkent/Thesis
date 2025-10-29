@@ -426,58 +426,62 @@ const fetchSMSLogs = async () => {
       page: currentPage.value,
       limit: itemsPerPage.value
     }
-    
+
     if (searchQuery.value) params.search = searchQuery.value
     if (selectedStatus.value) params.status = selectedStatus.value
-    if (selectedType.value) params.type = selectedType.value
-    if (selectedDate.value) params.date = selectedDate.value
+    // Map UI type to backend types ('manual' | 'scheduled')
+    const mapUITypeToBackend = (t) => {
+      if (!t) return ''
+      if (t === 'appointment_reminder') return 'scheduled'
+      // group other UI types as manual since backend only stores manual/scheduled
+      return 'manual'
+    }
+    const backendType = mapUITypeToBackend(selectedType.value)
+    if (backendType) params.type = backendType
+    // Date filter (optional): backend expects startDate/endDate; if single date selected, pass as day bounds
+    if (selectedDate.value) {
+      const d = new Date(selectedDate.value)
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0)
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59)
+      params.startDate = start.toISOString()
+      params.endDate = end.toISOString()
+    }
 
-    // Mock data for SMS logs
-    const mockLogs = [
-      {
-        id: 1,
-        recipientName: 'Maria Santos',
-        patientRelation: 'Mother of Juan Santos',
-        phoneNumber: '+63 912 345 6789',
-        messageType: 'appointment_reminder',
-        content: 'Hi Maria! This is a reminder that Juan has a vaccination appointment tomorrow at 2:00 PM. Please bring his vaccination card.',
-        status: 'delivered',
-        sentAt: '2025-08-15T08:30:00Z',
-        deliveredAt: '2025-08-15T08:31:00Z'
-      },
-      {
-        id: 2,
-        recipientName: 'Ana Reyes',
-        patientRelation: 'Mother of Carlos Reyes',
-        phoneNumber: '+63 923 456 7890',
-        messageType: 'vaccination_due',
-        content: 'Dear Ana, Carlos is due for his MMR vaccination. Please schedule an appointment at the health center.',
-        status: 'delivered',
-        sentAt: '2025-08-14T14:20:00Z',
-        deliveredAt: '2025-08-14T14:22:00Z'
-      },
-      {
-        id: 3,
-        recipientName: 'John Doe',
-        patientRelation: 'Father of Jane Doe',
-        phoneNumber: '+63 934 567 8901',
-        messageType: 'missed_appointment',
-        content: 'Hello John, Jane missed her vaccination appointment yesterday. Please reschedule as soon as possible.',
-        status: 'failed',
-        sentAt: '2025-08-13T16:45:00Z',
-        deliveredAt: null
-      }
-    ]
+    const { data } = await api.get('/sms/history', { params })
+    const rows = data?.data || []
+    const pagination = data?.pagination || { total: rows.length }
 
-    smsLogs.value = mockLogs
-    totalLogs.value = mockLogs.length
+    // Map backend rows to UI model
+    const mapBackendTypeToUI = (t) => {
+      if (t === 'scheduled') return 'appointment_reminder'
+      return 'general_notification' // default for 'manual' or others
+    }
+
+    smsLogs.value = rows.map(r => ({
+      id: r.id,
+      recipientName: r.guardian_name || r.patient_name || '—',
+      patientRelation: r.patient_name ? `Guardian of ${r.patient_name}` : '',
+      phoneNumber: r.phone_number || '',
+      messageType: mapBackendTypeToUI(r.type),
+      content: r.message || '',
+      status: r.status || 'pending',
+      sentAt: r.sent_at || r.scheduled_at || new Date().toISOString(),
+      deliveredAt: null
+    }))
+
+    totalLogs.value = Number(pagination.total || smsLogs.value.length)
     totalPages.value = Math.ceil(totalLogs.value / itemsPerPage.value)
-    
+
+    // Optional: compute simple stats client-side (or call /sms/statistics)
+    const counts = smsLogs.value.reduce((acc, row) => {
+      acc[row.status] = (acc[row.status] || 0) + 1
+      return acc
+    }, {})
     smsStats.value = {
-      totalSent: 156,
-      delivered: 142,
-      pending: 3,
-      failed: 11
+      totalSent: totalLogs.value,
+      delivered: counts['delivered'] || 0,
+      pending: counts['pending'] || 0,
+      failed: counts['failed'] || 0
     }
 
   } catch (error) {

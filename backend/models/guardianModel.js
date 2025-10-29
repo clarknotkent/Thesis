@@ -1,4 +1,5 @@
 const supabase = require('../db');
+const { updatePhoneNumberForPatient, updateMessagesForPatient } = require('../services/smsReminderService');
 
 const guardianModel = {
   // Fetch all guardians (for dropdown) from users table where role='guardian'
@@ -12,6 +13,7 @@ const guardianModel = {
           surname,
           firstname,
           middlename,
+          sex,
           contact_number,
           email,
           address,
@@ -37,6 +39,7 @@ const guardianModel = {
           surname: user.surname,
           firstname: user.firstname,
           middlename: user.middlename,
+          sex: user.sex || null,
           contact_number: user.contact_number,
           email: user.email,
           address: user.address,
@@ -109,6 +112,17 @@ const guardianModel = {
   // Update a guardian
   updateGuardian: async (id, guardianData) => {
     try {
+      // Check if contact_number is being updated
+      const isPhoneUpdate = guardianData.contact_number !== undefined;
+      const oldContactNumber = isPhoneUpdate ? await (async () => {
+        const { data } = await supabase
+          .from('guardians')
+          .select('contact_number')
+          .eq('guardian_id', id)
+          .single();
+        return data?.contact_number;
+      })() : null;
+
       const { data, error } = await supabase
         .from('guardians')
         .update({
@@ -121,6 +135,53 @@ const guardianModel = {
         .single();
 
       if (error) throw error;
+
+      // CASCADE UPDATE: Update phone numbers in SMS logs if contact changed (NON-BLOCKING)
+      if (isPhoneUpdate && guardianData.contact_number !== oldContactNumber) {
+        // Run cascade in background without awaiting
+        setImmediate(async () => {
+          try {
+            const { data: patients, error: pErr } = await supabase
+              .from('patients')
+              .select('patient_id')
+              .eq('guardian_id', id)
+              .eq('is_deleted', false);
+
+            if (!pErr && patients && patients.length > 0) {
+              for (const patient of patients) {
+                await updatePhoneNumberForPatient(patient.patient_id, guardianData.contact_number, supabase);
+              }
+              console.log(`[updateGuardian] Successfully cascaded phone update to ${patients.length} patient(s)`);
+            }
+          } catch (cascadeErr) {
+            console.warn('[guardianModel] Failed to cascade phone update to SMS logs:', cascadeErr?.message || cascadeErr);
+          }
+        });
+      }
+
+      // CASCADE UPDATE: Update messages if name changed (NON-BLOCKING)
+      if (guardianData.firstname || guardianData.lastname || guardianData.middlename) {
+        // Run cascade in background without awaiting
+        setImmediate(async () => {
+          try {
+            const { data: patients, error: pErr } = await supabase
+              .from('patients')
+              .select('patient_id')
+              .eq('guardian_id', id)
+              .eq('is_deleted', false);
+
+            if (!pErr && patients && patients.length > 0) {
+              for (const patient of patients) {
+                await updateMessagesForPatient(patient.patient_id, supabase);
+              }
+              console.log(`[updateGuardian] Successfully cascaded name update to ${patients.length} patient(s)`);
+            }
+          } catch (cascadeErr) {
+            console.warn('[guardianModel] Failed to cascade name update to SMS messages:', cascadeErr?.message || cascadeErr);
+          }
+        });
+      }
+
       return data;
     } catch (error) {
       console.error('Error updating guardian:', error);
@@ -270,6 +331,15 @@ const guardianModel = {
       const guardianId = ensured?.guardian_id;
       if (!guardianId) return ensured;
 
+      // Get old contact number before update (for cascade comparison)
+      const { data: oldGuardian } = await supabase
+        .from('guardians')
+        .select('contact_number')
+        .eq('guardian_id', guardianId)
+        .single();
+      
+      const oldContactNumber = oldGuardian?.contact_number;
+
       // Apply sync update
       const { data: updated, error: updErr } = await supabase
         .from('guardians')
@@ -288,6 +358,53 @@ const guardianModel = {
         .select('*')
         .single();
       if (updErr) throw updErr;
+
+      // CASCADE UPDATE: Update phone numbers in SMS logs if contact changed (NON-BLOCKING)
+      if (userRow.contact_number && userRow.contact_number !== oldContactNumber) {
+        // Run cascade in background without awaiting
+        setImmediate(async () => {
+          try {
+            const { data: patients, error: pErr } = await supabase
+              .from('patients')
+              .select('patient_id')
+              .eq('guardian_id', guardianId)
+              .eq('is_deleted', false);
+
+            if (!pErr && patients && patients.length > 0) {
+              for (const patient of patients) {
+                await updatePhoneNumberForPatient(patient.patient_id, userRow.contact_number, supabase);
+              }
+              console.log(`[syncGuardianFromUser] Successfully cascaded phone update to ${patients.length} patient(s)`);
+            }
+          } catch (cascadeErr) {
+            console.warn('[syncGuardianFromUser] Failed to cascade phone update to SMS logs:', cascadeErr?.message || cascadeErr);
+          }
+        });
+      }
+
+      // CASCADE UPDATE: Update messages if name changed (NON-BLOCKING)
+      if (userRow.firstname || userRow.lastname || userRow.middlename) {
+        // Run cascade in background without awaiting
+        setImmediate(async () => {
+          try {
+            const { data: patients, error: pErr } = await supabase
+              .from('patients')
+              .select('patient_id')
+              .eq('guardian_id', guardianId)
+              .eq('is_deleted', false);
+
+            if (!pErr && patients && patients.length > 0) {
+              for (const patient of patients) {
+                await updateMessagesForPatient(patient.patient_id, supabase);
+              }
+              console.log(`[syncGuardianFromUser] Successfully cascaded name update to ${patients.length} patient(s)`);
+            }
+          } catch (cascadeErr) {
+            console.warn('[syncGuardianFromUser] Failed to cascade name update to SMS messages:', cascadeErr?.message || cascadeErr);
+          }
+        });
+      }
+
       return updated;
     } catch (error) {
       console.error('Error syncing guardian from user:', error);

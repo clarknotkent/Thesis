@@ -182,6 +182,7 @@ ORDER BY kind, schema, name, detail;
 | composite | public | guardian_auto_send_settings   | auto_send_enabled                    | boolean                     |
 | composite | public | guardian_auto_send_settings   | created_at                           | timestamp without time zone |
 | composite | public | guardian_auto_send_settings   | created_by                           | integer                     |
+| composite | public | guardian_auto_send_settings   | deleted_at                           | timestamp without time zone |
 | composite | public | guardian_auto_send_settings   | deleted_by                           | integer                     |
 | composite | public | guardian_auto_send_settings   | guardian_id                          | integer                     |
 | composite | public | guardian_auto_send_settings   | id                                   | integer                     |
@@ -668,6 +669,7 @@ ORDER BY kind, schema, name, detail;
 | composite | public | schedule_master               | vaccine_id                           | bigint                      |
 | composite | public | sms_logs                      | created_at                           | timestamp without time zone |
 | composite | public | sms_logs                      | created_by                           | integer                     |
+| composite | public | sms_logs                      | deleted_at                           | timestamp without time zone |
 | composite | public | sms_logs                      | deleted_by                           | integer                     |
 | composite | public | sms_logs                      | error_message                        | text                        |
 | composite | public | sms_logs                      | guardian_id                          | integer                     |
@@ -676,6 +678,7 @@ ORDER BY kind, schema, name, detail;
 | composite | public | sms_logs                      | message                              | text                        |
 | composite | public | sms_logs                      | patient_id                           | integer                     |
 | composite | public | sms_logs                      | phone_number                         | character varying(20)       |
+| composite | public | sms_logs                      | scheduled_at                         | timestamp without time zone |
 | composite | public | sms_logs                      | sent_at                              | timestamp without time zone |
 | composite | public | sms_logs                      | status                               | character varying(20)       |
 | composite | public | sms_logs                      | template_id                          | integer                     |
@@ -684,6 +687,7 @@ ORDER BY kind, schema, name, detail;
 | composite | public | sms_logs                      | updated_by                           | integer                     |
 | composite | public | sms_templates                 | created_at                           | timestamp without time zone |
 | composite | public | sms_templates                 | created_by                           | integer                     |
+| composite | public | sms_templates                 | deleted_at                           | timestamp without time zone |
 | composite | public | sms_templates                 | deleted_by                           | integer                     |
 | composite | public | sms_templates                 | id                                   | integer                     |
 | composite | public | sms_templates                 | is_active                            | boolean                     |

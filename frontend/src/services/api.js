@@ -69,4 +69,31 @@ export const notificationAPI = {
   updateStatus: (id, status, errorMessage) => api.put(`/notifications/${id}/status`, { status, error_message: errorMessage })
 }
 
+// Conversation API functions
+export const conversationAPI = {
+  // Get conversations for current user
+  getConversations: (params = {}) => api.get('/conversations', { params }),
+
+  // Create a new conversation
+  create: (data) => api.post('/conversations', data),
+
+  // Start conversation with first message
+  startWithMessage: (data) => api.post('/conversations/start', data),
+
+  // Leave a conversation
+  leave: (conversationId) => api.post(`/conversations/${conversationId}/leave`)
+}
+
+// Message API functions
+export const messageAPI = {
+  // Get messages for a conversation
+  getMessages: (conversationId, params = {}) => api.get(`/messages/${conversationId}`, { params }),
+
+  // Send a message
+  send: (data) => api.post('/messages', data),
+
+  // Mark message as read
+  markAsRead: (messageId) => api.post(`/messages/${messageId}/read`)
+}
+
 export default api

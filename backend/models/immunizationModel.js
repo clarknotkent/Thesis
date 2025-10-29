@@ -1,4 +1,5 @@
 const serviceSupabase = require('../db');
+const { scheduleReminderLogsForPatientSchedule, handleScheduleReschedule } = require('../services/smsReminderService');
 
 // Helper to use provided client or default service client
 function withClient(client) {
@@ -343,6 +344,15 @@ const scheduleImmunization = async (scheduleData, client) => {
     console.error('[scheduleImmunization] validate_manual_schedule_edit RPC failed:', rpcErr);
   }
 
+  // Auto-create scheduled SMS reminder logs for this patientschedule (non-blocking)
+  try {
+    if (data && data.patient_schedule_id) {
+      await scheduleReminderLogsForPatientSchedule(data.patient_schedule_id, supabase);
+    }
+  } catch (remErr) {
+    console.error('[scheduleImmunization] Failed to create SMS reminder logs:', remErr?.message || remErr);
+  }
+
   return data;
 };
 
@@ -391,6 +401,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
 
   // If date change requested, use SMART RPC that validates min/max age and cascades
   if (patch.scheduled_date && current.scheduled_date && new Date(patch.scheduled_date).toDateString() !== new Date(current.scheduled_date).toDateString()) {
+    const oldDate = current.scheduled_date; // ← Capture old date before update
     const userId = updateData.updated_by || null;
     const { data: res, error: rpcErr } = await supabase.rpc('smart_reschedule_patientschedule', {
       p_patient_schedule_id: patientScheduleId,
@@ -403,6 +414,17 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
     // Return the main row (current id) if found, else first; include warning if present
     const normalizeId = (r) => (r?.out_patient_schedule_id ?? r?.patient_schedule_id);
     const main = Array.isArray(res) ? (res.find(r => normalizeId(r) === patientScheduleId) || res[0]) : res;
+    
+    // CASCADE UPDATE: Recreate SMS reminders for rescheduled date (NON-BLOCKING)
+    setImmediate(async () => {
+      try {
+        await handleScheduleReschedule(patientScheduleId, oldDate, supabase); // ← Pass old date
+        console.log(`[updatePatientSchedule] Successfully recreated SMS reminders for schedule ${patientScheduleId}`);
+      } catch (smsErr) {
+        console.warn('[updatePatientSchedule] Failed to update SMS reminders after reschedule:', smsErr?.message || smsErr);
+      }
+    });
+    
     // Also run validator for visibility
     try {
       const mainId = normalizeId(main) ?? patientScheduleId;
@@ -437,6 +459,17 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
 // Convenience: reschedule API to call directly
 const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, client) => {
   const supabase = withClient(client);
+  
+  // Get the old date before rescheduling
+  const { data: current } = await supabase
+    .from('patientschedule')
+    .select('scheduled_date')
+    .eq('patient_schedule_id', patientScheduleId)
+    .eq('is_deleted', false)
+    .maybeSingle();
+  
+  const oldDate = current?.scheduled_date;
+  
   const { data, error } = await supabase.rpc('reschedule_patientschedule', {
     p_patient_schedule_id: patientScheduleId,
     p_new_date: newDate,
@@ -445,6 +478,17 @@ const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, cli
     p_do_group: true,
   });
   if (error) throw error;
+
+  // CASCADE UPDATE: Recreate SMS reminders for rescheduled date (NON-BLOCKING)
+  setImmediate(async () => {
+    try {
+      await handleScheduleReschedule(patientScheduleId, oldDate, supabase); // ← Pass old date
+      console.log(`[reschedulePatientSchedule] Successfully recreated SMS reminders for schedule ${patientScheduleId}`);
+    } catch (smsErr) {
+      console.warn('[reschedulePatientSchedule] Failed to update SMS reminders after reschedule:', smsErr?.message || smsErr);
+    }
+  });
+
   return data;
 };
 

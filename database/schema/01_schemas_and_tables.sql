@@ -44,7 +44,7 @@ ORDER BY schema, object_type, name;
 | ------ | ----------------------------- | ----------------- | -------- | -------- | ---------- | ---------- | ---------- | ---------- | ----------- |
 | public | defaulters_mv                 | materialized view | postgres | 0        | 8192 bytes | 0 bytes    | 8192 bytes | 0 bytes    | p           |
 | public | activity_action_types         | table             | postgres | 51       | 32 kB      | 8192 bytes | 16 kB      | 8192 bytes | p           |
-| public | activitylogs                  | table             | postgres | 1518     | 2432 kB    | 1984 kB    | 408 kB     | 40 kB      | p           |
+| public | activitylogs                  | table             | postgres | 1534     | 2432 kB    | 1984 kB    | 408 kB     | 40 kB      | p           |
 | public | birthhistory                  | table             | postgres | 11       | 88 kB      | 16 kB      | 32 kB      | 40 kB      | p           |
 | public | conversationparticipants      | table             | postgres | 19       | 88 kB      | 24 kB      | 32 kB      | 32 kB      | p           |
 | public | conversations                 | table             | postgres | 9        | 56 kB      | 8192 bytes | 16 kB      | 32 kB      | p           |
@@ -66,20 +66,20 @@ ORDER BY schema, object_type, name;
 | public | messages                      | table             | postgres | 34       | 224 kB     | 56 kB      | 128 kB     | 40 kB      | p           |
 | public | notifications                 | table             | postgres | 24       | 256 kB     | 40 kB      | 176 kB     | 40 kB      | p           |
 | public | patients                      | table             | postgres | 11       | 872 kB     | 536 kB     | 296 kB     | 40 kB      | p           |
-| public | patients_history              | table             | postgres | 317      | 1504 kB    | 1160 kB    | 304 kB     | 40 kB      | p           |
+| public | patients_history              | table             | postgres | 319      | 1504 kB    | 1160 kB    | 304 kB     | 40 kB      | p           |
 | public | patientschedule               | table             | postgres | 165      | 672 kB     | 216 kB     | 424 kB     | 32 kB      | p           |
-| public | patientschedule_history       | table             | postgres | 2412     | 5664 kB    | 4168 kB    | 1456 kB    | 40 kB      | p           |
+| public | patientschedule_history       | table             | postgres | 2419     | 5664 kB    | 4168 kB    | 1456 kB    | 40 kB      | p           |
 | public | receiving_report_items        | table             | postgres | 29       | 152 kB     | 48 kB      | 64 kB      | 40 kB      | p           |
 | public | receiving_reports             | table             | postgres | 20       | 152 kB     | 32 kB      | 80 kB      | 40 kB      | p           |
 | public | schedule_doses                | table             | postgres | 15       | 128 kB     | 24 kB      | 64 kB      | 40 kB      | p           |
 | public | schedule_master               | table             | postgres | 7        | 120 kB     | 16 kB      | 64 kB      | 40 kB      | p           |
-| public | sms_logs                      | table             | postgres | 0        | 96 kB      | 0 bytes    | 88 kB      | 8192 bytes | p           |
-| public | sms_templates                 | table             | postgres | 4        | 128 kB     | 8192 bytes | 112 kB     | 8192 bytes | p           |
+| public | sms_logs                      | table             | postgres | 1        | 208 kB     | 8192 bytes | 192 kB     | 8192 bytes | p           |
+| public | sms_templates                 | table             | postgres | 6        | 128 kB     | 8192 bytes | 112 kB     | 8192 bytes | p           |
 | public | timestamp_normalization_audit | table             | postgres | 0        | 16 kB      | 0 bytes    | 8192 bytes | 8192 bytes | p           |
 | public | user_mapping                  | table             | postgres | 17       | 72 kB      | 8192 bytes | 32 kB      | 32 kB      | p           |
-| public | user_sessions                 | table             | postgres | 4        | 72 kB      | 8192 bytes | 32 kB      | 32 kB      | p           |
+| public | user_sessions                 | table             | postgres | 5        | 72 kB      | 8192 bytes | 32 kB      | 32 kB      | p           |
 | public | users                         | table             | postgres | 17       | 320 kB     | 32 kB      | 248 kB     | 40 kB      | p           |
-| public | users_history                 | table             | postgres | 353      | 1416 kB    | 1016 kB    | 360 kB     | 40 kB      | p           |
+| public | users_history                 | table             | postgres | 364      | 1416 kB    | 1016 kB    | 360 kB     | 40 kB      | p           |
 | public | v_dob                         | table             | postgres | 1        | 8192 bytes | 8192 bytes | 0 bytes    | 0 bytes    | p           |
 | public | vaccinemaster                 | table             | postgres | 12       | 120 kB     | 16 kB      | 64 kB      | 40 kB      | p           |
 | public | visits                        | table             | postgres | 12       | 128 kB     | 56 kB      | 32 kB      | 40 kB      | p           |

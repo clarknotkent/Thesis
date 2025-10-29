@@ -106,6 +106,7 @@
               :guardians="guardians"
               :disabled="readOnly"
               :required="true"
+              :is-valid="!!formData.guardian_id"
               @guardian-selected="onGuardianSelected"
             />
           </div>
@@ -156,15 +157,14 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Name: <span class="text-danger">*</span></label>
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="formData.mother_name" 
-                list="parentNames"
-                placeholder="Type to search existing guardians..."
+              <ParentNameSelector
+                v-model="formData.mother_name"
+                :options="motherOptions"
+                placeholder="Search/select mother..."
                 :disabled="readOnly"
-                required
-              >
+                :required="true"
+                @selected="onMotherSelected"
+              />
             </div>
             <div class="col-12">
               <label class="form-label">Occupation:</label>
@@ -193,14 +193,13 @@
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Name:</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                v-model="formData.father_name" 
-                list="parentNames"
-                placeholder="Type to search existing guardians..."
+              <ParentNameSelector
+                v-model="formData.father_name"
+                :options="fatherOptions"
+                placeholder="Search/select father..."
                 :disabled="readOnly"
-              >
+                @selected="onFatherSelected"
+              />
             </div>
             <div class="col-12">
               <label class="form-label">Occupation:</label>
@@ -225,10 +224,7 @@
       </div>
     </div>
     
-    <!-- Shared datalist for parent names -->
-    <datalist id="parentNames">
-      <option v-for="g in guardians" :key="g.guardian_id" :value="g.full_name"></option>
-    </datalist>
+    <!-- Replaced native datalists with custom selectors -->
 
     <!-- Birth History -->
     <div class="row mb-4">
@@ -361,10 +357,12 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import GuardianSelector from './GuardianSelector.vue'
+import ParentNameSelector from './ParentNameSelector.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
+import api from '@/services/api'
 
 const props = defineProps({
   initialData: {
@@ -372,6 +370,14 @@ const props = defineProps({
     default: () => ({})
   },
   guardians: {
+    type: Array,
+    default: () => []
+  },
+  motherSuggestions: {
+    type: Array,
+    default: () => []
+  },
+  fatherSuggestions: {
     type: Array,
     default: () => []
   },
@@ -440,18 +446,30 @@ watch(() => props.initialData, (newData) => {
   }
 }, { immediate: true, deep: true })
 
+const formatGuardianNameFirstMiddleLast = (guardian) => {
+  const parts = []
+  if (guardian?.firstname) parts.push(guardian.firstname)
+  if (guardian?.middlename) parts.push(guardian.middlename)
+  if (guardian?.surname) parts.push(guardian.surname)
+  if (parts.length) return parts.join(' ').trim()
+  // Fallback to provided full_name as-is
+  return guardian?.full_name || ''
+}
+
 const applyParentAutofill = (guardian, relationship) => {
   if (!guardian || !relationship) return
   const rel = String(relationship).toLowerCase()
   if (rel === 'mother') {
     // Only set or overwrite if empty to allow manual edits later
-    if (!formData.value.mother_name) formData.value.mother_name = guardian.full_name || ''
+    if (!formData.value.mother_name) formData.value.mother_name = formatGuardianNameFirstMiddleLast(guardian)
     // Do not override if user already typed a different contact unless empty
     if (!formData.value.mother_contact_number) formData.value.mother_contact_number = guardian.contact_number || ''
   } else if (rel === 'father') {
-    if (!formData.value.father_name) formData.value.father_name = guardian.full_name || ''
+    if (!formData.value.father_name) formData.value.father_name = formatGuardianNameFirstMiddleLast(guardian)
     if (!formData.value.father_contact_number) formData.value.father_contact_number = guardian.contact_number || ''
   }
+  // Also try to auto-fill the opposite parent based on patients data (co-parent inference)
+  fetchCoParentAndFill(rel)
 }
 
 const onGuardianSelected = (guardian) => {
@@ -463,6 +481,55 @@ const onGuardianSelected = (guardian) => {
   applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian)
 }
 
+// When picking from suggestions, also fill contact if empty
+const onMotherSelected = (opt) => {
+  if (!formData.value.mother_contact_number && opt?.contact_number) {
+    formData.value.mother_contact_number = opt.contact_number
+  }
+  // Try to infer father from patients data when mother is chosen
+  fetchCoParentAndFill('mother')
+}
+const onFatherSelected = (opt) => {
+  if (!formData.value.father_contact_number && opt?.contact_number) {
+    formData.value.father_contact_number = opt.contact_number
+  }
+  // Try to infer mother from patients data when father is chosen
+  fetchCoParentAndFill('father')
+}
+
+// (Removed guardian-based fallback: per requirement, do not use guardians for parent inference)
+
+// Utility: get contact number from options list based on exact name match
+const getContactForName = (name, type) => {
+  const opts = type === 'mother' ? (motherOptions.value || []) : (fatherOptions.value || [])
+  const found = opts.find(o => ((o.full_name || '').trim()) === String(name).trim())
+  return found?.contact_number || null
+}
+
+// Use patients data to infer the opposite parent and fill if empty; fallback to guardian family linkage
+const fetchCoParentAndFill = async (type) => {
+  try {
+    const isMother = String(type).toLowerCase() === 'mother'
+    const chosenName = isMother ? formData.value.mother_name : formData.value.father_name
+    if (!chosenName) return
+    const res = await api.get('/patients/parents/coparent', { params: { type: isMother ? 'mother' : 'father', name: chosenName } })
+    const suggestion = res.data?.data?.name
+    const suggestedContact = res.data?.data?.contact_number
+    const target = isMother ? 'father' : 'mother'
+    if (suggestion && !formData.value[`${target}_name`]) {
+      formData.value[`${target}_name`] = suggestion
+      const fromApi = suggestedContact || null
+      const fromOptions = getContactForName(suggestion, target)
+      const finalContact = fromApi || fromOptions || null
+      if (finalContact && !formData.value[`${target}_contact_number`]) {
+        formData.value[`${target}_contact_number`] = finalContact
+      }
+    }
+  } catch (e) {
+    console.warn('Co-parent suggestion error:', e?.message || e)
+  }
+}
+
 const handleSubmit = () => {
   emit('submit', formData.value)
 }
@@ -472,4 +539,29 @@ watch(() => formData.value.relationship_to_guardian, (newRel) => {
   if (!newRel) return
   applyParentAutofill(selectedGuardian.value, newRel)
 })
+
+// Suggestions come exclusively from backend patients data (already deduped, with contacts)
+const motherOptions = computed(() => {
+  const recorded = Array.isArray(props.motherSuggestions) ? props.motherSuggestions : []
+  // Ensure no duplicates by full_name (case-insensitive)
+  const map = new Map()
+  recorded.forEach(item => {
+    const key = (item.full_name || '').trim().toLowerCase()
+    if (key && !map.has(key)) map.set(key, item)
+  })
+  const arr = Array.from(map.values())
+  return arr.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''))
+})
+
+const fatherOptions = computed(() => {
+  const recorded = Array.isArray(props.fatherSuggestions) ? props.fatherSuggestions : []
+  const map = new Map()
+  recorded.forEach(item => {
+    const key = (item.full_name || '').trim().toLowerCase()
+    if (key && !map.has(key)) map.set(key, item)
+  })
+  const arr = Array.from(map.values())
+  return arr.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''))
+})
+
 </script>

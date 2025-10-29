@@ -166,6 +166,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | guardian_auto_send_settings   | auto_send_enabled                    | null                                                                              |
 | column | public | guardian_auto_send_settings   | created_at                           | null                                                                              |
 | column | public | guardian_auto_send_settings   | created_by                           | null                                                                              |
+| column | public | guardian_auto_send_settings   | deleted_at                           | null                                                                              |
 | column | public | guardian_auto_send_settings   | deleted_by                           | null                                                                              |
 | column | public | guardian_auto_send_settings   | guardian_id                          | null                                                                              |
 | column | public | guardian_auto_send_settings   | id                                   | null                                                                              |
@@ -652,6 +653,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | schedule_master               | vaccine_id                           | null                                                                              |
 | column | public | sms_logs                      | created_at                           | null                                                                              |
 | column | public | sms_logs                      | created_by                           | null                                                                              |
+| column | public | sms_logs                      | deleted_at                           | null                                                                              |
 | column | public | sms_logs                      | deleted_by                           | null                                                                              |
 | column | public | sms_logs                      | error_message                        | null                                                                              |
 | column | public | sms_logs                      | guardian_id                          | null                                                                              |
@@ -660,6 +662,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | sms_logs                      | message                              | null                                                                              |
 | column | public | sms_logs                      | patient_id                           | null                                                                              |
 | column | public | sms_logs                      | phone_number                         | null                                                                              |
+| column | public | sms_logs                      | scheduled_at                         | null                                                                              |
 | column | public | sms_logs                      | sent_at                              | null                                                                              |
 | column | public | sms_logs                      | status                               | null                                                                              |
 | column | public | sms_logs                      | template_id                          | null                                                                              |
@@ -668,6 +671,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | sms_logs                      | updated_by                           | null                                                                              |
 | column | public | sms_templates                 | created_at                           | null                                                                              |
 | column | public | sms_templates                 | created_by                           | null                                                                              |
+| column | public | sms_templates                 | deleted_at                           | null                                                                              |
 | column | public | sms_templates                 | deleted_by                           | null                                                                              |
 | column | public | sms_templates                 | id                                   | null                                                                              |
 | column | public | sms_templates                 | is_active                            | null                                                                              |

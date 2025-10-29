@@ -5,6 +5,8 @@ const immunizationModel = require('../models/immunizationModel');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
 const { mintPatientQrUrl } = require('../services/qrService');
+const smsReminderService = require('../services/smsReminderService');
+const serviceSupabase = require('../db');
 
 // Normalize incoming payload to match DB schema
 const mapPatientPayload = (body) => ({
@@ -226,6 +228,39 @@ const createPatient = async (req, res) => {
     }
     const schedule = await patientModel.getPatientVaccinationSchedule(newPatient.patient_id);
 
+    // Auto-create SMS reminders asynchronously to avoid slowing down the response
+    try {
+      const runAsync = async () => {
+        const svc = serviceSupabase; // use service client outside request lifecycle
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: upcoming, error: upErr } = await svc
+          .from('patientschedule')
+          .select('patient_schedule_id, scheduled_date')
+          .eq('patient_id', newPatient.patient_id)
+          .eq('is_deleted', false)
+          .gte('scheduled_date', `${todayStr}T00:00:00`);
+        if (!upErr && Array.isArray(upcoming) && upcoming.length > 0) {
+          const pickPerDate = new Map();
+          for (const row of upcoming) {
+            const d = (row.scheduled_date || '').split('T')[0];
+            if (!pickPerDate.has(d)) pickPerDate.set(d, row.patient_schedule_id);
+          }
+          for (const psid of pickPerDate.values()) {
+            try {
+              await smsReminderService.scheduleReminderLogsForPatientSchedule(psid, svc);
+            } catch (e) {
+              console.warn('[createPatient][async] scheduleReminderLogsForPatientSchedule failed for', psid, e?.message || e);
+            }
+          }
+          try { await smsReminderService.updateMessagesForPatient(newPatient.patient_id, svc); } catch (_) {}
+        }
+      };
+      if (typeof setImmediate === 'function') setImmediate(runAsync);
+      else setTimeout(runAsync, 0);
+    } catch (autoSmsErr) {
+      console.warn('Queued async SMS reminder creation failed to start (non-blocking):', autoSmsErr?.message || autoSmsErr);
+    }
+
     // Generate a QR URL for this patient (long-lived for printed cards; override via env TTL)
     let qr;
     try {
@@ -276,6 +311,57 @@ const listParentsOptions = async (req, res) => {
   } catch (error) {
     console.error('Error fetching parents options:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch parents options', error: error.message });
+  }
+};
+
+// Recorded parents list from existing patient records
+const listRecordedParents = async (req, res) => {
+  try {
+    const type = (req.query.type || req.query.parent_type || 'mother').toString().toLowerCase();
+    const supabase = getSupabaseForRequest(req);
+    const items = await patientModel.listRecordedParents(type, supabase);
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error fetching recorded parents:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch recorded parents', error: error.message });
+  }
+};
+
+// Parents suggestions with contacts from patients table (no guardians), deduped
+const listParentsWithContacts = async (req, res) => {
+  try {
+    const type = (req.query.type || 'mother').toString().toLowerCase();
+    const items = await patientModel.listParentsWithContacts(type, getSupabaseForRequest(req));
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error fetching parents with contacts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch parents with contacts', error: error.message });
+  }
+};
+
+// Distinct parent names from patients data (not guardians)
+const listDistinctParentNames = async (req, res) => {
+  try {
+    const type = (req.query.type || 'mother').toString().toLowerCase();
+    const names = await patientModel.listDistinctParentNames(type, getSupabaseForRequest(req));
+    res.json({ success: true, data: names });
+  } catch (error) {
+    console.error('Error fetching distinct parent names:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch distinct parent names', error: error.message });
+  }
+};
+
+// Co-parent inference: given a name on one side, return the most common co-parent from patients data
+const getCoParentSuggestion = async (req, res) => {
+  try {
+    const type = (req.query.type || 'mother').toString().toLowerCase();
+    const name = (req.query.name || '').toString();
+    if (!name) return res.status(400).json({ success: false, message: 'name is required' });
+    const result = await patientModel.getCoParentForName(type, name, getSupabaseForRequest(req));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error fetching co-parent suggestion:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch co-parent suggestion', error: error.message });
   }
 };
 
@@ -625,5 +711,9 @@ module.exports = {
   updateVitals,
   updatePatientSchedules,
   listParentsOptions,
+  listRecordedParents,
+  listParentsWithContacts,
+  listDistinctParentNames,
+  getCoParentSuggestion,
   getSmartDoseOptions,
 };
