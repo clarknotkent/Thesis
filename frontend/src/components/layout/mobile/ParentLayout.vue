@@ -1,170 +1,80 @@
 <template>
-  <div class="parent-layout">
-    <!-- Mobile Header -->
-    <header class="parent-header bg-primary text-white p-3 d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-shield-check fs-4 me-2"></i>
-        <h5 class="mb-0">ImmunizeMe</h5>
-      </div>
-      <div class="dropdown">
-        <button class="btn btn-link text-white" type="button" data-bs-toggle="dropdown">
-          <i class="bi bi-person-circle fs-4"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><h6 class="dropdown-header">Parent Portal</h6></li>
-          <li><router-link class="dropdown-item" to="/parent/profile">Profile</router-link></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" @click="logout">Logout</a></li>
-        </ul>
-      </div>
-    </header>
+  <div class="parent-layout mobile-first">
+    <!-- Fixed Header: Blue TopBar -->
+    <ParentTopBar :title="title" />
 
-    <!-- Main Content -->
-    <main class="parent-main">
-      <slot />
+    <!-- Scrollable Content Area -->
+    <main class="main-content mobile-main">
+      <div class="parent-content mobile-content">
+        <slot />
+      </div>
     </main>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav class="parent-bottom-nav bg-white border-top">
-      <div class="d-flex">
-        <router-link 
-          to="/parent/dashboard" 
-          class="nav-item flex-fill text-center p-3"
-          :class="{ 'active': $route.path === '/parent/dashboard' }"
-        >
-          <i class="bi bi-house d-block fs-5"></i>
-          <small>Dashboard</small>
-        </router-link>
-        <a 
-          href="#" 
-          class="nav-item flex-fill text-center p-3"
-          :class="{ 'disabled': !hasChildId }"
-          @click="navigateToChildInfo"
-        >
-          <i class="bi bi-person d-block fs-5"></i>
-          <small>My Child</small>
-        </a>
-        <a 
-          href="#" 
-          class="nav-item flex-fill text-center p-3"
-          :class="{ 'disabled': !hasChildId }"
-          @click="navigateToVaccinationSchedule"
-        >
-          <i class="bi bi-calendar-check d-block fs-5"></i>
-          <small>Schedule</small>
-        </a>
-      </div>
-    </nav>
+    <!-- Fixed Bottom Navigation -->
+    <ParentBottomNavbar />
 
     <!-- Toast Notifications -->
     <ToastContainer />
-    
-    <!-- Global Confirm Dialog -->
-    <ConfirmDialog 
-      :show="confirmState.show"
-      :title="confirmState.title"
-      :message="confirmState.message"
-      :variant="confirmState.variant"
-      :confirmText="confirmState.confirmText"
-      :cancelText="confirmState.cancelText"
-      @confirm="handleConfirm"
-      @cancel="handleCancel"
-    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import ParentTopBar from './ParentTopBar.vue'
+import ParentBottomNavbar from './ParentBottomNavbar.vue'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
-import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
-import { useConfirm } from '@/composables/useConfirm'
 
-const { confirmState, handleConfirm, handleCancel } = useConfirm()
-
-const router = useRouter()
-const route = useRoute()
-
-// Check if current route has childId parameter
-const hasChildId = computed(() => {
-  return route.params.childId
-})
-
-// Get current childId from route
-const currentChildId = computed(() => {
-  return route.params.childId
-})
-
-const navigateToChildInfo = () => {
-  if (hasChildId.value) {
-    router.push(`/parent/child-info/${currentChildId.value}`)
-  } else {
-    // If no child selected, go back to dashboard
-    router.push('/parent/dashboard')
+defineProps({
+  title: {
+    type: String,
+    default: null
   }
-}
-
-const navigateToVaccinationSchedule = () => {
-  if (hasChildId.value) {
-    router.push(`/parent/vaccination-schedule/${currentChildId.value}`)
-  } else {
-    // If no child selected, go back to dashboard
-    router.push('/parent/dashboard')
-  }
-}
-
-const logout = () => {
-  // Handle logout logic
-  router.push('/auth/login')
-}
+})
 </script>
 
-<!-- Styles moved to src/assets/styles/parent.css for consistency -->
-  top: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.parent-main {
-  flex: 1;
-  padding: 1rem;
-  padding-bottom: 80px; /* Space for bottom nav */
+<style scoped>
+.parent-layout.mobile-first {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background-color: #f8f9fa;
 }
 
-.parent-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+.mobile-main {
+  flex-grow: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  padding: 0 8px;
+  /* Padding bottom to prevent content from being hidden behind bottom navbar */
+  padding-bottom: 70px;
 }
 
-.nav-item {
-  color: #6c757d;
-  text-decoration: none;
-  transition: all 0.2s ease;
+.mobile-content {
+  padding: 0;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100%;
+  background: #ffffff;
 }
 
-.nav-item:hover {
-  color: #007bff;
-  background-color: #f8f9fa;
+/* Tablets */
+@media (min-width: 768px) {
+  .mobile-content {
+    max-width: 1200px;
+  }
 }
 
-.nav-item.active {
-  color: #007bff;
-  background-color: #e3f2fd;
+/* Desktop */
+@media (min-width: 992px) {
+  .mobile-content {
+    max-width: 1400px;
+  }
 }
 
-.nav-item.disabled {
-  color: #adb5bd !important;
-  cursor: not-allowed;
-  opacity: 0.6;
+/* Large Desktop */
+@media (min-width: 1400px) {
+  .mobile-content {
+    max-width: 1600px;
+  }
 }
-
-.nav-item.disabled:hover {
-  color: #adb5bd !important;
-  background-color: transparent !important;
-}
-<!-- Styles moved to src/assets/styles/parent.css for consistency -->
+</style>

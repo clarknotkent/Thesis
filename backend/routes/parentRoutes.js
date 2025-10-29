@@ -5,7 +5,8 @@ const {
   getParentProfile,
   getParentChildren,
   getChildDetails,
-  getChildVaccinationSchedule
+  getChildVaccinationSchedule,
+  getChildImmunizationDetails
 } = require('../controllers/parentController');
 
 // Apply auth middleware to all routes
@@ -23,5 +24,8 @@ router.get('/children/:childId', getChildDetails);
 
 // GET /api/parent/children/:childId/schedule - Get child's vaccination schedule
 router.get('/children/:childId/schedule', getChildVaccinationSchedule);
+
+// GET /api/parent/children/:childId/immunizations/:immunizationId - Get immunization details
+router.get('/children/:childId/immunizations/:immunizationId', getChildImmunizationDetails);
 
 module.exports = router;

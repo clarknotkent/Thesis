@@ -122,10 +122,10 @@ const handleLogin = async () => {
     const role = (user.role || '').toLowerCase()
     if (role === 'admin') {
       router.push('/admin/dashboard')
-    } else if (role === 'healthstaff' || role === 'health-worker') {
+    } else if (role === 'healthworker' || role === 'health-worker' || role === 'healthstaff') {
       router.push('/healthworker/dashboard')
-    } else if (role === 'guardian') {
-      router.push('/parent/dashboard')
+    } else if (role === 'guardian' || role === 'parent') {
+      router.push('/parent/home')
     } else {
       throw new Error('Unknown user role. Please contact support.')
     }

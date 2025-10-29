@@ -1,5 +1,5 @@
 <template>
-  <HealthWorkerLayout :show-controls="false">
+  <ParentLayout title="Vaccine Details">
     <!-- Fixed Header Section -->
     <div class="vaccine-details-header-section">
       <div class="header-bar">
@@ -7,9 +7,8 @@
           <i class="bi bi-chevron-left"></i>
         </button>
         <h1 class="page-title">{{ vaccineName }}</h1>
-        <button class="menu-button">
-          <i class="bi bi-three-dots-vertical"></i>
-        </button>
+        <!-- Removed menu button for read-only -->
+        <div class="header-spacer"></div>
       </div>
     </div>
 
@@ -37,10 +36,6 @@
             <div class="detail-item">
               <span class="detail-label">Disease Prevented</span>
               <span class="detail-value">{{ allDoses[0].disease_prevented || allDoses[0].diseasePrevented || '—' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Patient</span>
-              <span class="detail-value">{{ patientName }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Total Doses Administered</span>
@@ -117,13 +112,13 @@
         </button>
       </div>
     </div>
-  </HealthWorkerLayout>
+  </ParentLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
+import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import api from '@/services/api'
 
 const router = useRouter()
@@ -131,7 +126,6 @@ const route = useRoute()
 
 const allDoses = ref([])
 const loading = ref(true)
-const patientName = ref('')
 
 const vaccineName = computed(() => {
   return route.query.vaccine || '—'
@@ -197,31 +191,45 @@ const fetchVaccineDetails = async () => {
     const patientId = route.params.patientId
     const vaccine = route.query.vaccine
     
+    console.log('Fetching vaccine details:', { patientId, vaccine })
+    
     if (!vaccine) {
       console.error('No vaccine name provided in query parameter')
       allDoses.value = []
       return
     }
     
-    // Fetch patient data
-    const patientResponse = await api.get(`/patients/${patientId}`)
-    const patientData = patientResponse.data?.data || patientResponse.data
-    patientName.value = `${patientData.firstname || ''} ${patientData.middlename || ''} ${patientData.surname || ''}`.trim()
+    // Fetch patient data from parent endpoint
+    const response = await api.get(`/parent/children/${patientId}`)
+    const childData = response.data?.data || response.data
+    
+    console.log('Child data received:', childData)
     
     // Extract vaccination history
-    const vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || []
+    const vax = childData.vaccinationHistory || childData.vaccination_history || childData.immunizations || []
+    
+    console.log('Vaccination history:', vax)
+    console.log('Looking for vaccine:', vaccine)
     
     // Filter for the specific vaccine
     const vaccineRecords = Array.isArray(vax) ? vax.filter(v => {
       const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
+      console.log('Comparing:', vName, '===', vaccine, '?', vName === vaccine)
       return vName === vaccine
     }) : []
+    
+    console.log('Filtered vaccine records:', vaccineRecords)
     
     // Store all doses
     allDoses.value = vaccineRecords
     
   } catch (error) {
     console.error('Error fetching vaccine details:', error)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
     allDoses.value = []
   } finally {
     loading.value = false
@@ -253,8 +261,7 @@ onMounted(() => {
   height: 57px;
 }
 
-.back-button,
-.menu-button {
+.back-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,13 +276,11 @@ onMounted(() => {
   transition: background 0.2s;
 }
 
-.back-button:hover,
-.menu-button:hover {
+.back-button:hover {
   background: #f3f4f6;
 }
 
-.back-button:active,
-.menu-button:active {
+.back-button:active {
   background: #e5e7eb;
 }
 
@@ -286,15 +291,21 @@ onMounted(() => {
   margin: 0;
   flex: 1;
   text-align: center;
-  padding: 0 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-spacer {
+  width: 40px; /* Same as back button for centering */
 }
 
 /* Page Content */
 .page-content-wrapper {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.25rem;
-  padding-bottom: 100px; /* Scroll fix for bottom navbar */
+  padding: 20px;
+  padding-bottom: 100px;
+  min-height: 100%;
+  background: #f3f4f6;
 }
 
 .vaccine-content {
@@ -303,12 +314,12 @@ onMounted(() => {
   gap: 1.25rem;
 }
 
-/* Info Card */
+/* Info Cards */
 .info-card {
   background: #ffffff;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 1rem;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
@@ -317,6 +328,7 @@ onMounted(() => {
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   color: #ffffff;
+  font-weight: 600;
 }
 
 .card-header.primary {
@@ -324,12 +336,12 @@ onMounted(() => {
 }
 
 .card-header.info {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
   position: relative;
 }
 
 .card-header.warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
 }
 
 .card-header i {
@@ -337,10 +349,9 @@ onMounted(() => {
 }
 
 .card-header h2 {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.0625rem;
   margin: 0;
-  line-height: 1.4;
+  font-weight: 600;
   flex: 1;
 }
 
@@ -355,20 +366,25 @@ onMounted(() => {
 }
 
 .card-body {
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
+/* Detail Items */
 .detail-item {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
-  padding: 0.75rem 0;
+  padding-bottom: 1rem;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .detail-item:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
 .detail-item.remarks-item {
@@ -376,33 +392,28 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
+.detail-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 140px;
+}
+
+.detail-value {
+  font-size: 0.875rem;
+  color: #1f2937;
+  font-weight: 600;
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
 .remarks-item .detail-value {
   text-align: left;
   font-weight: 400;
   font-style: italic;
   color: #6b7280;
-}
-
-.detail-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-
-.detail-value {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: #111827;
-  text-align: right;
-  word-break: break-word;
-}
-
-.remarks-text {
-  font-size: 0.875rem;
-  color: #4b5563;
-  line-height: 1.6;
-  margin: 0;
 }
 
 /* Badges */
@@ -427,26 +438,11 @@ onMounted(() => {
   font-family: 'Courier New', monospace;
 }
 
-.location-badge {
-  display: inline-block;
-  padding: 0.375rem 0.75rem;
-  background: #d1fae5;
-  color: #065f46;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.location-badge.outside {
-  background: #fef3c7;
-  color: #92400e;
-}
-
 .status-badge {
   display: inline-block;
   padding: 0.375rem 0.75rem;
   border-radius: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
 }
@@ -471,6 +467,30 @@ onMounted(() => {
   color: #374151;
 }
 
+.location-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.location-badge.outside {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Remarks Text */
+.remarks-text {
+  font-size: 0.9375rem;
+  color: #1f2937;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
 /* Loading State */
 .loading-state {
   display: flex;
@@ -478,27 +498,28 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
+  gap: 1rem;
 }
 
-.spinner {
+.loading-state .spinner {
   width: 48px;
   height: 48px;
   border: 4px solid #e5e7eb;
   border-top-color: #007bff;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1s linear infinite;
+}
+
+.loading-state p {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
-}
-
-.loading-state p {
-  margin-top: 1rem;
-  font-size: 0.9375rem;
-  color: #6b7280;
 }
 
 /* Error State */
@@ -508,18 +529,19 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
+  text-align: center;
+  gap: 1rem;
 }
 
 .error-icon {
   font-size: 4rem;
   color: #ef4444;
-  margin-bottom: 1rem;
 }
 
 .error-text {
   font-size: 1rem;
   color: #6b7280;
-  margin-bottom: 1.5rem;
+  margin: 0;
 }
 
 .retry-button {
@@ -531,26 +553,35 @@ onMounted(() => {
   color: #ffffff;
   border: none;
   border-radius: 0.5rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .retry-button:hover {
   background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
 }
 
-.retry-button:active {
-  transform: translateY(0);
+.retry-button i {
+  font-size: 1rem;
 }
 
 /* Mobile Optimizations */
 @media (max-width: 576px) {
   .page-content-wrapper {
     padding: 1rem;
+    padding-bottom: 100px;
+  }
+
+  .page-title {
+    font-size: 1rem;
+  }
+
+  .back-button {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
   }
 
   .card-header {
@@ -558,26 +589,25 @@ onMounted(() => {
   }
 
   .card-header h2 {
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 
   .card-body {
-    padding: 1rem 1.25rem;
+    padding: 1rem;
   }
 
   .detail-item {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.375rem;
-    padding: 0.625rem 0;
+    gap: 0.5rem;
   }
 
   .detail-label {
     font-size: 0.8125rem;
+    min-width: 0;
   }
 
   .detail-value {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     text-align: left;
   }
 }
