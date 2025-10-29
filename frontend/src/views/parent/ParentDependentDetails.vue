@@ -1,5 +1,5 @@
 <template>
-  <HealthWorkerLayout :show-controls="false">
+  <ParentLayout title="Child's Records">
     <!-- Fixed Header Section: Details Header + Tabs (positioned sticky) -->
     <div class="patient-details-header-section">
       <!-- Patient Details Header Bar -->
@@ -7,10 +7,9 @@
         <button class="back-button" @click="goBack">
           <i class="bi bi-chevron-left"></i>
         </button>
-        <h1 class="page-title">Patient Details</h1>
-        <button class="add-button" @click="goToAddImmunization">
-          <i class="bi bi-plus-lg"></i>
-        </button>
+        <h1 class="page-title">Health Records</h1>
+        <!-- Removed add button for read-only -->
+        <div class="header-spacer"></div>
       </div>
 
       <!-- Tab Navigation -->
@@ -26,7 +25,7 @@
       </div>
     </div>
 
-    <!-- Content wrapper (same pattern as PatientRecords) -->
+    <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Patient Information Tab -->
       <div v-if="activeTab === 'patient-info'" class="tab-content">
@@ -78,14 +77,6 @@
               <span class="info-value">{{ patient?.health_center || '—' }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Phone Number</span>
-              <span class="info-value">{{ patient?.childInfo?.phoneNumber || '—' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Tags</span>
-              <span class="info-value">{{ patient?.tags || '—' }}</span>
-            </div>
-            <div class="info-item">
               <span class="info-label">Date Registered</span>
               <span class="info-value">{{ formattedRegisteredDate }}</span>
             </div>
@@ -111,10 +102,6 @@
             <div class="info-item">
               <span class="info-label">Guardian Contact</span>
               <span class="info-value">{{ patient?.guardianInfo?.contact_number || '—' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Family Number</span>
-              <span class="info-value">{{ patient?.guardianInfo?.family_number || '—' }}</span>
             </div>
             <div class="info-section-header">
               <i class="bi bi-person-heart"></i>
@@ -188,10 +175,6 @@
               <span class="info-value">{{ patient?.birthHistory?.type_of_delivery || '—' }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Ballard's Score</span>
-              <span class="info-value">{{ patient?.birthHistory?.ballards_score || '—' }}</span>
-            </div>
-            <div class="info-item">
               <span class="info-label">Hearing Test Date</span>
               <span class="info-value">{{ formattedHearingTestDate }}</span>
             </div>
@@ -218,14 +201,13 @@
 
         <!-- Vaccination Accordion List -->
         <div v-else-if="groupedVaccinations.length > 0" class="vaccination-accordion-list">
-          <VaccinationRecordCard
+          <ParentVaccinationRecordCard
             v-for="(group, index) in groupedVaccinations"
             :key="group.vaccineName"
             :vaccine-name="group.vaccineName"
             :doses="group.doses"
             :initial-expanded="index === 0"
-            @view="viewVaccination"
-            @edit="editVaccination"
+            :patient-id="patient.id"
           />
         </div>
 
@@ -233,29 +215,7 @@
         <div v-else class="empty-state">
           <i class="bi bi-shield-exclamation empty-icon"></i>
           <h4 class="empty-title">No Vaccination Records</h4>
-          <p class="empty-text">This patient has no vaccination history yet.</p>
-        </div>
-      </div>
-
-      <!-- Scheduled Vaccinations Tab -->
-      <div v-else-if="activeTab === 'scheduled-vaccinations'" class="tab-content">
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading scheduled vaccinations...</p>
-        </div>
-        <div v-else-if="scheduledVaccinations.length === 0" class="empty-state">
-          <i class="bi bi-calendar-check empty-icon"></i>
-          <p class="empty-text">No scheduled vaccinations found</p>
-        </div>
-        <div v-else class="vaccines-list">
-          <ScheduledVaccineCard
-            v-for="(vaccine, index) in scheduledVaccinations"
-            :key="vaccine.schedule_id || index"
-            :vaccine-name="vaccine.vaccine_name || vaccine.antigen_name || vaccine.vaccineName || 'Unknown Vaccine'"
-            :dose="vaccine.dose_number || vaccine.dose"
-            :scheduled-date="vaccine.scheduled_date"
-            :status="vaccine.status"
-          />
+          <p class="empty-text">This child has no vaccination history yet.</p>
         </div>
       </div>
 
@@ -270,7 +230,7 @@
           <p class="empty-text">No medical history found</p>
         </div>
         <div v-else class="history-list">
-          <MedicalHistoryCard
+          <ParentMedicalHistoryCard
             v-for="(visit, index) in medicalHistory"
             :key="visit.visit_id || index"
             :visit-id="visit.visit_id"
@@ -288,23 +248,22 @@
             :immunizations="visit.immunizations || []"
             :findings="visit.findings"
             :initial-expanded="index === 0"
-            @navigate="navigateToVisitSummary"
+            :patient-id="patient.id"
           />
         </div>
       </div>
     </div>
-  </HealthWorkerLayout>
+  </ParentLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
+import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
-import VaccinationRecordCard from '@/features/health-worker/patients/components/VaccinationRecordCard.vue'
-import ScheduledVaccineCard from '@/features/health-worker/patients/components/ScheduledVaccineCard.vue'
-import MedicalHistoryCard from '@/features/health-worker/patients/components/MedicalHistoryCard.vue'
+import ParentVaccinationRecordCard from '@/components/parent/ParentVaccinationRecordCard.vue'
+import ParentMedicalHistoryCard from '@/components/parent/ParentMedicalHistoryCard.vue'
 import api from '@/services/api'
 
 const router = useRouter()
@@ -312,7 +271,6 @@ const route = useRoute()
 
 const patient = ref(null)
 const vaccinationHistory = ref([])
-const scheduledVaccinations = ref([])
 const medicalHistory = ref([])
 const loading = ref(true)
 const activeTab = ref('patient-info')
@@ -320,7 +278,6 @@ const activeTab = ref('patient-info')
 const tabs = [
   { id: 'patient-info', label: 'Patient Information' },
   { id: 'vaccination-history', label: 'Vaccination History' },
-  { id: 'scheduled-vaccinations', label: 'Scheduled Vaccinations' },
   { id: 'medical-history', label: 'Medical History' }
 ]
 
@@ -426,62 +383,7 @@ const groupedVaccinations = computed(() => {
 })
 
 const goBack = () => {
-  router.push('/healthworker/patients')
-}
-
-const goToAddImmunization = () => {
-  router.push({
-    name: 'AddPatientImmunizationRecord',
-    params: {
-      patientId: route.params.id
-    }
-  })
-}
-
-const viewVaccination = (group) => {
-  // Navigate to VaccineRecordDetails page with vaccine name as query parameter
-  router.push({
-    name: 'VaccineRecordDetails',
-    params: {
-      patientId: route.params.id
-    },
-    query: {
-      vaccine: group.vaccineName
-    }
-  })
-}
-
-const editVaccination = (group) => {
-  // Navigate to edit page for the first dose (or could show a modal to select which dose to edit)
-  console.log('Edit vaccination group:', group)
-  
-  if (!group.doses || group.doses.length === 0) {
-    alert('No doses found to edit')
-    return
-  }
-  
-  // For now, edit the first dose (could be enhanced to show a selection modal)
-  const firstDose = group.doses[0]
-  const recordId = firstDose.immunization_id || firstDose.id
-  
-  if (!recordId) {
-    alert('Cannot edit: Record ID not found')
-    return
-  }
-  
-  router.push({
-    name: 'EditVaccinationRecord',
-    params: {
-      patientId: route.params.id,
-      recordId: recordId
-    }
-  })
-}
-
-const editScheduledVaccination = (vaccine) => {
-  // TODO: Implement edit scheduled vaccination modal
-  console.log('Edit scheduled vaccination:', vaccine)
-  alert(`Edit scheduled vaccination: ${vaccine.vaccine_name || vaccine.antigen_name || 'Unknown'}`)
+  router.push('/parent/records')
 }
 
 const fetchPatientDetails = async () => {
@@ -534,9 +436,6 @@ const fetchPatientDetails = async () => {
     // Store vaccination history
     vaccinationHistory.value = data.vaccinationHistory || []
     
-    // Store scheduled vaccinations
-    scheduledVaccinations.value = data.nextScheduledVaccinations || []
-    
     // Fetch medical history (visits)
     await fetchMedicalHistory(patientId)
   } catch (error) {
@@ -555,11 +454,6 @@ const fetchMedicalHistory = async (patientId) => {
     console.error('Error fetching medical history:', error)
     medicalHistory.value = []
   }
-}
-
-const navigateToVisitSummary = (visitId) => {
-  const patientId = route.params.id
-  router.push(`/healthworker/patients/${patientId}/visit/${visitId}`)
 }
 
 onMounted(() => {
@@ -617,26 +511,8 @@ onMounted(() => {
   margin: 0;
 }
 
-.add-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: none;
-  color: #374151;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-}
-
-.add-button:hover {
-  background: #f3f4f6;
-}
-
-.add-button i {
-  font-size: 1.25rem;
+.header-spacer {
+  width: 36px; /* Same width as back button for centering */
 }
 
 /* Tab Navigation */
@@ -679,7 +555,7 @@ onMounted(() => {
   background: #f0f7ff;
 }
 
-/* Page Content Wrapper (same as PatientRecords) */
+/* Page Content Wrapper */
 .page-content-wrapper {
   padding: 20px;
   padding-bottom: 100px;
@@ -744,27 +620,6 @@ onMounted(() => {
 .info-section-header i {
   font-size: 1.125rem;
   color: #007bff;
-}
-
-.placeholder-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.placeholder-icon {
-  font-size: 4rem;
-  color: #d1d5db;
-  margin-bottom: 1rem;
-}
-
-.placeholder-text {
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0;
 }
 
 /* Vaccination Accordion List */
@@ -876,8 +731,7 @@ onMounted(() => {
     font-size: 1rem;
   }
   
-  .back-button,
-  .add-button {
+  .back-button {
     width: 32px;
     height: 32px;
     font-size: 1.125rem;

@@ -177,8 +177,8 @@ const getChildDetails = async (req, res) => {
       .eq('is_deleted', false)
       .single();
 
-    // Get recent vaccinations
-    const { data: vaccinations } = await supabase
+    // Get recent vaccinations (for summary)
+    const { data: recentVaccinations } = await supabase
       .from('immunizations')
       .select(`
         *,
@@ -195,6 +195,19 @@ const getChildDetails = async (req, res) => {
       .eq('is_deleted', false)
       .order('administered_date', { ascending: false })
       .limit(10);
+
+    // Get full vaccination history (for vaccine details page)
+    const { data: allVaccinations, error: vaccinationError } = await supabase
+      .from('immunizationhistory_view')
+      .select('*')
+      .eq('patient_id', childId)
+      .order('administered_date', { ascending: false });
+
+    if (vaccinationError) {
+      console.error('Error fetching vaccination history:', vaccinationError);
+    }
+    
+    console.log('All vaccinations for child', childId, ':', allVaccinations);
 
     // Calculate age
     const dob = new Date(patient.date_of_birth);
@@ -218,7 +231,8 @@ const getChildDetails = async (req, res) => {
       conditions: patient.medical_conditions || [],
       medications: patient.current_medications || [],
       barangay: patient.barangay,
-      recentVaccinations: vaccinations?.map(v => ({
+      vaccinationHistory: allVaccinations || [],
+      recentVaccinations: recentVaccinations?.map(v => ({
         id: v.immunization_id,
         name: `${v.vaccinemaster?.antigen_name || 'Unknown Vaccine'} (${v.dose_number})`,
         date: v.administered_date,
@@ -377,9 +391,84 @@ const getRecommendedAge = (doseNumber, category) => {
   return ageMappings[doseNumber] || `${doseNumber} months+`;
 };
 
+// Get immunization details for parent's child
+const getChildImmunizationDetails = async (req, res) => {
+  try {
+    const { childId, immunizationId } = req.params;
+    const userId = req.user.user_id;
+
+    // Verify the child belongs to this parent
+    const { data: patient, error: patientError } = await supabase
+      .from('patients')
+      .select(`
+        patient_id,
+        guardians!inner (
+          guardian_id,
+          user_id
+        )
+      `)
+      .eq('patient_id', childId)
+      .eq('is_deleted', false)
+      .eq('guardians.user_id', userId)
+      .single();
+
+    if (patientError || !patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Child not found or access denied'
+      });
+    }
+
+    // Get immunization details
+    const { data: immunization, error: immunizationError } = await supabase
+      .from('immunizations')
+      .select(`
+        *,
+        vaccinemaster (
+          vaccine_id,
+          antigen_name,
+          brand_name,
+          description
+        ),
+        users!immunizations_administered_by_fkey (
+          full_name
+        ),
+        inventory (
+          batch_number,
+          expiry_date
+        )
+      `)
+      .eq('immunization_id', immunizationId)
+      .eq('patient_id', childId)
+      .eq('is_deleted', false)
+      .single();
+
+    if (immunizationError || !immunization) {
+      return res.status(404).json({
+        success: false,
+        message: 'Immunization record not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: immunization
+    });
+
+  } catch (error) {
+    console.error('Error fetching child immunization details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching immunization details',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getParentProfile,
   getParentChildren,
   getChildDetails,
-  getChildVaccinationSchedule
+  getChildVaccinationSchedule,
+  getChildImmunizationDetails
 };

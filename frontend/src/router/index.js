@@ -41,6 +41,7 @@ import HealthWorkerNotifications from '@/views/healthworker/Notifications.vue'
 import HealthWorkerMenu from '@/views/healthworker/Menu.vue'
 
 // Parent Views
+import ParentHome from '@/views/parent/ParentHome.vue'
 import ParentDashboard from '@/views/parent/ParentDashboard.vue'
 import ChildInfo from '@/views/parent/ChildInfo.vue'
 import VaccinationSchedule from '@/views/parent/VaccinationSchedule.vue'
@@ -575,7 +576,7 @@ const routes = [
     }
   },
   {
-    path: '/healthworker/patients/:patientId/vaccine/:immunizationId',
+    path: '/healthworker/patients/:patientId/vaccine-details',
     name: 'VaccineRecordDetails',
     component: VaccineRecordDetails,
     meta: {
@@ -666,24 +667,125 @@ const routes = [
   },
   // Parent Routes
   {
+    path: '/parent/home',
+    name: 'ParentHome',
+    component: ParentHome,
+    meta: {
+      title: 'My Health Portal - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
     path: '/parent/dashboard',
     name: 'ParentDashboard',
-    component: ParentDashboard,
+    redirect: '/parent/home', // Redirect old dashboard to new home
     meta: {
       title: 'Parent Dashboard - ImmunizeMe',
       requiresAuth: true,
       role: 'parent'
     }
   },
-    {
-      path: '/faqs',
-      name: 'PublicFAQs',
-      component: () => import('@/views/PublicFAQs.vue'),
-      meta: {
-        title: 'FAQs - ImmunizeMe',
-        requiresAuth: false
-      }
-    },
+  {
+    path: '/parent/records',
+    name: 'ParentRecords',
+    component: () => import('@/views/parent/ParentRecords.vue'),
+    meta: {
+      title: 'Records - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/records/:id',
+    name: 'ParentDependentDetails',
+    component: () => import('@/views/parent/ParentDependentDetails.vue'),
+    meta: {
+      title: 'Dependent Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/records/:patientId/vaccine-details',
+    name: 'ParentVaccineRecordDetails',
+    component: () => import('@/views/parent/ParentVaccineRecordDetails.vue'),
+    meta: {
+      title: 'Vaccine Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/records/:patientId/visit/:visitId',
+    name: 'ParentVisitSummary',
+    component: () => import('@/views/parent/ParentVisitSummary.vue'),
+    meta: {
+      title: 'Visit Summary - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/schedule',
+    name: 'ParentSchedule',
+    component: () => import('@/views/parent/ParentSchedule.vue'),
+    meta: {
+      title: 'Schedule - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/schedule/:id',
+    name: 'DependentScheduleDetails',
+    component: () => import('@/views/parent/DependentScheduleDetails.vue'),
+    meta: {
+      title: 'Schedule - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/dependent/:id',
+    name: 'DependentDetails',
+    component: ChildInfo, // Reuse existing ChildInfo component for now
+    meta: {
+      title: 'Dependent Details - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/profile',
+    name: 'ParentProfile',
+    component: () => import('@/views/parent/ParentProfile.vue'),
+    meta: {
+      title: 'My Profile - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/notifications',
+    name: 'ParentNotifications',
+    component: () => import('@/views/parent/ParentNotifications.vue'),
+    meta: {
+      title: 'Notifications - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
+    path: '/parent/messages',
+    name: 'ParentMessages',
+    component: () => import('@/views/parent/ParentMessages.vue'),
+    meta: {
+      title: 'Messages - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
   {
     path: '/parent/child-info/:childId',
     name: 'ChildInfo',
@@ -733,11 +835,16 @@ router.beforeEach((to, from, next) => {
   // Accept both legacy 'healthworker' and new 'health_staff' role keys
   const normalizedRole = role === 'health_staff' ? 'healthworker' : role
   const normalizedRequired = requiredRole === 'health_staff' ? 'healthworker' : requiredRole
-  if (normalizedRequired && normalizedRole && normalizedRole !== normalizedRequired) {
+  
+  // Normalize guardian/parent role
+  const effectiveRole = normalizedRole === 'guardian' ? 'parent' : normalizedRole
+  const effectiveRequired = normalizedRequired === 'guardian' ? 'parent' : normalizedRequired
+  
+  if (effectiveRequired && effectiveRole && effectiveRole !== effectiveRequired) {
     // Redirect to role-appropriate dashboard
     if (role === 'admin') return next('/admin/dashboard')
     if (role === 'healthworker' || role === 'health-worker' || role === 'health_staff') return next('/healthworker/dashboard')
-    if (role === 'parent') return next('/parent/dashboard')
+    if (role === 'parent' || role === 'guardian') return next('/parent/home')
   }
   next()
 })

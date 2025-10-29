@@ -22,7 +22,7 @@
     <transition name="expand">
       <div v-show="isExpanded" class="card-body">
         <div class="dose-list">
-          <div 
+          <div
             v-for="(dose, index) in doses" 
             :key="dose.immunization_id || index"
             class="dose-item"
@@ -68,30 +68,19 @@
               </div>
             </div>
 
-            <!-- Dose Actions -->
-            <div class="dose-actions" v-if="false">
-              <!-- Hidden - actions moved to bottom -->
-            </div>
-
             <!-- Divider (not on last item) -->
             <div v-if="index < doses.length - 1" class="dose-divider"></div>
           </div>
         </div>
         
-        <!-- Action Buttons for All Doses -->
-        <div class="card-actions">
-          <button class="action-btn-full view-btn-full" @click="$emit('view', { vaccineName, doses })">
-            <i class="bi bi-eye"></i>
-            View Full Details
-          </button>
-          <button 
-            class="action-btn-full edit-btn-full"
-            @click="$emit('edit', { vaccineName, doses })"
-          >
-            <i class="bi bi-pencil"></i>
-            Edit All Doses
-          </button>
-        </div>
+        <!-- View Full Details Button -->
+        <router-link
+          :to="`/parent/records/${patientId}/vaccine-details?vaccine=${encodeURIComponent(vaccineName)}`"
+          class="view-all-button"
+        >
+          <span>View Full Vaccine Details</span>
+          <i class="bi bi-arrow-right"></i>
+        </router-link>
       </div>
     </transition>
   </div>
@@ -100,7 +89,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-// View and Edit buttons included for each dose
 const props = defineProps({
   vaccineName: {
     type: String,
@@ -113,10 +101,12 @@ const props = defineProps({
   initialExpanded: {
     type: Boolean,
     default: false
+  },
+  patientId: {
+    type: [String, Number],
+    required: true
   }
 })
-
-defineEmits(['view', 'edit'])
 
 const isExpanded = ref(props.initialExpanded)
 
@@ -179,11 +169,6 @@ const getAdministeredBy = (dose) => {
          dose.workerName ||
          dose.recorded_by_name ||
          'Taken Outside'
-}
-
-const isOutsideRecord = (dose) => {
-  const adminBy = getAdministeredBy(dose).toLowerCase()
-  return adminBy.includes('outside') || adminBy.includes('taken outside')
 }
 
 const formatDate = (date) => {
@@ -406,126 +391,43 @@ const formatDate = (date) => {
   font-size: 0.8125rem;
 }
 
-/* Dose Actions */
-.dose-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.action-btn {
-  flex: 1;
+/* View All Button */
+.view-all-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn i {
-  font-size: 0.9375rem;
-}
-
-.view-btn {
-  background: #007bff;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  margin: 1rem 1.5rem 0.5rem;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border-radius: 0.75rem;
   color: #ffffff;
-}
-
-.view-btn:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
-}
-
-.view-btn:active {
-  transform: translateY(0);
-}
-
-.edit-btn {
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.edit-btn:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.edit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.edit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Card Actions - Full Width Buttons */
-.card-actions {
-  display: flex;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem 1rem;
-}
-
-.action-btn-full {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.25rem;
-  border: none;
-  border-radius: 0.625rem;
   font-size: 0.9375rem;
   font-weight: 600;
-  cursor: pointer;
+  text-decoration: none;
   transition: all 0.2s ease;
-}
-
-.action-btn-full i {
-  font-size: 1rem;
-}
-
-.view-btn-full {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-  color: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
 
-.view-btn-full:hover {
+.view-all-button:hover {
   background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+  transform: translateY(-1px);
+  color: #ffffff;
+  text-decoration: none;
 }
 
-.view-btn-full:active {
+.view-all-button:active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
 }
 
-.edit-btn-full {
-  background: #ffffff;
-  color: #374151;
-  border: 2px solid #d1d5db;
+.view-all-button i {
+  font-size: 1.125rem;
+  transition: transform 0.2s ease;
 }
 
-.edit-btn-full:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.edit-btn-full:active {
-  transform: translateY(0);
+.view-all-button:hover i {
+  transform: translateX(4px);
 }
 
 /* Dose Divider */
@@ -539,7 +441,7 @@ const formatDate = (date) => {
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.3s ease;
-  max-height: 2000px;
+  max-height: 3000px;
 }
 
 .expand-enter-from,
@@ -605,17 +507,9 @@ const formatDate = (date) => {
     text-align: left;
   }
 
-  .dose-actions {
-    gap: 0.625rem;
-  }
-
-  .action-btn {
+  .view-indicator {
     padding: 0.625rem 0.875rem;
     font-size: 0.8125rem;
-  }
-
-  .action-btn i {
-    font-size: 0.875rem;
   }
 }
 </style>
