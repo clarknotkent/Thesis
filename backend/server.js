@@ -34,6 +34,8 @@ const receivingReportRoutes = require('./routes/receivingReportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const faqRoutes = require('./routes/faqRoutes');
 const qrRoutes = require('./routes/qrRoutes');
+// Start background workers
+const smsScheduler = require('./services/smsScheduler');
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
@@ -76,6 +78,12 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  // Initialize background scheduler after server starts
+  try {
+    smsScheduler.start();
+  } catch (e) {
+    console.error('Failed to start SMS scheduler:', e);
+  }
 });
 
 // Capture uncaught errors at process level

@@ -25,9 +25,7 @@
       <div class="col-md-2">
         <select class="form-select form-select-sm" v-model="filterType">
           <option value="">Type: All</option>
-          <option value="1-week">1 Week</option>
-          <option value="3-days">3 Days</option>
-          <option value="1-day">1 Day</option>
+          <option v-for="tt in TRIGGER_TYPES" :key="tt.value" :value="tt.value">{{ tt.label }}</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -41,7 +39,7 @@
         <input type="date" class="form-control form-control-sm" placeholder="Date">
       </div>
       <div class="col-md-3 text-end">
-        <button class="btn btn-outline-primary btn-sm me-2">
+        <button class="btn btn-outline-primary btn-sm me-2" @click="fetchTemplates">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
         </button>
         <button class="btn btn-warning btn-sm" @click="createNewTemplate">
@@ -65,34 +63,19 @@
                       {{ formatTriggerType(template.trigger_type) }}
                     </span>
                   </div>
-                  <div class="dropdown">
-                    <button 
-                      class="btn btn-sm btn-ghost" 
-                      data-bs-toggle="dropdown"
-                    >
-                      <i class="bi bi-three-dots-vertical"></i>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary" @click="viewTemplate(template)" title="View">
+                      <i class="bi bi-eye"></i>
                     </button>
-                    <ul class="dropdown-menu">
-                      <li>
-                        <a class="dropdown-item" @click="editTemplate(template)">
-                          <i class="bi bi-pencil me-2"></i>Edit
-                        </a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" @click="duplicateTemplate(template)">
-                          <i class="bi bi-files me-2"></i>Duplicate
-                        </a>
-                      </li>
-                      <li><hr class="dropdown-divider"></li>
-                      <li>
-                        <a 
-                          class="dropdown-item text-danger" 
-                          @click="deleteTemplate(template)"
-                        >
-                          <i class="bi bi-trash me-2"></i>Delete
-                        </a>
-                      </li>
-                    </ul>
+                    <button class="btn btn-sm btn-outline-secondary" @click="editTemplate(template)" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @click="duplicateTemplate(template)" title="Duplicate">
+                      <i class="bi bi-files"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" @click="deleteTemplate(template)" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -100,7 +83,7 @@
                 
                 <div class="template-preview bg-light rounded p-3 mb-3" style="min-height: 100px;">
                   <small class="text-muted d-block mb-2">Preview:</small>
-                  <small class="font-monospace">{{ template.preview }}</small>
+                  <small class="font-monospace">{{ getCardPreview(template) }}</small>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center">
@@ -172,9 +155,7 @@
                 <label class="form-label">Trigger Type</label>
                 <select class="form-select" v-model="editingTemplate.trigger_type" required>
                   <option value="">Select trigger...</option>
-                  <option value="1-week">1 Week Before</option>
-                  <option value="3-days">3 Days Before</option>
-                  <option value="1-day">1 Day Before</option>
+                  <option v-for="tt in TRIGGER_TYPES" :key="tt.value" :value="tt.value">{{ tt.label }}</option>
                 </select>
               </div>
 
@@ -249,6 +230,50 @@
         </div>
       </div>
     </div>
+
+    <!-- Viewer Modal -->
+    <div class="modal fade" id="templateViewerModal" tabindex="-1" ref="viewerModal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-eye me-2"></i>View Template</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" v-if="viewingTemplate">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="text-muted small mb-1">Name</label>
+                <div class="fw-semibold">{{ viewingTemplate.name }}</div>
+              </div>
+              <div class="col-md-3">
+                <label class="text-muted small mb-1">Trigger</label>
+                <div><span class="badge" :class="getTypeBadgeClass(viewingTemplate.trigger_type)">{{ formatTriggerType(viewingTemplate.trigger_type) }}</span></div>
+              </div>
+              <div class="col-md-3">
+                <label class="text-muted small mb-1">Time</label>
+                <div>{{ formatTimeRange(viewingTemplate.time_range) }}</div>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="text-muted small mb-1">Template</label>
+              <div class="border rounded bg-light p-3">
+                <pre class="mb-0" style="white-space: pre-wrap;">{{ viewingTemplate.template }}</pre>
+              </div>
+              <small class="text-muted">{{ (viewingTemplate.template || '').length }} characters</small>
+            </div>
+            <div class="alert alert-info mt-3">
+              <small>
+                <strong>Variables:</strong> {greeting_time}, {guardian_title}, {guardian_name}, {guardian_first_name}, {guardian_last_name}, {patient_name}, {patient_first_name}, {vaccine_name}, {dose_number}, {appointment_date}, {appointment_time}, {scheduled_date}
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" @click="editFromViewer"><i class="bi bi-pencil me-1"></i>Edit</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -259,6 +284,15 @@ import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
 const { addToast } = useToast()
+
+// Normalized trigger types mapping used across UI
+const TRIGGER_TYPES = [
+  { value: '1-week', label: '1 Week Before' },
+  { value: '3-days', label: '3 Days Before' },
+  { value: '1-day', label: '1 Day Before' },
+  { value: '0-day', label: 'Same Day (0-Day)' },
+  { value: 'manual', label: 'Manual' }
+]
 
 // State
 const searchQuery = ref('')
@@ -277,6 +311,9 @@ const editingTemplate = ref({
 
 const editorModal = ref(null)
 let modalInstance = null
+const viewerModal = ref(null)
+let viewerInstance = null
+const viewingTemplate = ref(null)
 
 // Computed
 const filteredTemplates = computed(() => {
@@ -331,12 +368,8 @@ const previewMessage = computed(() => {
 
 // Methods
 const formatTriggerType = (type) => {
-  const types = {
-    '1-week': '1 Week Before',
-    '3-days': '3 Days Before',
-    '1-day': '1 Day Before'
-  }
-  return types[type] || type
+  const found = TRIGGER_TYPES.find(t => t.value === type)
+  return found ? found.label : String(type || '').toString()
 }
 
 const formatTimeRange = (range) => {
@@ -347,9 +380,36 @@ const getTypeBadgeClass = (type) => {
   const classes = {
     '1-week': 'bg-info',
     '3-days': 'bg-warning',
-    '1-day': 'bg-danger'
+    '1-day': 'bg-danger',
+    '0-day': 'bg-primary',
+    'manual': 'bg-secondary'
   }
   return classes[type] || 'bg-secondary'
+}
+
+const getCardPreview = (t) => {
+  if (!t?.template) return ''
+  const greeting = (t.time_range === 'day') ? 'Good Day' : 'Good Evening'
+  const title = 'Mr.'
+  const guardianName = 'Dela Cruz'
+  const patientName = 'Maria'
+  const scheduledDate = 'October 28, 2025'
+  const vaccineName = 'BCG'
+  const doseNumber = '1'
+  let preview = t.template
+  preview = preview
+    .replaceAll('{greeting}', greeting)
+    .replaceAll('{greeting_time}', greeting)
+    .replaceAll('{title}', title)
+    .replaceAll('{guardian_title}', title)
+    .replaceAll('{guardian_name}', guardianName)
+    .replaceAll('{guardian_last_name}', 'Dela Cruz')
+    .replaceAll('{patient_name}', patientName)
+    .replaceAll('{scheduled_date}', scheduledDate)
+    .replaceAll('{appointment_date}', scheduledDate)
+    .replaceAll('{vaccine_name}', vaccineName)
+    .replaceAll('{dose_number}', doseNumber)
+  return preview
 }
 
 const createNewTemplate = () => {
@@ -366,6 +426,17 @@ const createNewTemplate = () => {
 const editTemplate = (template) => {
   editingTemplate.value = { ...template }
   showModal()
+}
+
+const viewTemplate = (template) => {
+  viewingTemplate.value = { ...template }
+  if (!viewerInstance) viewerInstance = new Modal(viewerModal.value)
+  viewerInstance.show()
+}
+
+const editFromViewer = () => {
+  if (viewerInstance) viewerInstance.hide()
+  if (viewingTemplate.value) editTemplate(viewingTemplate.value)
 }
 
 const duplicateTemplate = (template) => {
@@ -455,10 +526,7 @@ const hideModal = () => {
 const fetchTemplates = async () => {
   try {
     const { data } = await api.get('/sms/templates')
-    templates.value = (data?.data || []).map(t => ({
-      ...t,
-      preview: undefined,
-    }))
+    templates.value = (data?.data || [])
   } catch (err) {
     console.error('Failed to load templates', err)
   }

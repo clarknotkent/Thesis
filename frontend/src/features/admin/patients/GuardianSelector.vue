@@ -7,7 +7,7 @@
       v-model="searchTerm"
       @focus="showDropdown = true"
       @blur="hideDropdown"
-      :placeholder="selectedGuardianName || 'Search and select guardian...'"
+      :placeholder="'Search and select guardian...'"
       :disabled="disabled"
       :required="required"
       autocomplete="off"
@@ -101,7 +101,8 @@ const filteredGuardians = computed(() => {
 
 const selectGuardian = (guardian) => {
   selectedGuardianName.value = guardian.full_name
-  searchTerm.value = ''
+  // Keep the selected name in the input so native required validation passes
+  searchTerm.value = guardian.full_name
   showDropdown.value = false
   
   emit('update:modelValue', guardian.guardian_id)
@@ -120,9 +121,12 @@ watch(() => props.modelValue, (newVal) => {
     const guardian = props.guardians.find(g => g.guardian_id === newVal)
     if (guardian) {
       selectedGuardianName.value = guardian.full_name
+      // Reflect externally selected guardian in the input box value
+      searchTerm.value = guardian.full_name
     }
   } else {
     selectedGuardianName.value = ''
+    searchTerm.value = ''
   }
 }, { immediate: true })
 </script>

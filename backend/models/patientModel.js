@@ -1,4 +1,5 @@
 const serviceSupabase = require('../db');
+const { updateMessagesForPatient } = require('../services/smsReminderService');
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -123,6 +124,214 @@ const patientModel = {
       };
     } catch (error) {
       console.error('Error fetching patients:', error);
+      throw error;
+    }
+  },
+
+  // List recorded parents based on existing patient records' relationship_to_guardian and guardian links
+  // type: 'mother' | 'father'
+  listRecordedParents: async (type = 'mother', client) => {
+    try {
+      const supabase = withClient(client);
+      const rel = (type || 'mother').toString().toLowerCase() === 'father' ? 'Father' : 'Mother';
+      // Get distinct guardian_ids from patients where relationship matches
+      const { data: rows, error: pErr } = await supabase
+        .from('patients')
+        .select('guardian_id')
+        .eq('is_deleted', false)
+        .eq('relationship_to_guardian', rel)
+        .not('guardian_id', 'is', null);
+      if (pErr) throw pErr;
+      const ids = Array.from(new Set((rows || []).map(r => r.guardian_id).filter(Boolean)));
+      if (ids.length === 0) return [];
+
+      // Join guardians -> users to get names, sex, and contact
+      const { data: guardians, error: gErr } = await supabase
+        .from('guardians')
+        .select(`
+          guardian_id,
+          contact_number,
+          occupation,
+          users:users!guardians_user_id_fkey (
+            user_id,
+            firstname,
+            middlename,
+            surname,
+            sex,
+            contact_number
+          )
+        `)
+        .in('guardian_id', ids)
+        .eq('is_deleted', false);
+      if (gErr) throw gErr;
+
+      const preferredSex = rel === 'Mother' ? 'Female' : 'Male';
+      const list = (guardians || []).map(g => {
+        const u = Array.isArray(g.users) ? g.users[0] : g.users;
+        const firstname = u?.firstname || null;
+        const middlename = u?.middlename || null;
+        const surname = u?.surname || null;
+        const name = [firstname, middlename, surname].filter(Boolean).join(' ').trim();
+        return {
+          guardian_id: g.guardian_id,
+          full_name: name,
+          sex: u?.sex || null,
+          contact_number: g.contact_number || u?.contact_number || null,
+          occupation: g.occupation || null,
+        };
+      });
+
+      // Filter by sex if available; otherwise include all
+      const filtered = list.filter(item => {
+        if (!item.sex) return true; // no sex recorded, keep
+        const s = item.sex.toString().trim().toLowerCase();
+        if (preferredSex === 'Female') return s === 'female' || s === 'f' || s.startsWith('f');
+        if (preferredSex === 'Male') return s === 'male' || s === 'm' || s.startsWith('m');
+        return true;
+      });
+      // Sort by name for nicer suggestions
+      filtered.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''));
+      return filtered;
+    } catch (error) {
+      console.error('Error listing recorded parents:', error);
+      throw error;
+    }
+  },
+
+  // Distinct list of parent names from patients table fields (mother_name/father_name)
+  listDistinctParentNames: async (type = 'mother', client) => {
+    try {
+      const supabase = withClient(client);
+      const field = (type || 'mother').toString().toLowerCase() === 'father' ? 'father_name' : 'mother_name';
+      const { data, error } = await supabase
+        .from('patients')
+        .select(field)
+        .neq(field, null)
+        .not(field, 'eq', '')
+        .eq('is_deleted', false)
+        .limit(2000);
+      if (error) throw error;
+      const set = new Set();
+      (data || []).forEach(row => {
+        const v = (row && row[field]) ? String(row[field]).trim() : '';
+        if (v) set.add(v);
+      });
+      return Array.from(set).sort((a,b) => a.localeCompare(b));
+    } catch (error) {
+      console.error('Error listing distinct parent names:', error);
+      throw error;
+    }
+  },
+
+  // Given a parent name on one side, infer the most common co-parent from patients data
+  // type 'mother' => find most common father_name for this mother_name
+  // type 'father' => find most common mother_name for this father_name
+  getCoParentForName: async (type = 'mother', name, client) => {
+    try {
+      if (!name) return null;
+      const supabase = withClient(client);
+      const isMother = (type || 'mother').toString().toLowerCase() === 'mother';
+      const srcField = isMother ? 'mother_name' : 'father_name';
+      const tgtField = isMother ? 'father_name' : 'mother_name';
+      const tgtContactField = isMother ? 'father_contact_number' : 'mother_contact_number';
+      const { data, error } = await supabase
+        .from('patients')
+        .select(`${tgtField}, ${tgtContactField}`)
+        .eq(srcField, name)
+        .neq(tgtField, null)
+        .not(tgtField, 'eq', '')
+        .eq('is_deleted', false)
+        .limit(2000);
+      if (error) throw error;
+      // Count frequency and capture most common contact per name
+      const counts = new Map();
+      const contactCounts = new Map(); // name -> Map(contact->count)
+      (data || []).forEach(row => {
+        const v = row && row[tgtField] ? String(row[tgtField]).trim() : '';
+        if (!v) return;
+        counts.set(v, (counts.get(v) || 0) + 1);
+        const contact = row && row[tgtContactField] ? String(row[tgtContactField]).trim() : '';
+        if (contact) {
+          if (!contactCounts.has(v)) contactCounts.set(v, new Map());
+          const cmap = contactCounts.get(v);
+          cmap.set(contact, (cmap.get(contact) || 0) + 1);
+        }
+      });
+      if (counts.size === 0) return null;
+      // Pick the highest count; if tie, lexicographically smallest
+      let best = null; let bestCount = -1;
+      for (const [k, c] of counts.entries()) {
+        if (c > bestCount || (c === bestCount && (best == null || k.localeCompare(best) < 0))) {
+          best = k; bestCount = c;
+        }
+      }
+      let bestContact = null;
+      if (best && contactCounts.has(best)) {
+        const cmap = contactCounts.get(best);
+        // pick most common contact; if tie choose lexicographically smallest
+        let bc = null; let bcCount = -1;
+        for (const [contact, c] of cmap.entries()) {
+          if (c > bcCount || (c === bcCount && (bc == null || contact.localeCompare(bc) < 0))) {
+            bc = contact; bcCount = c;
+          }
+        }
+        bestContact = bc;
+      }
+      return { name: best, count: bestCount, contact_number: bestContact };
+    } catch (error) {
+      console.error('Error getting co-parent for name:', error);
+      throw error;
+    }
+  },
+
+  // Suggestions of parents with contacts, deduped, from patients table only (no guardians)
+  listParentsWithContacts: async (type = 'mother', client) => {
+    try {
+      const supabase = withClient(client);
+      const isMother = (type || 'mother').toString().toLowerCase() === 'mother';
+      const nameField = isMother ? 'mother_name' : 'father_name';
+      const contactField = isMother ? 'mother_contact_number' : 'father_contact_number';
+      const { data, error } = await supabase
+        .from('patients')
+        .select(`${nameField}, ${contactField}`)
+        .neq(nameField, null)
+        .not(nameField, 'eq', '')
+        .eq('is_deleted', false)
+        .limit(5000);
+      if (error) throw error;
+      // Build a map of name -> contact frequency; prefer most common contact
+      const byName = new Map();
+      (data || []).forEach(row => {
+        const name = row && row[nameField] ? String(row[nameField]).trim() : '';
+        if (!name) return;
+        const contact = row && row[contactField] ? String(row[contactField]).trim() : '';
+        if (!byName.has(name)) byName.set(name, new Map());
+        if (contact) {
+          const cmap = byName.get(name);
+          cmap.set(contact, (cmap.get(contact) || 0) + 1);
+        } else {
+          // Record empty contact presence to ensure the name is included even if no contact recorded
+          const cmap = byName.get(name);
+          cmap.set('', (cmap.get('') || 0) + 1);
+        }
+      });
+      // Create array, picking most common contact
+      const list = [];
+      for (const [name, cmap] of byName.entries()) {
+        let bestContact = '';
+        let bestCount = -1;
+        for (const [contact, c] of cmap.entries()) {
+          if (c > bestCount || (c === bestCount && contact.localeCompare(bestContact) < 0)) {
+            bestContact = contact; bestCount = c;
+          }
+        }
+        list.push({ full_name: name, contact_number: bestContact || null });
+      }
+      // Sort by name
+      list.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''));
+      return list;
+    } catch (error) {
+      console.error('Error listing parents with contacts:', error);
       throw error;
     }
   },
@@ -327,6 +536,20 @@ const patientModel = {
         .single();
 
       if (error) throw error;
+
+      // CASCADE UPDATE: Update SMS messages if patient name changed (NON-BLOCKING)
+      if (patientData.firstname || patientData.lastname || patientData.middlename) {
+        // Run cascade in background without awaiting
+        setImmediate(async () => {
+          try {
+            await updateMessagesForPatient(id, supabase);
+            console.log(`[updatePatient] Successfully cascaded name update for patient ${id}`);
+          } catch (cascadeErr) {
+            console.warn('[patientModel] Failed to cascade patient name update to SMS messages:', cascadeErr?.message || cascadeErr);
+          }
+        });
+      }
+
       return data;
     } catch (error) {
       console.error('Error updating patient:', error);

@@ -45,6 +45,8 @@
           <PatientForm
             :initial-data="{}"
             :guardians="guardians"
+                    :mother-suggestions="motherSuggestions"
+                    :father-suggestions="fatherSuggestions"
             :is-editing="false"
             :submitting="submitting"
             submit-label="Add Patient"
@@ -71,6 +73,8 @@ const { addToast } = useToast()
 const guardians = ref([])
 const loadingGuardians = ref(true)
 const submitting = ref(false)
+const motherSuggestions = ref([])
+const fatherSuggestions = ref([])
 
 const goBack = () => {
   router.back()
@@ -93,6 +97,19 @@ const fetchGuardians = async () => {
   }
 }
 
+const fetchParentSuggestions = async () => {
+  try {
+    const [momsRes, dadsRes] = await Promise.all([
+      api.get('/patients/parents/suggestions', { params: { type: 'mother' } }),
+      api.get('/patients/parents/suggestions', { params: { type: 'father' } })
+    ])
+    motherSuggestions.value = momsRes.data?.data || []
+    fatherSuggestions.value = dadsRes.data?.data || []
+  } catch (error) {
+    console.warn('Failed to fetch parent suggestions (non-blocking):', error?.message || error)
+  }
+}
+
 const convertToISODate = (dateString) => {
   if (!dateString) return null
   const date = new Date(dateString)
@@ -103,25 +120,54 @@ const handleSubmit = async (formData) => {
   try {
     submitting.value = true
 
-    // Validate required fields
-    if (!formData.surname || !formData.firstname || !formData.sex || 
-        !formData.date_of_birth || !formData.mother_name || 
-        !formData.guardian_id || !formData.relationship_to_guardian) {
-      addToast({
-        title: 'Validation Error',
-        message: 'Please fill in all required fields marked with *',
-        type: 'error'
-      })
-      return
-    }
+    // Debug/Validation: collect missing required fields and report clearly
+    const requiredMain = [
+      ['surname', 'Surname'],
+      ['firstname', 'First Name'],
+      ['sex', 'Sex'],
+      ['date_of_birth', 'Date of Birth'],
+      ['barangay', 'Barangay'],
+      ['health_center', 'Health Center'],
+      ['address', 'Address'],
+      ['mother_name', "Mother's Name"],
+      ['guardian_id', 'Guardian'],
+      ['relationship_to_guardian', 'Relationship to Guardian']
+    ]
+    const missingMain = requiredMain
+      .filter(([key]) => !formData[key])
+      .map(([, label]) => label)
 
-    // Validate birth history fields for new patients
-    if (!formData.time_of_birth || !formData.attendant_at_birth || !formData.type_of_delivery) {
+    const requiredBirth = [
+      ['time_of_birth', 'Time of Birth'],
+      ['attendant_at_birth', 'Attendant at Birth'],
+      ['type_of_delivery', 'Type of Delivery']
+    ]
+    const missingBirth = requiredBirth
+      .filter(([key]) => !formData[key])
+      .map(([, label]) => label)
+
+    if (missingMain.length > 0 || missingBirth.length > 0) {
+      // Console debugger output for developers
+      console.groupCollapsed('[Add Patient] Missing Required Fields')
+      if (missingMain.length) console.warn('Main:', missingMain)
+      if (missingBirth.length) console.warn('Birth History:', missingBirth)
+      console.debug('Form snapshot:', { ...formData })
+      console.groupEnd()
+
+      const parts = []
+      if (missingMain.length) parts.push(`Main: ${missingMain.join(', ')}`)
+      if (missingBirth.length) parts.push(`Birth History: ${missingBirth.join(', ')}`)
+
       addToast({
         title: 'Validation Error',
-        message: 'Please provide required birth history: Time of Birth, Attendant at Birth, and Type of Delivery',
+        message: `Please fill in required fields: ${parts.join(' | ')}`,
         type: 'error'
       })
+
+      // Small hint specific to Guardian selection UX
+      if (!formData.guardian_id) {
+        console.info('Hint: In the Guardian field, type to search then CLICK a dropdown item to select. Typing alone will not set guardian_id.')
+      }
       return
     }
 
@@ -186,5 +232,6 @@ const handleSubmit = async (formData) => {
 
 onMounted(() => {
   fetchGuardians()
+  fetchParentSuggestions()
 })
 </script>

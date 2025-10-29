@@ -16,7 +16,8 @@ const {
 	toggleGuardianAutoSend,
 	bulkToggleAutoSend,
 	getSMSStatistics,
-	previewTemplate
+	previewTemplate,
+	runScheduledNow
 } = require('../controllers/smsController');
 
 // POST /api/sms - Send an SMS notification
@@ -63,5 +64,8 @@ router.get('/statistics', authenticateRequest, checkUserMapping, authorizeRole([
 
 // POST /api/sms/templates/preview - Preview template with variables
 router.post('/templates/preview', authenticateRequest, checkUserMapping, authorizeRole(['admin', 'health_worker']), previewTemplate);
+
+// POST /api/sms/cron/run-now - Manually trigger scheduled SMS processing (admin only)
+router.post('/cron/run-now', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runScheduledNow);
 
 module.exports = router;

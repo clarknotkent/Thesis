@@ -9,45 +9,58 @@
 
     <!-- Search and Filters Row -->
     <div class="row mb-3 align-items-center g-2">
-      <div class="col-md-3">
+      <div class="col-md-2">
         <div class="input-group input-group-sm">
           <input 
             type="text" 
             class="form-control" 
-            placeholder="Search messages..."
+            placeholder="Search..."
             v-model="searchQuery"
+            @keyup.enter="loadLogs"
           >
-          <button class="btn btn-outline-secondary" type="button">
+          <button class="btn btn-outline-secondary" type="button" @click="loadLogs">
             <i class="bi bi-search"></i>
           </button>
         </div>
       </div>
       <div class="col-md-2">
-        <select class="form-select form-select-sm" v-model="filterStatus">
+        <select class="form-select form-select-sm" v-model="filterStatus" @change="loadLogs">
           <option value="">Status: All</option>
           <option value="sent">Sent</option>
           <option value="pending">Pending</option>
+          <option value="scheduled">Scheduled</option>
           <option value="failed">Failed</option>
         </select>
       </div>
       <div class="col-md-2">
-        <select class="form-select form-select-sm" v-model="filterType">
+        <select class="form-select form-select-sm" v-model="filterType" @change="loadLogs">
           <option value="">Type: All</option>
+          <option value="scheduled">Scheduled</option>
           <option value="1-week">1 Week</option>
           <option value="3-days">3 Days</option>
           <option value="1-day">1 Day</option>
+          <option value="0-day">Same Day</option>
           <option value="manual">Manual</option>
         </select>
       </div>
       <div class="col-md-2">
-        <input type="date" class="form-control form-control-sm" v-model="filterDate" placeholder="Date">
+        <input type="date" class="form-control form-control-sm" v-model="filterDate" @change="loadLogs" placeholder="Sent Date">
       </div>
-      <div class="col-md-3 text-end">
-        <button class="btn btn-outline-primary btn-sm me-2" @click="loadLogs">
+      <div class="col-md-2">
+        <select class="form-select form-select-sm" v-model="sortBy" @change="applySorting">
+          <option value="created_at">Sort: Recent First</option>
+          <option value="scheduled_at">Sort: Scheduled Date</option>
+          <option value="patient_name">Sort: Patient Name</option>
+          <option value="guardian_name">Sort: Guardian Name</option>
+          <option value="status">Sort: Status</option>
+        </select>
+      </div>
+      <div class="col-md-2 text-end">
+        <button class="btn btn-outline-primary btn-sm me-2" @click="loadLogs" :disabled="loading">
           <i class="bi bi-arrow-clockwise me-1"></i>Refresh
         </button>
         <button class="btn btn-warning btn-sm" @click="openManualSMS">
-          <i class="bi bi-pencil-square me-1"></i>Send Manual SMS
+          <i class="bi bi-pencil-square me-1"></i>Manual
         </button>
       </div>
     </div>
@@ -57,14 +70,14 @@
       <table class="table table-sm table-hover table-bordered align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th class="text-center">Date & Time</th>
-            <th>Recipient</th>
-            <th>Patient</th>
-            <th class="text-center">Phone Number</th>
+            <th class="text-center" style="width: 140px;">Date & Time</th>
+            <th style="width: 150px;">Guardian</th>
+            <th style="width: 150px;">Patient</th>
+            <th class="text-center" style="width: 120px;">Phone Number</th>
             <th>Message</th>
-            <th class="text-center">Type</th>
-            <th class="text-center">Status</th>
-            <th class="text-center">Actions</th>
+            <th class="text-center" style="width: 90px;">Type</th>
+            <th class="text-center" style="width: 90px;">Status</th>
+            <th class="text-center" style="width: 80px;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -81,17 +94,27 @@
               No messages found
             </td>
           </tr>
-          <tr v-else v-for="log in paginatedLogs" :key="log.id">
+          <tr v-else v-for="log in displayedLogs" :key="log.id">
             <td class="text-center">
-              <small class="text-muted">{{ formatDateTime(log.sent_at) }}</small>
+              <small class="text-muted">{{ formatDateTime(log.sent_at || log.scheduled_at) }}</small>
             </td>
-            <td>{{ log.recipient_name }}</td>
-            <td>{{ log.patient_name }}</td>
+            <td>
+              <span class="text-truncate d-inline-block" style="max-width: 140px;" :title="log.guardian_name">
+                {{ log.guardian_name || '—' }}
+              </span>
+            </td>
+            <td>
+              <span class="text-truncate d-inline-block" style="max-width: 140px;" :title="log.patient_name">
+                {{ log.patient_name || '—' }}
+              </span>
+            </td>
             <td class="text-center">
               <span class="font-monospace text-muted" style="font-size: 0.85rem;">{{ log.phone_number }}</span>
             </td>
             <td>
-              <small>{{ truncateMessage(log.message, 60) }}</small>
+              <small class="text-truncate d-inline-block" style="max-width: 300px;" :title="log.message">
+                {{ log.message }}
+              </small>
             </td>
             <td class="text-center">
               <span class="badge rounded-pill" :class="getTypeBadgeClass(log.type)" style="font-size: 0.7rem; padding: 0.35em 0.65em;">
@@ -167,7 +190,7 @@
             <div class="row mb-3">
               <div class="col-6">
                 <label class="text-muted small mb-1">Recipient</label>
-                <div class="fw-semibold">{{ selectedMessage.recipient_name }}</div>
+                <div class="fw-semibold">{{ selectedMessage.guardian_name }}</div>
               </div>
               <div class="col-6">
                 <label class="text-muted small mb-1">Patient</label>
@@ -353,8 +376,10 @@ const searchQuery = ref('')
 const filterStatus = ref('')
 const filterType = ref('')
 const filterDate = ref('')
+const sortBy = ref('created_at')
+const sortOrder = ref('desc')
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(15)
 const selectedMessage = ref(null)
 const messageModal = ref(null)
 const manualSMSModal = ref(null)
@@ -387,39 +412,53 @@ const smsForm = ref({
 
 // Computed
 const filteredLogs = computed(() => {
-  let result = logs.value
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(log => 
-      log.recipient_name.toLowerCase().includes(query) ||
-      log.patient_name.toLowerCase().includes(query) ||
-      log.phone_number.includes(query) ||
-      log.message.toLowerCase().includes(query)
-    )
-  }
-
-  if (filterStatus.value) {
-    result = result.filter(log => log.status === filterStatus.value)
-  }
-
-  if (filterType.value) {
-    result = result.filter(log => log.type === filterType.value)
-  }
-
-  if (filterDate.value) {
-    result = result.filter(log => log.sent_at.startsWith(filterDate.value))
-  }
-
-  return result
+  return logs.value
 })
 
-const totalPages = computed(() => Math.ceil(filteredLogs.value.length / itemsPerPage.value))
-const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, filteredLogs.value.length))
+const sortedLogs = computed(() => {
+  const sorted = [...filteredLogs.value]
+  
+  sorted.sort((a, b) => {
+    let aVal, bVal
+    
+    switch (sortBy.value) {
+      case 'scheduled_at':
+        aVal = new Date(a.scheduled_at || a.sent_at || a.created_at)
+        bVal = new Date(b.scheduled_at || b.sent_at || b.created_at)
+        break
+      case 'patient_name':
+        aVal = (a.patient_name || '').toLowerCase()
+        bVal = (b.patient_name || '').toLowerCase()
+        break
+      case 'guardian_name':
+        aVal = (a.guardian_name || '').toLowerCase()
+        bVal = (b.guardian_name || '').toLowerCase()
+        break
+      case 'status':
+        aVal = (a.status || '').toLowerCase()
+        bVal = (b.status || '').toLowerCase()
+        break
+      default: // created_at
+        aVal = new Date(a.created_at || a.sent_at)
+        bVal = new Date(b.created_at || b.sent_at)
+    }
+    
+    if (sortOrder.value === 'desc') {
+      return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+    } else {
+      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+    }
+  })
+  
+  return sorted
+})
 
-const paginatedLogs = computed(() => {
-  return filteredLogs.value.slice(startIndex.value, endIndex.value)
+const totalPages = computed(() => Math.ceil(sortedLogs.value.length / itemsPerPage.value))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, sortedLogs.value.length))
+
+const displayedLogs = computed(() => {
+  return sortedLogs.value.slice(startIndex.value, endIndex.value)
 })
 
 const visiblePages = computed(() => {
@@ -441,6 +480,7 @@ const visiblePages = computed(() => {
 // Methods
 const loadLogs = async () => {
   loading.value = true
+  currentPage.value = 1 // Reset to first page on filter change
   try {
     const params = {
       status: filterStatus.value || undefined,
@@ -448,29 +488,24 @@ const loadLogs = async () => {
       startDate: filterDate.value || undefined,
       search: searchQuery.value || undefined,
       page: 1,
-      limit: 100
+      limit: 200 // Fetch more for client-side sorting
     }
     const { data } = await api.get('/sms/history', { params })
-    const rows = data?.data || []
-    // Map API fields to UI fields
-    logs.value = rows.map(r => ({
-      id: r.id,
-      sent_at: r.sent_at,
-      recipient_name: r.guardian_name || '—',
-      patient_name: r.patient_name || '—',
-      phone_number: r.phone_number,
-      message: r.message,
-      type: r.type,
-      status: r.status,
-    }))
+    logs.value = data?.data || []
   } catch (err) {
     console.error('Failed to load SMS logs', err)
+    logs.value = []
   } finally {
     loading.value = false
   }
 }
 
+const applySorting = () => {
+  currentPage.value = 1 // Reset to first page when sorting changes
+}
+
 const formatDateTime = (dateString) => {
+  if (!dateString) return '—'
   const date = new Date(dateString)
   return date.toLocaleString('en-US', {
     month: '2-digit',
@@ -482,14 +517,17 @@ const formatDateTime = (dateString) => {
 }
 
 const truncateMessage = (message, length = 60) => {
+  if (!message) return ''
   return message.length > length ? message.substring(0, length) + '...' : message
 }
 
 const formatType = (type) => {
   const types = {
+    'scheduled': 'Scheduled',
     '1-week': '1 Week',
     '3-days': '3 Days',
     '1-day': '1 Day',
+    '0-day': 'Same Day',
     'manual': 'Manual'
   }
   return types[type] || type
@@ -497,9 +535,11 @@ const formatType = (type) => {
 
 const getTypeBadgeClass = (type) => {
   const classes = {
+    'scheduled': 'bg-primary',
     '1-week': 'bg-info text-dark',
     '3-days': 'bg-warning text-dark',
     '1-day': 'bg-danger',
+    '0-day': 'bg-danger',
     'manual': 'bg-secondary'
   }
   return classes[type] || 'bg-secondary'
@@ -509,12 +549,37 @@ const getStatusBadgeClass = (status) => {
   const classes = {
     'sent': 'bg-success',
     'pending': 'bg-warning text-dark',
+    'scheduled': 'bg-info text-dark',
     'failed': 'bg-danger'
   }
   return classes[status] || 'bg-secondary'
 }
 
-const viewMessage = (log) => {
+// Simple cache to avoid repeated guardian lookups within the session
+const guardianCache = new Map()
+
+const resolveGuardianName = async (guardian_id) => {
+  if (!guardian_id) return ''
+  if (guardianCache.has(guardian_id)) return guardianCache.get(guardian_id)
+  try {
+    const { data } = await api.get(`/guardians/${guardian_id}`)
+    const g = data?.data
+    const name = g ? `${g.firstname || ''} ${g.surname || ''}`.trim() : ''
+    if (name) guardianCache.set(guardian_id, name)
+    return name
+  } catch (_) {
+    return ''
+  }
+}
+
+const viewMessage = async (log) => {
+  // Fallback: if backend didn't include guardian_name but we have guardian_id, resolve on demand
+  if ((!log.guardian_name || log.guardian_name === '—') && log.guardian_id) {
+    const name = await resolveGuardianName(log.guardian_id)
+    if (name) {
+      log.guardian_name = name
+    }
+  }
   selectedMessage.value = log
   const modal = new Modal(messageModal.value)
   modal.show()

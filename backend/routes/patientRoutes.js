@@ -15,6 +15,10 @@ const {
   updateVitals,
   updatePatientSchedules,
   listParentsOptions,
+  listRecordedParents,
+  listParentsWithContacts,
+  listDistinctParentNames,
+  getCoParentSuggestion,
   getSmartDoseOptions
 } = require('../controllers/patientController');
 
@@ -42,6 +46,14 @@ router.get('/', authenticateRequest, getAllPatients);
 
 // GET /api/patients/parents/options - Parents (mother/father) dropdown (place before param routes)
 router.get('/parents/options', authenticateRequest, listParentsOptions);
+// GET /api/patients/parents/recorded?type=mother|father - Recorded parents from existing patients
+router.get('/parents/recorded', authenticateRequest, listRecordedParents);
+// GET /api/patients/parents/suggestions?type=mother|father - Parents suggestions with contacts from patients data only
+router.get('/parents/suggestions', authenticateRequest, listParentsWithContacts);
+// GET /api/patients/parents/distinct?type=mother|father - Distinct parent names from patients data
+router.get('/parents/distinct', authenticateRequest, listDistinctParentNames);
+// GET /api/patients/parents/coparent?type=mother|father&name=... - Co-parent suggestion from patients data
+router.get('/parents/coparent', authenticateRequest, getCoParentSuggestion);
 
 // POST /api/patients - Register new patient
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), createPatient);
