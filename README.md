@@ -102,3 +102,13 @@ Quick links:
 - SMS Quick Reference: docs/SMS_QUICK_REFERENCE.md
 If you encounter a broken link, check docs/INDEX.md for the original → new path mapping.
 ├── services/                # Business logic (SMS, notifications)
+
+## 📦 Large files policy
+
+To keep the repository healthy and within GitHub limits, avoid committing large, generated change-report artifacts. These are ignored via `.gitignore`:
+
+- `*git-change-report-*.txt`
+- `*git-change-report-*.patch`
+- `*git-change-report-*.diff`
+
+If you generate these reports for local review, keep them untracked. If long-term storage is required, prefer an external storage location or Git LFS in a separate archival repo.
