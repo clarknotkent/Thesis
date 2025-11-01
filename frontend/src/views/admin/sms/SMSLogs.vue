@@ -376,6 +376,7 @@
 </template>
 
 <script setup>
+import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
@@ -602,7 +603,6 @@ const closeSendModal = () => {
 }
 
 const exportLogs = () => {
-  console.log('Exporting SMS logs...')
   // Implement export functionality
 }
 
@@ -724,3 +724,5 @@ onMounted(() => {
   margin-right: 0;
 }
 </style>
+
+

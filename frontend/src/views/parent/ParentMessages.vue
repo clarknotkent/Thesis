@@ -48,103 +48,29 @@
       </div>
 
       <!-- Floating FAQ Chat Head -->
-      <button class="faq-fab" type="button" @click="toggleFaq">
-        <i class="bi bi-question-circle-fill"></i>
-      </button>
-
-      <!-- FAQ Conversation Panel (frontend only) -->
-      <div v-if="faqOpen" class="faq-panel card shadow">
-        <div class="card-header d-flex align-items-center justify-content-between py-2">
-          <div class="d-flex align-items-center gap-2">
-            <div class="avatar-circle bg-primary text-white">?</div>
-            <div>
-              <div class="fw-semibold">FAQs Assistant</div>
-              <div class="text-muted small">Tap a question to view the answer</div>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-outline-secondary" @click="faqOpen = false">
-            <i class="bi bi-x"></i>
-          </button>
-        </div>
-        <div class="card-body p-0 d-flex flex-column" style="max-height: 60vh;">
-          <div ref="faqChatBox" class="faq-chat flex-fill p-2 overflow-auto">
-            <div v-if="faqThread.length === 0" class="text-center text-muted small py-3">
-              Select a question below to see the answer here.
-            </div>
-            <div v-else>
-              <div v-for="m in faqThread" :key="m.id" class="mb-2 d-flex" :class="m.role === 'me' ? 'justify-content-end' : 'justify-content-start'">
-                <div class="message-bubble" :class="m.role === 'me' ? 'bubble-me' : 'bubble-faq'">
-                  <div class="message-content">{{ m.text }}</div>
-                  <div class="message-time small">{{ formatTime(m.at) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="p-2 border-top" style="max-height: 40%; overflow: auto;">
-            <div v-for="(faq, idx) in faqs" :key="idx" class="mb-2">
-              <button class="btn btn-light w-100 text-start" @click="selectFaq(faq)">
-                <div class="fw-semibold">{{ faq.q }}</div>
-                <div class="text-muted small">Tap to show answer</div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <FaqPanel
+        :is-open="faqOpen"
+        :thread="faqThread"
+        :faqs="faqs"
+        @toggle="toggleFaq"
+        @close="faqOpen = false"
+        @select-faq="selectFaq"
+      />
 
       <!-- New Chat Modal -->
-      <div class="modal fade show" tabindex="-1" style="display: block;" v-if="showNewModal">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Start a new chat</h5>
-              <button type="button" class="btn-close" @click="closeNewChat"></button>
-            </div>
-            <div class="modal-body">
-              <!-- Mode toggle: Team vs Staff -->
-              <ul class="nav nav-pills gap-2 mb-3">
-                <li class="nav-item">
-                  <button class="nav-link" :class="{ active: newChatMode === 'team' }" @click="newChatMode = 'team'">
-                    <i class="bi bi-people me-1"></i> Message Health Center
-                  </button>
-                </li>
-                <li class="nav-item">
-                  <button class="nav-link" :class="{ active: newChatMode === 'staff' }" @click="newChatMode = 'staff'">
-                    <i class="bi bi-person-badge me-1"></i> Choose Staff
-                  </button>
-                </li>
-              </ul>
-
-              <div v-if="newChatMode === 'team'" class="alert alert-info py-2">
-                We’ll route your message to an available health worker from your health center.
-              </div>
-
-              <div v-if="newChatMode === 'staff'" class="mb-3">
-                <label class="form-label">Select staff</label>
-                <select class="form-select" v-model="selectedStaffId">
-                  <option value="" disabled>Select a staff member</option>
-                  <option v-for="u in staffOptions" :key="u.__id" :value="u.__id">
-                    {{ (u.full_name || u.name || ('User #' + u.__id)) + (u.hs_type ? ' — ' + prettyHsType(u.hs_type) : '') }}
-                  </option>
-                </select>
-              </div>
-
-              <div class="mb-2">
-                <label class="form-label">Message</label>
-                <textarea v-model="newMessage" class="form-control" rows="3" placeholder="Type your message..."></textarea>
-                <div class="text-muted small mt-1">{{ newMessage.length }}/1000</div>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" @click="closeNewChat">Cancel</button>
-              <button class="btn btn-primary" :disabled="startDisabled" @click="createConversation">
-                <i v-if="creating" class="bi bi-hourglass-split fa-spin me-1"></i>
-                Start
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="showNewModal" class="modal-backdrop fade show"></div>
+      <NewChatModal
+        :show="showNewModal"
+        :mode="newChatMode"
+        :staff-options="staffOptions"
+        :selected-staff-id="selectedStaffId"
+        :message="newMessage"
+        :creating="creating"
+        @close="closeNewChat"
+        @update:mode="newChatMode = $event"
+        @update:selectedStaffId="selectedStaffId = $event"
+        @update:message="newMessage = $event"
+        @create="createConversation"
+      />
     </div>
   </ParentLayout>
 </template>
@@ -152,6 +78,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
+import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
+import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
 import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 import { useRouter, useRoute } from 'vue-router'

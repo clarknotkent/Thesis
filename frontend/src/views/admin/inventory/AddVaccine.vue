@@ -51,7 +51,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import VaccineForm from './components/VaccineForm.vue'
+import VaccineForm from '@/features/admin/inventory/components/VaccineForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 

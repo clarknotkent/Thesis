@@ -474,16 +474,6 @@ async function save() {
       }))
     }
     
-    // Debug: Log the payload being sent
-    console.log('[DEBUG] Saving report with payload:', {
-      ...payload,
-      items: payload.items.map(item => ({
-        item_id: item.item_id,
-        quantity_received: item.quantity_received,
-        quantity_type: typeof item.quantity_received,
-        vaccine_id: item.vaccine_id
-      }))
-    })
     if (isNew.value) {
       const { data } = await api.post('/receiving-reports', payload)
       form.value = data.data.header || data.data

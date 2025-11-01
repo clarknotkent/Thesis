@@ -183,8 +183,6 @@ export class OfflineStorageService {
     this.syncInProgress = true
     
     try {
-      console.log('🔄 Starting sync with server...')
-      
       // Get all unsynced actions
       const pendingActions = await db.offlineActions.where('synced').equals(false).toArray()
       
@@ -208,8 +206,6 @@ export class OfflineStorageService {
         value: new Date(),
         updated_at: new Date()
       })
-
-      console.log('✅ Sync completed successfully')
     } catch (error) {
       console.error('❌ Sync failed:', error)
     } finally {
@@ -344,8 +340,6 @@ export class OfflineStorageService {
           console.error(`Failed to sync ${endpoint}:`, error)
         }
       }
-
-      console.log('✅ Full sync completed')
     } catch (error) {
       console.error('❌ Full sync failed:', error)
       throw error

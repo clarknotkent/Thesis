@@ -145,8 +145,6 @@ const fetchHistory = async () => {
       params: { inventory_id: id, limit: 100 }
     })
     
-    console.log('History response:', response.data)
-    
     // Handle different response structures
     let transactions = []
     if (response.data.data && Array.isArray(response.data.data)) {

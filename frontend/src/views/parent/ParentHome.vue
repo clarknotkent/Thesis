@@ -1,200 +1,139 @@
-<template>
-  <ParentLayout>
-    <!-- Loading State -->
+﻿<template>
+  <ParentLayout title="Home">
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="alert alert-danger m-3" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>
-      {{ error }}
-    </div>
-
-    <!-- Empty State -->
-    <div v-else-if="dependents.length === 0" class="empty-state">
-      <div class="empty-state-icon">
-        <i class="bi bi-people"></i>
+    <div v-else class="dashboard-container">
+      <div class="welcome-header">
+        <h4 class="welcome-title">Welcome, {{ parentName }}!</h4>
+        <p class="welcome-subtitle">Here's your family's health summary</p>
       </div>
-      <h5 class="empty-state-title">No Dependents Found</h5>
-      <p class="empty-state-text">
-        You don't have any registered dependents yet. Please contact your health worker to register your child.
-      </p>
-    </div>
-
-    <!-- Dependents List -->
-    <div v-else class="dependents-container">
-      <div class="section-header">
-        <h5 class="section-title">My Dependents</h5>
-        <p class="section-subtitle">Tap on a dependent to view their health records</p>
-      </div>
-
-      <div class="dependents-list">
-        <DependentCard 
-          v-for="dependent in dependents" 
-          :key="dependent.id"
-          :dependent="dependent"
-          :link-to="`/parent/child-info/${dependent.id}`"
-        />
-      </div>
+      
+      <SummaryCards 
+        :totalChildren="stats.totalChildren"
+        :dueVaccines="stats.dueVaccines"
+        :completedVaccines="stats.completedVaccines"
+      />
+      
+      <ChildrenList :children="children" />
     </div>
   </ParentLayout>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
-import DependentCard from '@/components/parent/DependentCard.vue'
+import SummaryCards from '@/features/parent/home/components/SummaryCards.vue'
+import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
+import { useAuth } from '@/composables/useAuth'
+import { formatDate, calculateAge } from '@/composables/useDateFormat'
+import { getChildName, getChildDOB, getCompletedCount, getPendingCount } from '@/composables/useParentData'
 import api from '@/services/api'
 
-const loading = ref(true)
-const error = ref(null)
-const dependents = ref([])
+const { userInfo } = useAuth()
 
-const fetchDependents = async () => {
+const loading = ref(true)
+const children = ref([])
+const stats = ref({
+  totalChildren: 0,
+  dueVaccines: 0,
+  completedVaccines: 0,
+  unreadMessages: 0
+})
+
+const parentName = computed(() => {
+  const u = userInfo.value
+  if (!u) return 'Parent'
+  return u.firstname || u.first_name || u.name || 'Parent'
+})
+
+const fetchDashboardStats = async () => {
   try {
     loading.value = true
-    error.value = null
+    const childrenResponse = await api.get('/parent/children')
+    const childrenData = childrenResponse.data?.data || []
+    children.value = childrenData
+    stats.value.totalChildren = childrenData.length
     
-    // Use the parent-specific endpoint that handles auth internally
-    const response = await api.get('/parent/children')
-    const patients = response.data?.data || response.data || []
-
-    // Helper to compute age in years if backend doesn't provide
-    const computeAgeYears = (dobStr) => {
-      if (!dobStr) return undefined
-      const dob = new Date(dobStr)
-      if (Number.isNaN(dob.getTime())) return undefined
-      const today = new Date()
-      let age = today.getFullYear() - dob.getFullYear()
-      const m = today.getMonth() - dob.getMonth()
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
-      return age
-    }
-
-    // Map to card-friendly shape with robust fallbacks
-    dependents.value = patients.map(child => {
-      const id = child.id || child.patient_id
-      const name = child.name || child.full_name || 'Child'
-      const age = child.age ?? computeAgeYears(child.dateOfBirth || child.date_of_birth)
-      const status = child.nextVaccine || 'No upcoming vaccines'
-      return { id, name, age, status, raw: child }
+    let dueCount = 0
+    let completedCount = 0
+    
+    childrenData.forEach(child => {
+      if (child.vaccinationSummary) {
+        completedCount += child.vaccinationSummary.completed || 0
+        const pending = (child.vaccinationSummary.total || 0) - (child.vaccinationSummary.completed || 0)
+        dueCount += pending > 0 ? pending : 0
+      }
     })
-  } catch (err) {
-    console.error('Error fetching dependents:', err)
-    error.value = 'Failed to load dependents. Please try again later.'
+    
+    stats.value.dueVaccines = dueCount
+    stats.value.completedVaccines = completedCount
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error)
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  fetchDependents()
+  fetchDashboardStats()
 })
 </script>
 
 <style scoped>
-.dependents-container {
-  padding: 1rem;
-  min-height: calc(100vh - 56px - 70px); /* Account for header and footer */
-}
-
-.section-header {
-  margin-bottom: 1rem;
-}
-
-.section-title {
-  margin: 0 0 0.25rem 0;
-  font-weight: 600;
-  color: #333;
-  font-size: 1.25rem;
-}
-
-.section-subtitle {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.dependents-list {
-  margin-top: 1rem;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 3rem 2rem;
+.dashboard-container {
+  background-color: #f8f9fa;
   min-height: calc(100vh - 56px - 70px);
 }
 
-.empty-state-icon {
-  width: 100px;
-  height: 100px;
-  background: #f8f9fa;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
+.welcome-header {
+  background: #2563eb;
+  color: white;
+  padding: 1.5rem 1rem;
+  text-align: left;
 }
 
-.empty-state-icon i {
-  font-size: 3rem;
-  color: #6c757d;
+.welcome-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
 }
 
-.empty-state-title {
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #333;
+.welcome-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  margin: 0;
 }
 
-.empty-state-text {
-  color: #6c757d;
-  max-width: 400px;
-  margin: 0 auto;
-  line-height: 1.5;
-}
-
-/* Mobile optimizations */
-@media (max-width: 576px) {
-  .dependents-container {
-    padding: 0.75rem;
-  }
-
-  .section-title {
-    font-size: 1.1rem;
-  }
-
-  .section-subtitle {
-    font-size: 0.8rem;
-  }
-
-  .empty-state {
+/* Tablets and larger */
+@media (min-width: 576px) {
+  .welcome-header {
     padding: 2rem 1.5rem;
   }
-
-  .empty-state-icon {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 1rem;
+  
+  .welcome-title {
+    font-size: 1.5rem;
   }
-
-  .empty-state-icon i {
-    font-size: 2.5rem;
-  }
-
-  .empty-state-title {
-    font-size: 1.1rem;
-  }
-
-  .empty-state-text {
+  
+  .welcome-subtitle {
     font-size: 0.9rem;
+  }
+}
+
+/* Very small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .welcome-header {
+    padding: 1.25rem 0.875rem;
+  }
+  
+  .welcome-title {
+    font-size: 1.125rem;
+  }
+  
+  .welcome-subtitle {
+    font-size: 0.8rem;
   }
 }
 </style>

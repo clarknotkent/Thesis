@@ -357,18 +357,6 @@ const buildStructuredRemarks = (dose) => {
   if (dose.manufacturer) parts.push(`Manufacturer: ${dose.manufacturer}`)
   if (dose.lotNumber) parts.push(`Lot: ${dose.lotNumber}`)
   const finalRemarks = [main, ...parts].filter(Boolean).join(' | ')
-  console.log('[RemarksCompose] Dose', {
-    id: dose.id,
-    doseNumber: dose.doseNumber,
-    isOutside: dose.isOutside,
-    main,
-    site: dose.siteOfAdministration,
-    facility: dose.facilityName,
-    administeredBy: adminByName,
-    manufacturer: dose.manufacturer,
-    lot: dose.lotNumber,
-    finalRemarks
-  })
   return finalRemarks
 }
 
@@ -384,11 +372,7 @@ const onInventoryChange = (doseIndex, selectedInventoryId) => {
     dose.lotNumber = selectedOption.lotNumber || ''
     // IMPORTANT: Do NOT overwrite dose.inventoryId here; keep original for change detection in save
     // We'll only persist the change during saveAllRecords when invChanged is true
-    console.log(
-      `[InventorySelect] Dose ${dose.doseNumber} (id=${dose.id}) selectedInventoryId=${selectedInventoryId}, originalInventoryId=${dose.inventoryId}`
-    )
-    
-    console.log(`Updated dose ${dose.doseNumber} with inventory ${selectedInventoryId}: Manufacturer: ${dose.manufacturer}, Lot: ${dose.lotNumber}`)
+    console.log(`Inventory changed for dose ${doseIndex}: selectedInventoryId=${selectedInventoryId}, originalInventoryId=${dose.inventoryId}`)
   }
 }
 
@@ -491,9 +475,6 @@ const parseRemarksForOutside = (remarks) => {
 
   // Other remarks are what's left unmatched
   result.otherRemarks = remaining.replace(/^\s*[\(\[\{]\s*|\s*[\)\]\}]\s*$/g, '').trim()
-
-  console.log('[RemarksParse] Split parts:', parts)
-  console.log('[RemarksParse] Parsed outside remarks:', { input: remarks, parsed: result })
   return result
 }
 
@@ -574,7 +555,7 @@ const fetchVaccineAndInventoryData = async () => {
           dose.selectedInventoryId = dose.inventoryId
         }
 
-        console.log(`Filtered inventory options for dose ${dose.doseNumber} (antigen: ${vaccineName.value}):`, dose.inventoryOptions)
+        console.log(`Dose ${dose.id} inventory options:`, dose.inventoryOptions)
       })
     } catch (invErr) {
       console.error('Error fetching all inventory:', invErr)
@@ -595,7 +576,7 @@ const fetchVaccineAndInventoryData = async () => {
         inventoryResponses.forEach((response, index) => {
           const inventory = response.data.data || response.data
           inventoryData[inventoryIds[index]] = inventory
-          console.log(`Inventory data for ID ${inventoryIds[index]}:`, inventory) // Debug: see inventory data
+           // Debug: see inventory data
         })
 
         // Update dose records with inventory lot number data (for records that don't have it yet)
@@ -606,11 +587,9 @@ const fetchVaccineAndInventoryData = async () => {
             const newManufacturer = inventory.manufacturer || inventory.brand_name || ''
             if (!dose.lotNumber && newLotNumber) {
               dose.lotNumber = newLotNumber
-              console.log(`Updated lot number for dose ${dose.doseNumber}: ${newLotNumber}`)
             }
             if (!dose.manufacturer && newManufacturer) {
               dose.manufacturer = newManufacturer
-              console.log(`Updated manufacturer for dose ${dose.doseNumber}: ${newManufacturer}`)
             }
           }
         })
@@ -635,7 +614,7 @@ const fetchVaccinationRecords = async () => {
     const response = await api.get(`/patients/${patientId.value}`)
     const patient = response.data.data || response.data
     
-    console.log('Patient data from backend:', patient) // Debug: see patient data structure
+     // Debug: see patient data structure
     
     let vaccinations = patient.vaccinationHistory || patient.vaccination_history || patient.immunizations || []
 
@@ -644,7 +623,7 @@ const fetchVaccinationRecords = async () => {
       try {
         const vaccRes = await api.get('/immunizations', { params: { patient_id: patientId.value, limit: 200 } })
         vaccinations = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
-        console.log('Vaccinations from immunizations endpoint:', vaccinations) // Debug: see immunizations data
+         // Debug: see immunizations data
       } catch (e) {
         vaccinations = []
       }
@@ -676,7 +655,7 @@ const fetchVaccinationRecords = async () => {
       const isOutside = isDoseOutside(record)
       const parsedRemarks = parseRemarksForOutside(record.remarks || record.notes || '')
       
-      console.log('Backend record data:', record) // Debug: see what backend sends
+       // Debug: see what backend sends
       
   const base = {
         id: record.immunization_id || record.id,
@@ -709,14 +688,6 @@ const fetchVaccinationRecords = async () => {
         if (parsedRemarks.manufacturer) base.manufacturer = parsedRemarks.manufacturer
         if (parsedRemarks.lot) base.lotNumber = parsedRemarks.lot
         base.administeredByDisplay = parsedRemarks.administeredBy || base.administeredBy || ''
-        console.log('[OutsidePrefill] Prefilled from remarks:', {
-          id: base.id,
-          manufacturer: base.manufacturer,
-          lotNumber: base.lotNumber,
-          administeredByDisplay: base.administeredByDisplay,
-          site: base.siteOfAdministration,
-          facility: base.facilityName
-        })
       }
 
       return base
@@ -748,42 +719,35 @@ const fetchVaccinationRecords = async () => {
 const saveAllRecords = async () => {
   try {
     saving.value = true
-    console.log('Starting save operation for all records...') // Debug: save start
+     // Debug: save start
 
     // Update each dose record
     const updatePromises = doseRecords.value.map(async (dose) => {
       const isOutside = dose.isOutside
-      console.log(`Processing dose ${dose.doseNumber} (ID: ${dose.id}, Outside: ${isOutside})`) // Debug: individual dose processing
+      console.log(`Processing dose ${dose.id}: isOutside=${isOutside}`) // Debug: individual dose processing
       
       // Build structured remarks for both in-facility and outside
       const remarks = buildStructuredRemarks(dose)
 
-      console.log(`Final remarks for dose ${dose.doseNumber}: "${remarks}"`) // Debug: reconstructed remarks
+      console.log(`Reconstructed remarks for dose ${dose.id}:`, remarks) // Debug: reconstructed remarks
 
       // If inventory changed (in-facility only), adjust stock: RETURN to old, ISSUE from new
       const oldInventoryId = dose.inventoryId
       const newInventoryId = dose.selectedInventoryId || dose.inventoryId
       const invChanged = !!(newInventoryId && oldInventoryId && newInventoryId !== oldInventoryId)
-      console.log(
-        `[InventoryChange] Dose ${dose.doseNumber} (id=${dose.id}) oldInventoryId=${oldInventoryId}, selectedInventoryId=${dose.selectedInventoryId}, newInventoryId=${newInventoryId}, invChanged=${invChanged}, isOutside=${isOutside}`
-      )
+      console.log(`Dose ${dose.id} inventory check: oldInventoryId=${oldInventoryId}, selectedInventoryId=${dose.selectedInventoryId}, newInventoryId=${newInventoryId}, invChanged=${invChanged}, isOutside=${isOutside}`)
       if (!isOutside && invChanged) {
         try {
-          console.log(`[InventoryAdjust] Returning 1 to old lot ${oldInventoryId} for immunization ${dose.id}...`)
           const returnRes = await api.post(`/vaccines/inventory/${oldInventoryId}/adjust`, {
             type: 'RECEIVE',
             quantity: 1,
             note: `Immunization ${dose.id}: inventory changed, return to old lot`
           })
-          console.log(`[InventoryAdjust] RETURN response:`, { status: returnRes.status, data: returnRes.data })
-          console.log(`[InventoryAdjust] Issuing 1 from new lot ${newInventoryId} for immunization ${dose.id}...`)
           const issueRes = await api.post(`/vaccines/inventory/${newInventoryId}/adjust`, {
             type: 'ISSUE',
             quantity: 1,
             note: `Immunization ${dose.id}: inventory changed, issue from new lot`
           })
-          console.log(`[InventoryAdjust] ISSUE response:`, { status: issueRes.status, data: issueRes.data })
-          console.log(`Adjusted inventory: returned to ${oldInventoryId}, issued from ${newInventoryId}`)
         } catch (adjErr) {
           console.error('Inventory adjustment failed for dose', dose.id, adjErr)
           throw adjErr
@@ -807,21 +771,17 @@ const saveAllRecords = async () => {
       // Note: administered_by, facility_name, and site_of_administration are readonly and should not be updated
 
       if (isOutside) {
-        console.log('[OutsideRecord] Only updating remarks and administered_date. Skipping inventory_id and facility_name.')
       }
-      console.log('[ImmunizationUpdate] PUT payload for immunization', dose.id, updateData)
       const putRes = await api.put(`/immunizations/${dose.id}`, updateData)
-      console.log(`[ImmunizationUpdate] Response for immunization ${dose.id}:`, { status: putRes.status, data: putRes.data })
       // After successful update, sync local state inventoryId if changed
       if (invChanged) {
-        console.log(`[StateSync] Updating local inventoryId for dose ${dose.doseNumber} from ${oldInventoryId} to ${newInventoryId}`)
         dose.inventoryId = newInventoryId
       }
       return putRes
     })
 
     await Promise.all(updatePromises)
-    console.log('All update promises completed successfully') // Debug: all updates done
+     // Debug: all updates done
 
     addToast({
       title: 'Success',
@@ -834,7 +794,7 @@ const saveAllRecords = async () => {
 
   } catch (err) {
     console.error('Error saving vaccination records:', err)
-    console.log('Error details:', err.response?.data) // Debug: error details
+     // Debug: error details
     addToast({
       title: 'Error',
       message: err.response?.data?.message || err.message || 'Failed to save vaccination records',
@@ -889,3 +849,4 @@ onMounted(() => {
   padding: 0.5rem 1rem;
 }
 </style>
+

@@ -403,6 +403,7 @@
 </template>
 
 <script setup>
+import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import api from '@/services/api'
@@ -531,7 +532,7 @@ const saveProfile = async () => {
     
     profile.value = { ...profileForm.value }
     editMode.value = false
-    alert('Profile updated successfully!')
+    addToast({ title: 'Success', message: 'Profile updated successfully', type: 'success' })
     
   } catch (error) {
     console.error('Error saving profile:', error)
@@ -578,7 +579,7 @@ const changePassword = async () => {
     })
     
     closePasswordModal()
-    alert('Password changed successfully!')
+    addToast({ title: 'Success', message: 'Password changed successfully', type: 'success' })
     
   } catch (error) {
     console.error('Error changing password:', error)
@@ -731,3 +732,5 @@ onMounted(() => {
   background-color: transparent !important;
 }
 </style>
+
+

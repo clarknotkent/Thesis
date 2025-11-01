@@ -404,8 +404,6 @@ const saveVaccinationRecord = async () => {
       remarks: remarksWithSite
     }
 
-    console.log('Updating immunization:', recordId.value, updateData)
-
     // Update the vaccination record
     await api.put(`/immunizations/${recordId.value}`, updateData)
 

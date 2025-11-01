@@ -1,68 +1,133 @@
-# 💉 Immunization Management System
+# 📚 ImmunizeMe Documentation# 💉 Immunization Management System
 
-A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
 
----
 
-## 📋 Table of Contents
+Comprehensive documentation for the ImmunizeMe Immunization Management System.A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
+
+
+------
+
+
+
+## 📋 Documentation Structure## 📋 Table of Contents
+
+
+
+### **Features**- [Overview](#overview)
+
+Guides for specific features and user-facing functionality.- [Tech Stack](#tech-stack)
+
 - [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
+
+- **[health-worker-guide.md](./features/health-worker-guide.md)** - Complete guide for health worker features- [Getting Started](#getting-started)
+
+- **[for-japeth.md](./features/for-japeth.md)** - Setup instructions and notes- [Project Structure](#project-structure)
+
 - [Features](#features)
-- [User Roles](#user-roles)
-- [Development Guidelines](#development-guidelines)
+
+### **Architecture**- [User Roles](#user-roles)
+
+System architecture and technical design documentation.- [Development Guidelines](#development-guidelines)
+
 - [API Documentation](#api-documentation)
-- [Database Schema](#database-schema)
-- [Deployment](#deployment)
+
+- **[health-worker.md](./architecture/health-worker.md)** - Health worker portal architecture- [Database Schema](#database-schema)
+
+- **[chat-notifications.md](./architecture/chat-notifications.md)** - Chat and notification system design- [Deployment](#deployment)
+
 - [Contributing](#contributing)
 
----
+### **SMS System**
 
-## 🎯 Overview
+Complete SMS notification system documentation.---
 
-The Immunization Management System is designed to digitize and streamline the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:
+
+
+- **[complete-guide.md](./sms-system/complete-guide.md)** - Full SMS system documentation## 🎯 Overview
+
+- **[management.md](./sms-system/management.md)** - SMS management features
+
+- **[template-specs.md](./sms-system/template-specs.md)** - Template specifications and variablesThe Immunization Management System is designed to digitize and streamline the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:
+
+- **[testing-plan.md](./sms-system/testing-plan.md)** - SMS testing procedures
 
 - **Patient Record Management** - Digital health records for children and guardians
-- **Vaccination Tracking** - Scheduled and completed vaccinations with history
-- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
+
+### **Archive**- **Vaccination Tracking** - Scheduled and completed vaccinations with history
+
+Historical documentation and refactoring notes.- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
+
 - **SMS Management** - Comprehensive SMS notification system with PhilSMS integration
-- **Reporting & Analytics** - Dashboard insights and activity logs
-- **Multi-User Access** - Role-based access for admins, health workers, and parents
+
+- **[refactoring-history/](./archive/refactoring-history/)** - Refactoring analysis and summaries- **Reporting & Analytics** - Dashboard insights and activity logs
+
+  - `2025-11-01-analysis/` - Initial system analysis- **Multi-User Access** - Role-based access for admins, health workers, and parents
+
+  - `2025-11-02-refactoring/` - Refactoring implementation
+
+---
 
 ---
 
 ## 🛠️ Tech Stack
 
+## 🔍 Quick Links
+
 ### **Frontend**
-- **Framework:** Vue.js 3 (Composition API)
-- **Build Tool:** Vite
-- **Routing:** Vue Router 4
-- **State Management:** Vue Reactivity API (ref, computed, reactive)
+
+### For Developers- **Framework:** Vue.js 3 (Composition API)
+
+- System architecture → [architecture/](./architecture/)- **Build Tool:** Vite
+
+- Feature implementation → [features/](./features/)- **Routing:** Vue Router 4
+
+- SMS integration → [sms-system/](./sms-system/)- **State Management:** Vue Reactivity API (ref, computed, reactive)
+
 - **UI Framework:** Bootstrap 5
-- **Icons:** Bootstrap Icons
-- **HTTP Client:** Axios
-- **Charts:** Chart.js
+
+### For Project Managers- **Icons:** Bootstrap Icons
+
+- Health worker features → [features/health-worker-guide.md](./features/health-worker-guide.md)- **HTTP Client:** Axios
+
+- SMS capabilities → [sms-system/complete-guide.md](./sms-system/complete-guide.md)- **Charts:** Chart.js
+
 - **QR Code:** html5-qrcode
 
-### **Backend**
-- **Runtime:** Node.js
+### For New Contributors
+
+- Start with [INDEX.md](./INDEX.md) for complete file mapping### **Backend**
+
+- Review archived refactoring history for context → [archive/refactoring-history/](./archive/refactoring-history/)- **Runtime:** Node.js
+
 - **Framework:** Express.js
-- **Database:** PostgreSQL (Supabase)
+
+---- **Database:** PostgreSQL (Supabase)
+
 - **Authentication:** JWT (JSON Web Tokens)
-- **File Upload:** Multer
+
+## 📖 Main Project Documentation- **File Upload:** Multer
+
 - **SMS Integration:** PhilSMS API
-- **Security:** bcrypt, CORS, helmet
 
-### **Database**
+For general project information, setup instructions, and API references, see:- **Security:** bcrypt, CORS, helmet
+
+- **[../README.md](../README.md)** - Main project README
+
+- **[../RAILWAY_DEPLOYMENT_GUIDE.md](../RAILWAY_DEPLOYMENT_GUIDE.md)** - Railway deployment (for PWA)### **Database**
+
 - **DBMS:** PostgreSQL 14+
-- **Hosting:** Supabase
-- **Features:** Row Level Security (RLS), Triggers, Functions, Views
-- **Migrations:** Version-controlled SQL files in `db/`
 
----
+---- **Hosting:** Supabase
+
+- **Features:** Row Level Security (RLS), Triggers, Functions, Views
+
+**Last Updated:** November 2, 2025  - **Migrations:** Version-controlled SQL files in `db/`
+
+**Project:** ImmunizeMe - Immunization Management System  
+
+**Branch:** system-prototype-v2---
+
 
 ## 🏗️ Architecture
 

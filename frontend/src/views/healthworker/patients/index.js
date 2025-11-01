@@ -1,0 +1,7 @@
+export { default as PatientRecords } from './PatientRecords.vue'
+export { default as PatientDetails } from './PatientDetails.vue'
+export { default as AddPatient } from './AddPatient.vue'
+export { default as AddPatientImmunizationRecord } from './AddPatientImmunizationRecord.vue'
+export { default as EditVaccinationRecord } from './EditVaccinationRecord.vue'
+export { default as VaccineRecordDetails } from './VaccineRecordDetails.vue'
+export { default as VisitSummary } from './VisitSummary.vue'

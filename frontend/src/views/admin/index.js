@@ -8,7 +8,7 @@ export { Dashboard } from './dashboard'
 export { PatientRecords } from './patient-records'
 
 // Vaccine Inventory
-export { VaccineInventory, ReceivingReports } from './inventory'
+export { VaccineInventory } from './inventory'
 
 // Reports & Analytics
 export { Reports } from './reports-analytics'
@@ -23,7 +23,7 @@ export { UserAccounts } from './user-accounts'
 export { ActivityLogs } from './activity-logs'
 
 // Notifications
-export { NotificationsInbox, AddNotifications, CreateNotification } from './notifications'
+export { NotificationsInbox, AddNotifications } from './notifications'
 
 // Profile & Settings
 export { Profile } from './profile'

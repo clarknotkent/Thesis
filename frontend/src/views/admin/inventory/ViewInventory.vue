@@ -337,11 +337,8 @@ const fetchInventoryData = async () => {
   try {
     const id = route.params.id
     const response = await api.get(`/vaccines/inventory/${id}`)
-    console.log('Raw response:', response)
-    console.log('Response data:', response.data)
     
     const data = response.data.data || response.data
-    console.log('Processed data:', data)
     
     // Map backend field names to expected frontend field names
     // Backend returns: inventory_id, vaccine_id, lot_number, expiration_date, current_stock_level, storage_location
@@ -360,8 +357,6 @@ const fetchInventoryData = async () => {
       storageLocation: data.storage_location || data.storageLocation,
       status: data.status || (data.current_stock_level > 0 ? 'Available' : 'Out of Stock')
     }
-    
-    console.log('Mapped inventoryData:', inventoryData.value)
   } catch (error) {
     console.error('Error fetching inventory data:', error)
     addToast('Error loading inventory data', 'error')
@@ -419,8 +414,6 @@ const fetchHistory = async () => {
         note: item.remarks || item.note || item.notes || item.description || null
       }
     })
-    
-    console.log('Mapped history:', history.value)
   } catch (error) {
     console.error('Error fetching history:', error)
     history.value = []

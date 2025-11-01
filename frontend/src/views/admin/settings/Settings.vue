@@ -611,6 +611,7 @@
 </template>
 
 <script setup>
+import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
@@ -849,3 +850,4 @@ onMounted(() => {
   color: #5a5c69 !important;
 }
 </style>
+

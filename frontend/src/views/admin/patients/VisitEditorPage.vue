@@ -31,14 +31,6 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 onMounted(() => {
-  console.log('🏁 [VISIT_EDITOR_PAGE] Page mounted')
-  console.log('🏁 [VISIT_EDITOR_PAGE] Route params:', {
-    patientId: route.params.patientId,
-    visitId: route.params.visitId,
-    fullParams: route.params
-  })
-  console.log('🏁 [VISIT_EDITOR_PAGE] Route path:', route.path)
-  console.log('🏁 [VISIT_EDITOR_PAGE] Route name:', route.name)
-  console.log('🏁 [VISIT_EDITOR_PAGE] Query params:', route.query)
+  // Page initialization
 })
 </script>

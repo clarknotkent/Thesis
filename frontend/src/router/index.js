@@ -24,27 +24,27 @@ import FAQManager from '@/views/admin/faq/FAQManager.vue'
 import AdminChat from '@/views/admin/chat/AdminChat.vue'
 
 // Health Worker Views
-import HealthWorkerDashboard from '@/views/healthworker/Dashboard.vue'
-import HealthWorkerPatients from '@/views/healthworker/PatientRecords.vue'
-import AddPatient from '@/views/healthworker/AddPatient.vue'
+import HealthWorkerDashboard from '@/views/healthworker/dashboard/Dashboard.vue'
+import HealthWorkerPatients from '@/views/healthworker/patients/PatientRecords.vue'
+import AddPatient from '@/views/healthworker/patients/AddPatient.vue'
 import PatientDetail from '@/views/healthworker/PatientDetails.vue'
-import VisitSummary from '@/views/healthworker/VisitSummary.vue'
-import VaccineRecordDetails from '@/views/healthworker/VaccineRecordDetails.vue'
-import AddPatientImmunizationRecord from '@/views/healthworker/AddPatientImmunizationRecord.vue'
-import EditVaccinationRecord from '@/views/healthworker/EditVaccinationRecord.vue'
-import VaccineStock from '@/views/healthworker/VaccineStock.vue'
-import InventoryDetails from '@/views/healthworker/InventoryDetails.vue'
+import VisitSummary from '@/views/healthworker/patients/VisitSummary.vue'
+import VaccineRecordDetails from '@/views/healthworker/patients/VaccineRecordDetails.vue'
+import AddPatientImmunizationRecord from '@/views/healthworker/patients/AddPatientImmunizationRecord.vue'
+import EditVaccinationRecord from '@/views/healthworker/patients/EditVaccinationRecord.vue'
+import VaccineStock from '@/views/healthworker/inventory/VaccineStock.vue'
+import InventoryDetails from '@/views/healthworker/inventory/InventoryDetails.vue'
 
-import VaccineDetail from '@/views/healthworker/VaccineDetail.vue'
-import HealthWorkerMessages from '@/views/healthworker/Messages.vue'
-import HealthWorkerNotifications from '@/views/healthworker/Notifications.vue'
-import HealthWorkerMenu from '@/views/healthworker/Menu.vue'
+import VaccineDetail from '@/views/healthworker/inventory/VaccineDetail.vue'
+import HealthWorkerMessages from '@/views/healthworker/messages/Messages.vue'
+import HealthWorkerNotifications from '@/views/healthworker/notifications/Notifications.vue'
+import HealthWorkerMenu from '@/views/healthworker/menu/Menu.vue'
 
-// Parent Views
+// Parent Views (Pages)
 import ParentHome from '@/views/parent/ParentHome.vue'
-import ParentDashboard from '@/views/parent/ParentDashboard.vue'
-import ChildInfo from '@/views/parent/ChildInfo.vue'
-import VaccinationSchedule from '@/views/parent/VaccinationSchedule.vue'
+// Parent Features
+import ChildInfo from '@/features/parent/schedule/ChildInfo.vue'
+import VaccinationSchedule from '@/features/parent/schedule/VaccinationSchedule.vue'
 // Neutral QR route that redirects to role-specific patient details
 const PatientRoute = () => import('@/views/PatientRoute.vue')
 
@@ -668,7 +668,7 @@ const routes = [
   {
     path: '/healthworker/profile',
     name: 'HealthWorkerProfile',
-    component: () => import('@/views/healthworker/Profile.vue'),
+    component: () => import('@/views/healthworker/profile/Profile.vue'),
     meta: {
       title: 'Profile - ImmunizeMe',
       requiresAuth: true,
@@ -678,7 +678,7 @@ const routes = [
   {
     path: '/healthworker/settings',
     name: 'HealthWorkerSettings',
-    component: () => import('@/views/healthworker/Settings.vue'),
+    component: () => import('@/views/healthworker/settings/Settings.vue'),
     meta: {
       title: 'Settings - ImmunizeMe',
       requiresAuth: true,
@@ -688,7 +688,7 @@ const routes = [
   {
     path: '/healthworker/qr',
     name: 'HealthWorkerQRScanner',
-    component: () => import('@/views/healthworker/QRScanner.vue'),
+    component: () => import('@/views/healthworker/tools/QRScanner.vue'),
     meta: {
       title: 'Scan QR - ImmunizeMe',
       requiresAuth: true,
@@ -729,7 +729,7 @@ const routes = [
   {
     path: '/parent/records/:id',
     name: 'ParentDependentDetails',
-    component: () => import('@/views/parent/ParentDependentDetails.vue'),
+    component: () => import('@/features/parent/records/DependentDetails.vue'),
     meta: {
       title: 'Dependent Details - ImmunizeMe',
       requiresAuth: true,
@@ -739,7 +739,7 @@ const routes = [
   {
     path: '/parent/records/:patientId/vaccine-details',
     name: 'ParentVaccineRecordDetails',
-    component: () => import('@/views/parent/ParentVaccineRecordDetails.vue'),
+    component: () => import('@/features/parent/records/VaccineRecordDetails.vue'),
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
@@ -749,7 +749,7 @@ const routes = [
   {
     path: '/parent/records/:patientId/visit/:visitId',
     name: 'ParentVisitSummary',
-    component: () => import('@/views/parent/ParentVisitSummary.vue'),
+    component: () => import('@/features/parent/records/VisitSummary.vue'),
     meta: {
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
@@ -769,7 +769,7 @@ const routes = [
   {
     path: '/parent/schedule/:id',
     name: 'DependentScheduleDetails',
-    component: () => import('@/views/parent/DependentScheduleDetails.vue'),
+    component: () => import('@/features/parent/schedule/ScheduleDetails.vue'),
     meta: {
       title: 'Schedule - ImmunizeMe',
       requiresAuth: true,
@@ -819,7 +819,7 @@ const routes = [
   {
     path: '/parent/messages/:conversationId',
     name: 'ParentChat',
-    component: () => import('@/views/parent/ParentChat.vue'),
+    component: () => import('@/features/parent/messaging/Chat.vue'),
     meta: {
       title: 'Chat - ImmunizeMe',
       requiresAuth: true,
