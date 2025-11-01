@@ -96,4 +96,14 @@ pnpm-debug.log*
 # Large generated change reports (prevent >100MB .diff/.patch from being added)
 *git-change-report-*.diff
 *git-change-report-*.patch
+*git-changes-report-*.patch
 *git-change-report-*.txt
+*git-changes-report-*.txt
+
+# Local archives of reports (kept out of git)
+.tools/reports/archive/
+
+# Additional generated report variants
+*git-updates-report-*.patch
+*git-updates-report-*.txt
+*git-updates-report-*.diff
