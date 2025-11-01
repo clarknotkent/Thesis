@@ -3,11 +3,11 @@
     <div class="container-fluid">
       <!-- Page Header -->
       <AppPageHeader 
-        :title="activeTab === 'monthly' ? 'Monthly Immunization Report' : 'Immunization Monitoring Chart'" 
-        :subtitle="activeTab === 'monthly' ? 'Comprehensive monthly vaccination statistics and summary' : 'Cumulative performance vs target across the year'"
+        title="Monthly Immunization Report"
+        subtitle="Comprehensive monthly vaccination statistics and summary"
       >
         <template #actions>
-          <div class="d-flex gap-2" v-if="activeTab === 'monthly'">
+          <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary" @click="resetFilters">
               <i class="bi bi-arrow-counterclockwise me-2"></i>Reset
             </button>
@@ -24,13 +24,8 @@
       <!-- Tabs -->
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
-          <button class="nav-link" :class="{ active: activeTab === 'monthly' }" @click="activeTab = 'monthly'">
+          <button class="nav-link active">
             <i class="bi bi-table me-2"></i>Monthly Report
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="nav-link" :class="{ active: activeTab === 'monitoring' }" @click="activeTab = 'monitoring'">
-            <i class="bi bi-graph-up-arrow me-2"></i>Monitoring Chart
           </button>
         </li>
       </ul>
@@ -45,7 +40,7 @@
       </div>-->
 
       <!-- Filters Card (Monthly tab) -->
-      <div v-if="activeTab === 'monthly'" class="card shadow mb-4">
+      <div class="card shadow mb-4">
         <div class="card-body">
           <div class="row g-3 align-items-end">
             <div class="col-md-3">
@@ -74,7 +69,7 @@
       </div>
 
       <!-- Monthly Report Table -->
-      <div v-if="activeTab === 'monthly'" class="card shadow">
+      <div class="card shadow">
         <div class="card-header bg-primary text-white py-3">
           <h5 class="mb-0">
             <i class="bi bi-file-earmark-text me-2"></i>
@@ -112,7 +107,7 @@
               <tbody>
                 <!-- Section Heading -->
                 <tr class="table-secondary">
-                  <td class="fw-bold" colspan="5">Part I A - Immunization and Nutrition Services · Newborns/Infants vaccinated with</td>
+                  <td class="fw-bold" colspan="5">Immunization and Nutrition Services · Newborns/Infants vaccinated with</td>
                 </tr>
 
                 <!-- Render rows from backend response -->
@@ -164,30 +159,23 @@
           </div>-->
         </div>
       </div>
-
-      <!-- Monitoring Chart Tab -->
-      <div v-else>
-        <ImmunizationMonitoringChart />
-      </div>
     </div>
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { nowPH, formatPHDate } from '@/utils/dateUtils'
-import ImmunizationMonitoringChart from './ImmunizationMonitoringChart.vue'
 
 const { addToast } = useToast()
 
 // Reactive state
 const loading = ref(false)
 const reportData = ref(null)
-const activeTab = ref('monthly')
 
 // Filters
 const filters = ref({
@@ -322,8 +310,6 @@ const vaccinesToRender = computed(() => {
     { label: 'MCV 2', data: () => getVaccineData('MMR', 2) }
   ]
 })
-
-onMounted(() => generateReport())
 
 const totals = computed(() => {
   if (!reportData.value || !reportData.value.vaccines) return { totalVaccinated: 0, maleCount: 0, femaleCount: 0 }

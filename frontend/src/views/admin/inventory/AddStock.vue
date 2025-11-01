@@ -52,7 +52,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import StockForm from './components/StockForm.vue'
+import StockForm from '@/features/admin/inventory/components/StockForm.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
@@ -73,7 +73,6 @@ onMounted(async () => {
 const fetchVaccines = async () => {
   try {
     const response = await api.get('/vaccines')
-    console.log('Vaccines API response:', response.data)
     
     // Handle different response structures
     let vaccineData = response.data.data || response.data
@@ -88,8 +87,6 @@ const fetchVaccines = async () => {
       vaccines.value = []
       addToast('Error loading vaccines: unexpected data format', 'error')
     }
-    
-    console.log('Vaccines array set to:', vaccines.value)
   } catch (error) {
     console.error('Error fetching vaccines:', error)
     addToast('Error loading vaccines', 'error')

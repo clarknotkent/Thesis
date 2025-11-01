@@ -162,7 +162,10 @@ const activeTab = ref('logs')
 const autoSendEnabled = ref(false)
 const enabledGuardiansCount = ref(0)
 
-// TODO: Fetch actual data from API
+// NOTE: SMS management data is managed through child components
+// - SMSLogs component handles log fetching and display
+// - AutoSendSettings component handles guardian auto-send preferences
+// This parent component serves as a tab container and state coordinator
 </script>
 
 <style scoped>

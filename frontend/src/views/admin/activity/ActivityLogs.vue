@@ -286,6 +286,7 @@
 </template>
 
 <script setup>
+import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useActivityLogStore } from '@/stores/activityLogStore'
 import { useRouter } from 'vue-router'
@@ -619,7 +620,7 @@ const clearOldLogs = async () => {
     alert(`Logs older than ${clearLogsAge.value} days have been cleared successfully!`)
   } catch (error) {
     console.error('Error clearing logs:', error)
-    alert('Error clearing logs. Please try again.')
+    addToast({ title: 'Error', message: 'Error clearing logs. Please try again', type: 'error' })
   } finally {
     clearing.value = false
   }
@@ -672,7 +673,7 @@ const exportLogs = async () => {
     link.remove()
   } catch (error) {
     console.error('Error exporting logs:', error)
-    alert('Error exporting logs. Please try again.')
+    addToast({ title: 'Error', message: 'Error exporting logs. Please try again', type: 'error' })
   }
 }
 
@@ -781,3 +782,5 @@ code {
   font-size: 0.75rem;
 }
 </style>
+
+

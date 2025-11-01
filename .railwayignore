@@ -1,0 +1,62 @@
+# Railway Ignore File
+# Files and directories to exclude from Railway deployments
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation (optional - uncomment if you want to exclude)
+# *.md
+# docs/
+
+# Test files
+**/*.test.js
+**/*.spec.js
+__tests__/
+coverage/
+
+# Build artifacts that will be regenerated
+frontend/dist/
+frontend/.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# Tools
+.tools/

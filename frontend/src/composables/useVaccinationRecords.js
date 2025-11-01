@@ -68,21 +68,17 @@ export function useVaccinationRecords(patientId, patientDataProp) {
   // Fetch patient data
   const fetchPatientData = async () => {
     if (!patientId.value) {
-      console.log('No patientId provided to component');
       return;
     }
 
     // If patient data is provided as prop, use it directly
     if (patientDataProp.value) {
-      console.log('Using patient data from props:', patientDataProp.value);
       patientData.value = patientDataProp.value;
-      console.log('Patient DOB from props:', patientData.value?.date_of_birth);
       return;
     }
 
     try {
       loading.value = true;
-      console.log('Fetching patient data for patientId:', patientId.value);
 
       // Fetch patient details and vaccine list in parallel to normalize names
       const [resp, vaccinesResp] = await Promise.all([
@@ -248,7 +244,6 @@ export function useVaccinationRecords(patientId, patientDataProp) {
   // Calculate age at administration based on patient's DOB and selected date
   const calculateAgeAtAdministration = () => {
     if (!patientData.value) {
-      console.log('Patient data not loaded yet, skipping age calculation');
       return;
     }
 

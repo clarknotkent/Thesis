@@ -285,7 +285,6 @@ const fetchPatientData = async () => {
 
     // Fetch patient data
     const response = await api.get(`/patients/${patientId.value}`)
-    console.log('API response data:', response.data)
     const p = response.data.data || response.data
 
     // Map backend fields to form structure
@@ -345,8 +344,6 @@ const fetchPatientData = async () => {
 
     // Vaccination editor is now a separate page; no local modal data prep needed
 
-    console.log('patientData.qr:', patientData.value.qr)
-
   } catch (err) {
     console.error('Error fetching patient data:', err)
     error.value = 'Failed to load patient data. Please try again.'
@@ -396,11 +393,9 @@ const handleDelete = async () => {
 }
 
 const renderQr = async () => {
-  console.log('renderQr called, qrCanvas:', qrCanvas.value, 'url:', patientData.value.qr?.url)
   if (qrCanvas.value && patientData.value.qr?.url) {
     try {
       await QRCode.toCanvas(qrCanvas.value, patientData.value.qr.url, { width: 200 })
-      console.log('QR rendered successfully')
     } catch (e) {
       console.error('Error rendering QR:', e)
       // Fallback: show URL as text
@@ -410,8 +405,6 @@ const renderQr = async () => {
       ctx.fillText('QR Error - Use link below', 10, 50)
       ctx.fillText(patientData.value.qr.url.slice(0, 30) + '...', 10, 70)
     }
-  } else {
-    console.log('QR not rendered: missing canvas or url')
   }
 }
 

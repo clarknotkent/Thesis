@@ -19,7 +19,7 @@
           v-for="tab in tabs"
           :key="tab.id"
           :class="['tab-button', { active: activeTab === tab.id }]"
-          @click="activeTab = tab.id"
+          @click="setActiveTab(tab.id)"
         >
           {{ tab.label }}
         </button>
@@ -38,7 +38,7 @@
           title="Patient Information"
           icon="person-fill"
           :is-expanded="expandedCards.patientInfo"
-          @toggle="expandedCards.patientInfo = !expandedCards.patientInfo"
+          @toggle="toggleCard('patientInfo')"
         >
           <div class="info-grid">
             <div class="info-item">
@@ -97,7 +97,7 @@
           title="Guardian & Family Information"
           icon="people-fill"
           :is-expanded="expandedCards.guardianInfo"
-          @toggle="expandedCards.guardianInfo = !expandedCards.guardianInfo"
+          @toggle="toggleCard('guardianInfo')"
         >
           <div class="info-grid">
             <div class="info-item">
@@ -154,9 +154,9 @@
         <!-- Birth History Card -->
         <CollapsibleCard
           title="Birth History"
-          icon="calendar-heart-fill"
+          icon="clipboard2-heart-fill"
           :is-expanded="expandedCards.birthHistory"
-          @toggle="expandedCards.birthHistory = !expandedCards.birthHistory"
+          @toggle="toggleCard('birthHistory')"
         >
           <div class="info-grid">
             <div class="info-item">
@@ -347,7 +347,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
@@ -355,149 +355,44 @@ import CollapsibleCard from '@/features/health-worker/patients/components/Collap
 import VaccinationRecordCard from '@/features/health-worker/patients/components/VaccinationRecordCard.vue'
 import ScheduledVaccineCard from '@/features/health-worker/patients/components/ScheduledVaccineCard.vue'
 import MedicalHistoryCard from '@/features/health-worker/patients/components/MedicalHistoryCard.vue'
-import api from '@/services/api'
+import { usePatientDetails } from '@/features/health-worker/patients/composables'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
 
-const patient = ref(null)
-const vaccinationHistory = ref([])
-const scheduledVaccinations = ref([])
-const medicalHistory = ref([])
-const loading = ref(true)
-const activeTab = ref('patient-info')
+// Use patient details composable
+const {
+  patient,
+  vaccinationHistory,
+  scheduledVaccinations,
+  medicalHistory,
+  loading,
+  activeTab,
+  tabs,
+  expandedCards,
+  age,
+  formattedBirthDate,
+  formattedRegisteredDate,
+  formattedHearingTestDate,
+  formattedNewbornScreeningDate,
+  formattedBirthWeight,
+  formattedBirthLength,
+  groupedVaccinations,
+  formatDate,
+  isEditable,
+  fetchPatientDetails,
+  fetchMedicalHistory,
+  rescheduleVaccination,
+  toggleCard,
+  setActiveTab
+} = usePatientDetails(route.params.id)
 
-const tabs = [
-  { id: 'patient-info', label: 'Patient Information' },
-  { id: 'vaccination-history', label: 'Vaccination History' },
-  { id: 'scheduled-vaccinations', label: 'Scheduled Vaccinations' },
-  { id: 'medical-history', label: 'Medical History' }
-]
+const { confirm } = useConfirm()
+const { addToast } = useToast()
 
-const expandedCards = ref({
-  patientInfo: true,
-  guardianInfo: false,
-  birthHistory: false
-})
-
-// Age display
-// Prefer server-provided age_months/age_days; fallback to computing from birthDate
-const age = computed(() => {
-  const hasServerAge = patient.value?.age_months !== undefined && patient.value?.age_days !== undefined
-  let months, days
-
-  if (hasServerAge) {
-    months = patient.value.age_months || 0
-    days = patient.value.age_days || 0
-  } else if (patient.value?.childInfo?.birthDate) {
-    const birth = new Date(patient.value.childInfo.birthDate)
-    const today = new Date()
-
-    // total month difference
-    months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
-    if (today.getDate() < birth.getDate()) months--
-
-    // days within current month span
-    const refDaysPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate()
-    days = (today.getDate() >= birth.getDate())
-      ? (today.getDate() - birth.getDate())
-      : (refDaysPrevMonth - birth.getDate() + today.getDate())
-
-    months = Math.max(0, months)
-    days = Math.max(0, days)
-  } else {
-    return '—'
-  }
-
-  if (months >= 36) {
-    const years = Math.floor(months / 12)
-    return `${years} year${years !== 1 ? 's' : ''}`
-  }
-  return `${months} months ${days} days`
-})
-
-const formattedBirthDate = computed(() => {
-  if (!patient.value?.childInfo?.birthDate) return '—'
-  return new Date(patient.value.childInfo.birthDate).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-})
-
-const formattedRegisteredDate = computed(() => {
-  if (!patient.value?.dateRegistered) return '—'
-  return new Date(patient.value.dateRegistered).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-})
-
-const formattedHearingTestDate = computed(() => {
-  if (!patient.value?.birthHistory?.hearing_test_date) return '—'
-  return new Date(patient.value.birthHistory.hearing_test_date).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-})
-
-const formattedNewbornScreeningDate = computed(() => {
-  if (!patient.value?.birthHistory?.newborn_screening_date) return '—'
-  return new Date(patient.value.birthHistory.newborn_screening_date).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-})
-
-const formattedBirthWeight = computed(() => {
-  const weight = patient.value?.birthHistory?.birth_weight
-  if (!weight) return '—'
-  return `${weight} kg`
-})
-
-const formattedBirthLength = computed(() => {
-  const length = patient.value?.birthHistory?.birth_length
-  if (!length) return '—'
-  return `${length} cm`
-})
-
-// Group vaccinations by vaccine type
-const groupedVaccinations = computed(() => {
-  const groups = {}
-  
-  vaccinationHistory.value.forEach(vaccination => {
-    const vaccineName = vaccination.vaccine_antigen_name || 
-                       vaccination.vaccineName || 
-                       vaccination.antigen_name || 
-                       vaccination.antigenName || 
-                       'Unknown Vaccine'
-    
-    if (!groups[vaccineName]) {
-      groups[vaccineName] = {
-        vaccineName: vaccineName,
-        doses: []
-      }
-    }
-    
-    groups[vaccineName].doses.push(vaccination)
-  })
-  
-  // Convert to array and sort doses by dose number within each group
-  return Object.values(groups).map(group => ({
-    ...group,
-    doses: group.doses.sort((a, b) => {
-      const doseA = a.dose_number || a.doseNumber || a.dose || 0
-      const doseB = b.dose_number || b.doseNumber || b.dose || 0
-      return doseA - doseB
-    })
-  }))
-})
-
+// Navigation functions
 const goBack = () => {
   router.push('/healthworker/patients')
 }
@@ -512,7 +407,6 @@ const goToAddImmunization = () => {
 }
 
 const viewVaccination = (group) => {
-  // Navigate to VaccineRecordDetails page with vaccine name as query parameter
   router.push({
     name: 'VaccineRecordDetails',
     params: {
@@ -525,20 +419,16 @@ const viewVaccination = (group) => {
 }
 
 const editVaccination = (group) => {
-  // Navigate to edit page for the first dose (or could show a modal to select which dose to edit)
-  console.log('Edit vaccination group:', group)
-  
   if (!group.doses || group.doses.length === 0) {
-    alert('No doses found to edit')
+    addToast({ title: 'Notice', message: 'No doses found to edit', type: 'warning' })
     return
   }
   
-  // For now, edit the first dose (could be enhanced to show a selection modal)
   const firstDose = group.doses[0]
   const recordId = firstDose.immunization_id || firstDose.id
   
   if (!recordId) {
-    alert('Cannot edit: Record ID not found')
+    addToast({ title: 'Error', message: 'Cannot edit: Record ID not found', type: 'error' })
     return
   }
   
@@ -551,15 +441,10 @@ const editVaccination = (group) => {
   })
 }
 
-// Determine if a schedule is editable by health worker
-const isEditable = (vaccine) => {
-  if (!vaccine || !vaccine.status) return true
-  const s = String(vaccine.status).toLowerCase()
-  return !(s === 'completed' || s === 'administered')
+const navigateToVisitSummary = (visitId) => {
+  const patientId = route.params.id
+  router.push(`/healthworker/patients/${patientId}/visit/${visitId}`)
 }
-
-const { confirm } = useConfirm()
-const { addToast } = useToast()
 
 // Modal state for editing / calendar view
 const showEditModal = ref(false)
@@ -589,13 +474,6 @@ const closeEditModal = () => {
   editScheduledDate.value = ''
 }
 
-const formatDate = (d) => {
-  if (!d) return ''
-  try {
-    return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-  } catch { return d }
-}
-
 // Follow admin manual-reschedule flow (confirm + RPC that enforces rules)
 const saveScheduleEdit = async () => {
   if (!editTarget.value || !editTarget.value.patient_schedule_id) return
@@ -613,17 +491,13 @@ const saveScheduleEdit = async () => {
       cancelText: 'Cancel'
     })
 
-    const id = editTarget.value.patient_schedule_id || editTarget.value.schedule_id || editTarget.value.patient_schedule_id
-    // call admin-style RPC endpoint which applies smart reschedule rules server-side
-    await api.post('/immunizations/manual-reschedule', {
-      p_patient_schedule_id: id,
-      p_new_scheduled_date: editScheduledDate.value,
-      cascade: true,
-      force_override: true
-    })
+    // Use rescheduleVaccination from composable
+    await rescheduleVaccination(
+      editTarget.value.patient_schedule_id || editTarget.value.schedule_id,
+      editScheduledDate.value
+    )
 
     addToast({ title: 'Success', message: 'Vaccination rescheduled successfully.', type: 'success' })
-    await fetchPatientDetails()
     closeEditModal()
   } catch (err) {
     if (err && err.message === false) {
@@ -639,84 +513,6 @@ const saveScheduleEdit = async () => {
 const closeCalendarModal = () => {
   showCalendarModal.value = false
   calendarTarget.value = null
-}
-
-const fetchPatientDetails = async () => {
-  try {
-    loading.value = true
-    const patientId = route.params.id
-    const response = await api.get(`/patients/${patientId}`)
-    
-    // Map backend data to frontend format
-    const data = response.data.data || response.data
-    patient.value = {
-      id: data.patient_id,
-      patient_id: data.patient_id,
-      childInfo: {
-        name: data.full_name || `${data.firstname} ${data.surname}`.trim(),
-        firstName: data.firstname,
-        middleName: data.middlename,
-        lastName: data.surname,
-        birthDate: data.date_of_birth,
-        sex: data.sex,
-        address: data.address,
-        barangay: data.barangay,
-        phoneNumber: data.guardian_contact_number
-      },
-      motherInfo: {
-        name: data.mother_name,
-        occupation: data.mother_occupation,
-        phone: data.mother_contact_number
-      },
-      fatherInfo: {
-        name: data.father_name,
-        occupation: data.father_occupation,
-        phone: data.father_contact_number
-      },
-      guardianInfo: {
-        id: data.guardian_id,
-        name: `${data.guardian_firstname || ''} ${data.guardian_surname || ''}`.trim(),
-        contact_number: data.guardian_contact_number,
-        family_number: data.guardian_family_number,
-        relationship: data.relationship_to_guardian
-      },
-      birthHistory: data.medical_history || data.birthHistory || {},
-      health_center: data.health_center,
-      tags: data.tags,
-      dateRegistered: data.date_registered,
-      age_months: data.age_months,
-      age_days: data.age_days
-    }
-
-    // Store vaccination history
-    vaccinationHistory.value = data.vaccinationHistory || []
-    
-    // Store scheduled vaccinations
-    scheduledVaccinations.value = data.nextScheduledVaccinations || []
-    
-    // Fetch medical history (visits)
-    await fetchMedicalHistory(patientId)
-  } catch (error) {
-    console.error('Error fetching patient details:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const fetchMedicalHistory = async (patientId) => {
-  try {
-    const response = await api.get(`/visits?patient_id=${patientId}`)
-    const data = response.data
-    medicalHistory.value = data.items || data.data || []
-  } catch (error) {
-    console.error('Error fetching medical history:', error)
-    medicalHistory.value = []
-  }
-}
-
-const navigateToVisitSummary = (visitId) => {
-  const patientId = route.params.id
-  router.push(`/healthworker/patients/${patientId}/visit/${visitId}`)
 }
 
 onMounted(() => {
@@ -1055,3 +851,4 @@ onMounted(() => {
   }
 }
 </style>
+

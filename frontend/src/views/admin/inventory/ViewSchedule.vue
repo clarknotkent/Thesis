@@ -195,7 +195,6 @@ const fetchSchedule = async () => {
     const id = scheduleId.value
     const res = await api.get(`/vaccines/schedules/${id}`)
     scheduleData.value = res.data?.data || res.data
-    console.log('Schedule data:', scheduleData.value)
   } catch (error) {
     console.error('Error fetching schedule:', error)
     addToast('Error loading schedule data', 'error')

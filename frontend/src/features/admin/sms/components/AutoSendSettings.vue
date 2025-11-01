@@ -453,7 +453,12 @@ const clearFilters = () => {
 }
 
 const viewGuardianDetails = (guardian) => {
-  // TODO: Navigate to guardian details or show modal
+  // NOTE: Guardian details view feature planned for future implementation
+  // This will either:
+  // 1. Navigate to /admin/guardians/:id details page (when route is created)
+  // 2. Open a modal with guardian information and contact history
+  // 3. Show related patients and SMS history
+  // For now, log the action for debugging
   console.log('View details for:', guardian)
 }
 

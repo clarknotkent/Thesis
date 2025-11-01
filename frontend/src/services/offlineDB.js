@@ -70,8 +70,6 @@ export const db = new HealthcareDB()
 export async function initializeDB() {
   try {
     await db.open()
-    console.log('✅ Offline database initialized successfully')
-    
     // Set up initial app settings if not exists
     const lastSync = await db.appSettings.get('lastSync')
     if (!lastSync) {
@@ -126,7 +124,6 @@ export const dbHelpers = {
     for (const table of tables) {
       await db[table].clear()
     }
-    console.log('🗑️ All offline data cleared')
   },
 
   // Get database size estimate
