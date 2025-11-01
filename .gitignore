@@ -92,3 +92,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Large generated change reports (prevent >100MB .diff/.patch from being added)
+*git-change-report-*.diff
+*git-change-report-*.patch
+*git-change-report-*.txt

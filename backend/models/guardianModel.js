@@ -204,7 +204,34 @@ const guardianModel = {
         .single();
 
       if (error) throw error;
-      return data;
+      // Mark related pending scheduled SMS logs as soft-deleted/cancelled synchronously
+      let cancelledSmsCount = 0;
+      try {
+        const { data: updatedSms, error: updErr } = await supabase
+          .from('sms_logs')
+          .update({
+            is_deleted: true,
+            status: 'cancelled',
+            error_message: 'Cancelled: guardian soft-deleted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('guardian_id', id)
+          .eq('status', 'pending')
+          .eq('type', 'scheduled')
+          .select('id');
+
+        if (updErr) {
+          console.warn('[deleteGuardian] Cascade update returned error:', updErr?.message || updErr);
+        } else {
+          cancelledSmsCount = Array.isArray(updatedSms) ? updatedSms.length : 0;
+          console.log(`[deleteGuardian] Marked ${cancelledSmsCount} pending scheduled SMS for guardian ${id} as cancelled and is_deleted=true`);
+        }
+      } catch (cascadeErr) {
+        console.warn('[deleteGuardian] Failed to cascade cancel SMS:', cascadeErr?.message || cascadeErr);
+      }
+
+      // Return both the guardian update result and number of cancelled SMS for visibility
+      return { guardian: data, cancelledSmsCount };
     } catch (error) {
       console.error('Error deleting guardian:', error);
       throw error;
@@ -270,6 +297,31 @@ const guardianModel = {
             .select('*')
             .single();
           if (restErr) throw restErr;
+          // Non-blocking: restore any sms_logs that were soft-deleted when guardian was deleted
+          setImmediate(async () => {
+            try {
+              const nowIso = new Date().toISOString();
+              // First, mark sms_logs as not deleted
+              await supabase
+                .from('sms_logs')
+                .update({ is_deleted: false, updated_at: new Date().toISOString() })
+                .eq('guardian_id', existing.guardian_id)
+                .eq('is_deleted', true);
+
+              // Restore scheduled future messages to pending so scheduler can pick them again
+              await supabase
+                .from('sms_logs')
+                .update({ status: 'pending', updated_at: new Date().toISOString(), error_message: null })
+                .eq('guardian_id', existing.guardian_id)
+                .eq('is_deleted', false)
+                .eq('type', 'scheduled')
+                .gte('scheduled_at', nowIso);
+
+              console.log(`[ensureGuardianForUser] Restored sms_logs for guardian ${existing.guardian_id}`);
+            } catch (restoreErr) {
+              console.warn('[ensureGuardianForUser] Failed to restore sms_logs for guardian (non-blocking):', restoreErr?.message || restoreErr);
+            }
+          });
           return restored;
         }
         return existing; // already present and active

@@ -277,6 +277,8 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | immunizations                 | administered_date                    | null                                                                              |
 | column | public | immunizations                 | administered_time                    | null                                                                              |
 | column | public | immunizations                 | age_at_administration                | null                                                                              |
+| column | public | immunizations                 | approved_at                          | null                                                                              |
+| column | public | immunizations                 | approved_by                          | null                                                                              |
 | column | public | immunizations                 | created_at                           | null                                                                              |
 | column | public | immunizations                 | created_by                           | null                                                                              |
 | column | public | immunizations                 | deleted_at                           | null                                                                              |
@@ -651,6 +653,9 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | column | public | schedule_master               | updated_at                           | null                                                                              |
 | column | public | schedule_master               | updated_by                           | null                                                                              |
 | column | public | schedule_master               | vaccine_id                           | null                                                                              |
+| column | public | sms_log_patientschedule       | created_at                           | null                                                                              |
+| column | public | sms_log_patientschedule       | patient_schedule_id                  | null                                                                              |
+| column | public | sms_log_patientschedule       | sms_log_id                           | null                                                                              |
 | column | public | sms_logs                      | created_at                           | null                                                                              |
 | column | public | sms_logs                      | created_by                           | null                                                                              |
 | column | public | sms_logs                      | deleted_at                           | null                                                                              |
@@ -899,6 +904,7 @@ ORDER BY kind, schema, table_name, column_name NULLS FIRST;
 | table  | public | receiving_reports             | null                                 | null                                                                              |
 | table  | public | schedule_doses                | null                                 | null                                                                              |
 | table  | public | schedule_master               | null                                 | null                                                                              |
+| table  | public | sms_log_patientschedule       | null                                 | null                                                                              |
 | table  | public | sms_logs                      | null                                 | Logs all SMS messages sent through the system                                     |
 | table  | public | sms_templates                 | null                                 | Message templates for automated SMS reminders                                     |
 | table  | public | tcl_view                      | null                                 | null                                                                              |

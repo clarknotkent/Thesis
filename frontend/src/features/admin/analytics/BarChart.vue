@@ -48,15 +48,15 @@
             {{ formatPercent(d.value) }}
           </text>
 
-          <!-- x-axis label -->
+          <!-- x-axis label (wrapped) -->
           <text
             :x="barX(i) + barWidth/2"
-            :y="height - 10"
+            :y="height - 8 - (maxLines * (lineHeight/2))"
             text-anchor="middle"
             :font-size="fontSizeLabel"
             fill="#6c757d"
           >
-            {{ d.label }}
+            <tspan v-for="(ln, li) in splitLabelLines(d.label)" :key="li" :x="barX(i) + barWidth/2" :dy="li === 0 ? 0 : lineHeight">{{ ln }}</tspan>
           </text>
         </g>
       </g>
@@ -103,7 +103,18 @@ const chartData = computed(() => props.data.map((d, i) => ({ ...d, color: d.colo
 const minLeftPad = 40
 const minRightPad = 20
 const topPad = 24
-const bottomPad = 44
+
+// Label wrapping and sizing
+const lineHeight = 14
+const baseBottomPad = 32
+const extraBottomPerLine = 14
+const maxLabelCharsPerLine = 10
+const maxLabelLines = 3
+
+// Dynamic font sizes
+const fontSizeTicks = computed(() => 10)
+const fontSizeValue = computed(() => 10)
+const fontSizeLabel = computed(() => 10)
 
 const resizeObserver = ref(null)
 
@@ -126,7 +137,41 @@ const rightPad = computed(() => Math.max(minRightPad, containerWidth.value - lef
 const svgWidth = computed(() => Math.max(containerWidth.value, leftPad.value + rightPad.value + contentWidth.value))
 
 const height = props.height
-const heightInner = computed(() => Math.max(48, height - topPad - bottomPad))
+
+// split label into lines (simple wrap)
+const splitLabelLines = (label) => {
+  const text = String(label || '')
+  if (!text) return ['']
+  const words = text.split(/\s+/)
+  const lines = []
+  let line = ''
+  for (const w of words) {
+    const cand = line ? `${line} ${w}` : w
+    if (cand.length <= maxLabelCharsPerLine) {
+      line = cand
+    } else {
+      if (line) lines.push(line)
+      // hard wrap long word if needed
+      if (w.length > maxLabelCharsPerLine) {
+        let i = 0
+        while (i < w.length && lines.length < maxLabelLines - 1) {
+          lines.push(w.slice(i, i + maxLabelCharsPerLine))
+          i += maxLabelCharsPerLine
+        }
+        line = ''
+      } else {
+        line = w
+      }
+    }
+    if (lines.length >= maxLabelLines) break
+  }
+  if (line && lines.length < maxLabelLines) lines.push(line)
+  return lines.slice(0, maxLabelLines)
+}
+
+const maxLines = computed(() => Math.max(1, ...chartData.value.map(d => splitLabelLines(d.label).length)))
+const bottomPad = computed(() => baseBottomPad + (maxLines.value - 1) * extraBottomPerLine)
+const heightInner = computed(() => Math.max(48, height - topPad - bottomPad.value))
 
 const maxValue = computed(() => {
   if (!props.data || props.data.length === 0) return 100

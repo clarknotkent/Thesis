@@ -137,7 +137,8 @@ const reportModel = {
   },
 
   // Fetch comprehensive monthly immunization report with gender breakdown
-  fetchMonthlyImmunizationReport: async (month, year) => {
+  // opts: { outside: true|false|undefined, includeDeleted: boolean }
+  fetchMonthlyImmunizationReport: async (month, year, opts = {}) => {
     try {
       // Build date range for the month
       const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
@@ -158,11 +159,24 @@ const reportModel = {
       const femaleTarget = targetPopulation?.filter(p => p.sex === 'Female').length || 0;
 
       // Fetch vaccinations from the denormalized view which uses administered_date and dose_number
-      const { data: vaccinations, error: vacError } = await supabase
+      // Build base query from denormalized view
+      let vacQuery = supabase
         .from('immunizationhistory_view')
-        .select('immunization_id, patient_id, vaccine_id, dose_number, administered_date, patient_sex, patient_date_of_birth, vaccine_antigen_name')
+        .select('immunization_id, patient_id, vaccine_id, dose_number, administered_date, patient_sex, patient_date_of_birth, vaccine_antigen_name, immunization_outside, immunization_is_deleted')
         .gte('administered_date', startDate)
         .lte('administered_date', endDate);
+
+      // Exclude deleted by default
+      if (!opts.includeDeleted) {
+        // Keep rows where deleted flag is either false or null (many views don't set it)
+        vacQuery = vacQuery.or('immunization_is_deleted.is.null,immunization_is_deleted.eq.false');
+      }
+      // Optional: filter by outside flag when provided
+      if (typeof opts.outside === 'boolean') {
+        vacQuery = vacQuery.eq('immunization_outside', opts.outside);
+      }
+
+      const { data: vaccinations, error: vacError } = await vacQuery;
 
       if (vacError) throw vacError;
 
@@ -190,21 +204,53 @@ const reportModel = {
       };
       const daysBetween = (d1, d2) => Math.floor(hoursBetween(d1, d2) / 24);
 
+      // Debug collectors for raw names/doses seen this month
+  const encounteredRawNamesSet = new Set();
+  const encounteredUpperNamesSet = new Set();
+  const encounteredDoseSamples = [];
+  // Aggregated counts by antigen (upper) and by antigen+dose
+  const countByAntigenUpper = Object.create(null);
+  const countByAntigenAndDoseUpper = Object.create(null);
+
+      // Helper: clamp dose to valid array index length (1-based dose -> 0-based index)
+      const clampDoseIndex = (dose, len) => {
+        const n = Number.isFinite(dose) ? dose : 1;
+        // Valid doses are 1..len; anything below becomes 1, above becomes len
+        const clampedDose = Math.min(Math.max(n, 1), len);
+        return clampedDose - 1; // convert to 0-based index
+      };
+
       // Process vaccinations
       (vaccinations || []).forEach(vac => {
         const isMale = (vac.patient_sex === 'Male');
         const antigenName = vac.vaccine_antigen_name || '';
-        const dose = vac.dose_number || vac.dose_ordinal || vac.dose || 1;
+        const NAME = antigenName.toUpperCase();
+        const NORMAL = NAME.replace(/[^A-Z0-9]/g, ''); // strip spaces/punct for robust matching
+  // Normalize dose to a number (handles values like 'Dose 1', '1st', '2', etc.)
+  const rawDose = vac.dose_number ?? vac.dose_ordinal ?? vac.dose ?? 1;
+  const parsed = typeof rawDose === 'string' ? parseInt(rawDose.replace(/[^0-9]/g, ''), 10) : Number(rawDose);
+  const dose = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 
-        if (antigenName.includes('BCG')) {
+        // Collect debug info
+        if (antigenName) {
+          encounteredRawNamesSet.add(antigenName);
+          encounteredUpperNamesSet.add(NAME);
+        }
+        encounteredDoseSamples.push({ name: antigenName || null, upper: NAME || null, rawDose: rawDose ?? null, parsedDose: dose });
+        // Aggregate counts
+        countByAntigenUpper[NAME] = (countByAntigenUpper[NAME] || 0) + 1;
+        if (!countByAntigenAndDoseUpper[NAME]) countByAntigenAndDoseUpper[NAME] = Object.create(null);
+        countByAntigenAndDoseUpper[NAME][dose] = (countByAntigenAndDoseUpper[NAME][dose] || 0) + 1;
+
+        if (NAME.includes('BCG')) {
           vaccines.BCG.total++;
           if (isMale) vaccines.BCG.male++; else vaccines.BCG.female++;
           if (vac.patient_date_of_birth && vac.administered_date) {
             const hrs = hoursBetween(vac.administered_date, vac.patient_date_of_birth);
             if (hrs <= 24) bcgWithin24++; else bcgAfter24++;
           }
-        } else if (antigenName.includes('Hepatitis B') || antigenName.includes('HepB')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (NAME.includes('HEPATITIS B') || NAME.includes('HEPB')) {
+          const idx = clampDoseIndex(dose, vaccines.HepB.length);
           if (vaccines.HepB[idx]) {
             vaccines.HepB[idx].total++;
             if (isMale) vaccines.HepB[idx].male++; else vaccines.HepB[idx].female++;
@@ -213,20 +259,35 @@ const reportModel = {
             const hrs = hoursBetween(vac.administered_date, vac.patient_date_of_birth);
             if (hrs <= 24) hepb1Within24++; else hepb1After24++;
           }
-        } else if (antigenName.includes('Pentavalent') || antigenName.includes('DPT')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (
+          NAME.includes('PENTA') ||
+          NAME.includes('PENTAVALENT') ||
+          NAME.includes('PENTAVALENT VACCINE') ||
+          NAME.includes('DPT-HEPB-HIB') || // direct match on common formatting
+          NAME.includes('DPT-HIB-HEPB') || // alt order
+          NAME.includes('DTP') ||
+          NAME.includes('DTAP') ||
+          NAME.includes('DTWP') ||
+          NAME.includes('DTPW') ||
+          NORMAL.includes('DPTHEPBHIB') || // normalized DPT-HepB-Hib
+          NORMAL.includes('DPTHIBHEPB') || // normalized alt order
+          NORMAL.includes('5IN1') || // 5-in-1 wording
+          // Robust rule: if name contains a DPT-like token AND HEPB AND HIB in any order
+          ((/DPT|DTP|DTAP|DTWP|DTPW/).test(NORMAL) && NORMAL.includes('HEPB') && NORMAL.includes('HIB'))
+        ) {
+          const idx = clampDoseIndex(dose, vaccines.Pentavalent.length);
           if (vaccines.Pentavalent[idx]) {
             vaccines.Pentavalent[idx].total++;
             if (isMale) vaccines.Pentavalent[idx].male++; else vaccines.Pentavalent[idx].female++;
           }
-        } else if (antigenName.includes('OPV') || antigenName.includes('Oral Polio')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (NAME.includes('OPV') || NAME.includes('ORAL POLIO')) {
+          const idx = clampDoseIndex(dose, vaccines.OPV.length);
           if (vaccines.OPV[idx]) {
             vaccines.OPV[idx].total++;
             if (isMale) vaccines.OPV[idx].male++; else vaccines.OPV[idx].female++;
           }
-        } else if (antigenName.includes('IPV') || antigenName.includes('Inactivated Polio')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (NAME.includes('IPV') || NAME.includes('INACTIVATED POLIO')) {
+          const idx = clampDoseIndex(dose, vaccines.IPV.length);
           if (vaccines.IPV[idx]) {
             vaccines.IPV[idx].total++;
             if (isMale) vaccines.IPV[idx].male++; else vaccines.IPV[idx].female++;
@@ -235,14 +296,19 @@ const reportModel = {
             const days = daysBetween(vac.administered_date, vac.patient_date_of_birth);
             if (days > 60) ipv2CatchUp++;
           }
-        } else if (antigenName.includes('PCV') || antigenName.includes('Pneumococcal')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (NAME.includes('PCV') || NAME.includes('PNEUMOCOCCAL')) {
+          const idx = clampDoseIndex(dose, vaccines.PCV.length);
           if (vaccines.PCV[idx]) {
             vaccines.PCV[idx].total++;
             if (isMale) vaccines.PCV[idx].male++; else vaccines.PCV[idx].female++;
           }
-        } else if (antigenName.includes('MMR') || antigenName.includes('Measles')) {
-          const idx = Math.max(0, dose - 1);
+        } else if (
+          NAME.includes('MMR') ||
+          NAME.includes('MEASLES') ||
+          NAME.includes('MCV') ||
+          NAME.includes(' MR') || NAME.startsWith('MR') // measles-rubella (avoid matching 'PNEUMO')
+        ) {
+          const idx = clampDoseIndex(dose, vaccines.MMR.length);
           if (vaccines.MMR[idx]) {
             vaccines.MMR[idx].total++;
             if (isMale) vaccines.MMR[idx].male++; else vaccines.MMR[idx].female++;
@@ -335,7 +401,15 @@ const reportModel = {
         bcgAfter24: bcgAfter24Obj,
         hepb1Within24: hepb1Within24Obj,
         hepb1After24: hepb1After24Obj,
-        ipv2CatchUp: ipv2CatchUpObj
+        ipv2CatchUp: ipv2CatchUpObj,
+        // Debug payload to help identify exact names/doses present in data
+        debug: {
+          encounteredAntigenNames: Array.from(encounteredRawNamesSet),
+          encounteredAntigenNamesUpper: Array.from(encounteredUpperNamesSet),
+          doseSamples: encounteredDoseSamples.slice(0, 50), // cap to avoid large payloads
+          countByAntigenUpper,
+          countByAntigenAndDoseUpper
+        }
       };
     } catch (error) {
       console.error('Error fetching monthly immunization report:', error);

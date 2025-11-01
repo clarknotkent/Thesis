@@ -6,11 +6,11 @@ const { authorizeRole } = require('../middlewares/authMiddleware');
 
 router.get('/', authenticateRequest, checkUserMapping, getConversations);
 
-// Admin: create conversation and add participants
-router.post('/', authenticateRequest, authorizeRole(['admin','superadmin']), create);
+// Create conversation and add participants - Any authenticated user
+router.post('/', authenticateRequest, checkUserMapping, create);
 
-// Admin: start conversation and send first message in one call
-router.post('/start', authenticateRequest, authorizeRole(['admin','superadmin']), startWithMessage);
+// Start conversation and send first message in one call - Any authenticated user
+router.post('/start', authenticateRequest, checkUserMapping, startWithMessage);
 
 // Participant leaves a conversation (sets left_at)
 router.post('/:conversation_id/leave', authenticateRequest, checkUserMapping, leaveConversation);

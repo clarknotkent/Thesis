@@ -255,6 +255,8 @@
             :dose="vaccine.dose_number || vaccine.dose"
             :scheduled-date="vaccine.scheduled_date"
             :status="vaccine.status"
+            :editable="isEditable(vaccine)"
+            @select="onScheduledSelect(vaccine)"
           />
         </div>
       </div>
@@ -276,14 +278,16 @@
             :visit-id="visit.visit_id"
             :visit-date="visit.visit_date"
             :service-rendered="visit.service_rendered || 'General Checkup'"
-            :recorded-by="visit.recorded_by_name || visit.health_worker_name || '—'"
+            :recorded-by="visit.recorded_by_name || visit.recorded_by || visit.health_worker_name || '—'"
             :vitals="{
-              weight: visit.weight,
-              height: visit.height,
-              temperature: visit.temperature,
-              heart_rate: visit.heart_rate,
-              respiratory_rate: visit.respiratory_rate,
-              blood_pressure: visit.blood_pressure
+              // Common vitals with robust fallbacks to match DB/view field names
+              weight: visit.weight ?? null,
+              height: visit.height ?? visit.height_length ?? null,
+              temperature: visit.temperature ?? null,
+              heart_rate: visit.heart_rate ?? null,
+              respiratory_rate: visit.respiratory_rate ?? visit.respiration_rate ?? visit.respiration ?? null,
+              blood_pressure: visit.blood_pressure ?? null,
+              muac: visit.muac ?? null
             }"
             :immunizations="visit.immunizations || []"
             :findings="visit.findings"
@@ -293,6 +297,52 @@
         </div>
       </div>
     </div>
+
+    <!-- Modals: placed inside the main template so they render correctly -->
+    <!-- Edit Scheduled Vaccination Modal -->
+    <div v-if="showEditModal" class="modal fade show" tabindex="-1" style="display: block;">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Scheduled Date</h5>
+            <button type="button" class="btn-close" @click="closeEditModal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label">Scheduled date</label>
+            <input type="date" class="form-control" v-model="editScheduledDate" />
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeEditModal">Cancel</button>
+            <button class="btn btn-primary" @click="saveScheduleEdit">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showEditModal" class="modal-backdrop fade show"></div>
+
+    <!-- Calendar / Read-only modal for completed schedules -->
+    <div v-if="showCalendarModal" class="modal fade show" tabindex="-1" style="display: block;">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Scheduled Date</h5>
+            <button type="button" class="btn-close" @click="closeCalendarModal"></button>
+          </div>
+          <div class="modal-body text-center">
+            <div class="calendar-visual mb-3">
+              <div class="month">{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).toLocaleString('en-PH', { month: 'short', year: 'numeric' }) : '') : '' }}</div>
+              <div class="day">{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).getDate() : '') : '' }}</div>
+            </div>
+            <div>{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—') : '—' }}</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" @click="closeCalendarModal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showCalendarModal" class="modal-backdrop fade show"></div>
+
   </HealthWorkerLayout>
 </template>
 
@@ -306,6 +356,8 @@ import VaccinationRecordCard from '@/features/health-worker/patients/components/
 import ScheduledVaccineCard from '@/features/health-worker/patients/components/ScheduledVaccineCard.vue'
 import MedicalHistoryCard from '@/features/health-worker/patients/components/MedicalHistoryCard.vue'
 import api from '@/services/api'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
@@ -330,19 +382,40 @@ const expandedCards = ref({
   birthHistory: false
 })
 
+// Age display
+// Prefer server-provided age_months/age_days; fallback to computing from birthDate
 const age = computed(() => {
-  if (patient.value?.age_months !== undefined && patient.value?.age_days !== undefined) {
-    const months = patient.value.age_months || 0
-    const days = patient.value.age_days || 0
-    
-    if (months >= 36) {
-      const years = Math.floor(months / 12)
-      return `${years} year${years !== 1 ? 's' : ''}`
-    } else {
-      return `${months} months ${days} days`
-    }
+  const hasServerAge = patient.value?.age_months !== undefined && patient.value?.age_days !== undefined
+  let months, days
+
+  if (hasServerAge) {
+    months = patient.value.age_months || 0
+    days = patient.value.age_days || 0
+  } else if (patient.value?.childInfo?.birthDate) {
+    const birth = new Date(patient.value.childInfo.birthDate)
+    const today = new Date()
+
+    // total month difference
+    months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth())
+    if (today.getDate() < birth.getDate()) months--
+
+    // days within current month span
+    const refDaysPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate()
+    days = (today.getDate() >= birth.getDate())
+      ? (today.getDate() - birth.getDate())
+      : (refDaysPrevMonth - birth.getDate() + today.getDate())
+
+    months = Math.max(0, months)
+    days = Math.max(0, days)
+  } else {
+    return '—'
   }
-  return '—'
+
+  if (months >= 36) {
+    const years = Math.floor(months / 12)
+    return `${years} year${years !== 1 ? 's' : ''}`
+  }
+  return `${months} months ${days} days`
 })
 
 const formattedBirthDate = computed(() => {
@@ -478,10 +551,94 @@ const editVaccination = (group) => {
   })
 }
 
-const editScheduledVaccination = (vaccine) => {
-  // TODO: Implement edit scheduled vaccination modal
-  console.log('Edit scheduled vaccination:', vaccine)
-  alert(`Edit scheduled vaccination: ${vaccine.vaccine_name || vaccine.antigen_name || 'Unknown'}`)
+// Determine if a schedule is editable by health worker
+const isEditable = (vaccine) => {
+  if (!vaccine || !vaccine.status) return true
+  const s = String(vaccine.status).toLowerCase()
+  return !(s === 'completed' || s === 'administered')
+}
+
+const { confirm } = useConfirm()
+const { addToast } = useToast()
+
+// Modal state for editing / calendar view
+const showEditModal = ref(false)
+const editTarget = ref(null)
+const editScheduledDate = ref('')
+
+const showCalendarModal = ref(false)
+const calendarTarget = ref(null)
+
+const onScheduledSelect = (vaccine) => {
+  if (isEditable(vaccine)) {
+    // open edit modal
+    editTarget.value = vaccine
+    // prefer existing scheduled_date if present
+    editScheduledDate.value = vaccine.scheduled_date ? vaccine.scheduled_date.split('T')[0] : ''
+    showEditModal.value = true
+  } else {
+    // show calendar/read-only view for completed schedules
+    calendarTarget.value = vaccine
+    showCalendarModal.value = true
+  }
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  editTarget.value = null
+  editScheduledDate.value = ''
+}
+
+const formatDate = (d) => {
+  if (!d) return ''
+  try {
+    return new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+  } catch { return d }
+}
+
+// Follow admin manual-reschedule flow (confirm + RPC that enforces rules)
+const saveScheduleEdit = async () => {
+  if (!editTarget.value || !editTarget.value.patient_schedule_id) return
+  if (!editScheduledDate.value) {
+    addToast({ title: 'Error', message: 'Please select a valid date.', type: 'error' })
+    return
+  }
+
+  try {
+    await confirm({
+      title: 'Confirm Reschedule',
+      message: `This will reschedule this vaccination to ${formatDate(editScheduledDate.value)}. Related vaccinations in the schedule may also be adjusted. Do you want to proceed?`,
+      variant: 'warning',
+      confirmText: 'Yes, Reschedule',
+      cancelText: 'Cancel'
+    })
+
+    const id = editTarget.value.patient_schedule_id || editTarget.value.schedule_id || editTarget.value.patient_schedule_id
+    // call admin-style RPC endpoint which applies smart reschedule rules server-side
+    await api.post('/immunizations/manual-reschedule', {
+      p_patient_schedule_id: id,
+      p_new_scheduled_date: editScheduledDate.value,
+      cascade: true,
+      force_override: true
+    })
+
+    addToast({ title: 'Success', message: 'Vaccination rescheduled successfully.', type: 'success' })
+    await fetchPatientDetails()
+    closeEditModal()
+  } catch (err) {
+    if (err && err.message === false) {
+      // user cancelled (useConfirm rejects with false)
+      return
+    }
+    console.error('Failed to save schedule edit', err)
+    const message = err?.response?.data?.message || err?.message || 'Failed to reschedule vaccination.'
+    addToast({ title: 'Error', message, type: 'error' })
+  }
+}
+
+const closeCalendarModal = () => {
+  showCalendarModal.value = false
+  calendarTarget.value = null
 }
 
 const fetchPatientDetails = async () => {

@@ -37,17 +37,24 @@ const authenticateRequest = async (req, res, next) => {
   }
 };
 
+// Normalize role strings for flexible comparisons
+const normalizeRole = (r) => {
+  if (!r) return ''
+  // lowercase, remove non-alphanumeric characters (spaces, dashes, underscores)
+  return String(r).toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 // Authorize user by role
 const authorizeRole = (roles) => (req, res, next) => {
-  const allowed = (roles || []).map(r => (r || '').toLowerCase());
-  const current = ((req.user && req.user.role) || '').toLowerCase();
-  const ok = allowed.includes(current);
+  const allowed = (roles || []).map(r => normalizeRole(r))
+  const current = normalizeRole((req.user && req.user.role) || '')
+  const ok = allowed.includes(current)
   if (!ok) {
-    console.warn('[auth] forbidden role', { required: allowed, got: current, userId: req.user && req.user.id });
-    return res.status(403).json({ error: 'Forbidden: insufficient role' });
+    console.warn('[auth] forbidden role', { required: allowed, got: current, userId: req.user && (req.user.user_id || req.user.id) });
+    return res.status(403).json({ error: 'Forbidden: insufficient role' })
   }
-  next();
-};
+  next()
+}
 
 // Check user mapping exists
 const checkUserMapping = async (req, res, next) => {

@@ -37,13 +37,48 @@
           <div v-else class="text-muted">Loading patient information...</div>
         </div>
 
+        <!-- Visit Selection (Nurse/Nutritionist only) - moved above vitals -->
+        <div class="form-section" v-if="isNurseOrNutritionist">
+          <h3 class="section-title">
+            <i class="bi bi-journal-medical"></i>
+            Visit
+          </h3>
+
+          <div class="form-group">
+            <label class="form-label">Attach to visit</label>
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <label class="checkbox-label">
+                <input type="radio" value="new" v-model="visitMode" /> Create new visit
+              </label>
+              <label class="checkbox-label">
+                <input type="radio" value="existing" v-model="visitMode" @change="ensureVisitsLoaded" /> Use existing visit
+              </label>
+            </div>
+            <small class="form-hint" v-if="visitMode==='existing'">Select a recent visit for this patient (preferably created by BHS)</small>
+          </div>
+
+          <div class="form-group" v-if="visitMode==='existing'">
+            <label class="form-label">Existing Visits</label>
+            <select class="form-input" v-model="existingVisitId">
+              <option value="">Select a visit</option>
+              <option v-for="v in availableVisits" :key="v.visit_id" :value="String(v.visit_id)">
+                {{ formatDate(v.visit_date) }} — {{ v.service_rendered || 'No services yet' }}
+              </option>
+            </select>
+          </div>
+        </div>
+
         <!-- Vital Signs Card -->
-        <div class="form-section">
+        <div class="form-section" v-if="!hideVitals">
           <h3 class="section-title">
             <i class="bi bi-heart-pulse-fill"></i>
             Vital Signs
           </h3>
           
+          <div v-if="vitalsReadOnly" class="form-hint" style="margin-bottom:.5rem; color:#374151">
+            Vitals prefilled from selected visit — read-only
+          </div>
+
           <div class="form-group">
             <label class="form-label">Temperature (°C)</label>
             <input 
@@ -52,6 +87,8 @@
               class="form-input" 
               v-model="formData.vitals.temperature"
               placeholder="e.g., 36.5"
+              :readonly="vitalsReadOnly"
+              :disabled="vitalsReadOnly"
             />
           </div>
 
@@ -63,6 +100,8 @@
               class="form-input" 
               v-model="formData.vitals.muac"
               placeholder="Mid-Upper Arm Circumference"
+              :readonly="vitalsReadOnly"
+              :disabled="vitalsReadOnly"
             />
           </div>
 
@@ -73,6 +112,8 @@
               class="form-input" 
               v-model="formData.vitals.respiration"
               placeholder="e.g., 18"
+              :readonly="vitalsReadOnly"
+              :disabled="vitalsReadOnly"
             />
           </div>
 
@@ -84,6 +125,8 @@
               class="form-input" 
               v-model="formData.vitals.weight"
               placeholder="e.g., 8.5"
+              :readonly="vitalsReadOnly"
+              :disabled="vitalsReadOnly"
             />
           </div>
 
@@ -95,12 +138,14 @@
               class="form-input" 
               v-model="formData.vitals.height"
               placeholder="e.g., 75.5"
+              :readonly="vitalsReadOnly"
+              :disabled="vitalsReadOnly"
             />
           </div>
         </div>
 
-        <!-- Findings Card -->
-        <div class="form-section">
+        <!-- Findings Card (hidden for BHS) -->
+        <div class="form-section" v-if="!isBHS">
           <h3 class="section-title">
             <i class="bi bi-clipboard-data-fill"></i>
             Findings
@@ -118,8 +163,8 @@
           </div>
         </div>
 
-        <!-- Add Service Section -->
-        <div class="form-section">
+        <!-- Add Service Section (hidden for BHS) -->
+        <div class="form-section" v-if="!isBHS">
           <button 
             type="button" 
             class="btn-add-service" 
@@ -139,6 +184,19 @@
 
               <div class="form-group">
                 <label class="form-label">Vaccine *</label>
+
+                <!-- Top toggles: NIP-only and Outside -->
+                <div class="form-group-inline" style="display:flex; gap:.75rem; align-items:center; margin-bottom:.5rem;">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="showNipOnly" @change="refreshVaccineSources" />
+                    NIP only
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="outsideMode" @change="onOutsideToggle" />
+                    Outside facility
+                  </label>
+                </div>
+
                 <div class="vaccine-search-wrapper" @click.stop>
                   <input 
                     type="text"
@@ -146,7 +204,7 @@
                     v-model="vaccineSearchTerm"
                     @input="onVaccineSearch"
                     @focus="showVaccineDropdown = true"
-                    placeholder="Type to search vaccine..."
+                    :placeholder="outsideMode ? 'Search antigen (outside record)...' : 'Type to search vaccine (inventory)...'"
                     autocomplete="off"
                     required
                   />
@@ -158,25 +216,25 @@
                     <template v-if="filteredVaccineOptions.length > 0">
                       <button
                         v-for="vaccine in filteredVaccineOptions"
-                        :key="vaccine.inventory_id"
+                        :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
                         type="button"
                         class="vaccine-option"
-                        :class="{ 'disabled': vaccine.isExpired }"
+                        :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
                         @click.stop="selectVaccine(vaccine)"
-                        :disabled="vaccine.isExpired"
+                        :disabled="!outsideMode && vaccine.isExpired"
                       >
                         <div class="vaccine-option-main">
                           <strong>{{ vaccine.antigen_name }}</strong>
-                          <span class="vaccine-brand">{{ vaccine.brand_name }}</span>
+                          <span v-if="!outsideMode" class="vaccine-brand">{{ vaccine.manufacturer }}</span>
                         </div>
-                        <div class="vaccine-option-details">
+                        <div v-if="!outsideMode" class="vaccine-option-details">
                           <span class="vaccine-detail">Lot: {{ vaccine.lot_number }}</span>
-                          <span class="vaccine-detail">Stock: {{ vaccine.current_stock }}</span>
+                          <span class="vaccine-detail">Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
                           <span v-if="vaccine.isExpired" class="vaccine-expired">EXPIRED</span>
                         </div>
                       </button>
                     </template>
-                    <div v-else-if="vaccineOptions.length === 0" class="vaccine-no-results">
+                    <div v-else-if="(outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0" class="vaccine-no-results">
                       Loading vaccines...
                     </div>
                     <div v-else class="vaccine-no-results">
@@ -184,19 +242,13 @@
                         No vaccines found matching "{{ vaccineSearchTerm }}"
                       </div>
                       <div v-else>
-                        No vaccines available in stock
+                        No vaccines available {{ outsideMode ? 'in catalog' : 'in stock' }}
                       </div>
                       <small class="d-block mt-2 text-muted">
-                        Total vaccines loaded: {{ vaccineOptions.length }}
+                        Total vaccines loaded: {{ outsideMode ? vaccineCatalog.length : vaccineOptions.length }}
                       </small>
                     </div>
                   </div>
-                </div>
-                <div class="form-group-inline">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="serviceForm.filterNIP" />
-                    Filter NIP only
-                  </label>
                 </div>
               </div>
 
@@ -215,19 +267,17 @@
                   <label class="form-label">Dose Number *</label>
                   <select class="form-input" v-model="serviceForm.doseNumber">
                     <option value="">Select dose</option>
-                    <option value="1">Dose 1</option>
-                    <option value="2">Dose 2</option>
-                    <option value="3">Dose 3</option>
-                    <option value="booster">Booster</option>
+                    <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
                   </select>
+                  <small v-if="autoSelectHint" class="form-hint" style="color:#059669;">{{ autoSelectHint }}</small>
                 </div>
-
                 <div class="form-group">
                   <label class="form-label">Date Administered *</label>
                   <input 
                     type="date"
                     class="form-input"
                     v-model="serviceForm.dateAdministered"
+                    @change="updateAgeCalculation"
                   />
                 </div>
               </div>
@@ -238,13 +288,13 @@
                   <input 
                     type="text"
                     class="form-input"
-                    v-model="serviceForm.ageAtAdmin"
+                    :value="serviceForm.ageAtAdmin"
                     placeholder="Auto-calculated"
                     readonly
                   />
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" v-if="!outsideMode">
                   <label class="form-label">Manufacturer</label>
                   <input 
                     type="text"
@@ -256,7 +306,7 @@
               </div>
 
               <div class="form-row">
-                <div class="form-group">
+                <div class="form-group" v-if="!outsideMode">
                   <label class="form-label">Lot Number</label>
                   <input 
                     type="text"
@@ -278,24 +328,7 @@
                 </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Health Staff *</label>
-                <select 
-                  class="form-input" 
-                  v-model="serviceForm.healthStaff" 
-                  required
-                >
-                  <option value="">Select health staff</option>
-                  <option 
-                    v-for="nurse in nurses" 
-                    :key="nurse.user_id" 
-                    :value="nurse.user_id"
-                  >
-                    {{ nurse.fullname }} ({{ nurse.hs_type }})
-                  </option>
-                  <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
-                </select>
-              </div>
+              <!-- Health Staff dropdown removed: auto-prefilled with current user -->
 
               <div class="form-group">
                 <label class="form-label">Facility Name</label>
@@ -305,12 +338,6 @@
                   v-model="serviceForm.facilityName"
                   placeholder="Enter facility name"
                 />
-                <div class="form-group-inline">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="serviceForm.outsideFacility" />
-                    Administered from outside facility
-                  </label>
-                </div>
               </div>
 
               <div class="form-group">
@@ -363,8 +390,8 @@
           </div>
         </div>
 
-        <!-- Service Rendered Card -->
-        <div class="form-section">
+        <!-- Service Rendered Card (hidden for BHS) -->
+        <div class="form-section" v-if="!isBHS">
           <h3 class="section-title">
             <i class="bi bi-check-circle-fill"></i>
             Service Rendered
@@ -400,11 +427,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed, toRef } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import api from '@/services/api'
-import { useVaccinationRecords } from '@/composables/useVaccinationRecords'
+import { getCurrentPHDate } from '@/utils/dateUtils'
+import { getUser, getUserId, getRole } from '@/services/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -414,16 +442,24 @@ const submitting = ref(false)
 const patients = ref([])
 const currentPatient = ref(null)
 
-// Use the vaccination records composable for vaccine data
-const {
-  vaccineOptions,
-  vaccineCatalog,
-  fetchVaccineOptions,
-  fetchVaccineCatalog
-} = useVaccinationRecords(toRef(() => route.params.patientId), ref(null))
+// Vaccine sources
+const vaccineOptions = ref([]) // inventory-based (in-facility)
+const vaccineCatalog = ref([]) // catalog (outside)
 
-// Separate ref for nurses/nutritionists (for vaccination administration)
-const nurses = ref([])
+// Current user context
+const currentUser = ref(getUser())
+const currentUserId = ref(getUserId())
+const currentRole = ref(getRole())
+const hsType = computed(() => String(currentUser.value?.hs_type || currentUser.value?.type || '').toLowerCase())
+const isBHS = computed(() => hsType.value === 'bhs')
+const isNurseOrNutritionist = computed(() => ['nurse','nutritionist'].some(t => hsType.value.includes(t)))
+
+// Visit selection (for nurse/nutritionist)
+const visitMode = ref('new') // 'new' | 'existing'
+const availableVisits = ref([])
+const existingVisitId = ref('')
+const vitalsReadOnly = ref(false)
+const hideVitals = ref(false)
 
 // Service form state
 const showServiceForm = ref(false)
@@ -431,14 +467,18 @@ const addedServices = ref([])
 const editingServiceIndex = ref(null)
 const vaccineSearchTerm = ref('')
 const showVaccineDropdown = ref(false)
+const showNipOnly = ref(false)
+const outsideMode = ref(false)
+const availableDoses = ref([1,2,3,4,5])
+const autoSelectHint = ref('')
 
 const serviceForm = ref({
   inventoryId: '',
+  vaccineId: '',
   vaccineName: '',
   diseasePrevented: '',
-  filterNIP: false,
   doseNumber: '',
-  dateAdministered: '',
+  dateAdministered: getCurrentPHDate(),
   ageAtAdmin: '',
   manufacturer: '',
   lotNumber: '',
@@ -451,47 +491,39 @@ const serviceForm = ref({
 
 // Computed: Filter vaccines by NIP and search term
 const filteredVaccineOptions = computed(() => {
-  let filtered = [...vaccineOptions.value]
-  
-  console.log('=== Vaccine Filtering ===')
-  console.log('Total vaccines loaded:', filtered.length)
-  console.log('Sample vaccine:', filtered[0])
-  
-  // Filter by NIP if checkbox is checked
-  if (serviceForm.value.filterNIP) {
-    filtered = filtered.filter(v => v.is_nip || v.isNIP)
-    console.log('After NIP filter:', filtered.length)
+  const source = outsideMode.value ? vaccineCatalog.value : vaccineOptions.value
+  let filtered = [...source]
+
+  // Local NIP filter for robustness (in case backend doesn't filter)
+  if (showNipOnly.value) {
+    filtered = filtered.filter(v => !!(v.is_nip || v.isNIP))
   }
-  
-  // Filter by search term if provided
-  if (vaccineSearchTerm.value && vaccineSearchTerm.value.trim() !== '') {
-    const searchLower = vaccineSearchTerm.value.toLowerCase().trim()
-    console.log('Searching for:', searchLower)
-    
+
+  // When outside mode is on, deduplicate by antigen name (case-insensitive)
+  if (outsideMode.value) {
+    const seen = new Set()
     filtered = filtered.filter(v => {
-      const antigenMatch = (v.antigen_name || '').toLowerCase().includes(searchLower)
-      const brandMatch = (v.brand_name || '').toLowerCase().includes(searchLower)
-      const lotMatch = (v.lot_number || '').toLowerCase().includes(searchLower)
-      const diseaseMatch = (v.disease_prevented || '').toLowerCase().includes(searchLower)
-      
-      const matches = antigenMatch || brandMatch || lotMatch || diseaseMatch
-      
-      if (matches) {
-        console.log('Match found:', v.antigen_name, '|', v.brand_name)
-      }
-      
-      return matches
+      const key = String(v.antigen_name || '').trim().toLowerCase()
+      if (!key) return false
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
     })
-    console.log('After search filter:', filtered.length)
-  } else {
-    console.log('No search term - showing all vaccines')
   }
-  
-  // Limit to first 20 results for mobile performance
-  const result = filtered.slice(0, 20)
-  console.log('Final filtered results:', result.length)
-  console.log('=== End Filtering ===')
-  return result
+
+  // Filter by search term
+  if (vaccineSearchTerm.value && vaccineSearchTerm.value.trim() !== '') {
+    const q = vaccineSearchTerm.value.toLowerCase().trim()
+    filtered = filtered.filter(v => {
+      const antigenMatch = (v.antigen_name || '').toLowerCase().includes(q)
+      const lotMatch = (v.lot_number || '').toLowerCase().includes(q)
+      const diseaseMatch = (v.disease_prevented || '').toLowerCase().includes(q)
+      const manufMatch = (v.manufacturer || '').toLowerCase().includes(q)
+      return antigenMatch || lotMatch || diseaseMatch || manufMatch
+    })
+  }
+
+  return filtered.slice(0, 20)
 })
 
 const formData = ref({
@@ -505,6 +537,43 @@ const formData = ref({
   },
   findings: '',
   service_rendered: ''
+})
+
+// Watch selected existing visit and prefills/hides vitals
+watch(existingVisitId, (newId) => {
+  if (!newId) {
+    // reset behavior when no visit selected
+    vitalsReadOnly.value = false
+    hideVitals.value = false
+    return
+  }
+
+  const visit = availableVisits.value.find(v => String(v.visit_id) === String(newId))
+  if (!visit) {
+    // If visit list doesn't contain it (maybe not loaded), ensure visits are loaded
+    ensureVisitsLoaded()
+    vitalsReadOnly.value = false
+    hideVitals.value = false
+    return
+  }
+
+  // attempt to find vitals inside visit object in several possible shapes
+  const v = visit.vitals || visit.vitalsigns || visit.vitals_data || visit.vitals_json || null
+  if (v && (v.temperature !== undefined || v.muac !== undefined || v.weight !== undefined || v.height !== undefined || v.respiration !== undefined)) {
+    // Prefill known vitals and make readonly
+    formData.value.vitals.temperature = v.temperature ?? v.temp ?? formData.value.vitals.temperature
+    formData.value.vitals.muac = v.muac ?? formData.value.vitals.muac
+    formData.value.vitals.respiration = v.respiration ?? formData.value.vitals.respiration
+    formData.value.vitals.weight = v.weight ?? formData.value.vitals.weight
+    formData.value.vitals.height = v.height ?? formData.value.vitals.height
+    vitalsReadOnly.value = true
+    hideVitals.value = false
+  } else {
+    // No vitals recorded on selected visit — hide vitals input per requirement
+    formData.value.vitals = { temperature: '', muac: '', respiration: '', weight: '', height: '' }
+    vitalsReadOnly.value = false
+    hideVitals.value = true
+  }
 })
 
 const goBack = () => {
@@ -545,63 +614,22 @@ const fetchCurrentPatient = async () => {
 }
 
 // Fetch health workers - specifically nurses/nutritionists for vaccination administration
-const fetchHealthWorkers = async () => {
+// Load visits for patient (used when attaching to existing)
+const loadVisitsForPatient = async () => {
+  if (!formData.value.patient_id) return
   try {
-    console.log('🔄 [AddImmunization] Fetching health staff...')
-    const res = await api.get('/health-staff')
-    console.log('✅ [AddImmunization] Health workers API response:', res.data)
-    
-    // Handle different possible response structures - prioritize new backend structure
-    let list = []
-    if (res.data?.data?.healthWorkers && Array.isArray(res.data.data.healthWorkers)) {
-      list = res.data.data.healthWorkers
-    } else if (res.data?.data?.healthStaff && Array.isArray(res.data.data.healthStaff)) {
-      // Current backend returns { success:true, data: { healthStaff: [...] } }
-      list = res.data.data.healthStaff
-    } else if (Array.isArray(res.data)) {
-      list = res.data
-    } else if (res.data?.data && Array.isArray(res.data.data)) {
-      list = res.data.data
-    } else if (res.data?.users && Array.isArray(res.data.users)) {
-      list = res.data.users
-    } else if (res.data?.healthWorkers && Array.isArray(res.data.healthWorkers)) {
-      list = res.data.healthWorkers
-    } else if (res.data?.healthStaff && Array.isArray(res.data.healthStaff)) {
-      list = res.data.healthStaff
-    } else {
-      console.warn('Unexpected health workers response structure:', res.data)
-      list = []
-    }
-    
-    console.log('👥 [AddImmunization] Health workers list:', list)
-    
-    // Role helpers
-    const rawRole = (hw) => String(hw.hs_type || hw.hw_type || hw.role || hw.type || '').toLowerCase()
-    const isNurseOrNutritionistRole = (r) => {
-      const s = r.toLowerCase()
-      return s.includes('nurse') || s.includes('rn') || s.includes('nutritionist') || s.includes('dietitian') || s.includes('nd')
-    }
-    const displayRole = (r) => {
-      if (isNurseOrNutritionistRole(r)) {
-        return r.includes('nutrition') || r.includes('diet') ? 'Nutritionist' : 'Nurse'
-      }
-      return r || 'Health Staff'
-    }
-    
-    // For vaccination form (administered_by): show Nurses and Nutritionists only
-    nurses.value = list
-      .filter(hw => isNurseOrNutritionistRole(rawRole(hw)))
-      .map(hw => ({
-        user_id: hw.user_id || hw.id || hw.health_worker_id,
-        fullname: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        hs_type: displayRole(rawRole(hw))
-      }))
-    
-    console.log('🎯 [AddImmunization] Processed nurses/nutritionists for vaccination:', nurses.value)
-    console.log('🔍 [AddImmunization] Available HS types in data:', [...new Set(list.map(hw => hw.hs_type || hw.hw_type || hw.role || hw.type))])
-  } catch (err) {
-    console.error('❌ [AddImmunization] Failed to load health workers:', err)
-    nurses.value = []
+    const res = await api.get('/visits', { params: { patient_id: formData.value.patient_id, page: 1, limit: 10 } })
+    const payload = res.data?.items || res.data?.data?.items || res.data?.data || res.data || []
+    const list = Array.isArray(payload) ? payload : (Array.isArray(payload.items) ? payload.items : [])
+    availableVisits.value = list
+  } catch (e) {
+    availableVisits.value = []
+  }
+}
+
+const ensureVisitsLoaded = async () => {
+  if (visitMode.value === 'existing' && availableVisits.value.length === 0) {
+    await loadVisitsForPatient()
   }
 }
 
@@ -621,13 +649,16 @@ const onVaccineSearch = () => {
   
   // Clear selection if user is modifying the search term
   if (serviceForm.value.inventoryId) {
-    const selectedVaccine = vaccineOptions.value.find(v => v.inventory_id === serviceForm.value.inventoryId)
-    const expectedText = selectedVaccine ? `${selectedVaccine.antigen_name} - ${selectedVaccine.brand_name}` : ''
+    const selectedVaccine = outsideMode.value
+      ? vaccineCatalog.value.find(v => v.vaccine_id === serviceForm.value.vaccineId)
+      : vaccineOptions.value.find(v => v.inventory_id === serviceForm.value.inventoryId)
+    const expectedText = selectedVaccine ? `${selectedVaccine.antigen_name}${outsideMode.value ? '' : ' - ' + (selectedVaccine.manufacturer || '')}` : ''
     
     // Only clear if the text doesn't match the selected vaccine
     if (vaccineSearchTerm.value !== expectedText) {
       console.log('Clearing selection because search term changed')
       serviceForm.value.inventoryId = ''
+      serviceForm.value.vaccineId = ''
       serviceForm.value.vaccineName = ''
       serviceForm.value.diseasePrevented = ''
       serviceForm.value.manufacturer = ''
@@ -637,20 +668,34 @@ const onVaccineSearch = () => {
 }
 
 // Handle vaccine selection from dropdown
-const selectVaccine = (vaccine) => {
-  if (vaccine.isExpired) return
-  
-  // Set the search term to display name
-  vaccineSearchTerm.value = `${vaccine.antigen_name} - ${vaccine.brand_name}`
-  
-  // Fill form fields
-  serviceForm.value.inventoryId = vaccine.inventory_id
-  serviceForm.value.vaccineName = vaccine.antigen_name
-  serviceForm.value.diseasePrevented = vaccine.disease_prevented || ''
-  serviceForm.value.manufacturer = vaccine.manufacturer || ''
-  serviceForm.value.lotNumber = vaccine.lot_number || ''
-  
-  // Close dropdown
+const selectVaccine = async (vaccine) => {
+  if (!outsideMode.value && vaccine.isExpired) return
+
+  if (outsideMode.value) {
+    // Outside mode: only antigen name shown and record flagged outside
+    vaccineSearchTerm.value = `${vaccine.antigen_name}`
+    serviceForm.value.inventoryId = ''
+    serviceForm.value.vaccineId = vaccine.vaccine_id
+    serviceForm.value.vaccineName = vaccine.antigen_name
+    serviceForm.value.diseasePrevented = vaccine.disease_prevented || ''
+    serviceForm.value.manufacturer = ''
+    serviceForm.value.lotNumber = ''
+    serviceForm.value.outsideFacility = true
+    await updateSmartDoses(vaccine.vaccine_id)
+  } else {
+    // In-facility mode: use inventory
+    vaccineSearchTerm.value = `${vaccine.antigen_name} - ${vaccine.manufacturer || ''}`
+    serviceForm.value.inventoryId = vaccine.inventory_id
+    serviceForm.value.vaccineId = vaccine.vaccine_id
+    serviceForm.value.vaccineName = vaccine.antigen_name
+    serviceForm.value.diseasePrevented = vaccine.disease_prevented || ''
+    serviceForm.value.manufacturer = vaccine.manufacturer || ''
+    serviceForm.value.lotNumber = vaccine.lot_number || ''
+    serviceForm.value.outsideFacility = false
+    await updateSmartDoses(vaccine.vaccine_id)
+  }
+
+  updateAgeCalculation()
   showVaccineDropdown.value = false
 }
 
@@ -673,11 +718,11 @@ const toggleServiceForm = () => {
 const resetServiceForm = () => {
   serviceForm.value = {
     inventoryId: '',
+    vaccineId: '',
     vaccineName: '',
     diseasePrevented: '',
-    filterNIP: false,
     doseNumber: '',
-    dateAdministered: '',
+    dateAdministered: getCurrentPHDate(),
     ageAtAdmin: '',
     manufacturer: '',
     lotNumber: '',
@@ -690,6 +735,8 @@ const resetServiceForm = () => {
   vaccineSearchTerm.value = ''
   showVaccineDropdown.value = false
   editingServiceIndex.value = null
+  availableDoses.value = [1,2,3,4,5]
+  autoSelectHint.value = ''
 }
 
 const cancelServiceForm = () => {
@@ -699,15 +746,16 @@ const cancelServiceForm = () => {
 
 const addServiceToRecord = () => {
   // Validate required fields
-  if (!serviceForm.value.inventoryId) {
-    alert('Please select a vaccine from the dropdown')
-    return
-  }
+  if (!outsideMode.value && !serviceForm.value.inventoryId) return alert('Please select a vaccine from the dropdown')
+  if (outsideMode.value && !serviceForm.value.vaccineId) return alert('Please select an antigen from the dropdown')
   
-  if (!serviceForm.value.doseNumber || !serviceForm.value.dateAdministered || !serviceForm.value.healthStaff) {
-    alert('Please fill in all required fields (Vaccine, Dose Number, Date Administered, Health Staff)')
+  if (!serviceForm.value.doseNumber || !serviceForm.value.dateAdministered) {
+    alert('Please fill in all required fields (Vaccine, Dose Number, Date Administered)')
     return
   }
+
+  // Auto-assign current user as administering staff
+  serviceForm.value.healthStaff = currentUserId.value || ''
 
   if (editingServiceIndex.value !== null) {
     // Update existing service
@@ -747,25 +795,168 @@ watch(addedServices, (services) => {
 }, { deep: true })
 
 // Watch nurses to log when data loads
-watch(nurses, (workers) => {
-  console.log('Nurses/Nutritionists data updated:', workers.length, 'staff')
-  if (workers.length > 0) {
-    console.log('First nurse:', workers[0])
-    console.log('Sample structure:', {
-      user_id: workers[0].user_id,
-      fullname: workers[0].fullname,
-      hs_type: workers[0].hs_type
-    })
-  }
-}, { immediate: true })
+// No nurses dropdown anymore; using current user
 
-// Watch vaccineOptions to log when data loads
-watch(vaccineOptions, (vaccines) => {
-  console.log('Vaccine options data updated:', vaccines.length, 'vaccines')
-  if (vaccines.length > 0) {
-    console.log('First vaccine:', vaccines[0])
+// Fetch and filter vaccine sources similar to Admin UI (VisitEditor)
+const refreshVaccineSources = async () => {
+  if (outsideMode.value) {
+    await fetchVaccineCatalogFiltered()
+  } else {
+    await fetchVaccineOptionsFiltered()
   }
-}, { immediate: true })
+}
+
+const fetchPatientImmunizations = async (patientId) => {
+  try {
+    const immRes = await api.get('/immunizations', { params: { patient_id: patientId, limit: 500 } })
+    const immData = immRes.data?.data || immRes.data || []
+    const vaccineIds = new Set()
+    const antigenNames = new Set()
+    if (Array.isArray(immData)) {
+      immData.forEach(i => {
+        if (i.vaccine_id) vaccineIds.add(String(i.vaccine_id))
+        const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
+        if (name) antigenNames.add(String(name).toLowerCase())
+      })
+    }
+    return { vaccineIds, antigenNames }
+  } catch (e) {
+    return { vaccineIds: new Set(), antigenNames: new Set() }
+  }
+}
+
+const fetchVaccineOptionsFiltered = async () => {
+  try {
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const res = await api.get('/vaccines/inventory', { params })
+    const payload = res.data?.data || res.data || []
+    let mapped = payload.map(v => ({
+      inventory_id: v.inventory_id || v.id,
+      vaccine_id: v.vaccine_id,
+      antigen_name: v.vaccinemaster?.antigen_name || v.antigen_name || 'Unknown',
+      disease_prevented: v.vaccinemaster?.disease_prevented || v.disease_prevented || '',
+      manufacturer: v.vaccinemaster?.manufacturer || v.manufacturer || '',
+      lot_number: v.lot_number || '',
+      expiration_date: v.expiration_date || '',
+      current_stock_level: v.current_stock_level || v.current_stock || 0,
+      isExpired: v.expiration_date ? new Date(v.expiration_date) < new Date(new Date().setHours(0,0,0,0)) : false,
+      is_nip: !!(v.vaccinemaster?.is_nip || v.is_nip || v.isNip)
+    }))
+
+    if (formData.value.patient_id) {
+      const { vaccineIds, antigenNames } = await fetchPatientImmunizations(formData.value.patient_id)
+      mapped = mapped.filter(opt => {
+        const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
+        const aname = opt.antigen_name ? String(opt.antigen_name).toLowerCase() : ''
+        if (vid && vaccineIds.has(vid)) return false
+        if (aname && antigenNames.has(aname)) return false
+        return true
+      })
+    }
+
+    vaccineOptions.value = mapped
+  } catch (e) {
+    vaccineOptions.value = []
+  }
+}
+
+const fetchVaccineCatalogFiltered = async () => {
+  try {
+    const params = {}
+    if (showNipOnly.value) params.is_nip = true
+    const res = await api.get('/vaccines', { params })
+    const payload = res.data?.data
+    const list = Array.isArray(payload?.vaccines) ? payload.vaccines : (Array.isArray(res.data) ? res.data : [])
+    let mapped = list.map(v => ({
+      vaccine_id: v.vaccine_id || v.id,
+      antigen_name: v.antigen_name || v.name || 'Unknown',
+      disease_prevented: v.disease_prevented || '',
+      manufacturer: v.manufacturer || '',
+      is_nip: !!(v.is_nip || v.isNip)
+    }))
+
+    if (formData.value.patient_id) {
+      const { vaccineIds, antigenNames } = await fetchPatientImmunizations(formData.value.patient_id)
+      mapped = mapped.filter(opt => {
+        const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
+        const aname = opt.antigen_name ? String(opt.antigen_name).toLowerCase() : ''
+        if (vid && vaccineIds.has(vid)) return false
+        if (aname && antigenNames.has(aname)) return false
+        return true
+      })
+    }
+
+    vaccineCatalog.value = mapped
+  } catch (e) {
+    vaccineCatalog.value = []
+  }
+}
+
+// Outside toggle handler: switch source and clear selection
+const onOutsideToggle = async () => {
+  serviceForm.value.inventoryId = ''
+  serviceForm.value.vaccineId = ''
+  serviceForm.value.vaccineName = ''
+  serviceForm.value.diseasePrevented = ''
+  serviceForm.value.manufacturer = ''
+  serviceForm.value.lotNumber = ''
+  serviceForm.value.outsideFacility = outsideMode.value
+  vaccineSearchTerm.value = ''
+  await refreshVaccineSources()
+}
+
+// Smart doses
+const updateSmartDoses = async (vaccineId) => {
+  availableDoses.value = [1,2,3,4,5]
+  autoSelectHint.value = ''
+  try {
+    if (!formData.value.patient_id || !vaccineId) return
+    const res = await api.get(`/patients/${formData.value.patient_id}/smart-doses`, { params: { vaccine_id: vaccineId } })
+    const data = res.data?.data || res.data || {}
+    const doses = Array.isArray(data.available_doses) ? data.available_doses : (Array.isArray(data.doses) ? data.doses : [])
+    availableDoses.value = doses.length > 0 ? doses : [1,2,3,4,5]
+    if (data.auto_select) {
+      serviceForm.value.doseNumber = data.auto_select
+      autoSelectHint.value = `Auto-selected Dose ${data.auto_select} based on schedule`
+    } else if (doses.length === 1) {
+      serviceForm.value.doseNumber = doses[0]
+      autoSelectHint.value = `Auto-selected Dose ${doses[0]} (only remaining)`
+    }
+  } catch (e) {
+    // keep defaults
+  }
+}
+
+// Age calculation
+const calculateAgeAtDate = (birthDate, targetDate) => {
+  if (!birthDate || !targetDate) return ''
+  const birth = new Date(birthDate)
+  const target = new Date(targetDate)
+  if (target < birth) return '0 days old'
+  let totalMonths = (target.getFullYear() - birth.getFullYear()) * 12 + (target.getMonth() - birth.getMonth())
+  let days = target.getDate() - birth.getDate()
+  if (days < 0) {
+    totalMonths--
+    const prevMonthLastDay = new Date(target.getFullYear(), target.getMonth(), 0)
+    const daysInPrevMonth = prevMonthLastDay.getDate()
+    days += daysInPrevMonth
+  }
+  if (totalMonths < 0) totalMonths = 0
+  const years = Math.floor(totalMonths / 12)
+  const months = totalMonths % 12
+  if (years === 0) {
+    if (months === 0) return `${days} day${days !== 1 ? 's' : ''} old`
+    return `${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
+  }
+  return `${years} year${years !== 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} old`
+}
+
+const updateAgeCalculation = () => {
+  if (currentPatient.value?.date_of_birth && serviceForm.value.dateAdministered) {
+    serviceForm.value.ageAtAdmin = calculateAgeAtDate(currentPatient.value.date_of_birth, serviceForm.value.dateAdministered)
+  }
+}
 
 const handleSubmit = async () => {
   try {
@@ -776,23 +967,114 @@ const handleSubmit = async () => {
       return
     }
 
-    // Prepare visit data
-    const visitData = {
-      patient_id: formData.value.patient_id,
-      visit_date: new Date().toISOString().split('T')[0],
-      vitals: formData.value.vitals,
-      findings: formData.value.findings,
-      service_rendered: formData.value.service_rendered,
-      services: addedServices.value
+    // Clean vitals: convert empty strings to null and numbers where appropriate
+    const rawVitals = formData.value.vitals || {}
+    const toNumOrNull = (v) => {
+      const n = parseFloat(v)
+      return Number.isFinite(n) ? n : null
+    }
+    const cleanedVitals = {
+      temperature: toNumOrNull(rawVitals.temperature),
+      muac: toNumOrNull(rawVitals.muac),
+      respiration: toNumOrNull(rawVitals.respiration),
+      weight: toNumOrNull(rawVitals.weight),
+      height: toNumOrNull(rawVitals.height),
+    }
+    const hasAnyVital = Object.values(cleanedVitals).some(v => v !== null)
+
+    if (isBHS.value) {
+      // BHS: record vitals only (no findings/services)
+      const payload = {
+        patient_id: formData.value.patient_id,
+        visit_date: getCurrentPHDate(),
+        recorded_by: currentUserId.value || null,
+      }
+      if (hasAnyVital) payload.vitals = cleanedVitals
+      await api.post('/visits', payload)
+    } else if (isNurseOrNutritionist.value) {
+      // Nurse/Nutritionist: must have at least one service
+      if (!addedServices.value.length) {
+        alert('Please add at least one vaccination to record.')
+        return
+      }
+
+      if (visitMode.value === 'existing') {
+        if (!existingVisitId.value) {
+          alert('Please select an existing visit to attach to.')
+          return
+        }
+        // Post each immunization referencing the selected visit
+        const immunizationPayloads = addedServices.value.map(s => ({
+          inventory_id: s.inventoryId || null,
+          vaccine_id: s.vaccineId || null,
+          patient_id: formData.value.patient_id,
+          disease_prevented: s.diseasePrevented || null,
+          dose_number: s.doseNumber,
+          administered_date: s.dateAdministered,
+          age_at_administration: s.ageAtAdmin || null,
+          administered_by: currentUserId.value || null,
+          visit_id: Number(existingVisitId.value),
+          vital_id: null,
+          facility_name: s.facilityName || null,
+          remarks: s.remarks || null,
+          outside: !!s.outsideFacility,
+        }))
+        for (const imm of immunizationPayloads) {
+          await api.post('/immunizations', imm)
+        }
+      } else {
+        // Create new visit and include vitals (if any) + collected vaccinations
+        const collectedVaccinations = addedServices.value.map(s => ({
+          inventory_id: s.inventoryId || null,
+          vaccine_id: s.vaccineId || null,
+          disease_prevented: s.diseasePrevented || null,
+          dose_number: s.doseNumber,
+          administered_date: s.dateAdministered,
+          age_at_administration: s.ageAtAdmin || null,
+          administered_by: currentUserId.value || null,
+          facility_name: s.facilityName || null,
+          remarks: s.remarks || null,
+          outside: !!s.outsideFacility,
+        }))
+        const payload = {
+          patient_id: formData.value.patient_id,
+          visit_date: getCurrentPHDate(),
+          recorded_by: currentUserId.value || null,
+          findings: formData.value.findings || null,
+          vitals: hasAnyVital ? cleanedVitals : undefined,
+          collectedVaccinations,
+          services: [],
+        }
+        await api.post('/visits', payload)
+      }
+
+      // Done recording immunizations
+    } else {
+      // Fallback: other roles behave like nurse creating a new visit
+      const payload = {
+        patient_id: formData.value.patient_id,
+        visit_date: getCurrentPHDate(),
+        recorded_by: currentUserId.value || null,
+        findings: formData.value.findings || null,
+        vitals: hasAnyVital ? cleanedVitals : undefined,
+        collectedVaccinations: addedServices.value.map(s => ({
+          inventory_id: s.inventoryId || null,
+          vaccine_id: s.vaccineId || null,
+          disease_prevented: s.diseasePrevented || null,
+          dose_number: s.doseNumber,
+          administered_date: s.dateAdministered,
+          age_at_administration: s.ageAtAdmin || null,
+          administered_by: currentUserId.value || null,
+          facility_name: s.facilityName || null,
+          remarks: s.remarks || null,
+          outside: !!s.outsideFacility,
+        })),
+        services: [],
+      }
+      await api.post('/visits', payload)
     }
 
-    // TODO: Replace with actual API endpoint
-    console.log('Submitting visit data:', visitData)
-    
-    // Simulated API call
-    // const response = await api.post('/visits', visitData)
-    
-    alert('Immunization record saved successfully!')
+    alert('Record saved successfully!')
     router.push(`/healthworker/patients/${formData.value.patient_id}`)
   } catch (error) {
     console.error('Error saving record:', error)
@@ -805,8 +1087,11 @@ const handleSubmit = async () => {
 
 onMounted(() => {
   fetchCurrentPatient()
-  fetchVaccineOptions() // Using composable function
-  fetchHealthWorkers() // Direct API call - filters nurses/nutritionists for vaccination
+  refreshVaccineSources()
+  // No need to fetch staff; we use current user for administered_by
+  if (isNurseOrNutritionist.value) {
+    loadVisitsForPatient()
+  }
   
   // Add click outside listener for vaccine dropdown
   document.addEventListener('click', closeVaccineDropdown)

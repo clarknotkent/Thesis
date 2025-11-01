@@ -293,6 +293,8 @@ ORDER BY kind, schema, name, detail;
 | composite | public | immunizations                 | administered_date                    | date                        |
 | composite | public | immunizations                 | administered_time                    | time without time zone      |
 | composite | public | immunizations                 | age_at_administration                | text                        |
+| composite | public | immunizations                 | approved_at                          | timestamp with time zone    |
+| composite | public | immunizations                 | approved_by                          | bigint                      |
 | composite | public | immunizations                 | created_at                           | timestamp with time zone    |
 | composite | public | immunizations                 | created_by                           | bigint                      |
 | composite | public | immunizations                 | deleted_at                           | timestamp without time zone |
@@ -667,6 +669,9 @@ ORDER BY kind, schema, name, detail;
 | composite | public | schedule_master               | updated_at                           | timestamp with time zone    |
 | composite | public | schedule_master               | updated_by                           | bigint                      |
 | composite | public | schedule_master               | vaccine_id                           | bigint                      |
+| composite | public | sms_log_patientschedule       | created_at                           | timestamp with time zone    |
+| composite | public | sms_log_patientschedule       | patient_schedule_id                  | bigint                      |
+| composite | public | sms_log_patientschedule       | sms_log_id                           | bigint                      |
 | composite | public | sms_logs                      | created_at                           | timestamp without time zone |
 | composite | public | sms_logs                      | created_by                           | integer                     |
 | composite | public | sms_logs                      | deleted_at                           | timestamp without time zone |

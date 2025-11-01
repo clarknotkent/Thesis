@@ -166,6 +166,7 @@
                 id="recipient" 
                 class="form-control"
                 :disabled="creating"
+                @change="e => console.log('Dropdown changed! Selected:', e.target.value, 'Model:', newConversation.recipientId)"
               >
                 <option value="">Select recipient...</option>
                 <option 
@@ -178,6 +179,10 @@
               </select>
               <small v-if="availableUsers.length === 0" class="text-muted">
                 No users available. Please refresh or contact support.
+              </small>
+              <!-- Debug: Show what's actually selected -->
+              <small class="text-info d-block mt-1">
+                Debug: Currently selected recipientId = "{{ newConversation.recipientId }}"
               </small>
             </div>
             <div class="form-group">
@@ -193,13 +198,13 @@
               >
             </div>
             <div class="form-group">
-              <label for="message">First Message: <span class="text-danger">*</span></label>
+              <label for="message">First Message (optional):</label>
               <textarea 
                 v-model="newConversation.message" 
                 id="message" 
                 class="form-control"
                 rows="4"
-                placeholder="Type your message here..."
+                placeholder="Type your message here or leave blank to start conversation..."
                 :disabled="creating"
                 maxlength="1000"
               ></textarea>
@@ -209,18 +214,17 @@
             </div>
           </div>
           <div class="modal-footer">
-            <!-- Validation hint -->
-            <small v-if="!canCreateConversation" class="text-muted me-auto">
-              <i class="bi bi-info-circle me-1"></i>
-              {{ !newConversation.recipientId ? 'Select a recipient' : 'Type a message' }}
+            <!-- Debug info (remove after testing) -->
+            <small class="text-info me-auto" style="font-size: 0.75rem;">
+              Debug: recipientId="{{ newConversation.recipientId }}" | canCreate={{ canCreateConversation }} | creating={{ creating }}
             </small>
             
             <button @click="closeModal" class="btn btn-secondary" :disabled="creating">Cancel</button>
             <button 
               @click="createConversation" 
               class="btn btn-primary" 
-              :disabled="!canCreateConversation || creating"
-              :title="!canCreateConversation ? 'Please select a recipient and type a message' : 'Send message'"
+              :disabled="creating"
+              title="Send message"
             >
               <i v-if="creating" class="bi bi-hourglass-split me-1"></i>
               <i v-else class="bi bi-send me-1"></i>
@@ -285,8 +289,13 @@ const filteredConversations = computed(() => {
 })
 
 const canCreateConversation = computed(() => {
-  return newConversation.value.recipientId && 
-         newConversation.value.message.trim()
+  // Only require recipient to be selected (not empty string)
+  const hasRecipient = newConversation.value.recipientId && newConversation.value.recipientId !== ''
+  console.log('canCreateConversation check:', {
+    recipientId: newConversation.value.recipientId,
+    hasRecipient: hasRecipient
+  })
+  return hasRecipient
 })
 
 // Methods
@@ -418,20 +427,24 @@ const handleSendMessage = async () => {
 }
 
 const createConversation = async () => {
-  if (!canCreateConversation.value) return
+  console.log('=== CREATE CONVERSATION CLICKED ===')
+  console.log('Creating conversation with recipient:', newConversation.value.recipientId)
+  
+  // Validate recipient
+  if (!newConversation.value.recipientId || newConversation.value.recipientId === '') {
+    alert('⚠️ Please select a recipient first!')
+    return
+  }
   
   creating.value = true
   try {
-    console.log('Creating conversation with:', {
-      subject: newConversation.value.subject,
-      recipientId: newConversation.value.recipientId,
-      messageLength: newConversation.value.message.length
-    })
+    // Use default message if empty
+    const messageContent = newConversation.value.message.trim() || 'New conversation started'
     
     const response = await conversationAPI.startWithMessage({
       subject: newConversation.value.subject || null,
       participants: [newConversation.value.recipientId],
-      message_content: newConversation.value.message,
+      message_content: messageContent,
       message_type: 'chat'
     })
     
@@ -492,7 +505,10 @@ const fetchAvailableUsers = async () => {
       }
     })
     
-    const users = response.data?.users || []
+  const users = response.data?.users || []
+    
+    console.log('Raw users from API:', users)
+    console.log('Sample user structure:', users[0])
     
     if (users.length === 0) {
       console.warn('No users found in the system')
@@ -500,12 +516,20 @@ const fetchAvailableUsers = async () => {
       return
     }
     
+    // Normalize to ensure the dropdown has a stable user_id and display name
+    const normalized = users.map(u => ({
+      ...u,
+      user_id: u.user_id ?? u.id, // backend returns `id`; UI expects `user_id`
+      full_name: u.full_name || u.name || `${u.firstname || ''} ${u.surname || ''}`.trim(),
+    }))
+
     // Filter out current user
-    availableUsers.value = users.filter(u => 
+    availableUsers.value = normalized.filter(u => 
       String(u.user_id) !== String(currentUserId.value)
     )
     
     console.log(`Loaded ${availableUsers.value.length} available users`)
+    console.log('Available users:', availableUsers.value)
   } catch (error) {
     console.error('Failed to load users:', error)
     const errorMsg = error.response?.data?.message || error.message || 'Unknown error'
@@ -562,6 +586,11 @@ watch(selectedConversation, (newVal, oldVal) => {
   } else if (!oldVal || newVal.conversation_id !== oldVal.conversation_id) {
     startPolling()
   }
+})
+
+// Debug: Watch recipient selection
+watch(() => newConversation.value.recipientId, (newVal, oldVal) => {
+  console.log('Recipient changed:', { oldVal, newVal, canCreate: canCreateConversation.value })
 })
 
 // Lifecycle

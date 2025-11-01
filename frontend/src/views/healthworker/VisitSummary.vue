@@ -201,7 +201,16 @@ const patientName = computed(() => {
 })
 
 const healthStaffName = computed(() => {
-  return visit.value?.recorded_by_name || visit.value?.health_worker_name || '—'
+  // Try multiple fallbacks: explicit recorded_by_name, raw recorded_by (id or text),
+  // administered_by_name (from immunization entries), administered_by, or health_worker_name
+  return (
+    visit.value?.recorded_by_name ||
+    visit.value?.recorded_by ||
+    visit.value?.administered_by_name ||
+    visit.value?.administered_by ||
+    visit.value?.health_worker_name ||
+    '—'
+  )
 })
 
 const formattedVisitDate = computed(() => {
@@ -282,6 +291,38 @@ const fetchVisitData = async () => {
     const visitResponse = await api.get(`/visits/${visitId}`)
     const visitDataRaw = visitResponse.data?.data || visitResponse.data || {}
     visit.value = visitDataRaw
+
+    // If the API returned a recorded_by id but not a recorded_by_name, try to resolve
+    // the id to a full name via the health-staff endpoint for better display.
+    try {
+      if (visit.value && !visit.value.recorded_by_name && visit.value.recorded_by) {
+        const hwRes = await api.get('/health-staff')
+        let list = []
+        if (hwRes.data?.data?.healthWorkers && Array.isArray(hwRes.data.data.healthWorkers)) {
+          list = hwRes.data.data.healthWorkers
+        } else if (hwRes.data?.data?.healthStaff && Array.isArray(hwRes.data.data.healthStaff)) {
+          list = hwRes.data.data.healthStaff
+        } else if (Array.isArray(hwRes.data)) {
+          list = hwRes.data
+        } else if (hwRes.data?.data && Array.isArray(hwRes.data.data)) {
+          list = hwRes.data.data
+        } else if (hwRes.data?.users && Array.isArray(hwRes.data.users)) {
+          list = hwRes.data.users
+        } else if (hwRes.data?.healthWorkers && Array.isArray(hwRes.data.healthWorkers)) {
+          list = hwRes.data.healthWorkers
+        } else if (hwRes.data?.healthStaff && Array.isArray(hwRes.data.healthStaff)) {
+          list = hwRes.data.healthStaff
+        }
+
+        const match = list.find(hw => String(hw.user_id || hw.id || hw.health_worker_id) === String(visit.value.recorded_by))
+        if (match) {
+          visit.value.recorded_by_name = [match.firstname, match.middlename, match.surname].filter(Boolean).join(' ').trim() || match.name || match.fullname || visit.value.recorded_by
+        }
+      }
+    } catch (err) {
+      // Non-fatal: if resolving fails, leave the raw recorded_by value as the fallback
+      console.warn('Could not resolve recorded_by id to name:', err)
+    }
     
     // Fetch patient details for accurate name
     if (patientId) {

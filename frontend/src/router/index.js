@@ -532,7 +532,7 @@ const routes = [
     meta: {
       title: 'Health Staff Dashboard - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -542,7 +542,7 @@ const routes = [
     meta: {
       title: 'Patient Records - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -552,7 +552,7 @@ const routes = [
     meta: {
       title: 'Add Patient - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -562,7 +562,7 @@ const routes = [
     meta: {
       title: 'Patient Details - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -572,7 +572,7 @@ const routes = [
     meta: {
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -582,7 +582,7 @@ const routes = [
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -592,7 +592,7 @@ const routes = [
     meta: {
       title: 'Add Immunization Record - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -602,7 +602,7 @@ const routes = [
     meta: {
       title: 'Edit Vaccination Record - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -612,7 +612,7 @@ const routes = [
     meta: {
       title: 'Vaccine Stock - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -622,7 +622,7 @@ const routes = [
     meta: {
       title: 'Inventory Details - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -632,7 +632,7 @@ const routes = [
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -642,7 +642,7 @@ const routes = [
     meta: {
       title: 'Messages - ImmunizeMe',
       requiresAuth: true,
-      role: 'healthworker'
+  role: 'healthstaff'
     }
   },
   {
@@ -661,6 +661,36 @@ const routes = [
     component: HealthWorkerMenu,
     meta: {
       title: 'Menu - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthworker'
+    }
+  },
+  {
+    path: '/healthworker/profile',
+    name: 'HealthWorkerProfile',
+    component: () => import('@/views/healthworker/Profile.vue'),
+    meta: {
+      title: 'Profile - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthstaff'
+    }
+  },
+  {
+    path: '/healthworker/settings',
+    name: 'HealthWorkerSettings',
+    component: () => import('@/views/healthworker/Settings.vue'),
+    meta: {
+      title: 'Settings - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthstaff'
+    }
+  },
+  {
+    path: '/healthworker/qr',
+    name: 'HealthWorkerQRScanner',
+    component: () => import('@/views/healthworker/QRScanner.vue'),
+    meta: {
+      title: 'Scan QR - ImmunizeMe',
       requiresAuth: true,
       role: 'healthworker'
     }
@@ -787,6 +817,16 @@ const routes = [
     }
   },
   {
+    path: '/parent/messages/:conversationId',
+    name: 'ParentChat',
+    component: () => import('@/views/parent/ParentChat.vue'),
+    meta: {
+      title: 'Chat - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
     path: '/parent/child-info/:childId',
     name: 'ChildInfo',
     component: ChildInfo,
@@ -833,8 +873,13 @@ router.beforeEach((to, from, next) => {
   const role = (getRole() || '').toLowerCase()
   const requiredRole = (to.meta?.role || '').toLowerCase()
   // Accept both legacy 'healthworker' and new 'health_staff' role keys
-  const normalizedRole = role === 'health_staff' ? 'healthworker' : role
-  const normalizedRequired = requiredRole === 'health_staff' ? 'healthworker' : requiredRole
+  const normalizeRole = (r) => {
+    const s = (r || '').toLowerCase()
+    if (['healthworker','health-worker','health_worker','health staff','health_staff'].includes(s)) return 'healthstaff'
+    return s
+  }
+  const normalizedRole = normalizeRole(role)
+  const normalizedRequired = normalizeRole(requiredRole)
   
   // Normalize guardian/parent role
   const effectiveRole = normalizedRole === 'guardian' ? 'parent' : normalizedRole
@@ -843,7 +888,7 @@ router.beforeEach((to, from, next) => {
   if (effectiveRequired && effectiveRole && effectiveRole !== effectiveRequired) {
     // Redirect to role-appropriate dashboard
     if (role === 'admin') return next('/admin/dashboard')
-    if (role === 'healthworker' || role === 'health-worker' || role === 'health_staff') return next('/healthworker/dashboard')
+    if (normalizedRole === 'healthstaff') return next('/healthworker/dashboard')
     if (role === 'parent' || role === 'guardian') return next('/parent/home')
   }
   next()

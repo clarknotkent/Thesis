@@ -1,5 +1,11 @@
 <template>
-  <div class="scheduled-vaccine-card">
+  <div
+    class="scheduled-vaccine-card"
+    :class="{ 'clickable': editable }"
+    role="button"
+    :aria-disabled="!editable"
+    @click="handleClick"
+  >
     <div class="card-content">
       <!-- Vaccine Icon and Name -->
       <div class="vaccine-header">
@@ -34,6 +40,11 @@ const props = defineProps({
   vaccineName: {
     type: String,
     required: true
+  },
+  // whether this schedule can be edited (clickable)
+  editable: {
+    type: Boolean,
+    default: true
   },
   dose: {
     type: [String, Number],
@@ -72,6 +83,13 @@ const statusClass = computed(() => {
   if (status === 'rescheduled') return 'status-rescheduled'
   return 'status-pending'
 })
+
+const emit = defineEmits(['select'])
+
+const handleClick = () => {
+  if (!props.editable) return
+  emit('select')
+}
 </script>
 
 <style scoped>
@@ -203,6 +221,14 @@ const statusClass = computed(() => {
 .status-pending {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+.scheduled-vaccine-card.clickable {
+  cursor: pointer;
+  transition: transform 0.08s ease-in-out, box-shadow 0.08s;
+}
+.scheduled-vaccine-card.clickable:active {
+  transform: translateY(1px);
 }
 
 /* Mobile Optimizations */

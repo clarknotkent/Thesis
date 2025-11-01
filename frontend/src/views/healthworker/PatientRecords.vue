@@ -31,7 +31,7 @@
       </div>
 
       <!-- Patient List -->
-      <div v-else-if="filteredPatients.length > 0" class="patient-list">
+      <div v-else-if="paginatedPatients.length > 0" class="patient-list">
         <PatientListCard
           v-for="patient in paginatedPatients" 
           :key="patient.id"
@@ -117,66 +117,15 @@ const hasActiveFilters = computed(() => {
          activeFilters.value.barangay !== ''
 })
 
-const filteredPatients = computed(() => {
-  let filtered = patients.value
-
-  // Filter by search query
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(patient => 
-      patient.childInfo.name.toLowerCase().includes(query) ||
-      patient.guardianInfo.name.toLowerCase().includes(query) ||
-      patient.id.toString().includes(query)
-    )
-  }
-
-  // Apply active filters
-  if (hasActiveFilters.value) {
-    // Gender filter
-    if (activeFilters.value.gender) {
-      filtered = filtered.filter(patient => 
-        patient.childInfo.sex === activeFilters.value.gender
-      )
-    }
-
-    // Barangay filter
-    if (activeFilters.value.barangay) {
-      filtered = filtered.filter(patient => 
-        patient.childInfo.barangay === activeFilters.value.barangay
-      )
-    }
-
-    // Status filter
-    if (activeFilters.value.statuses.length > 0) {
-      // TODO: Implement status filtering based on patient vaccination history
-    }
-
-    // Age range filter
-    if (activeFilters.value.ageRanges.length > 0) {
-      filtered = filtered.filter(patient => {
-        const ageMonths = patient.age_months || 0
-        return activeFilters.value.ageRanges.some(range => {
-          switch (range) {
-            case '0-6months': return ageMonths <= 6
-            case '6-12months': return ageMonths > 6 && ageMonths <= 12
-            case '1-2years': return ageMonths > 12 && ageMonths <= 24
-            case '2-5years': return ageMonths > 24 && ageMonths <= 60
-            default: return true
-          }
-        })
-      })
-    }
-  }
-
-  totalItems.value = filtered.length
-  totalPages.value = Math.ceil(filtered.length / itemsPerPage.value)
-  return filtered
-})
+// Server-driven patients list. We rely on the backend pagination (page & limit)
+// to return the slice of patients for the current page and return totals.
+// For simple compatibility, expose serverPatients and treat paginatedPatients
+// as the list returned by the server.
+const serverPatients = computed(() => patients.value)
 
 const paginatedPatients = computed(() => {
-  const startIndex = (currentPage.value - 1) * itemsPerPage.value
-  const endIndex = startIndex + itemsPerPage.value
-  return filteredPatients.value.slice(startIndex, endIndex)
+  // Backend returns already-paginated items for the requested page/limit
+  return serverPatients.value || []
 })
 
 // Form data
@@ -221,8 +170,9 @@ const toggleFilters = () => {
 }
 
 const applyFilters = (filters) => {
-  // Filters are already applied through v-model
+  // Filters are applied through v-model; reset to first page and re-fetch
   currentPage.value = 1
+  fetchPatients()
 }
 
 const goToAddPatient = () => {
@@ -232,12 +182,24 @@ const goToAddPatient = () => {
 const fetchPatients = async () => {
   try {
     loading.value = true
-    // Fetch all patients for client-side pagination and filtering
-    const response = await api.get('/patients')
-    
+
+    // Build server-side query params for pagination and filtering
+    const params = {
+      page: currentPage.value,
+      limit: itemsPerPage.value
+    }
+    if (searchQuery.value) params.search = searchQuery.value
+    if (activeFilters.value.gender) params.sex = activeFilters.value.gender
+    if (activeFilters.value.barangay) params.barangay = activeFilters.value.barangay
+
+    const response = await api.get('/patients', { params })
+
+    // Backend returns: { patients: [...], totalCount, page, limit, totalPages }
+    const payload = response.data?.data || response.data || {}
+    const patientsData = Array.isArray(payload) ? payload : (payload.patients || [])
+
     // Map backend data structure to frontend format
-    const patientsData = response.data.data?.patients || response.data.data || []
-    patients.value = patientsData.map(patient => ({
+    patients.value = (patientsData || []).map(patient => ({
       id: patient.patient_id,
       patient_id: patient.patient_id,
       childInfo: {
@@ -276,7 +238,49 @@ const fetchPatients = async () => {
       age_days: patient.age_days
     }))
 
-    // Client-side pagination - totals will be calculated in computed properties
+    // Update totals from server when available
+    totalItems.value = payload.totalCount || payload.total || patients.value.length
+    totalPages.value = payload.totalPages || Math.ceil((totalItems.value || 0) / itemsPerPage.value)
+
+    // Enrich each patient with their last vaccination (for Status and Last Vaccine in list)
+    // Note: We fetch only the most recent record per patient to avoid heavy payloads
+    try {
+      const fetchLastForPatient = async (p) => {
+        try {
+          const res = await api.get('/immunizations', {
+            params: {
+              patient_id: p.patient_id,
+              sort: 'administered_date:desc',
+              limit: 1
+            }
+          })
+          const items = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+          const last = items && items.length > 0 ? items[0] : null
+          if (last) {
+            const vaccineName = last.vaccine_antigen_name || last.vaccine_name || last.antigen_name || last.antigenName || last.vaccineName || 'Unknown Vaccine'
+            const dateAdministered = last.administered_date || last.date_administered || last.dateAdministered || null
+            p.vaccinationHistory = [{ vaccineName, dateAdministered }]
+          }
+        } catch (e) {
+          // Non-blocking; leave vaccinationHistory empty on error
+        }
+      }
+      // Run with limited concurrency to avoid request storms
+      const concurrency = 8
+      const queue = patients.value.slice() // copy
+      const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+        while (queue.length) {
+          const next = queue.shift()
+          // eslint-disable-next-line no-await-in-loop
+          await fetchLastForPatient(next)
+        }
+      })
+      await Promise.all(workers)
+    } catch (_) {
+      // Ignore enrichment errors
+    }
+
+  // Note: we still optionally enrich vaccination info for the current page
 
   } catch (error) {
     console.error('Error fetching patients:', error)
@@ -298,6 +302,7 @@ const fetchGuardians = async () => {
 
 const changePage = (page) => {
   currentPage.value = page
+  fetchPatients()
 }
 
 const viewPatientDetail = (patient) => {
@@ -354,6 +359,7 @@ const debouncedSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     resetPagination()
+    fetchPatients()
   }, 500)
 }
 
@@ -485,7 +491,7 @@ const closeModal = () => {
 }
 
 const openQrScanner = () => {
-  alert('Camera scanner opened! (Implement camera/QR scanner component here)')
+  router.push('/healthworker/qr')
 }
 
 const administerVaccine = (patient) => {
@@ -626,6 +632,11 @@ watch(() => form.value.guardian_relationship, (newRelationship, oldRelationship)
       form.value.mother_contact_number = ''
     }
   }
+})
+
+// Watch search query and trigger server search (debounced)
+watch(() => searchQuery.value, () => {
+  debouncedSearch()
 })
 
 // Lifecycle

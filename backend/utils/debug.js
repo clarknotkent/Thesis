@@ -10,7 +10,7 @@ function dlog(...args) {
 
 function dbreak() {
   if (breakEnabled) {
-    debugger;
+    // debug break was removed to avoid pausing production processes
   }
 }
 

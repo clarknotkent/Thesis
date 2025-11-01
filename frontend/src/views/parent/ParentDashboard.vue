@@ -598,8 +598,8 @@ const scheduleAppointment = () => {
 }
 
 const sendMessage = () => {
-  // Temporary: route to public FAQs while chat UI for parents is added
-  router.push('/faqs')
+  // Navigate to the Messages page
+  router.push({ name: 'ParentMessages' })
 }
 
 const openResource = (resourceType) => {

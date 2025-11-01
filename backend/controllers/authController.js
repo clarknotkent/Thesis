@@ -18,6 +18,16 @@ const getAuthClient = () => {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 };
 
+// Create an anon-scoped client for user-session operations (least privilege)
+const getAnonClient = () => {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY; // many setups use SUPABASE_KEY as anon key
+  if (!anonKey) {
+    console.warn('[auth] Warning: No SUPABASE_ANON_KEY/SUPABASE_KEY set; user-session operations may fail.');
+  }
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+};
+
 // Register a new user: create Supabase Auth user (email-only), then app user, then user_mapping
 const registerUser = async (req, res) => {
   try {
@@ -229,13 +239,22 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { username, identifier: rawIdentifier, password } = req.body;
-    const identifier = (rawIdentifier || username || '').trim();
+    let identifier = (rawIdentifier || username || '').trim();
 
     if (!identifier || !password) {
       return res.status(400).json({ message: 'Identifier and password are required' });
     }
 
-    // Resolve application user first to map username -> email/phone
+    // If identifier looks like a PH mobile, normalize to +639XXXXXXXXX for DB lookup
+    try {
+      const { normalizeToPlus63Mobile } = require('../utils/contact');
+      const maybePhone = normalizeToPlus63Mobile(identifier);
+      if (maybePhone && maybePhone.valid && maybePhone.normalized) {
+        identifier = maybePhone.normalized;
+      }
+    } catch (_) { /* non-fatal */ }
+
+    // Resolve application user first to map username/email/phone -> user
     const appUser = await authModel.findUserByIdentifier(identifier);
     if (!appUser) {
       try {
@@ -246,7 +265,7 @@ const loginUser = async (req, res) => {
     }
 
     // Resolve email; we only use email sign-in
-    const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
+  const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
     if (!emailToUse) {
       return res.status(400).json({ message: 'User record missing email for authentication' });
     }
@@ -400,4 +419,155 @@ module.exports = {
   linkSupabaseUser,
   getUserMapping,
   refreshToken,
+  // Debug: Return current user's Supabase UUID and mapping details
+  debugCurrentUserUUID: async (req, res) => {
+    try {
+      const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const sb = require('../db');
+      let viaView = null, viaMapping = null;
+      try {
+        const { data: v } = await sb
+          .from('users_with_uuid')
+          .select('user_id, email, role, supabase_uuid')
+          .eq('user_id', userId)
+          .single();
+        viaView = v || null;
+      } catch (_) {}
+      try {
+        const { data: m } = await sb
+          .from('user_mapping')
+          .select('user_id, uuid')
+          .eq('user_id', userId)
+          .single();
+        viaMapping = m || null;
+      } catch (_) {}
+
+      const uuid = viaView?.supabase_uuid || viaMapping?.uuid || null;
+      // Emit server-side debugger log
+      console.log('[DEBUG] /api/auth/debug/uuid', { userId, uuid, viaView, viaMapping });
+      return res.json({ userId, uuid, viaView, viaMapping });
+    } catch (e) {
+      console.error('[auth.debugCurrentUserUUID] error', e);
+      return res.status(500).json({ message: 'Failed to resolve UUID' });
+    }
+  },
+  // Change password for currently authenticated user
+  changeCurrentPassword: async (req, res) => {
+    try {
+      const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
+      const { currentPassword, newPassword } = req.body || {};
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current and new passwords are required' });
+      }
+      if (String(newPassword).length < 8) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters' });
+      }
+
+      // Fetch current user password hash and email
+      const { data: userRow, error: userErr } = await require('../db')
+        .from('users')
+        .select('user_id, password_hash, email')
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .single();
+      if (userErr || !userRow) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Verify current password
+      let verified = false;
+      let supabaseUUIDFromSignin = null;
+      if (userRow.password_hash) {
+        verified = await authModel.verifyPassword(currentPassword, userRow.password_hash || '');
+      }
+      if (!verified) {
+        // Fallback: verify via Supabase Auth sign-in (source of truth)
+        if (!userRow.email) {
+          return res.status(400).json({ message: 'User email missing; cannot verify current password' });
+        }
+        try {
+          const sb = getAuthClient();
+          const { data: signin, error: signErr } = await sb.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+          if (signErr || !signin?.user) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+          }
+          supabaseUUIDFromSignin = signin.user?.id || null;
+          verified = true;
+        } catch (_) {
+          // Treat as not verified if sign-in throws
+          return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+      }
+      // 1) Try user-scoped update via anon client (least privilege): sign in as user then update
+      let authUpdated = false;
+      try {
+        if (!userRow.email) throw new Error('no-email');
+        const anon = getAnonClient();
+        const signRes = await anon.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+        if (!signRes?.data?.session) throw new Error('signin-failed');
+        // set session and update password as the user
+        await anon.auth.setSession({
+          access_token: signRes.data.session.access_token,
+          refresh_token: signRes.data.session.refresh_token
+        });
+        const { error: updErr } = await anon.auth.updateUser({ password: newPassword });
+        if (updErr) throw updErr;
+        authUpdated = true;
+        console.log('[DEBUG] changeCurrentPassword user-scoped updateUser OK', { userId });
+      } catch (userScopedErr) {
+        // Fallback to Admin API path (requires service role)
+        try {
+          // Resolve Supabase UUID via view (fallback to mapping if needed)
+          const sb = require('../db');
+          let supabaseUUID = supabaseUUIDFromSignin || null;
+          try {
+            const { data: uidRow } = await sb
+              .from('users_with_uuid')
+              .select('supabase_uuid')
+              .eq('user_id', userId)
+              .single();
+            supabaseUUID = supabaseUUID || uidRow?.supabase_uuid || null;
+          } catch (_) {}
+          if (!supabaseUUID) {
+            try {
+              const map = await authModel.getUserMappingByUserId(userId);
+              supabaseUUID = supabaseUUID || map?.uuid || null;
+            } catch (_) {}
+          }
+
+          if (!supabaseUUID) {
+            return res.status(409).json({ message: 'Unable to locate Supabase user mapping for this account' });
+          }
+
+          const admin = getAuthClient();
+          console.log('[DEBUG] changeCurrentPassword admin.updateUserById', { userId, supabaseUUID });
+          const { error: updAuthErr } = await admin.auth.admin.updateUserById(supabaseUUID, { password: newPassword });
+          if (updAuthErr) {
+            return res.status(500).json({ message: 'Failed to update Supabase Auth password', error: updAuthErr.message });
+          }
+          authUpdated = true;
+          console.log('[DEBUG] changeCurrentPassword admin.updateUserById OK', { userId, supabaseUUID });
+        } catch (authUpdateErr) {
+          console.error('[auth] Supabase Auth password update failed:', authUpdateErr);
+          return res.status(500).json({ message: 'Failed to update password (auth provider)' });
+        }
+      }
+
+      // 2) Update local shadow hash to keep in sync for any local checks
+      try {
+        await authModel.changePassword(userId, newPassword);
+      } catch (localErr) {
+        // Not fatal for login, but keep consistent state if possible
+        console.warn('[auth] Local password hash update failed after auth change:', localErr?.message || localErr);
+      }
+
+      return res.json({ success: true, message: 'Password changed successfully', authUpdated: !!authUpdated });
+    } catch (error) {
+      console.error('[auth] changeCurrentPassword error:', error);
+      return res.status(500).json({ message: 'Failed to change password' });
+    }
+  }
 };

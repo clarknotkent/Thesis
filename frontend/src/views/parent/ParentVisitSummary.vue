@@ -213,7 +213,8 @@ const patientName = computed(() => {
 })
 
 const healthStaffName = computed(() => {
-  return visit.value?.recorded_by_name || visit.value?.health_worker_name || '—'
+  // Accept multiple possible field names returned by the API / views
+  return visit.value?.recorded_by || visit.value?.recorded_by_name || visit.value?.health_worker_name || '—'
 })
 
 const formattedVisitDate = computed(() => {

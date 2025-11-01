@@ -104,8 +104,8 @@
         <div class="col-12">
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-              <h6 class="m-0 fw-bold text-primary">Vaccine Data</h6>
-              <small class="text-muted">Doses Administered This Month</small>
+              <h6 class="m-0 fw-bold text-primary">All 7 Vaccines Usage</h6>
+              <small class="text-muted">Across all records</small>
             </div>
             <div class="card-body">
               <BarChart 

@@ -150,26 +150,35 @@ const formatDate = (date) => {
 
 const getAdministeredBy = (dose) => {
   if (!dose) return '—'
-  
-  return dose.administered_by_name || 
-         dose.administeredBy || 
-         dose.health_worker_name || 
-         dose.healthWorkerName || 
+
+  return dose.administered_by_name ||
+         dose.administered_by ||
+         dose.administeredBy ||
+         dose.health_worker_name ||
+         dose.healthWorkerName ||
          dose.worker_name ||
          dose.workerName ||
          dose.recorded_by_name ||
+         dose.recorded_by ||
+         dose.taken_by ||
          'Taken Outside'
 }
 
 const getFacility = (dose) => {
   if (!dose) return '—'
-  
+
   const isOutside = dose.outside || dose.immunization_outside || dose.is_outside
   if (isOutside) return 'Outside'
-  
-  return dose.facility_name || 
-         dose.health_center || 
-         dose.facility || 
+
+  // Check several common field names used across API versions
+  return dose.immunization_facility_name ||
+         dose.facility_name ||
+         dose.facilityName ||
+         dose.immunization_facility ||
+         dose.health_center ||
+         dose.healthCenter ||
+         dose.facility ||
+         dose.location ||
          '—'
 }
 
@@ -219,7 +228,30 @@ const fetchVaccineDetails = async () => {
     }) : []
     
     console.log('Filtered vaccine records:', vaccineRecords)
-    
+
+    // Log per-dose facility-related fields to help debugging missing facility values
+    if (Array.isArray(vaccineRecords) && vaccineRecords.length) {
+      vaccineRecords.forEach(dose => {
+        try {
+          console.log('Dose facility check', {
+            id: dose.immunization_id || dose.id,
+            facility_name: dose.facility_name,
+            immunization_facility_name: dose.immunization_facility_name,
+            facility: dose.facility,
+            facilityName: dose.facilityName,
+            health_center: dose.health_center,
+            healthCenter: dose.healthCenter,
+            location: dose.location,
+            outside: dose.outside,
+            remarks: dose.remarks || dose.notes,
+            derivedFacility: getFacility(dose)
+          })
+        } catch (e) {
+          console.warn('Error logging dose facility fields', e)
+        }
+      })
+    }
+
     // Store all doses
     allDoses.value = vaccineRecords
     

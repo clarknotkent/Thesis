@@ -12,6 +12,7 @@ const getParticipantDisplayName = (p) => {
   if (!p) return '';
   return (
     p.participant_name ||
+    p.fullname ||
     p.full_name ||
     `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() ||
     p.email ||

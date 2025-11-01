@@ -29,8 +29,8 @@
     <div class="page-content-wrapper">
       <!-- Patient Information Tab -->
       <div v-if="activeTab === 'patient-info'" class="tab-content">
-        <!-- QR Code Card -->
-        <PatientQRCodeCard :patient="patient" />
+  <!-- QR Code Card (parents can mint/refresh their child's QR) -->
+  <PatientQRCodeCard :patient="patient" />
 
         <!-- Patient Information Card -->
         <CollapsibleCard
@@ -102,6 +102,14 @@
             <div class="info-item">
               <span class="info-label">Guardian Contact</span>
               <span class="info-value">{{ patient?.guardianInfo?.contact_number || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Alt. Contact</span>
+              <span class="info-value">{{ patient?.guardianInfo?.alternative_contact_number || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Guardian Occupation</span>
+              <span class="info-value">{{ patient?.guardianInfo?.occupation || '—' }}</span>
             </div>
             <div class="info-section-header">
               <i class="bi bi-person-heart"></i>
@@ -236,7 +244,7 @@
             :visit-id="visit.visit_id"
             :visit-date="visit.visit_date"
             :service-rendered="visit.service_rendered || 'General Checkup'"
-            :recorded-by="visit.recorded_by_name || visit.health_worker_name || '—'"
+            :recorded-by="visit.recorded_by || visit.recorded_by_name || visit.recorded_by_user || visit.health_worker_name || '—'"
             :vitals="{
               weight: visit.weight,
               height: visit.height,
@@ -288,18 +296,34 @@ const expandedCards = ref({
 })
 
 const age = computed(() => {
-  if (patient.value?.age_months !== undefined && patient.value?.age_days !== undefined) {
-    const months = patient.value.age_months || 0
-    const days = patient.value.age_days || 0
-    
-    if (months >= 36) {
-      const years = Math.floor(months / 12)
-      return `${years} year${years !== 1 ? 's' : ''}`
-    } else {
-      return `${months} months ${days} days`
-    }
+  const birthDate = patient.value?.childInfo?.birthDate
+  if (!birthDate) return '—'
+  
+  const birth = new Date(birthDate)
+  const now = new Date()
+  
+  let years = now.getFullYear() - birth.getFullYear()
+  let months = now.getMonth() - birth.getMonth()
+  let days = now.getDate() - birth.getDate()
+  
+  if (days < 0) {
+    months--
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, birth.getDate())
+    days += Math.floor((now - prevMonth) / (1000 * 60 * 60 * 24))
   }
-  return '—'
+  
+  if (months < 0) {
+    years--
+    months += 12
+  }
+  
+  if (years > 0) {
+    return `${years} year${years !== 1 ? 's' : ''}`
+  } else if (months > 0) {
+    return `${months} month${months !== 1 ? 's' : ''} ${days} day${days !== 1 ? 's' : ''}`
+  } else {
+    return `${days} day${days !== 1 ? 's' : ''}`
+  }
 })
 
 const formattedBirthDate = computed(() => {
@@ -422,6 +446,8 @@ const fetchPatientDetails = async () => {
         id: data.guardian_id,
         name: `${data.guardian_firstname || ''} ${data.guardian_surname || ''}`.trim(),
         contact_number: data.guardian_contact_number,
+        alternative_contact_number: data.guardian_alternative_contact_number,
+        occupation: data.guardian_occupation,
         family_number: data.guardian_family_number,
         relationship: data.relationship_to_guardian
       },

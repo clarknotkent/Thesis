@@ -1,5 +1,6 @@
 const guardianModel = require('../models/guardianModel');
 const notificationModel = require('../models/notificationModel');
+const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
 // Get all guardians for dropdown
 const getAllGuardians = async (req, res) => {
@@ -128,17 +129,21 @@ const deleteGuardian = async (req, res) => {
     const userId = req.user?.id; // From auth middleware
     
     const result = await guardianModel.deleteGuardian(id, userId);
-    
+
     if (!result) {
       return res.status(404).json({ 
         success: false,
         message: 'Guardian not found' 
       });
     }
-    
+
+    // result may include cancelledSmsCount for visibility
+    const cancelled = result.cancelledSmsCount || 0;
+    console.log(`[guardianController] deleteGuardian: cancelled ${cancelled} sms_logs for guardian ${id}`);
+
     res.json({ 
       success: true,
-      message: 'Guardian deleted successfully' 
+      message: `Guardian deleted successfully. Cancelled pending scheduled SMS: ${cancelled}`
     });
   } catch (error) {
     console.error('Error deleting guardian:', error);
@@ -156,4 +161,36 @@ module.exports = {
   createGuardian,
   updateGuardian,
   deleteGuardian,
+  // admin helper: cancel pending scheduled SMS for a guardian
+  cancelPendingSmsForGuardian: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const supabase = getSupabaseForRequest(req);
+
+      const { data, error } = await supabase
+        .from('sms_logs')
+        .update({
+          is_deleted: true,
+          status: 'cancelled',
+          error_message: 'Cancelled by admin: guardian cleanup',
+          updated_at: new Date().toISOString()
+        })
+        .eq('guardian_id', id)
+        .eq('status', 'pending')
+        .eq('type', 'scheduled')
+        .select('id');
+
+      if (error) {
+        console.error('[cancelPendingSmsForGuardian] supabase error:', error);
+        return res.status(500).json({ success: false, message: 'Failed to cancel sms_logs', error: error.message || error });
+      }
+
+      const count = Array.isArray(data) ? data.length : 0;
+      console.log(`[cancelPendingSmsForGuardian] Cancelled ${count} pending scheduled sms_logs for guardian ${id}`);
+      return res.json({ success: true, cancelled: count, ids: (data || []).map(r => r.id) });
+    } catch (err) {
+      console.error('[cancelPendingSmsForGuardian] unexpected error:', err);
+      return res.status(500).json({ success: false, message: 'Internal error', error: err?.message || String(err) });
+    }
+  }
 };
