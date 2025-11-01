@@ -2,7 +2,7 @@
   <!-- Embedded Page View -->
   <div v-if="embeddedPage" class="medical-history-page container-fluid py-3">
     <div class="d-flex align-items-center mb-3">
-      <h3 class="mb-0">Medical History</h3>
+      <h3 class="mb-0">Medical Historys</h3>
       <button class="btn btn-outline-secondary ms-auto" @click="onClose">Back</button>
     </div>
 
@@ -161,8 +161,10 @@ const {
 const selected = ref(null)
 
 function selectVisit(v) {
-  // Navigate to summary view instead of showing inline
-  router.push(`/admin/patients/${props.patientId}/visits/${v.visit_id}`)
+  // Navigate to admin visit summary view by named route for reliability
+  const id = String(v.visit_id || v.id || '')
+  if (!id) return
+  router.push({ name: 'AdminVisitSummary', params: { patientId: String(props.patientId), visitId: id } })
 }
 
 function onClose() {

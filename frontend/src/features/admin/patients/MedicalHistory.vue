@@ -42,8 +42,11 @@ const {
 const openVisitDetails = (visit) => {
   const id = String(visit.visit_id || visit.id || '')
   if (!id) return
-  // Navigate to visit summary page
-  router.push(`/admin/patients/${props.patientId}/visits/${id}`)
+  // Navigate to admin visit summary page (by named route to avoid path typos and name collisions)
+  router.push({
+    name: 'AdminVisitSummary',
+    params: { patientId: String(props.patientId), visitId: id }
+  })
 }
 
 onMounted(() => {

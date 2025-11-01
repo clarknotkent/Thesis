@@ -154,7 +154,7 @@ const routes = [
   },
   {
     path: '/admin/patients/:patientId/visits/:visitId',
-    name: 'VisitSummary',
+    name: 'AdminVisitSummary',
     component: () => import('@/views/admin/patients/VisitSummaryPage.vue'),
     meta: {
       title: 'Visit Summary - ImmunizeMe',
@@ -567,7 +567,7 @@ const routes = [
   },
   {
     path: '/healthworker/patients/:patientId/visit/:visitId',
-    name: 'VisitSummary',
+    name: 'HealthWorkerVisitSummary',
     component: VisitSummary,
     meta: {
       title: 'Visit Summary - ImmunizeMe',
