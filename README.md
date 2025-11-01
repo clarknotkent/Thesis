@@ -1,212 +1,100 @@
-# 💉 ImmunizeMe - Immunization Management System# 💉 ImmunizeMe - Immunization Management System 💉
+# 💉 Immunization Management System````markdown# 💉 ImmunizeMe - Immunization Management System# 💉 ImmunizeMe - Immunization Management System 💉
 
 
 
-A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
-
-A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
-
-**Branch:** `system-prototype-v3` | **Status:** Active Development | **Last Updated:** November 2, 2025
+A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.# 💉 Immunization Management System
 
 
 
 ---
 
-**Branch:** `system-prototype-v2` | **Status:** Active Development | **Last Updated:** November 2, 2025**Branch:** `system-prototype-v2` | **Status:** Active Development | **Last Updated:** November 2, 2025
-
-## 📋 Table of Contents
 
 
+## 📋 Table of ContentsA comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
 
-- [Overview](#overview)
 
-- [Quick Start](#quick-start)------
+
+- [Overview](#overview)A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
 
 - [Tech Stack](#tech-stack)
 
-- [Architecture](#architecture)
+- [Architecture](#architecture)---
 
-- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+
+- [Project Structure](#project-structure)A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers.
 
 - [Features](#features)
 
-- [User Roles](#user-roles)------
+- [User Roles](#user-roles)## 📋 Table of Contents
 
 - [Development Guidelines](#development-guidelines)
 
-- [Deployment](#deployment)
+- [API Documentation](#api-documentation)**Branch:** `system-prototype-v3` | **Status:** Active Development | **Last Updated:** November 2, 2025
 
-- [Documentation](#documentation)
+- [Database Schema](#database-schema)
 
-- [Security](#security)## 📋 Table of Contents## 📋 Table of Contents
+- [Deployment](#deployment)- [Overview](#overview)
 
 - [Contributing](#contributing)
 
-- [Support](#support)
-
-
-
----- [Overview](#overview)- [Overview](#overview)
-
-
-
-## 🎯 Overview- [Quick Start](#quick-start)- [Quick Start](#quick-start)
-
-
-
-The **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:- [Tech Stack](#tech-stack)- [Tech Stack](#tech-stack)
-
-
-
-- **Patient Record Management** - Digital health records for children and guardians- [Architecture](#architecture)- [Architecture](#architecture)
-
-- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history
-
-- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking- [Project Structure](#project-structure)- [Project Structure](#project-structure)
-
-- **SMS Notifications** - Automated reminders and updates via PhilSMS integration
-
-- **Reporting & Analytics** - Dashboard insights and activity logs- [Features](#features)- [Features](#features)
-
-- **Multi-Role Access** - Role-based portals for admins, health workers, and parents
-
-- [User Roles](#user-roles)- [User Roles](#user-roles)
+- [Tech Stack](#tech-stack)
 
 ---
 
-- [Development Guidelines](#development-guidelines)- [Development Guidelines](#development-guidelines)
+- [Architecture](#architecture)
 
-## 🚀 Quick Start
+## 🎯 Overview
 
-- [Deployment](#deployment)- [Deployment](#deployment)
+- [Getting Started](#getting-started)---
 
-### Prerequisites
+The Immunization Management System is designed to digitize and streamline the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:
 
-- [Documentation](#documentation)- [Documentation](#documentation)
+- [Project Structure](#project-structure)
 
-- **Node.js** 20+ and npm 9+
+- **Patient Record Management** - Digital health records for children and guardians
 
-- **PostgreSQL** database (or Supabase account)
+- **Vaccination Tracking** - Scheduled and completed vaccinations with history- [Features](#features)**Branch:** `system-prototype-v2` | **Status:** Active Development | **Last Updated:** November 2, 2025**Branch:** `system-prototype-v2` | **Status:** Active Development | **Last Updated:** November 2, 2025
 
-- **Git** for version control
+- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
 
-------
+- **SMS Management** - Comprehensive SMS notification system with PhilSMS integration- [User Roles](#user-roles)
 
-### Installation
+- **Reporting & Analytics** - Dashboard insights and activity logs
 
-
-
-```bash
-
-# Clone the repository## 🎯 Overview## 🎯 Overview
-
-git clone https://github.com/clarknotkent/Thesis.git
-
-cd Thesis
-
-git checkout system-prototype-v3
-
-The **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:The **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:
-
-# Install dependencies for both frontend and backend
-
-npm install
+- **Multi-User Access** - Role-based access for admins, health workers, and parents- [Development Guidelines](#development-guidelines)## 📋 Table of Contents
 
 
 
-# Set up environment variables- **Patient Record Management** - Digital health records for children and guardians- **Patient Record Management** - Digital health records for children and guardians
-
-# Backend: Copy backend/.env.example to backend/.env and configure
-
-# Frontend: Copy frontend/.env.development.example to frontend/.env.development- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history
+---- [API Documentation](#api-documentation)
 
 
 
-# Run development servers- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
-
-npm run dev
-
-```- **SMS Notifications** - Automated reminders and updates via PhilSMS integration- **SMS Notifications** - Automated reminders and updates via PhilSMS integration
+## 🛠️ Tech Stack- [Database Schema](#database-schema)
 
 
 
-### Access the Application- **Reporting & Analytics** - Dashboard insights and activity logs- **Reporting & Analytics** - Dashboard insights and activity logs
+### **Frontend**- [Deployment](#deployment)
 
 
 
-- **Frontend:** http://localhost:5173- **Multi-Role Access** - Role-based portals for admins, health workers, and parents- **Multi-Role Access** - Role-based portals for admins, health workers, and parents
-
-- **Backend API:** http://localhost:3001
-
-- **API Health Check:** http://localhost:3001/api/health
-
-
-
-### Default Credentials------
-
-
-
-See your database setup or contact the admin for default login credentials.
-
-
-
----## 🚀 Quick Start## 🚀 Quick Start
-
-
-
-## 🛠️ Tech Stack
-
-
-
-### **Frontend**### Prerequisites### Prerequisites
-
-- **Framework:** Vue.js 3 (Composition API)
+- **Framework:** Vue.js 3 (Composition API)- [Contributing](#contributing)- [Overview](#overview)
 
 - **Build Tool:** Vite
 
 - **Routing:** Vue Router 4
 
-- **State Management:** Vue Reactivity API (ref, computed, reactive)- **Node.js** 20+ and npm 9+- **Node.js** 20+ and npm 9+
+- **State Management:** Vue Reactivity API (ref, computed, reactive)
 
-- **UI Framework:** Bootstrap 5
+- **UI Framework:** Bootstrap 5---- [Quick Start](#quick-start)------
 
-- **Icons:** Bootstrap Icons- **PostgreSQL** database (or Supabase account)- **PostgreSQL** database (or Supabase account)
+- **Icons:** Bootstrap Icons
 
 - **HTTP Client:** Axios
 
-- **Charts:** Chart.js- **Git** for version control- **Git** for version control
+- **Charts:** Chart.js
 
-- **QR Code:** html5-qrcode
-
-
-
-### **Backend**
-
-- **Runtime:** Node.js### Installation### Installation
-
-- **Framework:** Express.js
-
-- **Database:** PostgreSQL (Supabase)
-
-- **Authentication:** JWT (JSON Web Tokens)
-
-- **File Upload:** Multer```bash```bash
-
-- **SMS Integration:** PhilSMS API
-
-- **Security:** bcrypt, CORS, helmet# Clone the repository# Clone the repository
-
-
-
-### **Database**git clone https://github.com/clarknotkent/Thesis.gitgit clone https://github.com/clarknotkent/Thesis.git
-
-- **DBMS:** PostgreSQL 14+
-
-- **Hosting:** Supabasecd Thesiscd Thesis
-
-- **Features:** Row Level Security (RLS), Triggers, Functions, Views
-
-- **Migrations:** Version-controlled SQL files in `db/`git checkout system-prototype-v2git checkout system-prototype-v2
+- **QR Code:** html5-qrcode## 🎯 Overview- [Tech Stack](#tech-stack)
 
 
 
@@ -214,135 +102,826 @@ See your database setup or contact the admin for default login credentials.
 
 
 
-## 🏗️ Architecture# Install dependencies for both frontend and backend# Install dependencies for both frontend and backend
+### **Backend**The Immunization Management System is designed to digitize and streamline the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:- [Architecture](#architecture)
 
 
 
-### **Frontend Architecture (Feature-Based)**npm installnpm install
+- **Runtime:** Node.js
+
+- **Framework:** Express.js
+
+- **Database:** PostgreSQL (Supabase)- **Patient Record Management** - Digital health records for children and guardians- [Project Structure](#project-structure)
+
+- **Authentication:** JWT (JSON Web Tokens)
+
+- **File Upload:** Multer- **Vaccination Tracking** - Scheduled and completed vaccinations with history
+
+- **SMS Integration:** PhilSMS API
+
+- **Security:** bcrypt, CORS, helmet- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking- [Features](#features)
 
 
+
+---- **SMS Management** - Comprehensive SMS notification system with PhilSMS integration
+
+
+
+### **Database**- **Reporting & Analytics** - Dashboard insights and activity logs- [User Roles](#user-roles)------
+
+
+
+- **DBMS:** PostgreSQL 14+- **Multi-User Access** - Role-based access for admins, health workers, and parents
+
+- **Hosting:** Supabase
+
+- **Features:** Row Level Security (RLS), Triggers, Functions, Views- [Development Guidelines](#development-guidelines)
+
+- **Migrations:** Version-controlled SQL files in `db/`
+
+---
+
+---
+
+- [Deployment](#deployment)
+
+## 🏗️ Architecture
+
+## 🛠️ Tech Stack
+
+### **Frontend Architecture (Feature-Based)**
+
+- [Documentation](#documentation)
 
 ```
 
-frontend/src/
+frontend/src/### **Frontend**
 
-├── components/# Set up environment variables# Set up environment variables
+├── components/
 
-│   ├── layout/              # Layout wrappers (AdminLayout, HealthWorkerLayout, ParentLayout)
+│   ├── layout/              # Layout wrappers (AdminLayout, HealthWorkerLayout, ParentLayout)- **Framework:** Vue.js 3 (Composition API)- [Security](#security)## 📋 Table of Contents## 📋 Table of Contents
 
-│   └── ui/                  # Global reusable UI components# Backend: Copy backend/.env.example to backend/.env and configure# Backend: Copy backend/.env.example to backend/.env and configure
+│   └── ui/                  # Global reusable UI components
 
-│       ├── base/            # Primitive components (buttons, cards, modals, tables)
+│       ├── base/            # Primitive components (buttons, cards, modals, tables)- **Build Tool:** Vite
 
-│       ├── form/            # Form inputs (date, time, searchable select)# Frontend: Copy frontend/.env.development.example to frontend/.env.development# Frontend: Copy frontend/.env.development.example to frontend/.env.development
+│       ├── form/            # Form inputs (date, time, searchable select)
 
-│       └── feedback/        # User feedback (toasts, confirm dialogs)
+│       └── feedback/        # User feedback (toasts, confirm dialogs)- **Routing:** Vue Router 4- [Contributing](#contributing)
 
 │
 
-├── features/                # Business domain modules
+├── features/                # Business domain modules- **State Management:** Vue Reactivity API (ref, computed, reactive)
 
-│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)# Run development servers (both services)# Run development servers
+│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)
 
-│   ├── health-worker/       # Health worker components
+│   ├── health-worker/       # Health worker components- **UI Framework:** Bootstrap 5- [Support](#support)
 
-│   ├── parent/              # Parent portal componentsnpm run devnpm run dev
+│   ├── parent/              # Parent portal components
 
-│   └── shared/              # Shared components across roles
+│   └── shared/              # Shared components across roles- **Icons:** Bootstrap Icons
 
-│``````
+│
 
-├── views/                   # Page components (routes)
+├── views/                   # Page components (routes)- **HTTP Client:** Axios
 
 │   ├── admin/               # Admin portal pages
 
-│   ├── healthworker/        # Health worker portal pages
+│   ├── healthworker/        # Health worker portal pages- **Charts:** Chart.js
 
-│   └── parent/              # Parent portal pages### Access the Application### Access the Application
+│   └── parent/              # Parent portal pages
 
-│
+│- **QR Code:** html5-qrcode---- [Overview](#overview)- [Overview](#overview)
 
 ├── composables/             # Reusable composition functions
 
 ├── services/                # API services
 
-└── router/                  # Vue Router configuration- **Frontend:** http://localhost:5173- **Frontend:** http://localhost:5173
+└── router/                  # Vue Router configuration
+
+```### **Backend**
+
+
+
+---- **Runtime:** Node.js
+
+
+
+## 📚 Documentation Moved- **Framework:** Express.js## 🎯 Overview- [Quick Start](#quick-start)- [Quick Start](#quick-start)
+
+
+
+This project's documentation has been centralized under the `docs/` folder.- **Database:** PostgreSQL (Supabase)
+
+
+
+**Start here:** [docs/README.md](./docs/README.md)- **Authentication:** JWT (JSON Web Tokens)
+
+
+
+**Full mapping of moved files:** [docs/INDEX.md](./docs/INDEX.md)- **File Upload:** Multer
+
+
+
+### Quick Links- **SMS Integration:** PhilSMS APIThe **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:- [Tech Stack](#tech-stack)- [Tech Stack](#tech-stack)
+
+
+
+- **Changelog:** [docs/CHANGELOG_V2.md](./docs/CHANGELOG_V2.md)- **Security:** bcrypt, CORS, helmet
+
+- **Health Worker Features:** [docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md](./docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md)
+
+- **Chat & Notifications:** [docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md](./docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md)
+
+- **SMS System (Complete):** [docs/SMS_SYSTEM_COMPLETE.md](./docs/SMS_SYSTEM_COMPLETE.md)
+
+- **SMS Quick Reference:** [docs/SMS_QUICK_REFERENCE.md](./docs/SMS_QUICK_REFERENCE.md)### **Database**
+
+
+
+> If you encounter a broken link, check [docs/INDEX.md](./docs/INDEX.md) for the original → new path mapping.- **DBMS:** PostgreSQL 14+- **Patient Record Management** - Digital health records for children and guardians- [Architecture](#architecture)- [Architecture](#architecture)
+
+
+
+---- **Hosting:** Supabase
+
+
+
+## 📦 Large Files Policy- **Features:** Row Level Security (RLS), Triggers, Functions, Views- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history
+
+
+
+To keep the repository healthy and within GitHub limits, avoid committing large, generated change-report artifacts. These are ignored via `.gitignore`:- **Migrations:** Version-controlled SQL files in `db/`
+
+
+
+- `*git-change-report-*.txt`- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking- [Project Structure](#project-structure)- [Project Structure](#project-structure)
+
+- `*git-change-report-*.patch`
+
+- `*git-change-report-*.diff`---
+
+
+
+If you generate these reports for local review, keep them untracked. If long-term storage is required, prefer an external storage location or Git LFS in a separate archival repo.- **SMS Notifications** - Automated reminders and updates via PhilSMS integration
+
+
+
+---## 🏗️ Architecture
+
+
+
+## 🚀 Getting Started- **Reporting & Analytics** - Dashboard insights and activity logs- [Features](#features)- [Features](#features)
+
+
+
+### Prerequisites### **Frontend Architecture (Feature-Based)**
+
+
+
+- **Node.js** 20+ and npm 9+- **Multi-Role Access** - Role-based portals for admins, health workers, and parents
+
+- **PostgreSQL** database (or Supabase account)
+
+- **Git** for version control```
+
+
+
+---frontend/src/- [User Roles](#user-roles)- [User Roles](#user-roles)
+
+
+
+### Installation├── components/
+
+
+
+```bash│   ├── layout/              # Layout wrappers (AdminLayout, HealthWorkerLayout, ParentLayout)---
+
+# Clone the repository
+
+git clone https://github.com/clarknotkent/Thesis.git│   └── ui/                  # Global reusable UI components
+
+cd Thesis
+
+git checkout system-prototype-v3│       ├── base/            # Primitive components (buttons, cards, modals, tables)- [Development Guidelines](#development-guidelines)- [Development Guidelines](#development-guidelines)
+
+
+
+# Install dependencies for both frontend and backend│       ├── form/            # Form inputs (date, time, searchable select)
+
+npm install
+
+│       └── feedback/        # User feedback (toasts, confirm dialogs)## 🚀 Quick Start
+
+# Set up environment variables
+
+# Backend: Copy backend/.env.example to backend/.env and configure│
+
+# Frontend: Copy frontend/.env.development.example to frontend/.env.development
+
+├── features/                # Business domain modules- [Deployment](#deployment)- [Deployment](#deployment)
+
+# Run development servers
+
+npm run dev│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)
 
 ```
 
-- **Backend API:** http://localhost:3001- **Backend API:** http://localhost:3001
+│   ├── health-worker/       # Health worker components### Prerequisites
 
-### Monorepo Structure
+---
 
-- **API Health Check:** http://localhost:3001/api/health- **API Health Check:** http://localhost:3001/api/health
+│   ├── parent/              # Parent portal components
 
-This project uses a **monorepo** structure with separate frontend and backend services:
+### Access the Application
+
+│   └── shared/              # Shared components across roles- [Documentation](#documentation)- [Documentation](#documentation)
+
+- **Frontend:** http://localhost:5173
+
+- **Backend API:** http://localhost:3001│
+
+- **API Health Check:** http://localhost:3001/api/health
+
+├── views/                   # Page components (routes)- **Node.js** 20+ and npm 9+
+
+---
+
+│   ├── admin/               # Admin portal pages
+
+### Default Credentials
+
+│   ├── healthworker/        # Health worker portal pages- **PostgreSQL** database (or Supabase account)
+
+See your database setup or contact the admin for default login credentials.
+
+│   └── parent/              # Parent portal pages
+
+---
+
+## Documentation moved- **Git** for version control
+
+## 📁 Project Structure
 
 
+
+### Root Level Files
+
+This project's documentation has been centralized under the docs/ folder.------
+
+| File | Description |
+
+|------|-------------|
+
+| `package.json` | Root package with scripts to run both services |
+
+| `RAILWAY_DEPLOYMENT_GUIDE.md` | Railway deployment guide (for PWA deployment) |- Start here: docs/README.md### Installation
+
+| `DEPLOYMENT.md` | General deployment reference |
+
+| `CLEANUP_FOR_V3.md` | Cleanup checklist for v3 branch preparation |- Full mapping of moved files: docs/INDEX.md
+
+| `README.md` | This file |
+
+
+
+---
+
+Quick links:
+
+### Frontend Structure
+
+- Changelog: docs/CHANGELOG_V2.md```bash
 
 ```
 
-system-prototype-v3/### Port Configuration### Default Credentials
+frontend/- Health Worker features: docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md
 
-├── frontend/                # Vue.js application
+├── public/                 # Static assets
 
-│   ├── src/
+├── src/- Chat & Notifications: docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md# Clone the repository## 🎯 Overview## 🎯 Overview
 
-│   │   ├── components/     # UI components
+│   ├── assets/            # Images, styles
 
-│   │   ├── features/       # Feature modules by role| Service | Mode | Port | URL |See your database setup or contact the admin for default login credentials.
+│   ├── components/        # Reusable UI components- SMS System (complete): docs/SMS_SYSTEM_COMPLETE.md
 
-│   │   ├── views/          # Page components (routes)
+│   ├── composables/       # Global composition functions
 
-│   │   ├── composables/    # Reusable composition functions|---------|------|------|-----|
+│   ├── features/          # Feature modules (organized by role)- SMS Quick Reference: docs/SMS_QUICK_REFERENCE.mdgit clone https://github.com/clarknotkent/Thesis.git
 
-│   │   ├── services/       # API services
+│   ├── router/            # Vue Router setup
 
-│   │   └── router/         # Vue Router configuration| **Backend API** | All | `3001` | http://localhost:3001 |---
+│   ├── services/          # API services (api.js, auth service)If you encounter a broken link, check docs/INDEX.md for the original → new path mapping.
 
-│   ├── package.json
+│   ├── views/             # Page components
 
-│   └── vite.config.js| **Frontend** | Development | `5173` | http://localhost:5173 |
+│   ├── App.vue            # Root component├── services/                # Business logic (SMS, notifications)cd Thesis
 
-│
+│   └── main.js            # Application entry point
 
-├── backend/                # Express.js API| **Frontend** | Production | `5173` | http://localhost:5173 |## 🛠️ Tech Stack
+├── .env.development       # Development environment variables
 
-│   ├── controllers/        # Request handlers
+├── .env.production        # Production environment variables
 
-│   ├── models/             # Database models
+├── package.json           # Frontend dependencies## 📦 Large files policygit checkout system-prototype-v3
 
-│   ├── routes/             # API routes
-
-│   ├── middlewares/        # Auth, error handling### Development Commands### **Frontend**
-
-│   ├── services/           # Business logic (SMS, notifications)
-
-│   ├── utils/              # Utility functions- **Framework:** Vue.js 3 (Composition API)
-
-│   ├── package.json
-
-│   └── server.js```bash- **Build Tool:** Vite
-
-│
-
-├── docs/                   # Comprehensive documentation# Run both services with hot reload- **Routing:** Vue Router 4
-
-├── package.json            # Root package (runs both services)
-
-└── DEPLOYMENT.md           # Deployment guidenpm run dev- **State Management:** Vue Reactivity API (ref, computed, reactive)
+└── vite.config.js         # Vite configuration
 
 ```
+
+
+
+---To keep the repository healthy and within GitHub limits, avoid committing large, generated change-report artifacts. These are ignored via `.gitignore`:The **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:The **ImmunizeMe** system digitizes and streamlines the immunization tracking process for barangay health centers in the Philippines. It provides a centralized platform for:
+
+
+
+### Backend Structure
+
+
+
+```- `*git-change-report-*.txt`# Install dependencies for both frontend and backend
+
+backend/
+
+├── constants/             # Constant values (activity types)- `*git-change-report-*.patch`
+
+├── controllers/           # Request handlers
+
+├── middlewares/           # Express middlewares- `*git-change-report-*.diff`npm install
+
+├── models/                # Database models
+
+├── routes/                # API route definitions
+
+├── services/              # Business logic
+
+├── utils/                 # Utility functionsIf you generate these reports for local review, keep them untracked. If long-term storage is required, prefer an external storage location or Git LFS in a separate archival repo.
+
+├── .env                   # Environment variables (not committed)
+
+├── db.js                  # Database connection
+
+├── package.json           # Backend dependencies
+
+└── server.js              # Express server entry point````# Set up environment variables- **Patient Record Management** - Digital health records for children and guardians- **Patient Record Management** - Digital health records for children and guardians
+
+```
+
+
+
+---# Backend: Copy backend/.env.example to backend/.env and configure
+
+
+
+## ✨ Features# Frontend: Copy frontend/.env.development.example to frontend/.env.development- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history- **Vaccination Tracking** - Scheduled and completed vaccinations with comprehensive history
+
+
+
+### Admin Portal
+
+
+
+- **Dashboard:** Overview of vaccinations, patients, and inventory# Run development servers- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking- **Inventory Management** - Vaccine stock levels, receiving reports, and expiry tracking
+
+- **User Management:** Create and manage health worker and parent accounts
+
+- **Patient Management:** View and manage all patient recordsnpm run dev
+
+- **Vaccine Inventory:** Stock management, receiving reports, expiry tracking
+
+- **SMS Management:** Send notifications, manage templates, view SMS logs```- **SMS Notifications** - Automated reminders and updates via PhilSMS integration- **SMS Notifications** - Automated reminders and updates via PhilSMS integration
+
+- **Analytics:** Vaccination coverage, trends, and reports
+
+- **Activity Logs:** System-wide activity tracking
+
+
+
+---### Access the Application- **Reporting & Analytics** - Dashboard insights and activity logs- **Reporting & Analytics** - Dashboard insights and activity logs
+
+
+
+### Health Worker Portal
+
+
+
+- **Dashboard:** Daily tasks, upcoming vaccinations, recent activities- **Frontend:** http://localhost:5173- **Multi-Role Access** - Role-based portals for admins, health workers, and parents- **Multi-Role Access** - Role-based portals for admins, health workers, and parents
+
+- **Patient Management:**
+
+  - Add/edit patient records- **Backend API:** http://localhost:3001
+
+  - Record immunization visits with vitals
+
+  - Manage vaccination records- **API Health Check:** http://localhost:3001/api/health
+
+  - Track patient history
+
+- **Inventory:** View vaccine stock levels and expiry dates
+
+- **Messaging:** Communicate with parents and other health workers
+
+- **Notifications:** Real-time updates and alerts### Default Credentials------
+
+- **Tools:** QR code scanner for quick patient lookup
+
+
+
+---
+
+See your database setup or contact the admin for default login credentials.
+
+### Parent Portal
+
+
+
+- **Dashboard:** Upcoming vaccinations, recent updates
+
+- **Dependents:** View and manage child immunization records---## 🚀 Quick Start## 🚀 Quick Start
+
+- **Vaccination Schedule:** Upcoming and completed vaccines
+
+- **Notifications:** Reminders and important updates
+
+- **Messages:** Direct communication with health workers
+
+- **Profile:** Update contact information## 🛠️ Tech Stack
+
+
+
+---
+
+
+
+## 👥 User Roles### **Frontend**### Prerequisites### Prerequisites
+
+
+
+### 1. Admin- **Framework:** Vue.js 3 (Composition API)
+
+
+
+- Full system access- **Build Tool:** Vite
+
+- User and data management
+
+- SMS and notification control- **Routing:** Vue Router 4
+
+- Analytics and reporting
+
+- **State Management:** Vue Reactivity API (ref, computed, reactive)- **Node.js** 20+ and npm 9+- **Node.js** 20+ and npm 9+
+
+---
 
 - **UI Framework:** Bootstrap 5
 
+### 2. Health Worker
+
+- **Icons:** Bootstrap Icons- **PostgreSQL** database (or Supabase account)- **PostgreSQL** database (or Supabase account)
+
+- Patient care workflows
+
+- Record immunizations- **HTTP Client:** Axios
+
+- Manage inventory (view only)
+
+- Communicate with parents- **Charts:** Chart.js- **Git** for version control- **Git** for version control
+
+
+
+---- **QR Code:** html5-qrcode
+
+
+
+### 3. Parent/Guardian
+
+
+
+- View dependent records### **Backend**
+
+- Track vaccination schedules
+
+- Receive notifications- **Runtime:** Node.js### Installation### Installation
+
+- Communicate with health workers
+
+- **Framework:** Express.js
+
+---
+
+- **Database:** PostgreSQL (Supabase)
+
+## 💻 Development Guidelines
+
+- **Authentication:** JWT (JSON Web Tokens)
+
+### Code Style
+
+- **File Upload:** Multer```bash```bash
+
+- **Vue Components:** Use Composition API with `<script setup>`
+
+- **Naming:** PascalCase for components, camelCase for functions/variables- **SMS Integration:** PhilSMS API
+
+- **File Structure:** Keep components under 600 lines (extract to composables/sub-components)
+
+- **Composables:** Extract reusable logic into composables (prefix with `use`)- **Security:** bcrypt, CORS, helmet# Clone the repository# Clone the repository
+
+
+
+---
+
+
+
+### Best Practices### **Database**git clone https://github.com/clarknotkent/Thesis.gitgit clone https://github.com/clarknotkent/Thesis.git
+
+
+
+#### 1. Component Organization- **DBMS:** PostgreSQL 14+
+
+
+
+- Keep views simple, delegate to feature components- **Hosting:** Supabasecd Thesiscd Thesis
+
+- Extract complex logic into composables
+
+- Use sub-components for reusability- **Features:** Row Level Security (RLS), Triggers, Functions, Views
+
+
+
+---- **Migrations:** Version-controlled SQL files in `db/`git checkout system-prototype-v2git checkout system-prototype-v2
+
+
+
+#### 2. State Management
+
+
+
+- Use `ref` for primitive values---
+
+- Use `reactive` for objects
+
+- Use `computed` for derived state
+
+
+
+---## 🏗️ Architecture# Install dependencies for both frontend and backend# Install dependencies for both frontend and backend
+
+
+
+#### 3. API Calls
+
+
+
+- Use composables for API logic### **Frontend Architecture (Feature-Based)**npm installnpm install
+
+- Handle loading and error states
+
+- Show user feedback (toasts, errors)
+
+
+
+---```
+
+
+
+#### 4. Error Handlingfrontend/src/
+
+
+
+- Always catch API errors├── components/# Set up environment variables# Set up environment variables
+
+- Show meaningful error messages
+
+- Log errors for debugging│   ├── layout/              # Layout wrappers (AdminLayout, HealthWorkerLayout, ParentLayout)
+
+
+
+---│   └── ui/                  # Global reusable UI components# Backend: Copy backend/.env.example to backend/.env and configure# Backend: Copy backend/.env.example to backend/.env and configure
+
+
+
+### Recent Refactoring (November 2025)│       ├── base/            # Primitive components (buttons, cards, modals, tables)
+
+
+
+- **AddPatientImmunizationRecord.vue:** Reduced from 1,615 → 575 lines│       ├── form/            # Form inputs (date, time, searchable select)# Frontend: Copy frontend/.env.development.example to frontend/.env.development# Frontend: Copy frontend/.env.development.example to frontend/.env.development
+
+- **Messages.vue:** Reduced from 1,082 → 482 lines
+
+- Created reusable components: VisitSelectorSection, VitalsFormSection, ServicesListSection, etc.│       └── feedback/        # User feedback (toasts, confirm dialogs)
+
+- Extracted composables: usePatientImmunizationForm, useVaccineSelection, useConversations
+
+│
+
+---
+
+├── features/                # Business domain modules
+
+## 🚀 Deployment
+
+│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)# Run development servers (both services)# Run development servers
+
+### Production Environment Variables
+
+│   ├── health-worker/       # Health worker components
+
+#### Backend Required
+
+│   ├── parent/              # Parent portal componentsnpm run devnpm run dev
+
+- `SUPABASE_URL` - Supabase project URL
+
+- `SUPABASE_KEY` - Supabase anon key│   └── shared/              # Shared components across roles
+
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+
+- `JWT_SECRET` - JWT signing secret (32+ characters)│``````
+
+- `NODE_ENV=production`
+
+- `CORS_ORIGIN` - Frontend URL for CORS├── views/                   # Page components (routes)
+
+
+
+---│   ├── admin/               # Admin portal pages
+
+
+
+#### Frontend Required│   ├── healthworker/        # Health worker portal pages
+
+
+
+- `VITE_API_BASE_URL` - Backend API URL│   └── parent/              # Parent portal pages### Access the Application### Access the Application
+
+- `NODE_ENV=production`
+
+│
+
+---
+
+├── composables/             # Reusable composition functions
+
+### Future Deployment
+
+├── services/                # API services
+
+This project will be converted to a Progressive Web App (PWA). See **[RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md)** for Railway deployment instructions to be used after PWA conversion.
+
+└── router/                  # Vue Router configuration- **Frontend:** http://localhost:5173- **Frontend:** http://localhost:5173
+
+---
+
+```
+
+## 📚 Documentation
+
+- **Backend API:** http://localhost:3001- **Backend API:** http://localhost:3001
+
+### Main Documentation
+
+### Monorepo Structure
+
+- **[RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md)** - Railway deployment guide (for use after PWA conversion)
+
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - General deployment reference- **API Health Check:** http://localhost:3001/api/health- **API Health Check:** http://localhost:3001/api/health
+
+- **[CLEANUP_FOR_V3.md](./CLEANUP_FOR_V3.md)** - System cleanup checklist
+
+This project uses a **monorepo** structure with separate frontend and backend services:
+
+---
+
+
+
+### Docs Folder
+
+```
+
+Additional documentation is organized in the `docs/` folder:
+
+system-prototype-v3/### Port Configuration### Default Credentials
+
+- **[docs/README.md](./docs/README.md)** - Documentation index
+
+- **[docs/INDEX.md](./docs/INDEX.md)** - File mapping reference├── frontend/                # Vue.js application
+
+- **[docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md](./docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md)** - Health worker feature guide
+
+- **[docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md](./docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md)** - Chat and notification system│   ├── src/
+
+- **[docs/SMS_SYSTEM_COMPLETE.md](./docs/SMS_SYSTEM_COMPLETE.md)** - SMS system documentation
+
+- **[docs/SMS_MANAGEMENT_README.md](./docs/SMS_MANAGEMENT_README.md)** - SMS management guide│   │   ├── components/     # UI components
+
+
+
+---│   │   ├── features/       # Feature modules by role| Service | Mode | Port | URL |See your database setup or contact the admin for default login credentials.
+
+
+
+### Backend Documentation│   │   ├── views/          # Page components (routes)
+
+
+
+Backend-specific docs are in the `backend/` folder:│   │   ├── composables/    # Reusable composition functions|---------|------|------|-----|
+
+
+
+- `backend/API_VACCINE_INVENTORY.md` - Vaccine inventory API│   │   ├── services/       # API services
+
+- `backend/LEDGER_README.md` - Ledger system
+
+- `backend/SMS_BACKEND_README.md` - SMS backend integration│   │   └── router/         # Vue Router configuration| **Backend API** | All | `3001` | http://localhost:3001 |---
+
+- `backend/SYSTEM_LOGGING.md` - Activity logging system
+
+│   ├── package.json
+
+---
+
+│   └── vite.config.js| **Frontend** | Development | `5173` | http://localhost:5173 |
+
+### Archived Documentation
+
+│
+
+Historical refactoring and analysis documents are archived in `docs/archive/refactoring-history/`.
+
+├── backend/                # Express.js API| **Frontend** | Production | `5173` | http://localhost:5173 |## 🛠️ Tech Stack
+
+---
+
+│   ├── controllers/        # Request handlers
+
+## 🔐 Security
+
+│   ├── models/             # Database models
+
+- JWT-based authentication
+
+- Bcrypt password hashing│   ├── routes/             # API routes
+
+- CORS protection
+
+- Environment variable security│   ├── middlewares/        # Auth, error handling### Development Commands### **Frontend**
+
+- Row-level security in Supabase
+
+- Input validation and sanitization│   ├── services/           # Business logic (SMS, notifications)
+
+
+
+---│   ├── utils/              # Utility functions- **Framework:** Vue.js 3 (Composition API)
+
+
+
+## 🤝 Contributing│   ├── package.json
+
+
+
+This is an academic thesis project. For contributions or inquiries:│   └── server.js```bash- **Build Tool:** Vite
+
+
+
+1. Create a feature branch from `system-prototype-v3`│
+
+2. Follow the code style guidelines
+
+3. Test thoroughly before committing├── docs/                   # Comprehensive documentation# Run both services with hot reload- **Routing:** Vue Router 4
+
+4. Submit pull request with clear description
+
+├── package.json            # Root package (runs both services)
+
+---
+
+└── DEPLOYMENT.md           # Deployment guidenpm run dev- **State Management:** Vue Reactivity API (ref, computed, reactive)
+
+## 📞 Support
+
+```
+
+- **Repository:** https://github.com/clarknotkent/Thesis
+
+- **Branch:** `system-prototype-v3`- **UI Framework:** Bootstrap 5
+
+- **Documentation:** See `docs/` folder and `DEPLOYMENT.md`
+
 ### Key Design Principles
+
+---
 
 # Run services individually- **Icons:** Bootstrap Icons
 
-1. **Separation of Concerns:** UI components, business logic (composables), and API services are separated
+**Project:** ImmunizeMe - Immunization Management System  
 
-2. **Role-Based Access:** Each role has dedicated features and componentsnpm run dev:backend     # Backend only (port 3001)- **HTTP Client:** Axios
+**Version:** 3.0 (system-prototype-v3)  1. **Separation of Concerns:** UI components, business logic (composables), and API services are separated
+
+**Last Updated:** November 2, 2025  
+
+**Maintained by:** Clark Kent (clarknotkent)2. **Role-Based Access:** Each role has dedicated features and componentsnpm run dev:backend     # Backend only (port 3001)- **HTTP Client:** Axios
+
 
 3. **Reusability:** Shared components in `features/shared/` and global `components/`
 
