@@ -28,6 +28,7 @@
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.read }"
+          @click="handleClick(notification)"
         >
           <div class="notification-icon">
             <i :class="getNotificationIcon(notification.type)"></i>
@@ -46,17 +47,49 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
+import api from '@/services/api'
 
 const loading = ref(true)
 const notifications = ref([])
 
-// Placeholder data
-onMounted(() => {
-  setTimeout(() => {
+const fetchNotifications = async () => {
+  try {
+    loading.value = true
+    const { data } = await api.get('/notifications', { params: { limit: 50 } })
+    const items = data?.data || data?.items || data || []
+    notifications.value = items.map(n => ({
+      id: n.notification_id || n.id,
+      title: n.title || n.template_code || 'Notification',
+      message: n.message || n.message_body || n.body || '',
+      type: n.related_entity_type || n.type || n.channel || 'info',
+      created_at: n.created_at || n.timestamp || n.createdAt,
+      read: Boolean(n.read || n.read_at)
+    }))
+  } catch (e) {
+    console.error('Failed to fetch notifications:', e)
     notifications.value = []
+  } finally {
     loading.value = false
-  }, 500)
-})
+  }
+}
+
+const markAsRead = async (id) => {
+  try {
+    await api.put(`/notifications/${id}/read`)
+    const target = notifications.value.find(n => n.id === id)
+    if (target) target.read = true
+  } catch (e) {
+    console.error('Failed to mark notification as read:', e)
+  }
+}
+
+const handleClick = (notification) => {
+  if (!notification.read && notification.id) {
+    markAsRead(notification.id)
+  }
+}
+
+onMounted(fetchNotifications)
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -68,6 +101,7 @@ const getNotificationIcon = (type) => {
 }
 
 const formatTime = (timestamp) => {
+  if (!timestamp) return ''
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now - date
@@ -110,6 +144,7 @@ const formatTime = (timestamp) => {
   padding: 1rem;
   border-bottom: 1px solid #f1f3f4;
   transition: background-color 0.2s ease;
+  cursor: pointer;
 }
 
 .notification-item:last-child {

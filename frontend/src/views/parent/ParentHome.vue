@@ -36,6 +36,7 @@
           v-for="dependent in dependents" 
           :key="dependent.id"
           :dependent="dependent"
+          :link-to="`/parent/child-info/${dependent.id}`"
         />
       </div>
     </div>
@@ -60,15 +61,27 @@ const fetchDependents = async () => {
     // Use the parent-specific endpoint that handles auth internally
     const response = await api.get('/parent/children')
     const patients = response.data?.data || response.data || []
-    
-    // The backend already formats the data, so we can use it directly
-    dependents.value = patients.map(child => ({
-      id: child.id || child.patient_id,
-      name: child.name || child.full_name,
-      age: child.age,
-      status: child.nextVaccine || 'No upcoming vaccines',
-      raw: child // Keep raw data for debugging
-    }))
+
+    // Helper to compute age in years if backend doesn't provide
+    const computeAgeYears = (dobStr) => {
+      if (!dobStr) return undefined
+      const dob = new Date(dobStr)
+      if (Number.isNaN(dob.getTime())) return undefined
+      const today = new Date()
+      let age = today.getFullYear() - dob.getFullYear()
+      const m = today.getMonth() - dob.getMonth()
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+      return age
+    }
+
+    // Map to card-friendly shape with robust fallbacks
+    dependents.value = patients.map(child => {
+      const id = child.id || child.patient_id
+      const name = child.name || child.full_name || 'Child'
+      const age = child.age ?? computeAgeYears(child.dateOfBirth || child.date_of_birth)
+      const status = child.nextVaccine || 'No upcoming vaccines'
+      return { id, name, age, status, raw: child }
+    })
   } catch (err) {
     console.error('Error fetching dependents:', err)
     error.value = 'Failed to load dependents. Please try again later.'

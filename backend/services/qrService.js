@@ -3,10 +3,11 @@ const serviceSupabase = require('../db');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
 const APP_QR_SECRET = process.env.APP_QR_SECRET || 'change_me_dev_qr_secret';
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '') || `http://localhost:${PORT}`;
 const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || '').replace(/\/$/, '') || 'http://localhost:5173';
-const FRONTEND_PATIENT_RECORDS_PATH = process.env.FRONTEND_PATIENT_RECORDS_PATH || '/patients/:id/vaccination-records';
+// Use a neutral SPA route that will role-redirect on the frontend
+const FRONTEND_PATIENT_RECORDS_PATH = process.env.FRONTEND_PATIENT_RECORDS_PATH || '/patient/:id';
 const DEFAULT_TTL = parseInt(process.env.APP_QR_DEFAULT_TTL_SECONDS || '15552000', 10); // ~180 days
 
 console.log('QR Service env check: APP_QR_SECRET loaded:', !!process.env.APP_QR_SECRET, 'PUBLIC_BASE_URL:', PUBLIC_BASE_URL)

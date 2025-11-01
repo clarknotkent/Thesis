@@ -14,7 +14,7 @@
           aria-label="Notifications"
         >
           <i class="bi bi-bell"></i>
-          <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">3</span>
+          <span v-if="notificationCount > 0" class="badge bg-danger position-absolute top-0 start-100 translate-middle">{{ notificationCount > 99 ? '99+' : notificationCount }}</span>
         </router-link>
 
         <!-- Messages -->
@@ -24,7 +24,7 @@
           aria-label="Messages"
         >
           <i class="bi bi-chat-dots"></i>
-          <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">2</span>
+          <span v-if="messageCount > 0" class="badge bg-danger position-absolute top-0 start-100 translate-middle">{{ messageCount > 99 ? '99+' : messageCount }}</span>
         </router-link>
       </div>
     </div>
@@ -45,7 +45,48 @@ const props = defineProps({
   }
 })
 
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { notificationAPI, conversationAPI } from '@/services/api'
+
 const router = useRouter()
+
+const notificationCount = ref(0)
+const messageCount = ref(0)
+
+let pollInterval = null
+
+const fetchCounts = async () => {
+  try {
+    try {
+      const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
+      const nRows = nResp?.data?.data || nResp?.data || []
+      notificationCount.value = Array.isArray(nRows) ? nRows.length : (nResp?.data?.count || 0)
+    } catch (e) {
+      console.error('Failed to fetch notifications in TopNavbar', e)
+      notificationCount.value = 0
+    }
+
+    try {
+      const cResp = await conversationAPI.getConversations({ limit: 200 })
+      const convs = cResp?.data?.items || cResp?.data || []
+      messageCount.value = Array.isArray(convs) ? convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) : 0
+    } catch (e) {
+      console.error('Failed to fetch conversations in TopNavbar', e)
+      messageCount.value = 0
+    }
+  } catch (e) {
+    console.error('fetchCounts TopNavbar error', e)
+  }
+}
+
+onMounted(() => {
+  fetchCounts()
+  pollInterval = setInterval(fetchCounts, 15000)
+})
+
+onBeforeUnmount(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 
 const logout = () => {
   // Add logout logic here

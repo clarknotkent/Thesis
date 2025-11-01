@@ -14,7 +14,7 @@
           <i class="bi bi-box-arrow-up-right"></i>
           Open Link
         </a>
-        <button class="refresh-qr-button" @click="refreshQR">
+        <button v-if="allowRefresh" class="refresh-qr-button" @click="refreshQR">
           <i class="bi bi-arrow-clockwise"></i>
           Refresh QR
         </button>
@@ -32,13 +32,29 @@ const props = defineProps({
   patient: {
     type: Object,
     required: true
+  },
+  allowRefresh: {
+    type: Boolean,
+    default: true
   }
 })
 
 const qrCanvas = ref(null)
 const qrData = ref(null)
 
-const qrUrl = computed(() => qrData.value?.url || props.patient?.qr?.url)
+const patientId = computed(() => props.patient?.patient_id || props.patient?.id)
+const fallbackFrontendUrl = computed(() => {
+  const id = patientId.value
+  if (!id) return null
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/patient/${id}`
+  } catch (_) {
+    return `/patient/${id}`
+  }
+})
+
+const qrUrl = computed(() => qrData.value?.url || props.patient?.qr?.url || fallbackFrontendUrl.value)
 
 const renderQR = async () => {
   if (qrCanvas.value && qrUrl.value) {
@@ -47,7 +63,7 @@ const renderQR = async () => {
         width: 200,
         margin: 1,
         color: {
-          dark: '#007bff',
+          dark: '#000000',
           light: '#ffffff'
         }
       })
@@ -99,6 +115,22 @@ watch(() => qrData.value, async (newData) => {
 onMounted(async () => {
   await nextTick()
   if (qrUrl.value) {
+    await renderQR()
+  }
+})
+
+// Re-render when qrUrl becomes available (e.g., after patient loads) or changes
+watch(qrUrl, async (newVal, oldVal) => {
+  if (newVal && newVal !== oldVal) {
+    await nextTick()
+    await renderQR()
+  }
+})
+
+// Also react when patientId changes (covers cases where qrUrl is fallback based on id)
+watch(patientId, async (newId, oldId) => {
+  if (newId && newId !== oldId && qrUrl.value) {
+    await nextTick()
     await renderQR()
   }
 })

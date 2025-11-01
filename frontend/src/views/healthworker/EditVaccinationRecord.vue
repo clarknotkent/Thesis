@@ -31,6 +31,21 @@
 
       <!-- Edit Form -->
       <div v-else-if="vaccinationRecord" class="edit-form-content">
+        <!-- Other doses navigator (quick jump between doses of same vaccine) -->
+        <div v-if="otherDoses.length > 0" class="dose-navigator">
+          <div
+            v-for="dose in otherDoses"
+            :key="dose.immunization_id || dose.id"
+            class="dose-pill"
+            :class="{ active: String(dose.immunization_id || dose.id) === String(recordId) }"
+            @click="jumpToDose(dose.immunization_id || dose.id)"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dose-label">Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}</div>
+            <div class="dose-date">{{ formatDisplayDate(dose) }}</div>
+          </div>
+        </div>
         <form @submit.prevent="handleSubmit">
           <!-- Vaccine Name (Read-only) -->
           <div class="form-group">
@@ -86,24 +101,36 @@
             <small class="form-hint">Automatically calculated from date administered</small>
           </div>
 
-          <!-- Administered By -->
+          <!-- Administered By: show select for in-facility, free-text for outside -->
           <div class="form-group">
             <label class="form-label">Administered By *</label>
-            <select 
-              class="form-input" 
-              v-model="form.administeredBy"
-              required
-            >
-              <option value="">Select health staff</option>
-              <option 
-                v-for="nurse in nurses" 
-                :key="nurse.user_id" 
-                :value="nurse.user_id"
+            <div v-if="!form.isOutside">
+              <select 
+                class="form-input" 
+                v-model="form.administeredBy"
+                required
+                :disabled="form.isOutside"
               >
-                {{ nurse.fullname }} ({{ nurse.hs_type }})
-              </option>
-              <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
-            </select>
+                <option value="">Select health staff</option>
+                <option 
+                  v-for="nurse in nurses" 
+                  :key="nurse.user_id" 
+                  :value="nurse.user_id"
+                >
+                  {{ nurse.fullname }} ({{ nurse.hs_type }})
+                </option>
+                <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+              </select>
+            </div>
+            <div v-else>
+              <input
+                type="text"
+                class="form-input"
+                v-model="form.administeredByDisplay"
+                placeholder="Name of vaccinator or provider"
+              />
+              <small class="form-hint">For outside immunizations, enter vaccinator name (will be stored in remarks)</small>
+            </div>
           </div>
 
           <!-- Site of Administration -->
@@ -130,7 +157,10 @@
               class="form-input" 
               v-model="form.manufacturer"
               placeholder="e.g., Sanofi Pasteur"
+              :readonly="!form.isOutside"
             >
+            <small class="form-hint" v-if="!form.isOutside">Auto-filled from inventory / read-only for in-facility</small>
+            <small class="form-hint" v-else>Editable for outside immunizations</small>
           </div>
 
           <!-- Lot Number -->
@@ -141,7 +171,10 @@
               class="form-input" 
               v-model="form.lotNumber"
               placeholder="e.g., L123456"
+              :readonly="!form.isOutside"
             >
+            <small class="form-hint" v-if="!form.isOutside">Auto-filled from inventory / read-only for in-facility</small>
+            <small class="form-hint" v-else>Editable for outside immunizations</small>
           </div>
 
           <!-- Facility Name -->
@@ -190,13 +223,16 @@
       </div>
     </div>
   </HealthWorkerLayout>
+  <!-- Approval modal for second approver -->
+  <ApprovalModal v-if="showApproval" @approved="onApproverApproved" @cancel="onApproverCancel" />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import api from '@/services/api'
+import ApprovalModal from '@/components/ApprovalModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -208,10 +244,15 @@ const recordId = computed(() => route.params.recordId)
 // State
 const loading = ref(true)
 const saving = ref(false)
+const showApproval = ref(false)
+const pendingUpdateData = ref(null)
 const error = ref(null)
 const patientData = ref(null)
 const vaccinationRecord = ref(null)
 const nurses = ref([])
+
+// navigator state: doses for the same vaccine
+// (doses list is derived from patientData via `otherDoses` computed)
 
 // Form data
 const form = ref({
@@ -220,6 +261,9 @@ const form = ref({
   dateAdministered: '',
   ageAtAdministration: '',
   administeredBy: '',
+  // For outside immunizations we allow a free-text vaccinator name which will be stored in remarks
+  administeredByDisplay: '',
+  isOutside: false,
   siteOfAdministration: '',
   manufacturer: '',
   lotNumber: '',
@@ -234,10 +278,31 @@ const todayDate = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  return form.value.vaccineName && 
-         form.value.doseNumber && 
-         form.value.dateAdministered && 
-         form.value.administeredBy
+  const base = form.value.vaccineName && form.value.doseNumber && form.value.dateAdministered
+  // For outside immunizations, administeredBy can be a free-text (administeredByDisplay).
+  if (form.value.isOutside) {
+    return base // optional: require administeredByDisplay if you want
+  }
+  return base && !!form.value.administeredBy
+})
+
+// derived list for UI: include current and other doses for same vaccine
+const otherDoses = computed(() => {
+  if (!patientData.value || !Array.isArray(patientData.value.vaccinationHistory)) return []
+  const vaccineName = form.value.vaccineName || vaccinationRecord.value?.vaccine_antigen_name
+  if (!vaccineName) return []
+  // match by antigen/vaccine name using loose matching for different field names
+  const all = patientData.value.vaccinationHistory.filter(v => {
+    const name = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
+    return String(name).toLowerCase().trim() === String(vaccineName).toLowerCase().trim()
+  })
+  // sort by dose number
+  all.sort((a, b) => {
+    const da = parseInt(a.dose_number || a.dose || a.doseNumber || 0) || 0
+    const db = parseInt(b.dose_number || b.dose || b.doseNumber || 0) || 0
+    return da - db
+  })
+  return all
 })
 
 // Methods
@@ -302,8 +367,34 @@ const deriveSite = (record) => {
   return record?.site || record?.site_of_administration || record?.siteOfAdministration || ''
 }
 
+// Extract manufacturer from various possible shapes
+const deriveManufacturer = (record) => {
+  return (
+    record?.manufacturer ||
+    record?.manufacturer_name ||
+    record?.mfr ||
+    record?.brand ||
+    record?.vaccine_manufacturer ||
+    record?.inventory_manufacturer ||
+    ''
+  )
+}
+
+// Extract lot/batch number from possible fields
+const deriveLotNumber = (record) => {
+  return (
+    record?.lotNumber ||
+    record?.lot ||
+    record?.lot_number ||
+    record?.batch ||
+    record?.batch_number ||
+    record?.inventory_lot ||
+    ''
+  )
+}
+
 const deriveFacility = (record) => {
-  const isOutside = !!(record?.immunization_outside || record?.is_outside || record?.isOutside || record?.outside_immunization)
+  const isOutside = !!(record?.immunization_outside || record?.is_outside || record?.isOutside || record?.outside_immunization || record?.outside)
   if (isOutside) return 'Outside'
   return (
     record?.immunization_facility_name ||
@@ -315,22 +406,150 @@ const deriveFacility = (record) => {
   )
 }
 
-const deriveManufacturer = (record) => {
-  const remarks = record?.remarks || record?.notes || ''
-  if (remarks) {
-    const match = remarks.match(/(?:manufacturer)\s*[:\-]\s*([^|;,.\n]+)/i)
-    if (match && match[1]) return match[1].trim()
+const handleSubmit = async () => {
+  if (!isFormValid.value) {
+    alert('Please fill in all required fields.')
+    return
   }
-  return record?.manufacturer || record?.vaccine_manufacturer || ''
+
+  // Build structured remarks using centralized helper (matches admin behaviour)
+  const fullRemarks = buildStructuredRemarks(form.value)
+
+  // Prepare the updated data and store it pending approval
+  const updateData = {
+    administered_date: form.value.dateAdministered,
+    dose_number: parseInt(form.value.doseNumber),
+    facility_name: form.value.facilityName || null,
+    remarks: fullRemarks
+  }
+
+  if (!form.value.isOutside) {
+    updateData.administered_by = form.value.administeredBy
+    updateData.outside = false
+  } else {
+    updateData.administered_by = null
+    updateData.outside = true
+  }
+
+  pendingUpdateData.value = updateData
+  // Show approval modal for secondary sign-off
+  showApproval.value = true
 }
 
-const deriveLotNumber = (record) => {
-  const remarks = record?.remarks || record?.notes || ''
-  if (remarks) {
-    const match = remarks.match(/(?:lot|lot number|batch)\s*[:\-]?\s*([A-Z0-9\-]+)/i)
-    if (match && match[1]) return match[1].trim()
+// Navigate to edit a different dose (routes to same component with new recordId)
+const jumpToDose = (id) => {
+  if (!id) return
+  router.push({ name: 'EditVaccinationRecord', params: { patientId: patientId.value, recordId: id } })
+}
+
+// Ensure we re-fetch when the route recordId changes (same component instance)
+watch(recordId, async (newId, oldId) => {
+  if (String(newId) === String(oldId)) return
+  await fetchVaccinationRecord()
+})
+
+const formatDisplayDate = (d) => {
+  try {
+    const v = d?.administered_date || d?.date_administered || d?.dateAdministered || d
+    if (!v) return '—'
+    const dt = new Date(v)
+    return dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+  } catch {
+    return '—'
   }
-  return record?.lot_number || record?.lotNumber || record?.batch_number || ''
+}
+
+// Called after approver credential check succeeds
+const onApproverApproved = async (approver) => {
+  showApproval.value = false
+  if (!pendingUpdateData.value) return
+  try {
+    saving.value = true
+    // Optionally: attach approver id into payload if DB supports it e.g. approved_by
+    const payload = { ...pendingUpdateData.value }
+    if (approver?.user_id) payload.approved_by = approver.user_id
+    await api.put(`/immunizations/${recordId.value}`, payload)
+    alert('Vaccination record updated successfully (approved)')
+    handleBack()
+  } catch (err) {
+    console.error('❌ [EditVaccination] Error saving vaccination record after approval:', err)
+    const errMsg = err.response?.data?.message || 'Failed to update vaccination record. Please try again.'
+    alert(errMsg)
+  } finally {
+    saving.value = false
+    pendingUpdateData.value = null
+  }
+}
+
+const onApproverCancel = () => {
+  showApproval.value = false
+  pendingUpdateData.value = null
+}
+
+// Parse structured remarks produced by admin UI into discrete fields.
+// Returns { manufacturer, lot, site, facility, administeredBy, otherRemarks }
+const parseRemarksForOutside = (remarks) => {
+  const result = { manufacturer: '', lot: '', site: '', facility: '', administeredBy: '', otherRemarks: '' }
+  if (!remarks || !remarks.trim()) return result
+
+  // Split by labeled separators used by admin: ' | '
+  const parts = String(remarks).split(/\s*\|\s*/)
+  for (const part of parts) {
+    const p = part.trim()
+    if (!p) continue
+    const kv = p.match(/^([^:]+):\s*(.+)$/)
+    if (kv) {
+      const key = kv[1].toLowerCase().trim()
+      const value = kv[2].trim()
+      if (/^manufacturer|mfr|brand$/.test(key)) result.manufacturer = result.manufacturer || value
+      else if (/^lot|batch|lot number$/.test(key)) result.lot = result.lot || value
+      else if (/^site|injection site$/.test(key)) result.site = result.site || value
+      else if (/^facility|center|clinic|hospital|health center$/.test(key)) result.facility = result.facility || value
+      else if (/^administered by|vaccinator|given by$/.test(key)) result.administeredBy = result.administeredBy || value
+      else result.otherRemarks = result.otherRemarks ? `${result.otherRemarks} | ${p}` : p
+    } else {
+      // fallback heuristics
+      const mSite = p.match(/(?:site|injection site)[:\-]?\s*(.+)/i)
+      const mFac = p.match(/(?:facility|center|clinic|hospital|health ?center)[:\-]?\s*(.+)/i)
+      const mMfr = p.match(/(?:manufacturer|mfr|brand)[:\-]?\s*(.+)/i)
+      const mLot = p.match(/(?:lot(?: number)?|batch)[:\-]?\s*([A-Z0-9\-]+)/i)
+      const mAdmin = p.match(/(?:administered by|vaccinator|given by)[:\-]?\s*(.+)/i)
+      if (mSite) result.site = result.site || mSite[1].trim()
+      else if (mFac) result.facility = result.facility || mFac[1].trim()
+      else if (mMfr) result.manufacturer = result.manufacturer || mMfr[1].trim()
+      else if (mLot) result.lot = result.lot || mLot[1].trim()
+      else if (mAdmin) result.administeredBy = result.administeredBy || mAdmin[1].trim()
+      else result.otherRemarks = result.otherRemarks ? `${result.otherRemarks} | ${p}` : p
+    }
+  }
+
+  return result
+}
+
+// Resolve administered-by display name (id -> name) or return free-text for outside
+const getAdministeredByDisplay = (f) => {
+  if (!f) return ''
+  if (f.isOutside) return f.administeredByDisplay || ''
+  const id = f.administeredBy
+  if (!id) return ''
+  const hw = nurses.value.find(n => String(n.user_id) === String(id))
+  return hw ? hw.fullname : ''
+}
+
+// Build structured remarks string similar to admin: main remarks + labeled parts
+const buildStructuredRemarks = (f) => {
+  const main = (f.remarks && f.remarks.trim()) ? f.remarks.trim() : ''
+  const parts = []
+  if (f.siteOfAdministration) parts.push(`Site: ${f.siteOfAdministration}`)
+  if (f.facilityName) parts.push(`Facility: ${f.facilityName}`)
+  const adminName = getAdministeredByDisplay(f)
+  if (adminName) parts.push(`Administered by: ${adminName}`)
+  // Only include manufacturer/lot when this record is an outside immunization
+  if (f.isOutside) {
+    if (f.manufacturer) parts.push(`Manufacturer: ${f.manufacturer}`)
+    if (f.lotNumber) parts.push(`Lot: ${f.lotNumber}`)
+  }
+  return [main, ...parts].filter(Boolean).join(' | ')
 }
 
 const fetchPatientData = async () => {
@@ -433,6 +652,25 @@ const fetchVaccinationRecord = async () => {
       remarks: record.remarks || record.notes || ''
     }
 
+    // Detect outside immunization and parse structured remarks for fallback values
+    try {
+      const isOutside = !!(record?.immunization_outside || record?.is_outside || record?.isOutside || record?.outside_immunization || record?.outside)
+      form.value.isOutside = isOutside
+      // Parse structured remarks and populate individual fields. Always strip labeled parts from
+      // the remarks textarea so it only shows free-text entered by the user.
+      const parsed = parseRemarksForOutside(record.remarks || record.notes || '')
+      if (parsed.manufacturer) form.value.manufacturer = parsed.manufacturer
+      if (parsed.lot) form.value.lotNumber = parsed.lot
+      if (parsed.site) form.value.siteOfAdministration = parsed.site
+      if (parsed.facility) form.value.facilityName = parsed.facility
+      if (parsed.administeredBy) form.value.administeredByDisplay = parsed.administeredBy
+
+      // Show only the leftover free-text in the remarks field (do not show labeled parts)
+      form.value.remarks = (parsed.otherRemarks && parsed.otherRemarks.trim()) ? parsed.otherRemarks.trim() : ''
+    } catch (e) {
+      console.warn('[EditVaccination] parseRemarksForOutside failed:', e)
+    }
+
     // Calculate age if not already set
     if (!form.value.ageAtAdministration) {
       calculateAge()
@@ -446,55 +684,7 @@ const fetchVaccinationRecord = async () => {
   }
 }
 
-const handleSubmit = async () => {
-  if (!isFormValid.value) {
-    alert('Please fill in all required fields.')
-    return
-  }
-
-  try {
-    saving.value = true
-
-    // Prepare remarks - combine manufacturer, lot number, and remarks
-    let fullRemarks = form.value.remarks || ''
-    
-    if (form.value.manufacturer) {
-      fullRemarks = fullRemarks ? `${fullRemarks} | Manufacturer: ${form.value.manufacturer}` : `Manufacturer: ${form.value.manufacturer}`
-    }
-    
-    if (form.value.lotNumber) {
-      fullRemarks = fullRemarks ? `${fullRemarks} | Lot: ${form.value.lotNumber}` : `Lot: ${form.value.lotNumber}`
-    }
-
-    // Prepare the updated data
-    const updateData = {
-      administered_date: form.value.dateAdministered,
-      dose_number: parseInt(form.value.doseNumber),
-      site_of_administration: form.value.siteOfAdministration || null,
-      administered_by: form.value.administeredBy,
-      facility_name: form.value.facilityName || null,
-      remarks: fullRemarks
-    }
-
-    console.log('📤 [EditVaccination] Updating immunization:', recordId.value, updateData)
-
-    // Update the vaccination record
-    await api.put(`/immunizations/${recordId.value}`, updateData)
-
-    console.log('✅ [EditVaccination] Vaccination record updated successfully')
-    alert('Vaccination record updated successfully!')
-
-    // Navigate back to patient details
-    handleBack()
-
-  } catch (err) {
-    console.error('❌ [EditVaccination] Error saving vaccination record:', err)
-    const errorMessage = err.response?.data?.message || 'Failed to update vaccination record. Please try again.'
-    alert(errorMessage)
-  } finally {
-    saving.value = false
-  }
-}
+// main submit flow is handled earlier and gated behind approval modal
 
 onMounted(() => {
   fetchVaccinationRecord()
@@ -772,5 +962,46 @@ select.form-input {
     font-size: 0.9375rem;
     padding: 0.75rem;
   }
+}
+
+/* Dose navigator pills */
+.dose-navigator {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0 1rem 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dose-pill {
+  flex: 0 0 auto;
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  min-width: 88px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: #374151;
+}
+
+.dose-pill.active {
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  color: white;
+  border-color: transparent;
+}
+
+.dose-label {
+  font-weight: 600;
+}
+
+.dose-date {
+  font-size: 0.75rem;
+  color: inherit;
+  opacity: 0.9;
 }
 </style>

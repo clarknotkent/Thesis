@@ -1,5 +1,6 @@
 const supabase = require('../db');
 const { ACTIVITY } = require('../constants/activityTypes');
+const { logActivity } = require('./activityLogger');
 
 function mapNotificationDTO(row) {
   if (!row) return null;
@@ -161,14 +162,26 @@ module.exports = {
         ({ data, error } = await supabase.from('notifications').insert(retryPayload).select().single());
       }
       if (error) throw error;
-      await logActivitySafely({
-        action_type: 'NOTIFICATION_CREATE',
-        description: `Created notification ${data.notification_id}`,
-        user_id: actorId || null,
-        entity_type: 'notification',
-        entity_id: data.notification_id,
-        new_value: { template_code: data.template_code, recipient_user_id: data.recipient_user_id }
-      });
+      // Activity: notification created/enqueued
+      try {
+        await logActivity({
+          action_type: ACTIVITY.NOTIFICATION.CREATE,
+          description: `Notification created/enqueued ${data.notification_id}`,
+          user_id: actorId || null,
+          entity_type: 'notification',
+          entity_id: data.notification_id,
+          new_value: {
+            channel: data.channel,
+            recipient_user_id: data.recipient_user_id,
+            recipient_phone: data.recipient_phone,
+            recipient_email: data.recipient_email,
+            template_code: data.template_code,
+            related_entity_type: data.related_entity_type,
+            related_entity_id: data.related_entity_id,
+            status: data.status
+          }
+        });
+      } catch (_) {}
       return mapNotificationDTO(data);
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -254,6 +267,17 @@ module.exports = {
         .select()
         .single();
       if (error) throw error;
+      // Activity: notification read
+      try {
+        await logActivity({
+          action_type: ACTIVITY.NOTIFICATION.READ,
+          description: `Notification read ${notificationId}`,
+          user_id: userId || null,
+          entity_type: 'notification',
+          entity_id: notificationId,
+          new_value: { read_at: data.read_at }
+        });
+      } catch (_) {}
       return mapNotificationDTO(data);
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -287,6 +311,25 @@ module.exports = {
         .select()
         .single();
       if (error) throw error;
+      // Activity: notification send/fail events
+      try {
+        const s = updatePayload.status;
+        if (s === 'Sent' || s === 'Delivered' || s === 'Failed') {
+          const action = (s === 'Failed') ? ACTIVITY.NOTIFICATION.FAIL : ACTIVITY.NOTIFICATION.SEND;
+          await logActivity({
+            action_type: action,
+            description: `Notification ${s.toLowerCase()}: ${notificationId}`,
+            user_id: actorId || updatePayload.updated_by || null,
+            entity_type: 'notification',
+            entity_id: notificationId,
+            new_value: {
+              status: s,
+              error_message: updatePayload.error_message || null,
+              sent_at: updatePayload.sent_at || null
+            }
+          });
+        }
+      } catch (_) {}
       return mapNotificationDTO(data);
     } catch (error) {
       console.error('Error updating notification status:', error);
@@ -327,6 +370,18 @@ module.exports = {
         .select()
         .single();
       if (error) throw error;
+      // Activity: deletion
+      try {
+        await logActivity({
+          action_type: ACTIVITY.NOTIFICATION.DELETED,
+          description: `Notification deleted ${notificationId}`,
+          user_id: actorId || null,
+          entity_type: 'notification',
+          entity_id: notificationId,
+          old_value: { is_deleted: false },
+          new_value: { is_deleted: true }
+        });
+      } catch (_) {}
       return mapNotificationDTO(data);
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -338,7 +393,7 @@ module.exports = {
 // Helper function for activity logging
 async function logActivitySafely(activityData) {
   try {
-    await supabase.from('activitylogs').insert(activityData);
+    await logActivity(activityData);
   } catch (logError) {
     console.warn('Failed to log activity:', logError.message);
   }

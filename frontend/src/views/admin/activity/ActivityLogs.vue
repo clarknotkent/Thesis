@@ -353,6 +353,42 @@ const prefetchDetails = (log) => {
 // Normalize action into a canonical type and a display label
 const deriveAction = (raw) => {
   const s = String(raw || '').toLowerCase().trim()
+  // Prefer exact action_type parsing (e.g., NOTIFICATION_CREATE) over fuzzy keywords
+  const token = s.replace(/\s+/g, '_')
+  const map = {
+    // Notifications
+    'notification_create': { type: 'notification_create', label: 'Notification Created' },
+    'notification_send': { type: 'notification_send', label: 'Notification Sent' },
+    'notification_fail': { type: 'notification_fail', label: 'Notification Failed' },
+    'notification_read': { type: 'notification_read', label: 'Notification Read' },
+    'notification_deleted': { type: 'notification_deleted', label: 'Notification Deleted' },
+    // Messages
+    'message_created': { type: 'message_created', label: 'Message Created' },
+    'message_send': { type: 'message_send', label: 'Message Sent' },
+    'message_fail': { type: 'message_fail', label: 'Message Failed' },
+    // Schedules
+    'schedule_create': { type: 'schedule_create', label: 'Schedule Created' },
+    'schedule_update': { type: 'schedule_update', label: 'Schedule Updated' },
+    'schedule_update_summary': { type: 'schedule_update_summary', label: 'Schedule Update Summary' },
+    // Users/Security
+    'user_login': { type: 'user_login', label: 'User Login' },
+    'user_login_failed': { type: 'user_login_failed', label: 'User Login Failed' },
+    'user_logout': { type: 'user_logout', label: 'User Logout' },
+    'security_lockout': { type: 'security_lockout', label: 'Account Locked' },
+    // Inventory
+    'inventory_create': { type: 'inventory_create', label: 'Inventory Created' },
+    'inventory_update': { type: 'inventory_update', label: 'Inventory Updated' },
+    'inventory_delete': { type: 'inventory_delete', label: 'Inventory Deleted' },
+    'inventory_stock_expired': { type: 'inventory_stock_expired', label: 'Stock Expired' },
+    // System/Task
+    'system_start': { type: 'system_start', label: 'System Start' },
+    'system_shutdown': { type: 'system_shutdown', label: 'System Shutdown' },
+    'task_run': { type: 'task_run', label: 'Task Started' },
+    'task_success': { type: 'task_success', label: 'Task Succeeded' },
+    'task_failure': { type: 'task_failure', label: 'Task Failed' }
+  }
+  if (map[token]) return map[token]
+
   const includes = (k) => s.includes(k)
   // Canonical buckets
   if (s === 'login' || includes('log in') || includes('signin') || includes('sign in')) {
@@ -381,6 +417,7 @@ const deriveAction = (raw) => {
     return { type: 'deliver', label: 'Delivery' }
   }
   if (includes('notify') || includes('notification') || includes('broadcast')) {
+    // Generic notification text fallback
     return { type: 'notify', label: 'Notification' }
   }
   // Fallback: Title Case
@@ -495,7 +532,7 @@ const fetchLogs = async () => {
         ipAddress: log.ip_address || 'N/A',
         status: log.status || (log.success ? 'success' : 'failed'),
         userAgent: log.user_agent,
-        description: log.full_description || log.details,
+        description: log.full_description || log.description || log.details,
         metadata: log.metadata || log.additional_data
         }
       })
@@ -520,7 +557,7 @@ const fetchLogs = async () => {
         ipAddress: log.ip_address || 'N/A',
         status: log.status || (log.success ? 'success' : 'failed'),
         userAgent: log.user_agent,
-        description: log.full_description || log.details,
+        description: log.full_description || log.description || log.details,
         metadata: log.metadata || log.additional_data
         }
       })

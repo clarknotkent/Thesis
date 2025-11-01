@@ -175,12 +175,14 @@
                   <small>
                     <strong>Available Variables:</strong><br>
                     <code>{{'{'}}{greeting{{'}'}}</code> - Good Day/Evening<br>
+                    <code>{{'{'}}{greeting_time{{'}'}}</code> - Good Day/Evening (auto, based on send time)<br>
                     <code>{{'{'}}{title{{'}'}}</code> - Mr./Ms.<br>
                     <code>{{'{'}}{guardian_name{{'}'}}</code> - Guardian name<br>
                     <code>{{'{'}}{patient_name{{'}'}}</code> - Patient name<br>
                     <code>{{'{'}}{scheduled_date{{'}'}}</code> - Vaccination date<br>
                     <code>{{'{'}}{vaccine_name{{'}'}}</code> - Vaccine name<br>
-                    <code>{{'{'}}{dose_number{{'}'}}</code> - Dose number
+                    <code>{{'{'}}{dose_number{{'}'}}</code> - Dose number<br>
+                    <code>{{'{'}}{vaccine_lines{{'}'}}</code> - Multi-line list (e.g., Antigen — Dose 1,\nAntigen — Dose 2)
                   </small>
                 </div>
                 <textarea 
@@ -263,7 +265,7 @@
             </div>
             <div class="alert alert-info mt-3">
               <small>
-                <strong>Variables:</strong> {greeting_time}, {guardian_title}, {guardian_name}, {guardian_first_name}, {guardian_last_name}, {patient_name}, {patient_first_name}, {vaccine_name}, {dose_number}, {appointment_date}, {appointment_time}, {scheduled_date}
+                <strong>Variables:</strong> {greeting_time}, {guardian_title}, {guardian_name}, {guardian_first_name}, {guardian_last_name}, {patient_name}, {patient_first_name}, {vaccine_name}, {dose_number}, {appointment_date}, {appointment_time}, {scheduled_date}, {vaccine_lines}
               </small>
             </div>
           </div>
@@ -347,21 +349,26 @@ const previewMessage = computed(() => {
   
   // Sample data for preview
   const greeting = editingTemplate.value.time_range === 'day' ? 'Good Day' : 'Good Evening'
+  const greetingTime = greeting
   const title = 'Mr.'
   const guardianName = 'Dela Cruz'
   const patientName = 'Maria'
   const scheduledDate = 'October 28, 2025'
   const vaccineName = 'BCG'
   const doseNumber = '1'
+  const vaccineLines = 'Oral Polio Vaccine (OPV) — Dose 1,\nPentavalent Vaccine (DPT-HepB-Hib) — Dose 1,\nPneumococcal Conjugate Vaccine (PCV) — Dose 1'
 
   let preview = editingTemplate.value.template
   preview = preview.replace('{greeting}', greeting)
+  preview = preview.replace('{greeting_time}', greetingTime)
   preview = preview.replace('{title}', title)
   preview = preview.replace('{guardian_name}', guardianName)
   preview = preview.replace('{patient_name}', patientName)
   preview = preview.replace('{scheduled_date}', scheduledDate)
   preview = preview.replace('{vaccine_name}', vaccineName)
   preview = preview.replace('{dose_number}', doseNumber)
+  preview = preview.replace('{vaccine_lines}', vaccineLines)
+  preview = preview.replace('{vaccine_list}', vaccineLines)
 
   return preview
 })
@@ -390,12 +397,14 @@ const getTypeBadgeClass = (type) => {
 const getCardPreview = (t) => {
   if (!t?.template) return ''
   const greeting = (t.time_range === 'day') ? 'Good Day' : 'Good Evening'
+  const greetingTime = greeting
   const title = 'Mr.'
   const guardianName = 'Dela Cruz'
   const patientName = 'Maria'
   const scheduledDate = 'October 28, 2025'
   const vaccineName = 'BCG'
   const doseNumber = '1'
+  const vaccineLines = 'Oral Polio Vaccine (OPV) — Dose 1,\nPentavalent Vaccine (DPT-HepB-Hib) — Dose 1,\nPneumococcal Conjugate Vaccine (PCV) — Dose 1'
   let preview = t.template
   preview = preview
     .replaceAll('{greeting}', greeting)
@@ -409,6 +418,8 @@ const getCardPreview = (t) => {
     .replaceAll('{appointment_date}', scheduledDate)
     .replaceAll('{vaccine_name}', vaccineName)
     .replaceAll('{dose_number}', doseNumber)
+    .replaceAll('{vaccine_lines}', vaccineLines)
+    .replaceAll('{vaccine_list}', vaccineLines)
   return preview
 }
 
@@ -417,7 +428,7 @@ const createNewTemplate = () => {
     name: '',
     trigger_type: '',
     time_range: 'day',
-    template: '',
+    template: 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!',
     is_active: true
   }
   showModal()

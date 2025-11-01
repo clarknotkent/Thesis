@@ -270,6 +270,36 @@ const getRoleColor = (role) => {
 // Normalize action into a canonical type and a display label
 const deriveAction = (raw) => {
   const s = String(raw || '').toLowerCase().trim()
+  // Prefer exact token mapping when action_type is provided
+  const token = s.replace(/\s+/g, '_')
+  const map = {
+    'notification_create': { type: 'notification_create', label: 'Notification Created' },
+    'notification_send': { type: 'notification_send', label: 'Notification Sent' },
+    'notification_fail': { type: 'notification_fail', label: 'Notification Failed' },
+    'notification_read': { type: 'notification_read', label: 'Notification Read' },
+    'notification_deleted': { type: 'notification_deleted', label: 'Notification Deleted' },
+    'message_created': { type: 'message_created', label: 'Message Created' },
+    'message_send': { type: 'message_send', label: 'Message Sent' },
+    'message_fail': { type: 'message_fail', label: 'Message Failed' },
+    'schedule_create': { type: 'schedule_create', label: 'Schedule Created' },
+    'schedule_update': { type: 'schedule_update', label: 'Schedule Updated' },
+    'schedule_update_summary': { type: 'schedule_update_summary', label: 'Schedule Update Summary' },
+    'user_login': { type: 'user_login', label: 'User Login' },
+    'user_login_failed': { type: 'user_login_failed', label: 'User Login Failed' },
+    'user_logout': { type: 'user_logout', label: 'User Logout' },
+    'security_lockout': { type: 'security_lockout', label: 'Account Locked' },
+    'inventory_create': { type: 'inventory_create', label: 'Inventory Created' },
+    'inventory_update': { type: 'inventory_update', label: 'Inventory Updated' },
+    'inventory_delete': { type: 'inventory_delete', label: 'Inventory Deleted' },
+    'inventory_stock_expired': { type: 'inventory_stock_expired', label: 'Stock Expired' },
+    'system_start': { type: 'system_start', label: 'System Start' },
+    'system_shutdown': { type: 'system_shutdown', label: 'System Shutdown' },
+    'task_run': { type: 'task_run', label: 'Task Started' },
+    'task_success': { type: 'task_success', label: 'Task Succeeded' },
+    'task_failure': { type: 'task_failure', label: 'Task Failed' }
+  }
+  if (map[token]) return map[token]
+
   const includes = (k) => s.includes(k)
   if (s === 'login' || includes('log in') || includes('signin') || includes('sign in')) {
     return { type: 'login', label: 'Login' }
@@ -412,7 +442,7 @@ const normalizeLog = (raw) => {
   ) || ''
   const actorRole = formatUserRole(raw.user_role || '')
   const resourceRaw = entityType || raw.resource || raw.table_name || 'System'
-  const descriptionRaw = raw.full_description || raw.details
+  const descriptionRaw = raw.full_description || raw.description || raw.details
   const base = {
     id: raw.log_id || raw.id,
     timestamp: extractTimestamp(raw),
@@ -427,7 +457,7 @@ const normalizeLog = (raw) => {
     ipAddress: raw.ip_address || 'N/A',
     status: raw.status || (raw.success ? 'success' : 'failed'),
     userAgent: raw.user_agent,
-    description: descriptionRaw,
+  description: descriptionRaw,
     metadata,
     rawOriginal: raw,
   }

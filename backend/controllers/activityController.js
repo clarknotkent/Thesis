@@ -54,7 +54,15 @@ const getActivityLogById = async (req, res) => {
     }
     const log = await getActivityLogByIdModel(id);
     if (!log) return res.status(404).json({ success: false, message: 'Log not found' });
-    res.json({ success: true, data: log });
+    // Enrich to match listActivityLogs shape so frontend can rely on the same fields
+    const enriched = {
+      ...log,
+      user_role: log.user_role || 'System',
+      display_user_name: log.user_fullname || log.username || (log.user_id == null ? 'System' : `User ${log.user_id}`),
+      display_action: log.description || log.action_type,
+      full_description: log.description || log.full_description,
+    };
+    res.json({ success: true, data: enriched });
   } catch (error) {
     console.error('Error fetching activity log by id:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch activity log', error: error.message });

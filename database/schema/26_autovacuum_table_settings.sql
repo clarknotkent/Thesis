@@ -43,6 +43,7 @@ ORDER BY schema, table_name;
 | public | receiving_reports             | null       | null             |
 | public | schedule_doses                | null       | null             |
 | public | schedule_master               | null       | null             |
+| public | sms_log_patientschedule       | null       | null             |
 | public | sms_logs                      | null       | null             |
 | public | sms_templates                 | null       | null             |
 | public | timestamp_normalization_audit | null       | null             |

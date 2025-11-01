@@ -1,8 +1,12 @@
 <template>
   <ParentLayout>
     <div class="messages-container">
-      <div class="section-header">
-        <h5 class="section-title">Messages</h5>
+      <div class="section-header d-flex justify-content-between align-items-center">
+        <h5 class="section-title mb-0">Messages</h5>
+        <button class="btn btn-primary btn-sm" @click="openNewChat">
+          <i class="bi bi-plus-circle me-1"></i>
+          New Chat
+        </button>
       </div>
 
       <!-- Loading State -->
@@ -28,6 +32,7 @@
           :key="message.id"
           class="message-item"
           :class="{ unread: !message.read }"
+          @click="openConversation(message)"
         >
           <div class="message-avatar">
             <i class="bi bi-person-circle"></i>
@@ -41,24 +46,314 @@
           </div>
         </div>
       </div>
+
+      <!-- Floating FAQ Chat Head -->
+      <button class="faq-fab" type="button" @click="toggleFaq">
+        <i class="bi bi-question-circle-fill"></i>
+      </button>
+
+      <!-- FAQ Conversation Panel (frontend only) -->
+      <div v-if="faqOpen" class="faq-panel card shadow">
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+          <div class="d-flex align-items-center gap-2">
+            <div class="avatar-circle bg-primary text-white">?</div>
+            <div>
+              <div class="fw-semibold">FAQs Assistant</div>
+              <div class="text-muted small">Tap a question to view the answer</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" @click="faqOpen = false">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        <div class="card-body p-0 d-flex flex-column" style="max-height: 60vh;">
+          <div ref="faqChatBox" class="faq-chat flex-fill p-2 overflow-auto">
+            <div v-if="faqThread.length === 0" class="text-center text-muted small py-3">
+              Select a question below to see the answer here.
+            </div>
+            <div v-else>
+              <div v-for="m in faqThread" :key="m.id" class="mb-2 d-flex" :class="m.role === 'me' ? 'justify-content-end' : 'justify-content-start'">
+                <div class="message-bubble" :class="m.role === 'me' ? 'bubble-me' : 'bubble-faq'">
+                  <div class="message-content">{{ m.text }}</div>
+                  <div class="message-time small">{{ formatTime(m.at) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="p-2 border-top" style="max-height: 40%; overflow: auto;">
+            <div v-for="(faq, idx) in faqs" :key="idx" class="mb-2">
+              <button class="btn btn-light w-100 text-start" @click="selectFaq(faq)">
+                <div class="fw-semibold">{{ faq.q }}</div>
+                <div class="text-muted small">Tap to show answer</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Chat Modal -->
+      <div class="modal fade show" tabindex="-1" style="display: block;" v-if="showNewModal">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Start a new chat</h5>
+              <button type="button" class="btn-close" @click="closeNewChat"></button>
+            </div>
+            <div class="modal-body">
+              <!-- Mode toggle: Team vs Staff -->
+              <ul class="nav nav-pills gap-2 mb-3">
+                <li class="nav-item">
+                  <button class="nav-link" :class="{ active: newChatMode === 'team' }" @click="newChatMode = 'team'">
+                    <i class="bi bi-people me-1"></i> Message Health Center
+                  </button>
+                </li>
+                <li class="nav-item">
+                  <button class="nav-link" :class="{ active: newChatMode === 'staff' }" @click="newChatMode = 'staff'">
+                    <i class="bi bi-person-badge me-1"></i> Choose Staff
+                  </button>
+                </li>
+              </ul>
+
+              <div v-if="newChatMode === 'team'" class="alert alert-info py-2">
+                We’ll route your message to an available health worker from your health center.
+              </div>
+
+              <div v-if="newChatMode === 'staff'" class="mb-3">
+                <label class="form-label">Select staff</label>
+                <select class="form-select" v-model="selectedStaffId">
+                  <option value="" disabled>Select a staff member</option>
+                  <option v-for="u in staffOptions" :key="u.__id" :value="u.__id">
+                    {{ (u.full_name || u.name || ('User #' + u.__id)) + (u.hs_type ? ' — ' + prettyHsType(u.hs_type) : '') }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label">Message</label>
+                <textarea v-model="newMessage" class="form-control" rows="3" placeholder="Type your message..."></textarea>
+                <div class="text-muted small mt-1">{{ newMessage.length }}/1000</div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="closeNewChat">Cancel</button>
+              <button class="btn btn-primary" :disabled="startDisabled" @click="createConversation">
+                <i v-if="creating" class="bi bi-hourglass-split fa-spin me-1"></i>
+                Start
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-if="showNewModal" class="modal-backdrop fade show"></div>
     </div>
   </ParentLayout>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
+import api from '@/services/api'
+import { getUserId } from '@/services/auth'
+import { useRouter, useRoute } from 'vue-router'
+import { useToast } from '@/composables/useToast'
+import { getFaqs as apiGetFaqs } from '@/services/faqService'
 
 const loading = ref(true)
 const messages = ref([])
+const router = useRouter()
+const route = useRoute()
+const { addToast } = useToast()
 
-// Placeholder data
-onMounted(() => {
-  setTimeout(() => {
-    messages.value = []
-    loading.value = false
-  }, 500)
+// New chat state
+const showNewModal = ref(false)
+const staffOptions = ref([])
+const selectedStaffId = ref('')
+const newMessage = ref('')
+const creating = ref(false)
+const newChatMode = ref('team') // 'team' | 'staff'
+
+const startDisabled = computed(() => {
+  const msg = (newMessage.value || '').trim()
+  const msgOk = msg.length > 0 && msg.length <= 1000
+  if (!msgOk || creating.value) return true
+  if (newChatMode.value === 'staff') return !selectedStaffId.value
+  return false
 })
+
+// FAQ assistant (loads FAQs from backend faqs table)
+const faqOpen = ref(false)
+const faqThread = ref([])
+const faqChatBox = ref(null)
+const faqs = ref([])
+
+const loadFaqs = async () => {
+  try {
+    const res = await apiGetFaqs()
+    const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.data) ? res.data : [])
+    faqs.value = (items || [])
+      .map(f => ({ id: f.faq_id || f.id, q: f.question || f.q || '', a: f.answer || f.a || '' }))
+      .filter(f => f.q && f.a)
+  } catch (e) {
+    console.error('Failed to load FAQs', e)
+    faqs.value = []
+  }
+}
+
+const fetchConversations = async () => {
+  try {
+    loading.value = true
+    const userId = getUserId()
+    const { data } = await api.get('/conversations', {
+      params: { user_id: userId, limit: 50 }
+    })
+    const items = data?.items || data?.data || []
+    const me = String(getUserId())
+    messages.value = items.map(it => {
+      const id = it.conversation_id || it.id
+      const when = it.latest_message_time || it.last_message_at || it.updated_at || it.created_at
+      const txt = it.latest_message || it.last_message || it.last_message_body || it.message_preview || it.message_body || ''
+      // Try to get other participant's name from participants array
+      let sender = 'Conversation'
+      const list = Array.isArray(it.participants) ? it.participants : []
+      const others = list.filter(p => String(p.user_id || p.id) !== me)
+      if (others.length) {
+        const p = others[0]
+        sender = p.fullname || p.full_name || p.participant_name || `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() || sender
+      } else if (it.subject) {
+        sender = it.subject
+      }
+      return { id, sender, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
+    })
+  } catch (e) {
+    console.error('Failed to fetch conversations:', e)
+    messages.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  // Load conversations
+  fetchConversations()
+  // If routed with ?faq=1 (or any faq query), open the FAQ assistant automatically
+  const faqParam = route.query?.faq
+  if (faqParam !== undefined) {
+    // Open panel and ensure FAQs are loaded with a greeting
+    if (!faqOpen.value) {
+      faqOpen.value = true
+    }
+    if (faqThread.value.length === 0) {
+      faqThread.value.push({ id: `greet-${Date.now()}`, role: 'faq', text: 'Hi! I can help with common questions. Pick one below and I’ll show the answer here.', at: new Date().toISOString() })
+    }
+    if (faqs.value.length === 0) {
+      loadFaqs()
+    }
+  }
+})
+
+const openConversation = (msg) => {
+  const id = msg?.id
+  if (!id) return
+  router.push({ name: 'ParentChat', params: { conversationId: id } })
+}
+
+const toggleFaq = () => {
+  faqOpen.value = !faqOpen.value
+  if (faqOpen.value && faqThread.value.length === 0) {
+    faqThread.value.push({ id: `greet-${Date.now()}`, role: 'faq', text: 'Hi! I can help with common questions. Pick one below and I’ll show the answer here.', at: new Date().toISOString() })
+  }
+  if (faqOpen.value && faqs.value.length === 0) {
+    // lazy-load FAQs when panel is first opened
+    loadFaqs()
+  }
+}
+
+const selectFaq = (faq) => {
+  const now = new Date().toISOString()
+  faqThread.value.push({ id: `q-${Date.now()}-${Math.random()}`, role: 'me', text: faq.q, at: now })
+  faqThread.value.push({ id: `a-${Date.now()}-${Math.random()}`, role: 'faq', text: faq.a, at: now })
+  requestAnimationFrame(() => {
+    if (faqChatBox.value) {
+      faqChatBox.value.scrollTop = faqChatBox.value.scrollHeight
+    }
+  })
+}
+
+const openNewChat = async () => {
+  showNewModal.value = true
+  if (staffOptions.value.length === 0) {
+    try {
+      const { data } = await api.get('/users', { params: { role: 'healthworker', limit: 50 } })
+      const raw = data?.users || data?.data || []
+      staffOptions.value = raw.map(u => ({
+        __id: u.user_id || u.id || u.__id,
+        full_name: u.name || `${u.firstname || u.first_name || ''} ${u.surname || u.last_name || ''}`.trim(),
+        hs_type: u.hs_type || u.type || null,
+        last_login: u.lastLogin || u.last_login || null
+      })).filter(u => !!u.__id)
+    } catch (e) {
+      console.error('Failed to load staff list', e)
+      addToast({ title: 'Error', message: 'Failed to load staff list', type: 'error' })
+    }
+  }
+}
+
+const closeNewChat = () => {
+  showNewModal.value = false
+  selectedStaffId.value = ''
+  newMessage.value = ''
+  newChatMode.value = 'team'
+}
+
+const prettyHsType = (t) => ({ nurse: 'Nurse', nutritionist: 'Nutritionist', bhs: 'BHS' }[String(t || '').toLowerCase()] || t || '')
+
+const pickAutoStaffId = () => {
+  const list = staffOptions.value || []
+  if (!list.length) return ''
+  const withScore = list.map(u => ({
+    ...u,
+    _score: u.last_login ? new Date(u.last_login).getTime() : 0
+  }))
+  withScore.sort((a, b) => b._score - a._score)
+  return withScore[0].__id
+}
+
+const createConversation = async () => {
+  const msg = (newMessage.value || '').trim()
+  if (!msg) return
+  if (msg.length > 1000) {
+    addToast({ title: 'Warning', message: 'Message too long (max 1000).', type: 'warning' })
+    return
+  }
+  let targetStaffId = selectedStaffId.value
+  if (newChatMode.value === 'team') {
+    targetStaffId = pickAutoStaffId()
+    if (!targetStaffId) {
+      addToast({ title: 'Unavailable', message: 'No health staff found to route your message.', type: 'warning' })
+      return
+    }
+  }
+  creating.value = true
+  try {
+    const payload = {
+      subject: 'Support',
+      participants: [targetStaffId],
+      message_content: msg
+    }
+    const { data } = await api.post('/conversations/start', payload)
+    const conv = data?.conversation || data
+    closeNewChat()
+    await fetchConversations()
+    const id = conv?.conversation_id || conv?.id
+    if (id) router.push({ name: 'ParentChat', params: { conversationId: id } })
+    addToast({ title: 'Sent', message: 'Conversation started.', type: 'success' })
+  } catch (e) {
+    console.error('Failed to create conversation', e)
+    addToast({ title: 'Error', message: 'Failed to start conversation', type: 'error' })
+  } finally {
+    creating.value = false
+  }
+}
 
 const formatTime = (timestamp) => {
   const date = new Date(timestamp)
@@ -197,6 +492,67 @@ const formatTime = (timestamp) => {
 .empty-state-text {
   color: #6c757d;
   font-size: 0.9rem;
+}
+
+/* FAQ chat head + panel */
+.faq-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 90px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: #0d6efd;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+.faq-fab i { font-size: 1.4rem; }
+
+.faq-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 160px;
+  width: min(380px, 92vw);
+  max-height: 70vh;
+  z-index: 11;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.avatar-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.faq-chat .message-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  word-wrap: break-word;
+}
+.faq-chat .bubble-me {
+  background: #0d6efd;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.faq-chat .bubble-faq {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  color: #212529;
+  border-bottom-left-radius: 4px;
+}
+.faq-chat .message-time {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
 }
 
 @media (max-width: 576px) {

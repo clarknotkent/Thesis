@@ -26,7 +26,7 @@ SELECT schema AS view_schema, view_name, base_schema, base_table,
 FROM deps
 ORDER BY view_schema, view_name, base_schema, base_table;
 
-| view_schema | view_name                | base_schema | base_table               | base_kind |
+| view_schema | view_schema | view_name                | base_schema | base_table               | base_kind |
 | ----------- | ------------------------ | ----------- | ------------------------ | --------- |
 | public      | activitylogs_view        | public      | activitylogs_view        | view      |
 | public      | conversations_view       | public      | conversations_view       | view      |

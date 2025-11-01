@@ -1,4 +1,6 @@
 const supabase = require('../db');
+const guardianModel = require('../models/guardianModel');
+const { verifyPassword, changePassword } = require('../models/authModel');
 
 // Get parent profile and basic information
 const getParentProfile = async (req, res) => {
@@ -470,5 +472,232 @@ module.exports = {
   getParentChildren,
   getChildDetails,
   getChildVaccinationSchedule,
-  getChildImmunizationDetails
+  getChildImmunizationDetails,
+  // Added below
+  updateParentProfile: async (req, res) => {
+    try {
+      const userId = req.user.user_id;
+      const body = req.body || {};
+
+      // Build partial update for users table
+      const allowed = ['surname', 'firstname', 'middlename', 'email', 'address', 'contact_number', 'birthdate'];
+      const patch = {};
+      for (const k of allowed) {
+        if (body[k] !== undefined && body[k] !== null) patch[k] = body[k];
+      }
+
+      // Build partial update for guardians table (occupation, alternative contact)
+      const guardianAllowed = ['occupation', 'alternative_contact_number'];
+      const guardianPatch = {};
+      for (const k of guardianAllowed) {
+        if (body[k] !== undefined) guardianPatch[k] = body[k];
+      }
+
+      if (Object.keys(patch).length === 0 && Object.keys(guardianPatch).length === 0) {
+        return res.status(400).json({ success: false, message: 'No fields to update' });
+      }
+
+      // Update users row
+      if (Object.keys(patch).length > 0) {
+        const { error: updErr } = await supabase
+          .from('users')
+          .update({
+            ...patch,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId)
+          .eq('is_deleted', false);
+
+        if (updErr) {
+          return res.status(400).json({ success: false, message: 'Failed to update profile', error: updErr.message });
+        }
+      }
+
+      // Update guardian row if needed
+      if (Object.keys(guardianPatch).length > 0) {
+        // Find guardian by user_id
+        const { data: guardianRow, error: gFindErr } = await supabase
+          .from('guardians')
+          .select('guardian_id')
+          .eq('user_id', userId)
+          .eq('is_deleted', false)
+          .single();
+
+        if (gFindErr || !guardianRow) {
+          return res.status(404).json({ success: false, message: 'Guardian profile not found for update' });
+        }
+
+        const { error: gUpdErr } = await supabase
+          .from('guardians')
+          .update({
+            ...guardianPatch,
+            updated_by: userId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('guardian_id', guardianRow.guardian_id)
+          .eq('is_deleted', false);
+
+        if (gUpdErr) {
+          return res.status(400).json({ success: false, message: 'Failed to update guardian fields', error: gUpdErr.message });
+        }
+      }
+
+      // Sync guardian record from users (also cascades phone/name to dependent records)
+      try {
+        await guardianModel.syncGuardianFromUser(userId, userId);
+      } catch (e) {
+        // Non-fatal; log and continue
+        console.warn('[parentController] guardian sync warning:', e?.message || e);
+      }
+
+      // Return updated profile using the same shape as getParentProfile
+      const { data: guardian, error: guardianError } = await supabase
+        .from('guardians')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .single();
+
+      if (guardianError || !guardian) {
+        return res.status(200).json({ success: true, data: null });
+      }
+
+      const { count: childrenCount } = await supabase
+        .from('patients')
+        .select('*', { count: 'exact', head: true })
+        .eq('guardian_id', guardian.guardian_id)
+        .eq('is_deleted', false);
+
+      return res.json({ success: true, data: { ...guardian, childrenCount: childrenCount || 0 } });
+    } catch (error) {
+      console.error('Error updating parent profile:', error);
+      return res.status(500).json({ success: false, message: 'Failed to update profile', error: error.message });
+    }
+  },
+
+  changeParentPassword: async (req, res) => {
+    try {
+      const userId = req.user.user_id;
+      const { currentPassword, newPassword } = req.body || {};
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Current and new passwords are required' });
+      }
+      if (String(newPassword).length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+      }
+
+      // Fetch current password hash and email
+      const { data: userRow, error: userErr } = await supabase
+        .from('users')
+        .select('user_id, password_hash, email')
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .single();
+      if (userErr || !userRow) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
+      // Verify current password: local hash if present else Supabase Auth sign-in
+      let verified = false;
+      let supabaseUUIDFromSignin = null;
+      if (userRow.password_hash) {
+        verified = await verifyPassword(currentPassword, userRow.password_hash || '');
+      }
+      if (!verified) {
+        if (!userRow.email) {
+          return res.status(400).json({ success: false, message: 'User email missing; cannot verify current password' });
+        }
+        try {
+          const { createClient } = require('@supabase/supabase-js');
+          const url = process.env.SUPABASE_URL;
+          const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+          const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+          const { data: signin, error: signErr } = await sb.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+          if (signErr || !signin?.user) {
+            return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+          }
+          supabaseUUIDFromSignin = signin.user?.id || null;
+          verified = true;
+        } catch (_) {
+          return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+        }
+      }
+
+      // Update Supabase Auth password with least privilege first: user-scoped session; fallback to Admin
+      let authUpdated = false;
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const url = process.env.SUPABASE_URL;
+        const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+        if (!userRow.email || !anonKey) throw new Error('no-user-session');
+        const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+        const signRes = await anon.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+        if (!signRes?.data?.session) throw new Error('signin-failed');
+        await anon.auth.setSession({
+          access_token: signRes.data.session.access_token,
+          refresh_token: signRes.data.session.refresh_token
+        });
+        const { error: updErr } = await anon.auth.updateUser({ password: newPassword });
+        if (updErr) throw updErr;
+        authUpdated = true;
+        console.log('[DEBUG] parent.changeParentPassword user-scoped updateUser OK', { userId });
+      } catch (userScopedErr) {
+        try {
+          const { createClient } = require('@supabase/supabase-js');
+          const url = process.env.SUPABASE_URL;
+          const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+          const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+
+          // Resolve supabase UUID for this user
+          let supabaseUUID = supabaseUUIDFromSignin || null;
+          try {
+            const { data: uidRow } = await supabase
+              .from('users_with_uuid')
+              .select('supabase_uuid')
+              .eq('user_id', userId)
+              .single();
+            supabaseUUID = supabaseUUID || uidRow?.supabase_uuid || null;
+          } catch (_) {}
+          if (!supabaseUUID) {
+            try {
+              const { data: mapRow } = await supabase
+                .from('user_mapping')
+                .select('uuid')
+                .eq('user_id', userId)
+                .single();
+              supabaseUUID = supabaseUUID || mapRow?.uuid || null;
+            } catch (_) {}
+          }
+
+          if (!supabaseUUID) {
+            return res.status(409).json({ success: false, message: 'Unable to locate Supabase user mapping for this account' });
+          }
+
+          console.log('[DEBUG] parent.changeParentPassword admin.updateUserById', { userId, supabaseUUID });
+          const { error: updAuthErr } = await admin.auth.admin.updateUserById(supabaseUUID, { password: newPassword });
+          if (updAuthErr) {
+            return res.status(500).json({ success: false, message: 'Failed to update Supabase Auth password', error: updAuthErr.message });
+          }
+          authUpdated = true;
+          console.log('[DEBUG] parent.changeParentPassword admin.updateUserById OK', { userId, supabaseUUID });
+        } catch (authErr) {
+          console.error('[parentController] Supabase Auth password update failed:', authErr);
+          return res.status(500).json({ success: false, message: 'Failed to update password (auth provider)' });
+        }
+      }
+
+      // Update local shadow hash (best-effort)
+      try {
+        await changePassword(userId, newPassword);
+      } catch (localErr) {
+        console.warn('[parentController] Local password hash update failed after auth change:', localErr?.message || localErr);
+      }
+
+      return res.json({ success: true, message: 'Password changed successfully', authUpdated: !!authUpdated });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      return res.status(500).json({ success: false, message: 'Failed to change password', error: error.message });
+    }
+  }
 };

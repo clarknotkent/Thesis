@@ -1,6 +1,8 @@
 const moment = require('moment-timezone');
 const serviceSupabase = require('../db');
 const smsService = require('./smsService');
+const { logActivity } = require('../models/activityLogger');
+const { ACTIVITY } = require('../constants/activityTypes');
 
 // Helper to use provided client or default service client
 function withClient(client) {
@@ -98,7 +100,7 @@ function getReminderOffsets() {
 
 // Parse reminder send time from env (PHT). Accepts formats like "08:00", "8:00 AM", "20:30". Defaults to 08:00.
 function getReminderTime(tz = 'Asia/Manila') {
-  const raw = (process.env.SMS_REMINDER_TIME || '08:00').trim();
+  const raw = (process.env.SMS_REMINDER_TIME || '04:17').trim();
   // Try common patterns
   let m = moment.tz(raw, ['H:mm', 'HH:mm', 'h:mm A', 'h:mmA', 'hh:mm A', 'hh:mmA'], true, tz);
   if (!m.isValid()) {
@@ -164,7 +166,8 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
 
   // 2) Patient info (phone/name) and guardian relationship (with fallback)
   const patientRow = await getPatientSmsInfo(triggerSched.patient_id, supabase);
-  if (!patientRow || !patientRow.guardian_contact_number) return { created: 0, skipped: 'no-guardian-phone' };
+  const normalizedPhone = patientRow?.guardian_contact_number ? smsService.formatPhoneNumber(patientRow.guardian_contact_number) : null;
+  if (!patientRow || !normalizedPhone) return { created: 0, skipped: 'no-guardian-phone' };
 
   // 3) Find all schedules for same patient on same date (combine same-day schedules)
   // Align day-boundaries to Asia/Manila and avoid 'Z' to match other queries
@@ -219,6 +222,13 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
   const combinedDoseNumber = doseList.length > 0
     ? doseList.join(', ')
     : 'Dose 1';
+
+  // Build clean multi-line vaccine list (e.g., "Antigen — Dose 1,\nAntigen — Dose 2")
+  const vaccineLines = allSchedsOnDay.map(s => {
+    const name = (vaccineNames[allSchedsOnDay.indexOf(s)] || 'vaccine');
+    const dose = `Dose ${s.dose_number || 1}`;
+    return `${name} — ${dose}`;
+  }).join(',\n');
   const patientScheduleIds = allSchedsOnDay.map(s => s.patient_schedule_id);
 
   const nowISO = new Date().toISOString();
@@ -243,7 +253,7 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
           .from('sms_logs')
           .select('id')
           .eq('patient_id', triggerSched.patient_id)
-          .eq('phone_number', patientRow.guardian_contact_number)
+          .eq('phone_number', normalizedPhone)
           .eq('type', 'scheduled')
           .eq('scheduled_at', runAt)
           .limit(1)
@@ -291,7 +301,8 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
             .maybeSingle();
           if (tpl) {
             templateId = tpl.id;
-            templateText = tpl.template;
+              // Normalize escaped newlines (\n) stored in DB to real newlines so templates display correctly
+              templateText = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
           }
         } catch (_) {}
       }
@@ -300,6 +311,10 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
   const relationship = (patientRow.guardian_relationship || '').toLowerCase();
       const guardianTitle = relationship === 'mother' ? 'Ms.' : relationship === 'father' ? 'Mr.' : '';
 
+      const timeCfg = getReminderTime('Asia/Manila');
+      const greetingTime = (timeCfg.hour >= 6 && timeCfg.hour < 18) ? 'Good Day' : 'Good Evening';
+      const scheduledDateLong = moment.tz(triggerSched.scheduled_date, 'Asia/Manila').format('MMMM DD, YYYY');
+
       const message = templateText
         ? renderTemplate(templateText, {
             patientName: patientRow.full_name,
@@ -307,9 +322,11 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
             guardianTitle,
             vaccineName: combinedVaccineName,
             doseNumber: combinedDoseNumber,
-            scheduledDate: schedDateLocal,
-            appointmentTime: getReminderTime('Asia/Manila').display,
+            vaccineLines,
+            scheduledDate: scheduledDateLong,
+            appointmentTime: timeCfg.display,
             daysUntil: String(days),
+            greetingTime,
           })
         : buildReminderMessage({
             antigenName: combinedVaccineName,
@@ -323,7 +340,7 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
         .insert({
           guardian_id: patientRow.guardian_id || null,
           patient_id: triggerSched.patient_id,
-          phone_number: patientRow.guardian_contact_number,
+          phone_number: normalizedPhone,
           message,
           type: 'scheduled',
           status: 'pending',
@@ -332,9 +349,28 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .select('id')
+        .select('id, patient_id, phone_number, scheduled_at, type, status, template_id')
         .single();
       if (insErr) throw insErr;
+
+      // Activity log: queued SMS reminder (normalized)
+      try {
+        await logActivity({
+          action_type: ACTIVITY.MESSAGE.SEND,
+          description: `Queued scheduled SMS reminder for patient ${triggerSched.patient_id} on ${schedDateLocal}`,
+          user_id: null,
+          entity_type: 'sms_log',
+          entity_id: ins.id,
+          new_value: {
+            patient_id: ins.patient_id,
+            phone_number: ins.phone_number,
+            scheduled_at: ins.scheduled_at,
+            type: ins.type,
+            status: ins.status,
+            template_id: ins.template_id,
+          }
+        });
+      } catch (_) {}
 
       // Link to all same-day patient schedules
       try {
@@ -363,15 +399,18 @@ function renderTemplate(template, vars) {
     .replace(/{guardian_title}/gi, vars.guardianTitle || '')
     .replace(/{vaccine_name}/gi, vars.vaccineName || '')
     .replace(/{dose_number}/gi, vars.doseNumber || '')
+    .replace(/{vaccine_lines}/gi, vars.vaccineLines || '')
+    .replace(/{vaccine_list}/gi, vars.vaccineLines || '')
     .replace(/{scheduled_date}/gi, vars.scheduledDate || '')
     .replace(/{appointment_date}/gi, vars.scheduledDate || '')
-  // Prefer provided appointmentTime; default to 08:00 AM PHT for clarity
-  .replace(/{appointment_time}/gi, vars.appointmentTime || getReminderTime('Asia/Manila').display)
+    // Prefer provided appointmentTime; default to 08:00 AM PHT for clarity
+    .replace(/{appointment_time}/gi, vars.appointmentTime || getReminderTime('Asia/Manila').display)
     .replace(/{days_until}/gi, vars.daysUntil || '')
     .replace(/{schedule_summary}/gi, vars.scheduleSummary || '')
     .replace(/{guardian_name}/gi, '')
     .replace(/{guardian_first_name}/gi, '')
     .replace(/{guardian_last_name}/gi, vars.guardianLastName || '')
+    .replace(/{greeting_time}/gi, vars.greetingTime || '')
     .replace(/{health_center}/gi, 'Barangay Health Center');
 }
 
@@ -386,7 +425,8 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
   try {
     // Load patient info and phone
     const patient = await getPatientSmsInfo(patientId, supabase);
-    if (!patient || !patient.guardian_contact_number) {
+    const normalizedPhone = patient?.guardian_contact_number ? smsService.formatPhoneNumber(patient.guardian_contact_number) : null;
+    if (!patient || !normalizedPhone) {
       console.log('[rescheduleNotify] Skipped: no guardian phone for patient', patientId);
       return { sent: 0, reason: 'no-guardian-phone' };
     }
@@ -414,21 +454,29 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       vaccineMap = new Map((vacs || []).map(v => [v.vaccine_id, v.antigen_name]));
     }
 
-    // Group by date and build summary lines
+    // Group by date and build summary lines, format date as 'MMMM DD, YYYY' and place each detail on its own line
     const byDate = new Map();
     for (const s of schedules) {
-      const date = (s.scheduled_date || '').split('T')[0];
+      const raw = s.scheduled_date || '';
+      const dateLabel = raw
+        ? moment.tz(raw, 'Asia/Manila').format('MMMM DD, YYYY')
+        : raw.split('T')[0];
       const name = vaccineMap.get(s.vaccine_id) || 'vaccine';
       const dose = `Dose ${s.dose_number || 1}`;
       const item = `${name} (${dose})`;
-      if (!byDate.has(date)) byDate.set(date, []);
-      byDate.get(date).push(item);
+      if (!byDate.has(dateLabel)) byDate.set(dateLabel, []);
+      byDate.get(dateLabel).push(item);
     }
     const summaryParts = [];
-    for (const [date, items] of byDate.entries()) {
-      summaryParts.push(`${date}: ${items.join(', ')}`);
+    for (const [dateLabel, items] of byDate.entries()) {
+      // format as:
+      // November 02, 2025:
+      // - Vaccine A (Dose 1)
+      // - Vaccine B (Dose 2)
+      summaryParts.push(`${dateLabel}:\n${items.map(i => `- ${i}`).join('\n')}`);
     }
-    const scheduleSummary = summaryParts.join(' | ');
+    // Separate different date blocks with a blank line
+    const scheduleSummary = summaryParts.join('\n\n');
 
     // Determine guardian title
     const relationship = (patient.guardian_relationship || '').toLowerCase();
@@ -447,7 +495,10 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (tpl) { templateId = tpl.id; templateText = tpl.template; }
+      if (tpl) {
+        templateId = tpl.id;
+        templateText = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
+      }
     } catch (_) {}
 
     // Fallback template
@@ -455,7 +506,7 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       templateText = 'Good Day, {guardian_title} {guardian_last_name}! Your child, {patient_name}, has updated appointments. New schedule(s): {schedule_summary}. Thank you!';
     }
 
-    const message = renderTemplate(templateText, {
+    let message = renderTemplate(templateText, {
       patientName: patient.full_name,
       guardianTitle,
       guardianLastName: patient.guardian_last_name || patient.full_name?.split(' ').pop() || '',
@@ -465,6 +516,29 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       scheduledDate: ''
     });
 
+    // Sanitize message but preserve intended newlines for reschedule notifications.
+    // Collapse multiple spaces within lines, trim each line, and limit consecutive blank lines to 2.
+    if (typeof message === 'string') {
+      // Normalize CRLF -> LF then split into lines
+      const lines = message.replace(/\r\n/g, '\n').split('\n').map(l => l.replace(/\s+/g, ' ').trim());
+      // Trim leading/trailing blank lines
+      while (lines.length && lines[0] === '') lines.shift();
+      while (lines.length && lines[lines.length - 1] === '') lines.pop();
+      // Collapse more than 2 consecutive blank lines
+      const collapsed = [];
+      let blankCount = 0;
+      for (const l of lines) {
+        if (l === '') {
+          blankCount++;
+          if (blankCount <= 2) collapsed.push('');
+        } else {
+          blankCount = 0;
+          collapsed.push(l);
+        }
+      }
+      message = collapsed.join('\n');
+    }
+
     // Stronger dedupe: if an identical manual message for this patient/phone was created very recently, skip sending a duplicate
     const dedupeWindowMs = Number(process.env.SMS_RESCHEDULE_DEDUPE_MS || 60_000); // default 60s
     const cutoffISO = new Date(Date.now() - dedupeWindowMs).toISOString();
@@ -473,7 +547,7 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
         .from('sms_logs')
         .select('id, status')
         .eq('patient_id', patientId)
-        .eq('phone_number', patient.guardian_contact_number)
+        .eq('phone_number', normalizedPhone)
         .eq('type', 'manual')
         .gte('created_at', cutoffISO)
         .eq('message', message)
@@ -486,14 +560,14 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       }
     } catch (_) {}
 
-    // Dedupe within a short window: update recent pending manual message instead of inserting new (content may differ slightly)
+    // Dedupe within a short window: try to atomically claim an existing pending manual SMS (set to 'sending')
     let existingId = null;
     try {
       const { data: existing } = await supabase
         .from('sms_logs')
         .select('id')
         .eq('patient_id', patientId)
-        .eq('phone_number', patient.guardian_contact_number)
+        .eq('phone_number', normalizedPhone)
         .eq('type', 'manual')
         .eq('status', 'pending')
         .gte('created_at', cutoffISO)
@@ -503,50 +577,93 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       if (existing) existingId = existing.id;
     } catch (_) {}
 
-    // Send immediately via PhilSMS
-    const sendRes = await smsService.sendSMS(patient.guardian_contact_number, message);
+    // We will either claim an existing pending log (by updating it to 'sending') or create one marked 'sending'
+    let targetLogId = null;
+    try {
+      if (existingId) {
+        // Attempt to atomically claim the existing pending log. Only proceed if we successfully flip it to 'sending'.
+        const { data: locked, error: lockErr } = await supabase
+          .from('sms_logs')
+          .update({ message, template_id: templateId, status: 'sending', error_message: null, updated_at: new Date().toISOString() })
+          .eq('id', existingId)
+          .eq('status', 'pending')
+          .gte('created_at', cutoffISO)
+          .select('id')
+          .maybeSingle();
 
-    if (existingId) {
-      // Update existing pending log with final status
+        if (lockErr) {
+          console.warn('[rescheduleNotify] Failed to lock existing pending SMS:', lockErr?.message || lockErr);
+        }
+
+        if (!locked) {
+          console.log(`[rescheduleNotify] Another worker claimed pending SMS ${existingId}; skipping send.`);
+          return { sent: 0, reason: 'already-handled', id: existingId };
+        }
+
+        targetLogId = locked.id;
+      } else {
+        // Insert a new log in 'sending' state to claim responsibility for sending
+        const nowISO = new Date().toISOString();
+        const { data: ins, error: insErr } = await supabase
+          .from('sms_logs')
+          .insert({
+            guardian_id: patient.guardian_id || null,
+            patient_id: patientId,
+            phone_number: normalizedPhone,
+            message,
+            type: 'manual',
+            status: 'sending',
+            error_message: null,
+            template_id: templateId,
+            scheduled_at: nowISO,
+            created_at: nowISO,
+            updated_at: nowISO,
+          })
+          .select('id')
+          .single();
+        if (insErr) throw insErr;
+        targetLogId = ins.id;
+      }
+    } catch (e) {
+      console.warn('[rescheduleNotify] Failed to claim or create sms_log for sending:', e?.message || e);
+      return { sent: 0, reason: 'claim-failed', error: e?.message || String(e) };
+    }
+
+  // Now perform the external send (we own the targetLogId)
+  const sendRes = await smsService.sendSMS(normalizedPhone, message);
+
+    try {
+      // Update the claimed log with the final send status
       const { error: updErr } = await supabase
         .from('sms_logs')
         .update({
-          message,
-          template_id: templateId,
           status: sendRes.success ? 'sent' : 'pending',
           error_message: sendRes.success ? null : (sendRes.error || null),
           sent_at: sendRes.success ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', existingId);
+        .eq('id', targetLogId);
       if (updErr) throw updErr;
-      console.log(`[rescheduleNotify] ✅ ${sendRes.success ? 'Sent' : 'Queued (pending)'} existing manual SMS ${existingId} for patient ${patientId}`);
-      return { sent: sendRes.success ? 1 : 0, updatedExisting: true, id: existingId, error: sendRes.error };
-    }
 
-    // Insert a new log with result status
-    const nowISO = new Date().toISOString();
-    const { data: ins, error: insErr } = await supabase
-      .from('sms_logs')
-      .insert({
-        guardian_id: patient.guardian_id || null,
-        patient_id: patientId,
-        phone_number: sendRes.recipient || patient.guardian_contact_number,
-        message,
-        type: 'manual',
-        status: sendRes.success ? 'sent' : 'pending',
-        error_message: sendRes.success ? null : (sendRes.error || null),
-        template_id: templateId,
-        scheduled_at: nowISO,
-        sent_at: sendRes.success ? nowISO : null,
-        created_at: nowISO,
-        updated_at: nowISO,
-      })
-      .select('id')
-      .single();
-    if (insErr) throw insErr;
-    console.log(`[rescheduleNotify] ✅ ${sendRes.success ? 'Sent' : 'Queued (pending)'} manual SMS ${ins.id} for patient ${patientId}`);
-    return { sent: sendRes.success ? 1 : 0, id: ins.id, error: sendRes.error };
+      console.log(`[rescheduleNotify] ✅ ${sendRes.success ? 'Sent' : 'Queued (pending)'} manual SMS ${targetLogId} for patient ${patientId}`);
+
+      // Activity log for manual send creation/update
+      try {
+        await logActivity({
+          action_type: sendRes.success ? ACTIVITY.MESSAGE.SEND : ACTIVITY.MESSAGE.FAIL,
+          description: `${sendRes.success ? 'Sent' : 'Queued'} manual SMS to guardian for patient ${patientId}`,
+          user_id: null,
+          entity_type: 'sms_log',
+          entity_id: targetLogId,
+    new_value: { patient_id: patientId, phone_number: sendRes.recipient || normalizedPhone, type: 'manual', status: sendRes.success ? 'sent' : 'pending' }
+        });
+      } catch (_) {}
+
+      return { sent: sendRes.success ? 1 : 0, id: targetLogId, error: sendRes.error };
+    } catch (e) {
+      console.warn('[rescheduleNotify] Failed to update sms_log after send:', e?.message || e);
+      return { sent: sendRes.success ? 1 : 0, id: targetLogId, error: e?.message || String(e) };
+    }
   } catch (e) {
     console.warn('[rescheduleNotify] Failed to send reschedule SMS:', e?.message || e);
     return { sent: 0, reason: 'error', error: e?.message || String(e) };
@@ -561,16 +678,20 @@ async function updatePhoneNumberForPatient(patientId, newPhoneNumber, client) {
   const supabase = withClient(client);
   
   try {
+    // Normalize the number before storing so future comparisons are consistent
+    const formatted = newPhoneNumber ? smsService.formatPhoneNumber(newPhoneNumber) : newPhoneNumber;
+
     // Update all pending/scheduled SMS logs for this patient
     const { data, error } = await supabase
       .from('sms_logs')
       .update({ 
-        phone_number: newPhoneNumber,
+        phone_number: formatted,
         updated_at: new Date().toISOString()
       })
       .eq('patient_id', patientId)
-      .in('status', ['pending', 'scheduled'])
-      .in('type', ['scheduled', 'manual'])
+    // Only update logs that are still pending (not sent/failed). 'scheduled' is a type, not a status.
+    .eq('status', 'pending')
+    .in('type', ['scheduled', 'manual'])
       .select();
     
     if (error) throw error;
@@ -656,11 +777,13 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
         } else {
           console.log(`[STEP 1] 🗑️ SMS ${smsId} is standalone (only linked to moved schedule), deleting...`);
           // This SMS is only linked to the moved schedule, safe to delete
+          // Only delete pending SMS logs (safe to remove standalone pending reminders).
           await supabase
             .from('sms_logs')
             .delete()
             .eq('id', smsId)
-            .in('status', ['pending', 'scheduled']);
+            .eq('status', 'pending')
+            .eq('type', 'scheduled');
           console.log(`[STEP 1] ✅ Deleted standalone SMS ${smsId}`);
         }
       }
@@ -754,7 +877,8 @@ async function updateMessagesForPatient(patientId, client) {
       .from('sms_logs')
       .select('id, template_id, scheduled_at')
       .eq('patient_id', patientId)
-      .in('status', ['pending', 'scheduled'])
+      // Only update logs that are still pending (these will be re-rendered). 'scheduled' is a type, not a status.
+      .eq('status', 'pending')
       .in('type', ['scheduled', 'manual']);
     
     if (smsErr) throw smsErr;
@@ -815,12 +939,19 @@ async function updateMessagesForPatient(patientId, client) {
           continue;
         }
         
-        const vaccineMap = new Map((vaccines || []).map(v => [v.vaccine_id, v.antigen_name]));
+  const vaccineMap = new Map((vaccines || []).map(v => [v.vaccine_id, v.antigen_name]));
         
         // Combine vaccine names and doses
         const vaccineNames = schedules.map(s => vaccineMap.get(s.vaccine_id) || 'vaccine').join(', ');
         const doseNumbers = schedules.map(s => `Dose ${s.dose_number || 1}`).join(', ');
-        const scheduledDate = schedules[0]?.scheduled_date?.split('T')[0] || '';
+        const vaccineLines2 = schedules.map(s => {
+          const name = vaccineMap.get(s.vaccine_id) || 'vaccine';
+          const dose = `Dose ${s.dose_number || 1}`;
+          return `${name} — ${dose}`;
+        }).join(',\n');
+        const scheduledDate = schedules[0]?.scheduled_date
+          ? moment.tz(schedules[0].scheduled_date, 'Asia/Manila').format('MMMM DD, YYYY')
+          : '';
         
         // Get guardian title
   const relationship = (patient.guardian_relationship || '').toLowerCase();
@@ -835,24 +966,28 @@ async function updateMessagesForPatient(patientId, client) {
             .eq('id', smsLog.template_id)
             .maybeSingle();
           
-          if (!tplErr && tpl) template = tpl.template;
+          if (!tplErr && tpl) template = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
         }
         
         // Fallback template
         if (!template) {
-          template = 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has {vaccine_name} ({dose_number}) scheduled on {scheduled_date}. See you there! Thank you!';
+          template = 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!';
         }
         
         // Render message
+        const timeCfg2 = getReminderTime('Asia/Manila');
+        const greetingTime2 = (timeCfg2.hour >= 6 && timeCfg2.hour < 18) ? 'Good Day' : 'Good Evening';
         const message = renderTemplate(template, {
           patientName: patient.full_name,
           guardianTitle,
           guardianLastName: patient.guardian_last_name || patient.full_name?.split(' ').pop() || '',
           vaccineName: vaccineNames,
           doseNumber: doseNumbers,
+          vaccineLines: vaccineLines2,
           scheduledDate,
-          appointmentTime: getReminderTime('Asia/Manila').display,
-          daysUntil: ''
+          appointmentTime: timeCfg2.display,
+          daysUntil: '',
+          greetingTime: greetingTime2,
         });
         
         // Update SMS log

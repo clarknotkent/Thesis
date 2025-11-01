@@ -362,6 +362,8 @@ const childInfo = ref({
   medications: [],
   recentVaccinations: []
 })
+// Schedule/vaccination stats populated from /parent/children/:childId/schedule
+const scheduleStats = ref({ completed: 0, upcoming: 0, overdue: 0, total: 0, percentage: 0 })
 const parentInfo = ref({
   name: '',
   relationship: '',
@@ -374,18 +376,18 @@ const parentInfo = ref({
 // Route
 const route = useRoute()
 const router = useRouter()
-const childId = route.params.childId
+// Support both legacy "/parent/dependent/:id" and new "/parent/child-info/:childId" routes
+const childId = route.params.childId || route.params.id
 
 // Computed properties
 const vaccinationSummary = computed(() => {
-  const completed = childInfo.value.recentVaccinations?.length || 0
-  const total = 15 // Standard vaccination schedule
-  const pending = Math.max(0, total - completed)
+  // Use stats returned by schedule API for accuracy
+  const { completed, upcoming, overdue } = scheduleStats.value
+  const total = completed + upcoming + overdue
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0
-
   return {
     completed,
-    pending,
+    pending: Math.max(0, total - completed),
     total,
     percentage
   }
@@ -412,7 +414,7 @@ const fetchChildData = async () => {
       id: childData.id,
       name: childData.name || 'Not available',
       dateOfBirth: childData.dateOfBirth ? formatPHDate(childData.dateOfBirth, 'MMMM DD, YYYY') : 'Not available',
-      ageDisplay: childData.ageDisplay || childData.age ? `${childData.age} years old` : 'Age not available',
+      ageDisplay: childData.ageDisplay || (childData.age ? `${childData.age} years old` : 'Age not available'),
       gender: childData.gender || childData.sex || 'Not specified',
       bloodType: childData.bloodType || childData.blood_type || 'Not specified',
       weight: childData.weight && childData.weight !== 'Not recorded' ? `${childData.weight} kg` : 'Not recorded',
@@ -421,14 +423,14 @@ const fetchChildData = async () => {
       placeOfBirth: childData.placeOfBirth || 'Not recorded',
       birthAttendant: childData.birthAttendant || 'Not recorded',
       deliveryType: childData.deliveryType || 'Not recorded',
-      newbornScreening: childData.newbornScreening || 'Not recorded',
+  newbornScreening: childData.newbornScreeningResult || (childData.newbornScreeningDate ? 'Completed' : (childData.newbornScreening || 'Not recorded')),
       allergies: Array.isArray(childData.allergies) ? childData.allergies : [],
       conditions: Array.isArray(childData.conditions) ? childData.conditions : [],
       medications: Array.isArray(childData.medications) ? childData.medications : [],
       recentVaccinations: Array.isArray(childData.recentVaccinations) ? childData.recentVaccinations : []
     }
 
-    // Fetch parent profile for parent info
+  // Fetch parent profile for parent info
     const parentResponse = await api.get('/parent/profile')
     const parentData = parentResponse.data.data
 
@@ -439,6 +441,60 @@ const fetchChildData = async () => {
       email: parentData.email || 'Not provided',
       address: `${parentData.address || ''}, ${parentData.barangay || ''}`.trim() || 'Not provided',
       emergencyContact: parentData.emergency_contact || parentData.emergencycontact || parentData.emergency_phone || 'Not provided'
+    }
+
+    // Fetch schedule to populate accurate stats and recent vaccinations
+    const scheduleResponse = await api.get(`/parent/children/${childId}/schedule`)
+    const scheduleData = scheduleResponse.data?.data || {}
+    const stats = scheduleData.stats || { completed: 0, upcoming: 0, overdue: 0 }
+    const total = (stats.completed || 0) + (stats.upcoming || 0) + (stats.overdue || 0)
+    const percentage = total > 0 ? Math.round((stats.completed / total) * 100) : 0
+    scheduleStats.value = { ...stats, total, percentage }
+
+    // Recent vaccinations derived from schedule entries with status completed
+    const recent = Array.isArray(scheduleData.schedule)
+      ? scheduleData.schedule
+          .filter(it => it.status === 'completed')
+          .sort((a, b) => new Date(b.actualDate || b.date) - new Date(a.actualDate || a.date))
+          .slice(0, 10)
+          .map(it => ({
+            id: it.id,
+            name: it.name,
+            date: it.actualDate || it.date
+          }))
+      : []
+    childInfo.value.recentVaccinations = recent
+
+    // Optional: Attempt to fetch the same dataset used by Records page and backfill any missing birth fields
+    try {
+      const patientDetailResp = await api.get(`/patients/${childId}`)
+      const pdata = patientDetailResp.data?.data || patientDetailResp.data || {}
+      const b = pdata.medical_history || pdata.birthHistory || {}
+
+      // Helper getters for snake_case keys
+      const pick = (obj, keys) => keys.reduce((acc, k) => acc ?? obj?.[k], undefined)
+
+      const weight = pick(b, ['birth_weight'])
+      const length = pick(b, ['birth_length'])
+      const place = pick(b, ['place_of_birth'])
+      const attendant = pick(b, ['attendant_at_birth'])
+      const delivery = pick(b, ['type_of_delivery'])
+      const nbDate = pick(b, ['newborn_screening_date'])
+      const nbResult = pick(b, ['newborn_screening_result'])
+
+      // Only overwrite when current value is missing or Not recorded
+      const isMissing = v => !v || v === 'Not recorded'
+
+      if (isMissing(childInfo.value.weight) && weight) childInfo.value.weight = `${weight} kg`
+      if (isMissing(childInfo.value.height) && length) childInfo.value.height = `${length} cm`
+      if (isMissing(childInfo.value.placeOfBirth) && place) childInfo.value.placeOfBirth = place
+      if (isMissing(childInfo.value.birthAttendant) && attendant) childInfo.value.birthAttendant = attendant
+      if (isMissing(childInfo.value.deliveryType) && delivery) childInfo.value.deliveryType = delivery
+      if (isMissing(childInfo.value.newbornScreening) && (nbDate || nbResult)) {
+        childInfo.value.newbornScreening = nbResult || 'Completed'
+      }
+    } catch (e) {
+      // Ignore if guardian is not authorized for /patients/:id; parent API already provides most fields
     }
 
   } catch (error) {
@@ -466,6 +522,7 @@ const fetchChildData = async () => {
       medications: [],
       recentVaccinations: []
     }
+    scheduleStats.value = { completed: 0, upcoming: 0, overdue: 0, total: 0, percentage: 0 }
 
     parentInfo.value = {
       name: 'Parent',
@@ -496,8 +553,8 @@ const scheduleAppointment = () => {
 }
 
 const contactDoctor = () => {
-  const { addToast } = useToast()
-  addToast({ title: 'Info', message: 'Direct messaging with healthcare workers coming soon', type: 'info' })
+  // Redirect to Messages page
+  router.push({ name: 'ParentMessages' })
 }
 
 const viewGrowthChart = () => {
@@ -513,6 +570,7 @@ onMounted(() => {
     // If no childId in route, redirect to dashboard or show error
     const { addToast } = useToast()
     addToast({ title: 'Error', message: 'No child selected', type: 'error' })
+    router.push('/parent/home')
   }
 })
 </script>

@@ -103,23 +103,28 @@ const lastVaccine = computed(() => {
   return `${lastVaccination.vaccineName} (${date})`
 })
 
-// Patient status
+// Patient status (tags-first logic)
+// Rules:
+// - If tags indicate FIC/CIC/Up-to-date => Completed
+// - If tags indicate Defaulter => Pending
+// - Else if has any vaccination => Active (in-progress)
+// - Else => Pending
 const status = computed(() => {
-  if (!props.patient.vaccinationHistory || props.patient.vaccinationHistory.length === 0) {
-    return 'pending'
-  }
-  
-  const lastVaccination = props.patient.vaccinationHistory[props.patient.vaccinationHistory.length - 1]
-  const lastVaccinationDate = new Date(lastVaccination.dateAdministered)
-  const now = new Date()
-  const daysSinceLastVaccination = (now - lastVaccinationDate) / (1000 * 60 * 60 * 24)
-  
-  if (daysSinceLastVaccination <= 30) {
-    return 'active'
-  } else if (daysSinceLastVaccination <= 90) {
+  const tagsRaw = props.patient.tags
+  const tags = (Array.isArray(tagsRaw) ? tagsRaw.join(' ') : (tagsRaw || '')).toString().toLowerCase()
+
+  if (tags.includes('fic') || tags.includes('cic') || tags.includes('up to date') || tags.includes('up-to-date') || tags.includes('uptodate') || tags.includes('completed')) {
     return 'completed'
   }
-  
+
+  if (tags.includes('defaulter')) {
+    return 'pending'
+  }
+
+  if (props.patient.vaccinationHistory && props.patient.vaccinationHistory.length > 0) {
+    return 'active'
+  }
+
   return 'pending'
 })
 

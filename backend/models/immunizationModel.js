@@ -183,15 +183,18 @@ const createImmunization = async (immunizationData, client) => {
             } else {
               console.log('[createImmunization] Direct schedule update succeeded');
               
-              // Log the schedule completion
-              await supabase.from('activitylogs').insert({
-                action_type: 'SCHEDULE_UPDATE',
-                user_id: payload.administered_by || null,
-                entity_type: 'patientschedule',
-                entity_id: scheduleData.patient_schedule_id,
-                description: `Schedule marked as Completed due to immunization administration`,
-                timestamp: new Date().toISOString()
-              });
+              // Log the schedule completion (normalized via centralized logger)
+              try {
+                const { logActivity } = require('./activityLogger');
+                const { ACTIVITY } = require('../constants/activityTypes');
+                await logActivity({
+                  action_type: ACTIVITY.SCHEDULE.UPDATE,
+                  user_id: payload.administered_by || null,
+                  entity_type: 'patientschedule',
+                  entity_id: scheduleData.patient_schedule_id,
+                  description: 'Schedule marked as Completed due to immunization administration'
+                });
+              } catch (_) {}
             }
           }
         } catch (directErr) {
@@ -209,31 +212,53 @@ const createImmunization = async (immunizationData, client) => {
   return data;
 };
 
-// Get immunization by ID (base table OK; separate view exists for history)
+// Get immunization by ID. Prefer the denormalized view (immunizationhistory_view)
+// so callers (admin and BHS UI) receive the same enriched fields. Fall back
+// to the base table join if the view does not return a row.
 const getImmunizationById = async (id, client) => {
   const supabase = withClient(client);
-  const { data, error } = await supabase
-    .from('immunizations')
-    .select(`
-      *,
-      vaccines!inner(
-        antigen_name,
-        disease_prevented
-      )
-    `)
-    .eq('immunization_id', id)
-    .eq('is_deleted', false)
-    .single();
-  if (error && error.code !== 'PGRST116') throw error;
-  
-  // Flatten the vaccine data for easier access
-  if (data && data.vaccines) {
-    data.vaccine_antigen_name = data.vaccines.antigen_name;
-    data.disease_prevented = data.vaccines.disease_prevented;
-    delete data.vaccines;
+
+  // Try to read from the denormalized view first (admin uses this)
+  try {
+    const { data: viewData, error: viewErr } = await supabase
+      .from('immunizationhistory_view')
+      .select('*')
+      .eq('immunization_id', id)
+      .maybeSingle();
+    if (!viewErr && viewData) return viewData;
+  } catch (e) {
+    // Non-fatal - we'll try the base table below
+    console.warn('[getImmunizationById] failed to query immunizationhistory_view, falling back:', e?.message || e);
   }
-  
-  return data;
+
+  // Fallback: query the base immunizations table and join vaccines
+  try {
+    const { data, error } = await supabase
+      .from('immunizations')
+      .select(`
+        *,
+        vaccines!inner(
+          antigen_name,
+          disease_prevented
+        )
+      `)
+      .eq('immunization_id', id)
+      .eq('is_deleted', false)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+
+    // Flatten the vaccine data for easier access
+    if (data && data.vaccines) {
+      data.vaccine_antigen_name = data.vaccines.antigen_name;
+      data.disease_prevented = data.vaccines.disease_prevented;
+      delete data.vaccines;
+    }
+
+    return data;
+  } catch (err) {
+    // Bubble up the error so controller can return an appropriate status
+    throw err;
+  }
 };
 
 // Update an immunization record

@@ -3,6 +3,8 @@ const smsService = require('../services/smsService');
 const smsScheduler = require('../services/smsScheduler');
 // Use Supabase client for DB access (no direct PG connection required)
 const supabase = require('../db');
+const { logActivity } = require('../models/activityLogger');
+const { ACTIVITY } = require('../constants/activityTypes');
 
 // Send SMS notification
 const sendSMSNotification = async (req, res) => {
@@ -70,7 +72,30 @@ const sendSMSNotification = async (req, res) => {
       updated_at: new Date().toISOString(),
       // sent_at defaults to NOW() in DB, but we can pass explicitly if needed
     };
-    await supabase.from('sms_logs').insert(insertPayload);
+    const { data: inserted, error: insErr } = await supabase
+      .from('sms_logs')
+      .insert(insertPayload)
+      .select('id, patient_id, guardian_id, phone_number, type, status')
+      .single();
+    if (insErr) throw insErr;
+
+    // Activity log: manual SMS send (sent or queued)
+    try {
+      await logActivity({
+        action_type: result.success ? ACTIVITY.MESSAGE.SEND : ACTIVITY.MESSAGE.FAIL,
+        description: `${result.success ? 'Sent' : 'Queued'} manual SMS to ${inserted.phone_number}`,
+        user_id: actorId,
+        entity_type: 'sms_log',
+        entity_id: inserted.id,
+        new_value: {
+          patient_id: inserted.patient_id,
+          guardian_id: inserted.guardian_id,
+          phone_number: inserted.phone_number,
+          type: inserted.type,
+          status: inserted.status,
+        }
+      });
+    } catch (_) {}
     
     res.json({ 
       success: result.success,

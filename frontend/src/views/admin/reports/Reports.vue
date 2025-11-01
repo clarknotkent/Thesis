@@ -3,11 +3,11 @@
     <div class="container-fluid">
       <!-- Page Header -->
       <AppPageHeader 
-        title="Monthly Immunization Report" 
-        subtitle="Comprehensive monthly vaccination statistics and summary"
+        :title="activeTab === 'monthly' ? 'Monthly Immunization Report' : 'Immunization Monitoring Chart'" 
+        :subtitle="activeTab === 'monthly' ? 'Comprehensive monthly vaccination statistics and summary' : 'Cumulative performance vs target across the year'"
       >
         <template #actions>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2" v-if="activeTab === 'monthly'">
             <button class="btn btn-outline-secondary" @click="resetFilters">
               <i class="bi bi-arrow-counterclockwise me-2"></i>Reset
             </button>
@@ -15,11 +15,25 @@
               <i class="bi bi-arrow-clockwise me-2"></i>Refresh
             </button>
             <button class="btn btn-primary" @click="exportReport" :disabled="loading || !reportData">
-              <i class="bi bi-file-earmark-excel me-2"></i>Export Excel
+              <i class="bi bi-file-earmark-excel me-2"></i>Export CSV
             </button>
           </div>
         </template>
       </AppPageHeader>
+
+      <!-- Tabs -->
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+          <button class="nav-link" :class="{ active: activeTab === 'monthly' }" @click="activeTab = 'monthly'">
+            <i class="bi bi-table me-2"></i>Monthly Report
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" :class="{ active: activeTab === 'monitoring' }" @click="activeTab = 'monitoring'">
+            <i class="bi bi-graph-up-arrow me-2"></i>Monitoring Chart
+          </button>
+        </li>
+      </ul>
 
       <!-- Info Alert 
       <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
@@ -30,8 +44,8 @@
         </div>
       </div>-->
 
-      <!-- Filters Card -->
-      <div class="card shadow mb-4">
+      <!-- Filters Card (Monthly tab) -->
+      <div v-if="activeTab === 'monthly'" class="card shadow mb-4">
         <div class="card-body">
           <div class="row g-3 align-items-end">
             <div class="col-md-3">
@@ -59,8 +73,8 @@
         </div>
       </div>
 
-      <!-- Placeholder Report Table -->
-      <div class="card shadow">
+      <!-- Monthly Report Table -->
+      <div v-if="activeTab === 'monthly'" class="card shadow">
         <div class="card-header bg-primary text-white py-3">
           <h5 class="mb-0">
             <i class="bi bi-file-earmark-text me-2"></i>
@@ -150,6 +164,11 @@
           </div>-->
         </div>
       </div>
+
+      <!-- Monitoring Chart Tab -->
+      <div v-else>
+        <ImmunizationMonitoringChart />
+      </div>
     </div>
   </AdminLayout>
 </template>
@@ -161,12 +180,14 @@ import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { nowPH, formatPHDate } from '@/utils/dateUtils'
+import ImmunizationMonitoringChart from './ImmunizationMonitoringChart.vue'
 
 const { addToast } = useToast()
 
 // Reactive state
 const loading = ref(false)
 const reportData = ref(null)
+const activeTab = ref('monthly')
 
 // Filters
 const filters = ref({
@@ -330,6 +351,9 @@ const totals = computed(() => {
 </script>
 
 <style scoped>
+.nav-tabs .nav-link {
+  cursor: pointer;
+}
 .table th {
   font-weight: 600;
   font-size: 0.9rem;

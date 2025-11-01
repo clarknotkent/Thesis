@@ -9,7 +9,7 @@ router.get('/:conversation_id', authenticateRequest, checkUserMapping, getMessag
 // Mark message read (authenticated)
 router.post('/:message_id/read', authenticateRequest, checkUserMapping, markRead);
 
-// Admin-only: send message on behalf of admin (can be extended for staff roles)
-router.post('/', authenticateRequest, authorizeRole(['admin', 'superadmin']), sendMessage);
+// Send message - Any authenticated user
+router.post('/', authenticateRequest, checkUserMapping, sendMessage);
 
 module.exports = router;

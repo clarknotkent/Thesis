@@ -36,7 +36,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { notificationAPI, conversationAPI } from '@/services/api'
 
 defineProps({
   title: {
@@ -45,9 +46,45 @@ defineProps({
   }
 })
 
-// TODO: Connect to actual notification/message API
 const notificationCount = ref(0)
 const messageCount = ref(0)
+
+let pollInterval = null
+
+const fetchCounts = async () => {
+  try {
+    // Notifications
+    try {
+      const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
+      const nRows = nResp?.data?.data || nResp?.data || []
+      notificationCount.value = Array.isArray(nRows) ? nRows.length : (nResp?.data?.count || 0)
+    } catch (e) {
+      console.error('Failed to fetch parent notifications', e)
+      notificationCount.value = 0
+    }
+
+    // Messages
+    try {
+      const cResp = await conversationAPI.getConversations({ limit: 200 })
+      const convs = cResp?.data?.items || cResp?.data || []
+      messageCount.value = Array.isArray(convs) ? convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) : 0
+    } catch (e) {
+      console.error('Failed to fetch parent conversations', e)
+      messageCount.value = 0
+    }
+  } catch (e) {
+    console.error('fetchCounts parent error', e)
+  }
+}
+
+onMounted(() => {
+  fetchCounts()
+  pollInterval = setInterval(fetchCounts, 15000)
+})
+
+onBeforeUnmount(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 </script>
 
 <style scoped>

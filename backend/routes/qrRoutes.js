@@ -2,12 +2,50 @@ const express = require('express');
 const router = express.Router();
 const { authenticateRequest, checkUserMapping, authorizeRole } = require('../middlewares/authMiddleware');
 const { mintPatientQrUrl, verifyAndGetRedirect, rotateNonce } = require('../services/qrService');
+const supabase = require('../db');
+const patientModel = require('../models/patientModel');
 
 // Mint a signed QR URL for a patient (backend-only; no PII in QR)
-router.post('/patients/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), async (req, res) => {
+router.post('/patients/:id', authenticateRequest, checkUserMapping, authorizeRole([
+  // Staff/Admin
+  'admin','health_worker','health_staff','healthstaff','health worker',
+  // Parents/Guardians
+  'guardian','parent','guardian-parent'
+]), async (req, res) => {
   try {
     const patientId = req.params.id;
     const ttlSeconds = req.body?.ttlSeconds;
+    // If caller is a guardian/parent, enforce that the patient belongs to them
+    const role = (req.user && req.user.role ? String(req.user.role) : '').toLowerCase();
+    const isGuardian = ['guardian','parent','guardian-parent'].includes(role);
+    if (isGuardian) {
+      // Resolve guardian_id for current user
+      const userId = req.user && (req.user.user_id || req.user.id);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User context missing' });
+      }
+      // Find guardian row for this user
+      const { data: guardianRow, error: gErr } = await supabase
+        .from('guardians')
+        .select('guardian_id')
+        .eq('user_id', userId)
+        .eq('is_deleted', false)
+        .maybeSingle();
+      if (gErr) {
+        console.error('Lookup guardian failed:', gErr);
+        return res.status(500).json({ success: false, message: 'Failed to verify guardian' });
+      }
+      const myGuardianId = guardianRow?.guardian_id || null;
+      if (!myGuardianId) {
+        return res.status(403).json({ success: false, message: 'Guardian profile not found for current user' });
+      }
+      // Load patient to confirm ownership
+      const patient = await patientModel.getPatientById(patientId).catch(() => null);
+      const patientGuardianId = patient?.guardian_id || null;
+      if (!patientGuardianId || patientGuardianId !== myGuardianId) {
+        return res.status(403).json({ success: false, message: 'You can only generate QR for your own child' });
+      }
+    }
     const { url, exp, frontendUrl } = await mintPatientQrUrl(patientId, { ttlSeconds });
     res.json({ success: true, data: { url, exp, frontendUrl } });
   } catch (e) {

@@ -153,80 +153,93 @@ const createPatient = async (req, res) => {
       entity_id: newPatient.patient_id
     });
 
-    // Optional onboarding: handle immunizations plan
+    // Optional onboarding: handle immunizations plan + notifications in background to avoid request timeout
     const immunizationsPlan = Array.isArray(req.body.immunizations) ? req.body.immunizations : [];
-    for (const item of immunizationsPlan) {
-      const status = (item.status || '').toLowerCase();
-      const base = {
-        patient_id: newPatient.patient_id,
-        vaccine_id: item.vaccine_id,
-        dose_number: item.dose_number,
-      };
-      if (status === 'taken' || status === 'completed') {
-        await immunizationModel.createImmunization({
-          ...base,
-          administered_date: item.administered_date || new Date().toISOString(),
-          administered_by: (req.user && req.user.user_id) || item.administered_by || null,
-          remarks: item.remarks || null,
-        });
-      } else {
-        if (!item.scheduled_date) {
-          // If scheduled_date is not provided, skip scheduling to avoid invalid data
-          continue;
+    setImmediate(async () => {
+      try {
+        // Create/schedule immunizations
+        for (const item of immunizationsPlan) {
+          const status = (item.status || '').toLowerCase();
+          const base = {
+            patient_id: newPatient.patient_id,
+            vaccine_id: item.vaccine_id,
+            dose_number: item.dose_number,
+          };
+          try {
+            if (status === 'taken' || status === 'completed') {
+              await immunizationModel.createImmunization({
+                ...base,
+                administered_date: item.administered_date || new Date().toISOString(),
+                administered_by: (req.user && req.user.user_id) || item.administered_by || null,
+                remarks: item.remarks || null,
+              });
+            } else if (item.scheduled_date) {
+              await immunizationModel.scheduleImmunization({
+                ...base,
+                scheduled_date: item.scheduled_date,
+                status: 'scheduled',
+              });
+            }
+          } catch (imErr) {
+            console.warn('[createPatient][async] immunization processing failed for', base, imErr?.message || imErr);
+          }
         }
-        await immunizationModel.scheduleImmunization({
-          ...base,
-          scheduled_date: item.scheduled_date,
-          status: 'scheduled',
-        });
-      }
-    }
 
-    // Notify guardian about schedule creation
-    try {
-      const { data: guardianInfo } = await supabase.from('patients_view').select('guardian_user_id, guardian_contact_number, guardian_email, full_name').eq('patient_id', newPatient.patient_id).maybeSingle();
-      if (guardianInfo?.guardian_user_id) {
-        await notificationModel.createNotification({
-          channel: 'Push',
-          recipient_user_id: guardianInfo.guardian_user_id,
-          template_code: 'schedule_created',
-          message_body: `Vaccination schedule has been created for ${guardianInfo.full_name}.`,
-          related_entity_type: 'patient',
-          related_entity_id: newPatient.patient_id
-        }, req.user?.user_id || null);
+        // Notify guardian about schedule creation
+        try {
+          const { data: guardianInfo } = await serviceSupabase
+            .from('patients_view')
+            .select('guardian_user_id, guardian_contact_number, guardian_email, full_name')
+            .eq('patient_id', newPatient.patient_id)
+            .maybeSingle();
+          if (guardianInfo?.guardian_user_id) {
+            await notificationModel.createNotification({
+              channel: 'Push',
+              recipient_user_id: guardianInfo.guardian_user_id,
+              template_code: 'schedule_created',
+              message_body: `Vaccination schedule has been created for ${guardianInfo.full_name}.`,
+              related_entity_type: 'patient',
+              related_entity_id: newPatient.patient_id
+            }, req.user?.user_id || null);
+          }
+        } catch (notifError) {
+          console.warn('[createPatient][async] Failed to send schedule creation notification:', notifError.message);
+        }
+      } catch (e) {
+        console.warn('[createPatient][async] background onboarding tasks error:', e?.message || e);
       }
-    } catch (notifError) {
-      console.warn('Failed to send schedule creation notification:', notifError.message);
-    }
+    });
 
     // Return enriched patient data and schedule from views
   const patientView = await patientModel.getPatientById(newPatient.patient_id, getSupabaseForRequest(req));
-    // If birth history payload was provided, persist it to birthhistory table
+    // If birth history payload was provided, persist it to birthhistory table (non-blocking)
     if (birthHistoryPayload) {
-      try {
-        const upsertPayload = {
-          birth_weight: birthHistoryPayload.birth_weight || birthHistoryPayload.birthWeight || birthHistoryPayload.birthWeightKg || null,
-          birth_length: birthHistoryPayload.birth_length || birthHistoryPayload.birthLength || birthHistoryPayload.birthLengthCm || null,
-          place_of_birth: birthHistoryPayload.place_of_birth || birthHistoryPayload.placeOfBirth || patientData.date_of_birth || null,
-          address_at_birth: birthHistoryPayload.address_at_birth || birthHistoryPayload.addressAtBirth || null,
-          time_of_birth: birthHistoryPayload.time_of_birth || birthHistoryPayload.timeOfBirth || null,
-          attendant_at_birth: birthHistoryPayload.attendant_at_birth || birthHistoryPayload.attendantAtBirth || null,
-          type_of_delivery: birthHistoryPayload.type_of_delivery || birthHistoryPayload.typeOfDelivery || null,
-          ballards_score: birthHistoryPayload.ballards_score || birthHistoryPayload.ballardsScore || null,
-          hearing_test_date: birthHistoryPayload.hearing_test_date || birthHistoryPayload.hearingTestDate || null,
-          newborn_screening_date: birthHistoryPayload.newborn_screening_date || birthHistoryPayload.newbornScreeningDate || null,
-          newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
-          created_by: req.user?.user_id || null,
-          updated_by: req.user?.user_id || null
-        };
-        console.debug('createPatient calling updatePatientBirthHistory with:', JSON.stringify(upsertPayload));
-        const upsertResult = await patientModel.updatePatientBirthHistory(newPatient.patient_id, upsertPayload);
-        console.debug('updatePatientBirthHistory result:', upsertResult);
-      } catch (err) {
-        console.error('Failed to persist birth history for new patient:', err);
-      }
+      setImmediate(async () => {
+        try {
+          const upsertPayload = {
+            birth_weight: birthHistoryPayload.birth_weight || birthHistoryPayload.birthWeight || birthHistoryPayload.birthWeightKg || null,
+            birth_length: birthHistoryPayload.birth_length || birthHistoryPayload.birthLength || birthHistoryPayload.birthLengthCm || null,
+            place_of_birth: birthHistoryPayload.place_of_birth || birthHistoryPayload.placeOfBirth || null,
+            address_at_birth: birthHistoryPayload.address_at_birth || birthHistoryPayload.addressAtBirth || null,
+            time_of_birth: birthHistoryPayload.time_of_birth || birthHistoryPayload.timeOfBirth || null,
+            attendant_at_birth: birthHistoryPayload.attendant_at_birth || birthHistoryPayload.attendantAtBirth || null,
+            type_of_delivery: birthHistoryPayload.type_of_delivery || birthHistoryPayload.typeOfDelivery || null,
+            ballards_score: birthHistoryPayload.ballards_score || birthHistoryPayload.ballardsScore || null,
+            hearing_test_date: birthHistoryPayload.hearing_test_date || birthHistoryPayload.hearingTestDate || null,
+            newborn_screening_date: birthHistoryPayload.newborn_screening_date || birthHistoryPayload.newbornScreeningDate || null,
+            newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
+            created_by: req.user?.user_id || null,
+            updated_by: req.user?.user_id || null
+          };
+          console.debug('[createPatient][async] updatePatientBirthHistory with:', JSON.stringify(upsertPayload));
+          await patientModel.updatePatientBirthHistory(newPatient.patient_id, upsertPayload);
+        } catch (err) {
+          console.error('[createPatient][async] Failed to persist birth history for new patient:', err);
+        }
+      });
     }
-    const schedule = await patientModel.getPatientVaccinationSchedule(newPatient.patient_id);
+    // Use fast, read-only schedule fetch to keep request snappy
+    const schedule = await patientModel.getPatientVaccinationScheduleFast(newPatient.patient_id);
 
     // Auto-create SMS reminders asynchronously to avoid slowing down the response
     try {
@@ -554,17 +567,20 @@ const deletePatient = async (req, res) => {
   const userId = req.user?.user_id; // From checkUserMapping middleware
     
   const result = await patientModel.deletePatient(id, userId, getSupabaseForRequest(req));
-    
+
     if (!result) {
       return res.status(404).json({ 
         success: false,
         message: 'Patient not found' 
       });
     }
-    
+
+    const cancelled = result.cancelledSmsCount || 0;
+    console.log(`[patientController] deletePatient: cancelled ${cancelled} sms_logs for patient ${id}`);
+
     res.json({ 
       success: true,
-      message: 'Patient deleted successfully' 
+      message: `Patient deleted successfully. Cancelled pending scheduled SMS: ${cancelled}` 
     });
   } catch (error) {
     console.error('Error deleting patient:', error);

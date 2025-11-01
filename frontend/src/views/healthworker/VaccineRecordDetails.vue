@@ -173,7 +173,7 @@ const getFacility = (dose) => {
   const isOutside = dose.outside || dose.immunization_outside || dose.is_outside
   if (isOutside) return 'Outside'
   
-  return dose.facility_name || 
+  return dose.immunization_facility_name || 
          dose.health_center || 
          dose.facility || 
          '—'

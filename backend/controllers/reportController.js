@@ -141,8 +141,19 @@ const getMonthlyImmunizationReport = async (req, res) => {
         message: 'Month and year parameters are required' 
       });
     }
-    
-    const report = await reportModel.fetchMonthlyImmunizationReport(parseInt(month), parseInt(year));
+    // Optional filters
+    const outside = typeof req.query.outside !== 'undefined' ? String(req.query.outside).toLowerCase() : undefined;
+    const includeDeleted = String(req.query.include_deleted || 'false').toLowerCase() === 'true';
+
+    const report = await reportModel.fetchMonthlyImmunizationReport(
+      parseInt(month),
+      parseInt(year),
+      {
+        // When outside is 'true' or 'false', enforce filter; otherwise include both
+        outside: outside === 'true' ? true : outside === 'false' ? false : undefined,
+        includeDeleted
+      }
+    );
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating monthly immunization report:', error);

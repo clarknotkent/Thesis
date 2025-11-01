@@ -228,7 +228,7 @@
             <div class="mb-3">
               <label class="text-muted small mb-1">Message Content</label>
               <div class="border rounded p-3 bg-light" style="font-size: 0.95rem;">
-                {{ selectedMessage.message }}
+                <pre class="mb-0" style="white-space: pre-wrap;">{{ selectedMessage.message }}</pre>
               </div>
               <small class="text-muted">{{ selectedMessage.message.length }} characters</small>
             </div>
@@ -336,7 +336,7 @@
 
               <div v-if="smsPreview" class="mt-3">
                 <label class="form-label form-label-sm">Preview</label>
-                <div class="border rounded p-3 bg-light">{{ smsPreview }}</div>
+                <div class="border rounded p-3 bg-light"><pre class="mb-0" style="white-space: pre-wrap;">{{ smsPreview }}</pre></div>
                 <small class="text-muted">{{ smsPreview.length }} characters</small>
               </div>
 
@@ -506,14 +506,22 @@ const applySorting = () => {
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '—'
-  const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const original = new Date(dateString)
+  if (isNaN(original.getTime())) return '—'
+  // Explicitly add +8 hours to the timestamp for display
+  const shifted = new Date(original.getTime() + 8 * 60 * 60 * 1000)
+  try {
+    return new Intl.DateTimeFormat('en-PH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(shifted)
+  } catch {
+    return shifted.toLocaleString('en-PH')
+  }
 }
 
 const truncateMessage = (message, length = 60) => {

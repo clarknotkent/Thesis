@@ -133,42 +133,94 @@ const fetchDashboardMetrics = async () => {
       outside: !!vacc.outside
     }));
     
-    // Build chart data: Doses administered per day for current month (uses administered_date)
+    // Build chart data: Show ALL 7 vaccines' usage across ALL records (zero if none)
+    // Strategy:
+    // 1) Determine the 7 vaccines to display from vaccinemaster
+    //    - Prefer is_nip=true first, then fill with other category 'VACCINE' until reaching 7
+    // 2) Count immunizations grouped by antigen name (no date filter)
+    // 3) Return data in the baseline order with zeros for missing
     let chartData = [];
     try {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      // 1) Fetch baseline 7 vaccines from vaccinemaster
+      let baselineVaccines = [];
+      try {
+        // Fetch NIP vaccines first
+        const { data: nip, error: nipErr } = await supabase
+          .from('vaccinemaster')
+          .select('vaccine_id, antigen_name, is_nip, category')
+          .eq('is_deleted', false)
+          .eq('is_nip', true)
+          .eq('category', 'VACCINE')
+          .order('antigen_name', { ascending: true });
+        if (nipErr) throw nipErr;
+        baselineVaccines = Array.isArray(nip) ? nip.slice(0, 7) : [];
 
-      const startDateStr = startOfMonth.toISOString().slice(0, 10); // YYYY-MM-DD
-      const endDateStr = startOfNextMonth.toISOString().slice(0, 10);
-
-      const { data: immunizationsThisMonth, error: immError } = await supabase
-        .from('immunizations')
-        .select('immunization_id, administered_date')
-        .gte('administered_date', startDateStr)
-        .lt('administered_date', endDateStr)
-        .order('administered_date', { ascending: true });
-
-      if (immError) {
-        console.warn('Error fetching immunizations for chart:', immError.message || immError);
+        // If fewer than 7, fill with other vaccines
+        if (baselineVaccines.length < 7) {
+          const need = 7 - baselineVaccines.length;
+          const excludeIds = baselineVaccines.map(v => v.vaccine_id);
+          let fillerQuery = supabase
+            .from('vaccinemaster')
+            .select('vaccine_id, antigen_name, is_nip, category')
+            .eq('is_deleted', false)
+            .eq('category', 'VACCINE')
+            .order('antigen_name', { ascending: true });
+          if (excludeIds.length > 0) fillerQuery = fillerQuery.not('vaccine_id', 'in', `(${excludeIds.join(',')})`);
+          const { data: others, error: othersErr } = await fillerQuery.limit(need);
+          if (othersErr) throw othersErr;
+          baselineVaccines = baselineVaccines.concat(others || []);
+        }
+      } catch (baseErr) {
+        console.warn('Failed to build baseline vaccines list:', baseErr.message || baseErr);
       }
 
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const countsByDay = Array.from({ length: daysInMonth }, () => 0);
+      // As a final guard, limit to 7 if more (or keep as-is if fewer)
+      baselineVaccines = (baselineVaccines || []).slice(0, 7);
+      const baselineNames = baselineVaccines.map(v => (v.antigen_name || '').trim()).filter(Boolean);
+      const idToName = new Map(baselineVaccines.map(v => [v.vaccine_id, (v.antigen_name || '').trim()]));
 
-      if (immunizationsThisMonth && Array.isArray(immunizationsThisMonth)) {
-        immunizationsThisMonth.forEach((rec) => {
-          const d = rec.administered_date ? new Date(rec.administered_date) : null;
-          if (d && d.getMonth() === now.getMonth()) {
-            countsByDay[d.getDate() - 1] = (countsByDay[d.getDate() - 1] || 0) + 1;
-          }
+      // 2) Count immunizations for current month grouped by antigen name (preferred via view)
+      let countsByName = new Map();
+      try {
+        const { data: vaccAll, error: vaccErr } = await supabase
+          .from('immunizationhistory_view')
+          .select('vaccine_antigen_name');
+        if (vaccErr) throw vaccErr;
+        (vaccAll || []).forEach((rec) => {
+          const name = (rec.vaccine_antigen_name || '').trim();
+          if (!name) return;
+          countsByName.set(name, (countsByName.get(name) || 0) + 1);
         });
+      } catch (viewErr) {
+        // Fallback: count by vaccine_id from base table then map to names using baseline set
+        console.warn('immunizationhistory_view unavailable, falling back to immunizations:', viewErr.message || viewErr);
+        try {
+          const { data: imm, error: immErr } = await supabase
+            .from('immunizations')
+            .select('vaccine_id');
+          if (immErr) throw immErr;
+          const countsById = new Map();
+          (imm || []).forEach((r) => {
+            const id = r.vaccine_id;
+            if (!idToName.has(id)) return; // only count those in baseline 7
+            countsById.set(id, (countsById.get(id) || 0) + 1);
+          });
+          // Convert to name-based counts
+          countsByName = new Map(Array.from(countsById.entries()).map(([id, cnt]) => [idToName.get(id), cnt]));
+        } catch (immFallbackErr) {
+          console.warn('Fallback immunizations count failed:', immFallbackErr.message || immFallbackErr);
+        }
       }
 
-      chartData = countsByDay.map((count, idx) => ({ label: String(idx + 1), value: count }));
+      // 3) Build chart in baseline order, include zeros for missing
+      chartData = (baselineNames.length > 0
+        ? baselineNames
+        : Array.from(countsByName.keys()).slice(0, 7) // if no baseline, use observed up to 7
+      ).map(name => ({ label: name, value: countsByName.get(name) || 0 }));
+
+      // If after all this we still have no data, return empty to let UI handle
     } catch (e) {
-      console.warn('Failed to build chartData:', e.message || e);
+      console.warn('Failed to build monthly vaccine usage chartData:', e.message || e);
       chartData = [];
     }
 

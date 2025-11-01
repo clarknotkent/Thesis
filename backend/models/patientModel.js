@@ -115,6 +115,46 @@ const patientModel = {
         return { ...p, age_months: Math.max(0, months), age_days: Math.max(0, days) };
       });
 
+      // Enrich with last vaccination details for this page of patients
+      try {
+        const ids = withAge.map(p => p.patient_id).filter(Boolean);
+        if (ids.length > 0) {
+          // Query immunization history for these patients and reduce to the most recent per patient
+          const { data: imms, error: immErr } = await supabase
+            .from('immunizationhistory_view')
+            .select('patient_id, vaccine_id, vaccine_antigen_name, antigen_name, vaccine_name, administered_date')
+            .in('patient_id', ids)
+            .order('administered_date', { ascending: false });
+          if (immErr) throw immErr;
+
+          const latestByPatient = new Map();
+          for (const row of (imms || [])) {
+            const pid = row.patient_id;
+            if (!pid) continue;
+            if (!latestByPatient.has(pid)) {
+              latestByPatient.set(pid, row);
+            }
+          }
+
+          // Merge last vaccination fields
+          for (let i = 0; i < withAge.length; i++) {
+            const p = withAge[i];
+            const last = latestByPatient.get(p.patient_id);
+            if (last) {
+              const name = last.vaccine_antigen_name || last.antigen_name || last.vaccine_name || null;
+              withAge[i] = {
+                ...p,
+                last_vaccination_date: last.administered_date || null,
+                last_vaccine_name: name,
+                last_vaccine_id: last.vaccine_id || null,
+              };
+            }
+          }
+        }
+      } catch (enrichErr) {
+        console.warn('Failed to enrich patients with last vaccination (non-blocking):', enrichErr?.message || enrichErr);
+      }
+
       return {
         patients: withAge,
         totalCount: count || 0,
@@ -573,7 +613,33 @@ const patientModel = {
         .single();
 
       if (error) throw error;
-      return data;
+      // Mark related pending scheduled SMS logs as soft-deleted/cancelled synchronously
+      let cancelledSmsCount = 0;
+      try {
+        const { data: updatedSms, error: updErr } = await supabase
+          .from('sms_logs')
+          .update({
+            is_deleted: true,
+            status: 'cancelled',
+            error_message: 'Cancelled: patient soft-deleted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('patient_id', id)
+          .eq('status', 'pending')
+          .eq('type', 'scheduled')
+          .select('id');
+
+        if (updErr) {
+          console.warn('[deletePatient] Cascade update returned error:', updErr?.message || updErr);
+        } else {
+          cancelledSmsCount = Array.isArray(updatedSms) ? updatedSms.length : 0;
+          console.log(`[deletePatient] Marked ${cancelledSmsCount} pending scheduled SMS for patient ${id} as cancelled and is_deleted=true`);
+        }
+      } catch (cascadeErr) {
+        console.warn('[deletePatient] Failed to cascade cancel SMS:', cascadeErr?.message || cascadeErr);
+      }
+
+      return { patient: data, cancelledSmsCount };
     } catch (error) {
       console.error('Error deleting patient:', error);
       throw error;
@@ -667,6 +733,25 @@ const patientModel = {
       return processedData;
     } catch (error) {
       console.error('Error fetching patient schedule:', error);
+      throw error;
+    }
+  },
+
+  // Lightweight read-only schedule fetch that does NOT perform any status writes.
+  // Use this for latency-sensitive endpoints (e.g., patient creation response).
+  getPatientVaccinationScheduleFast: async (patientId, client) => {
+    try {
+      const supabase = withClient(client);
+      const { data, error } = await supabase
+        .from('patientschedule_view')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching patient schedule (fast):', error);
       throw error;
     }
   },

@@ -21,7 +21,7 @@
       <!-- Recorded By -->
       <div class="preview-item">
         <i class="bi bi-person-badge"></i>
-        <span>{{ recordedBy }}</span>
+        <span :title="displayedRecordedBy" :aria-label="`Recorded by ${displayedRecordedBy}`">{{ displayedRecordedBy || '—' }}</span>
       </div>
 
       <!-- Summary -->
@@ -64,6 +64,10 @@ const props = defineProps({
   recordedBy: {
     type: String,
     default: '—'
+  },
+  recorded_by: {
+    type: String,
+    default: ''
   },
   vitals: {
     type: Object,
@@ -114,6 +118,11 @@ const vitalsSummary = computed(() => {
 const immunizationsSummary = computed(() => {
   const count = props.immunizations?.length || 0
   return `${count} vaccine${count !== 1 ? 's' : ''} administered`
+})
+
+const displayedRecordedBy = computed(() => {
+  // Accept either camelCase `recordedBy` or snake_case `recorded_by` from parent
+  return props.recordedBy || props.recorded_by || '—'
 })
 
 const handleNavigate = () => {

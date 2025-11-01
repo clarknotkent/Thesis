@@ -6,9 +6,11 @@ const {
 	logoutUser,
 	linkSupabaseUser,
 	getUserMapping,
-	refreshToken
+	refreshToken,
+	changeCurrentPassword,
+	debugCurrentUserUUID
 } = require('../controllers/authController');
-const { validateToken, optionalAuthenticate } = require('../middlewares/authMiddleware');
+const { validateToken, optionalAuthenticate, authenticateRequest } = require('../middlewares/authMiddleware');
 
 // POST /api/auth/register - User registration
 router.post('/register', optionalAuthenticate, registerUser);
@@ -28,5 +30,11 @@ router.get('/user-mapping', getUserMapping);
 
 // POST /api/auth/refresh-token - Refresh token
 router.post('/refresh-token', refreshToken);
+
+// POST /api/auth/change-password - Change password for current user (no mapping required)
+router.post('/change-password', authenticateRequest, changeCurrentPassword);
+
+// GET /api/auth/debug/uuid - Return current user's Supabase UUID (dev aid)
+router.get('/debug/uuid', authenticateRequest, debugCurrentUserUUID);
 
 module.exports = router;

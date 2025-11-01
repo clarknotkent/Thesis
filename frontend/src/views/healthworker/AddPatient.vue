@@ -171,13 +171,29 @@
 
             <div class="form-group">
               <label class="form-label">Mother's Name <span class="required">*</span></label>
-              <input 
-                type="text" 
-                class="form-input" 
-                v-model="formData.mother_name" 
-                required
-                placeholder="Enter mother's name"
-              />
+              <div class="parent-selector">
+                <input 
+                  type="text" 
+                  class="form-input" 
+                  v-model="formData.mother_name" 
+                  required
+                  placeholder="Search or enter mother's name"
+                  @input="filterMotherOptions"
+                  @focus="showMotherDropdown = true"
+                  @blur="hideMotherDropdown"
+                />
+                <div v-if="showMotherDropdown && filteredMotherOptions.length" class="dropdown-menu">
+                  <div 
+                    v-for="opt in filteredMotherOptions" 
+                    :key="opt.full_name" 
+                    class="dropdown-item"
+                    @mousedown="selectMother(opt)"
+                  >
+                    <div class="dropdown-name">{{ opt.full_name }}</div>
+                    <div class="dropdown-contact" v-if="opt.contact_number">{{ opt.contact_number }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="form-group">
@@ -204,12 +220,28 @@
 
             <div class="form-group">
               <label class="form-label">Father's Name</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                v-model="formData.father_name"
-                placeholder="Enter father's name"
-              />
+              <div class="parent-selector">
+                <input 
+                  type="text" 
+                  class="form-input" 
+                  v-model="formData.father_name" 
+                  placeholder="Search or enter father's name"
+                  @input="filterFatherOptions"
+                  @focus="showFatherDropdown = true"
+                  @blur="hideFatherDropdown"
+                />
+                <div v-if="showFatherDropdown && filteredFatherOptions.length" class="dropdown-menu">
+                  <div 
+                    v-for="opt in filteredFatherOptions" 
+                    :key="opt.full_name" 
+                    class="dropdown-item"
+                    @mousedown="selectFather(opt)"
+                  >
+                    <div class="dropdown-name">{{ opt.full_name }}</div>
+                    <div class="dropdown-contact" v-if="opt.contact_number">{{ opt.contact_number }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="form-group">
@@ -364,7 +396,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
@@ -375,6 +407,13 @@ const router = useRouter()
 const loadingGuardians = ref(true)
 const submitting = ref(false)
 const guardians = ref([])
+const motherSuggestions = ref([])
+const fatherSuggestions = ref([])
+const selectedGuardian = ref(null)
+const showMotherDropdown = ref(false)
+const showFatherDropdown = ref(false)
+const filteredMotherOptions = ref([])
+const filteredFatherOptions = ref([])
 
 const expandedCards = reactive({
   patientInfo: true,
@@ -412,6 +451,142 @@ const formData = ref({
   hearing_test_date: ''
 })
 
+const motherOptions = computed(() => {
+  const recorded = Array.isArray(motherSuggestions.value) ? motherSuggestions.value : []
+  const map = new Map()
+  recorded.forEach(item => {
+    const key = (item.full_name || '').trim().toLowerCase()
+    if (key && !map.has(key)) map.set(key, item)
+  })
+  const arr = Array.from(map.values())
+  return arr.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''))
+})
+
+const fatherOptions = computed(() => {
+  const recorded = Array.isArray(fatherSuggestions.value) ? fatherSuggestions.value : []
+  const map = new Map()
+  recorded.forEach(item => {
+    const key = (item.full_name || '').trim().toLowerCase()
+    if (key && !map.has(key)) map.set(key, item)
+  })
+  const arr = Array.from(map.values())
+  return arr.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''))
+})
+
+const applyParentAutofill = (guardian, relationship) => {
+  if (!guardian || !relationship) return
+  const rel = String(relationship).toLowerCase()
+  if (rel === 'mother') {
+    if (!formData.value.mother_name) formData.value.mother_name = formatGuardianNameFirstMiddleLast(guardian)
+    if (!formData.value.mother_contact_number) formData.value.mother_contact_number = guardian.contact_number || ''
+  } else if (rel === 'father') {
+    if (!formData.value.father_name) formData.value.father_name = formatGuardianNameFirstMiddleLast(guardian)
+    if (!formData.value.father_contact_number) formData.value.father_contact_number = guardian.contact_number || ''
+  }
+  fetchCoParentAndFill(rel)
+}
+
+const formatGuardianNameFirstMiddleLast = (guardian) => {
+  const parts = []
+  if (guardian?.firstname) parts.push(guardian.firstname)
+  if (guardian?.middlename) parts.push(guardian.middlename)
+  if (guardian?.surname) parts.push(guardian.surname)
+  if (parts.length) return parts.join(' ').trim()
+  return guardian?.full_name || ''
+}
+
+const getContactForName = (name, type) => {
+  const opts = type === 'mother' ? motherOptions.value : fatherOptions.value
+  const found = opts.find(o => ((o.full_name || '').trim()) === String(name).trim())
+  return found?.contact_number || null
+}
+
+const fetchCoParentAndFill = async (type) => {
+  try {
+    const isMother = String(type).toLowerCase() === 'mother'
+    const chosenName = isMother ? formData.value.mother_name : formData.value.father_name
+    if (!chosenName) return
+    const res = await api.get('/patients/parents/coparent', { params: { type: isMother ? 'mother' : 'father', name: chosenName } })
+    const suggestion = res.data?.data?.name
+    const suggestedContact = res.data?.data?.contact_number
+    const target = isMother ? 'father' : 'mother'
+    if (suggestion && !formData.value[`${target}_name`]) {
+      formData.value[`${target}_name`] = suggestion
+      const fromApi = suggestedContact || null
+      const fromOptions = getContactForName(suggestion, target)
+      const finalContact = fromApi || fromOptions || null
+      if (finalContact && !formData.value[`${target}_contact_number`]) {
+        formData.value[`${target}_contact_number`] = finalContact
+      }
+    }
+  } catch (e) {
+    console.warn('Co-parent suggestion error:', e?.message || e)
+  }
+}
+
+const onGuardianSelected = () => {
+  const selected = guardians.value.find(g => g.guardian_id === formData.value.guardian_id)
+  selectedGuardian.value = selected || null
+  if (selected) {
+    formData.value.family_number = selected.family_number || ''
+  }
+  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian)
+}
+
+const onMotherSelected = (opt) => {
+  if (!formData.value.mother_contact_number && opt?.contact_number) {
+    formData.value.mother_contact_number = opt.contact_number
+  }
+  if (!formData.value.mother_occupation && opt?.occupation) {
+    formData.value.mother_occupation = opt.occupation
+  }
+  fetchCoParentAndFill('mother')
+}
+
+const onFatherSelected = (opt) => {
+  if (!formData.value.father_contact_number && opt?.contact_number) {
+    formData.value.father_contact_number = opt.contact_number
+  }
+  if (!formData.value.father_occupation && opt?.occupation) {
+    formData.value.father_occupation = opt.occupation
+  }
+  fetchCoParentAndFill('father')
+}
+
+const filterMotherOptions = () => {
+  const query = (formData.value.mother_name || '').toLowerCase()
+  filteredMotherOptions.value = motherOptions.value.filter(opt => 
+    (opt.full_name || '').toLowerCase().includes(query)
+  ).slice(0, 10)
+}
+
+const filterFatherOptions = () => {
+  const query = (formData.value.father_name || '').toLowerCase()
+  filteredFatherOptions.value = fatherOptions.value.filter(opt => 
+    (opt.full_name || '').toLowerCase().includes(query)
+  ).slice(0, 10)
+}
+
+const selectMother = (opt) => {
+  formData.value.mother_name = opt.full_name
+  showMotherDropdown.value = false
+  onMotherSelected(opt)
+}
+
+const selectFather = (opt) => {
+  formData.value.father_name = opt.full_name
+  showFatherDropdown.value = false
+  onFatherSelected(opt)
+}
+
+const hideMotherDropdown = () => {
+  setTimeout(() => showMotherDropdown.value = false, 150)
+}
+
+const hideFatherDropdown = () => {
+  setTimeout(() => showFatherDropdown.value = false, 150)
+}
+
 const goBack = () => {
   if (confirm('Are you sure you want to cancel? Unsaved data will be lost.')) {
     router.back()
@@ -431,10 +606,16 @@ const fetchGuardians = async () => {
   }
 }
 
-const onGuardianSelected = () => {
-  const selectedGuardian = guardians.value.find(g => g.guardian_id === formData.value.guardian_id)
-  if (selectedGuardian) {
-    formData.value.family_number = selectedGuardian.family_number || ''
+const fetchParentSuggestions = async () => {
+  try {
+    const [momsRes, dadsRes] = await Promise.all([
+      api.get('/patients/parents/suggestions', { params: { type: 'mother' } }),
+      api.get('/patients/parents/suggestions', { params: { type: 'father' } })
+    ])
+    motherSuggestions.value = momsRes.data?.data || []
+    fatherSuggestions.value = dadsRes.data?.data || []
+  } catch (error) {
+    console.warn('Failed to fetch parent suggestions (non-blocking):', error?.message || error)
   }
 }
 
@@ -512,6 +693,11 @@ const handleSubmit = async () => {
 
 onMounted(() => {
   fetchGuardians()
+  fetchParentSuggestions()
+})
+
+watch(() => formData.value.relationship_to_guardian, (newRel) => {
+  applyParentAutofill(selectedGuardian.value, newRel)
 })
 </script>
 
@@ -640,6 +826,51 @@ textarea.form-input {
   background: #f9fafb;
   color: #6b7280;
   cursor: not-allowed;
+}
+
+.parent-selector {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-name {
+  font-weight: 500;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.dropdown-contact {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.125rem;
 }
 
 .form-hint {

@@ -6,7 +6,9 @@ const {
   getParentChildren,
   getChildDetails,
   getChildVaccinationSchedule,
-  getChildImmunizationDetails
+  getChildImmunizationDetails,
+  updateParentProfile,
+  changeParentPassword,
 } = require('../controllers/parentController');
 
 // Apply auth middleware to all routes
@@ -15,6 +17,12 @@ router.use(checkUserMapping);
 
 // GET /api/parent/profile - Get parent profile
 router.get('/profile', getParentProfile);
+
+// PUT /api/parent/profile - Update parent profile
+router.put('/profile', updateParentProfile);
+
+// POST /api/parent/change-password - Change parent password
+router.post('/change-password', changeParentPassword);
 
 // GET /api/parent/children - Get parent's children
 router.get('/children', getParentChildren);

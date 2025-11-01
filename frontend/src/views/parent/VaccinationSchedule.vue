@@ -337,16 +337,8 @@ const vaccinations = ref([])
 // Route
 const route = useRoute()
 const router = useRouter()
-const childId = route.params.childId
-
-// Check if childId is available
-onMounted(() => {
-  if (!childId) {
-    router.push('/parent/dashboard')
-  } else {
-    fetchVaccinationSchedule()
-  }
-})
+// Support both legacy id param and new childId param
+const childId = route.params.childId || route.params.id
 
 // Computed
 const filteredVaccinations = computed(() => {
@@ -366,7 +358,7 @@ const fetchVaccinationSchedule = async () => {
     const childData = childResponse.data.data
     childInfo.value = {
       name: childData.name || 'Child',
-      ageDisplay: childData.ageDisplay || childData.age ? `${childData.age} years old` : 'Age not available',
+      ageDisplay: childData.ageDisplay || (childData.age ? `${childData.age} years old` : 'Age not available'),
       gender: childData.gender || childData.sex || 'Not specified'
     }
 
@@ -522,8 +514,8 @@ const downloadSchedule = () => {
 }
 
 const contactDoctor = () => {
-  // For now, route to the public FAQs page as a placeholder
-  router.push('/faqs')
+  // Navigate to the Messages page
+  router.push({ name: 'ParentMessages' })
 }
 
 const viewReminders = () => {
@@ -532,7 +524,7 @@ const viewReminders = () => {
 }
 
 const learnMore = (topic) => {
-  if (topic === 'faq') return router.push('/faqs')
+  if (topic === 'faq') return router.push({ name: 'ParentMessages', query: { faq: '1' } })
   const { addToast } = useToast()
   const messages = {
     importance: 'Learn about vaccine importance and disease prevention'
@@ -548,6 +540,7 @@ onMounted(() => {
     const { addToast } = useToast()
     addToast({ title: 'Error', message: 'No child selected', type: 'error' })
     loading.value = false
+    router.push('/parent/home')
   }
 })
 </script>
