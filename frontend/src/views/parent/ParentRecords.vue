@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout title="My Family's Records">
+  <ParentLayout title="My Records">
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">

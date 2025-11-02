@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout title="My Family's Schedule">
+  <ParentLayout title="My Schedule">
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
@@ -28,7 +28,7 @@
     <!-- Children List -->
     <div v-else class="schedule-container">
       <div class="section-header">
-        <h5 class="section-title">Select a Child</h5>
+        <h5 class="section-title">My Family's Schedule</h5>
         <p class="section-subtitle">Tap on a child to view their vaccination schedule</p>
       </div>
 

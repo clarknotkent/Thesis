@@ -411,7 +411,7 @@ const handleSubmit = async () => {
   flex: 1;
   overflow-y: auto;
   padding: 1.25rem;
-  padding-bottom: 120px;
+  padding-bottom: 160px; /* Increased to ensure buttons are fully visible */
 }
 
 .loading-state {
@@ -593,12 +593,13 @@ const handleSubmit = async () => {
   padding: 1rem;
   background: white;
   position: sticky;
-  bottom: 0;
+  bottom: 60px; /* Account for bottom navbar on mobile */
   border-top: 1px solid #e5e7eb;
   margin-left: -1.25rem;
   margin-right: -1.25rem;
   margin-bottom: -1.25rem;
   border-radius: 0 0 0.75rem 0.75rem;
+  z-index: 10;
 }
 
 .btn-cancel,
