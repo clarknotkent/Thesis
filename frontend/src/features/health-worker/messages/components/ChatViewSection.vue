@@ -381,12 +381,12 @@ const formatTimePH = (s) => {
    navbar is present (match MobileBottomNavbar height and safe-area insets) */
 @media (max-width: 576px) {
   .message-input-container {
-    bottom: calc(56px + env(safe-area-inset-bottom));
+    bottom: calc(28px + env(safe-area-inset-bottom));
   }
 
   /* Slightly larger messages container bottom padding on small screens */
   .messages-container-scroll {
-    padding-bottom: calc(1rem + 60px);
+    padding-bottom: calc(1rem + 28px);
   }
 }
 </style>
