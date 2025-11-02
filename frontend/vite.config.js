@@ -118,6 +118,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 2000, // Increase limit to 2MB (default is 500KB)
     rollupOptions: {
       output: {
         manualChunks: undefined

@@ -8,13 +8,14 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start": "npm run dev",
     "start:backend": "cd backend && npm start",
-    "start:frontend": "cd frontend && npm start",
+    "start:frontend": "cd frontend && npm run preview",
     "build": "cd frontend && npm run build",
+    "build:prod": "npm run build && concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
   "devDependencies": {

@@ -7,6 +7,9 @@
       </a>
 
       <div class="navbar-nav ms-auto d-flex flex-row">
+        <!-- Connection Status Dropdown -->
+        <MobileOfflineIndicatorDropdown class="me-2" />
+
         <!-- Notifications -->
         <router-link 
           to="/parent/notifications" 
@@ -38,6 +41,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
+import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 
 defineProps({
   title: {
@@ -94,6 +98,7 @@ onBeforeUnmount(() => {
   height: 56px;
   padding: 0.5rem 0;
   position: relative;
+  z-index: 1030;
 }
 
 .navbar-brand {
