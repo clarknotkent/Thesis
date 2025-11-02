@@ -177,16 +177,26 @@ const handleNotificationClick = async (notification) => {
   }
 }
 
-// Handle delete with confirmation
+// DELETE functionality disabled for health workers (no delete permissions)
 const handleDelete = async (notification, event) => {
   event.stopPropagation()
   
+  // Health workers cannot delete notifications
+  addToast({ 
+    title: 'Permission Denied', 
+    message: 'Health workers cannot delete notifications. They can only mark them as read.', 
+    type: 'warning' 
+  })
+  return
+  
+  /* Original delete code - disabled for health workers
   if (!confirm('Delete this notification?')) return
   
   const success = await deleteNotification(notification.id)
   if (!success) {
     addToast({ title: 'Error', message: 'Failed to delete notification', type: 'error' })
   }
+  */
 }
 
 // Handle clear all with confirmation
