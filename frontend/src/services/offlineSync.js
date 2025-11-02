@@ -107,6 +107,7 @@ class OfflineSyncService {
         this.syncInventory(),
         this.syncMessages(),
         this.syncNotifications(),
+        this.syncHealthStaff(), // Health worker accounts
       ];
 
       const results = await Promise.allSettled(syncOperations);
@@ -172,6 +173,15 @@ class OfflineSyncService {
    */
   async executePendingOperation(op) {
     const { operation, storeName, data } = op;
+    
+    // Check if delete operation - only admins can delete
+    if (operation === 'delete') {
+      const userRole = localStorage.getItem('userRole');
+      if (userRole !== 'admin') {
+        console.warn('⚠️ Delete operation blocked: User is not admin');
+        throw new Error('Only administrators can delete records');
+      }
+    }
     
     switch (operation) {
       case 'create':
@@ -438,6 +448,25 @@ class OfflineSyncService {
       }
     } catch (error) {
       console.error('Failed to sync notifications:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync health staff data (health worker accounts)
+   */
+  async syncHealthStaff() {
+    try {
+      const response = await api.get('/health-staff');
+      const healthStaff = response.data;
+      
+      if (Array.isArray(healthStaff) && healthStaff.length > 0) {
+        // Store in users table with health worker role
+        await indexedDBService.putBulk(STORES.users, healthStaff);
+        console.log(`📥 Synced ${healthStaff.length} health staff`);
+      }
+    } catch (error) {
+      console.error('Failed to sync health staff:', error);
       throw error;
     }
   }

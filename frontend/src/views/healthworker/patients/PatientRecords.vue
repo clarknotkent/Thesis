@@ -365,7 +365,17 @@ const debouncedSearch = () => {
 
 // Removed viewPatient and editPatient methods - navigation handled by viewPatientDetail
 
+// DELETE functionality disabled for health workers (no delete permissions)
 const deletePatient = async (patient) => {
+  // Health workers don't have delete permissions
+  addToast({ 
+    title: 'Permission Denied', 
+    message: 'Health workers cannot delete patient records. Please contact an administrator.', 
+    type: 'warning' 
+  })
+  return
+  
+  /* Original delete code - disabled for health workers
   try {
     await confirm({
       title: 'Delete Patient Record',
@@ -387,6 +397,7 @@ const deletePatient = async (patient) => {
   } catch {
     // User cancelled
   }
+  */
 }
 
 const savePatient = async () => {

@@ -255,14 +255,17 @@ class OfflineAPI {
     if (path.startsWith('immunizations')) return STORES.immunizations;
     if (path.startsWith('vaccines')) return STORES.vaccines;
     if (path.startsWith('users')) return STORES.users;
+    if (path.startsWith('health-staff')) return STORES.users; // Health workers stored in users
     if (path.startsWith('guardians')) return STORES.guardians;
     if (path.startsWith('schedules')) return STORES.schedules;
     if (path.startsWith('visits')) return STORES.visits;
     if (path.startsWith('inventory')) return STORES.inventory;
     if (path.startsWith('messages')) return STORES.messages;
+    if (path.startsWith('conversations')) return STORES.messages; // Conversations use messages store
     if (path.startsWith('notifications')) return STORES.notifications;
     if (path.startsWith('activity')) return STORES.activityLogs;
     if (path.startsWith('sms')) return STORES.smsLogs;
+    if (path.startsWith('profile')) return STORES.users; // Profile is user data
     
     return null;
   }
