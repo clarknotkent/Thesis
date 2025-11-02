@@ -139,6 +139,7 @@
     <VaccineServiceFormModal
       v-model:show="showServiceForm"
       :editing-index="editingServiceIndex"
+      :editing-service="editingService"
       :current-patient="currentPatient"
       @save="handleServiceSave"
     />
@@ -173,7 +174,8 @@ const {
   isNurseOrNutritionist,
   fetchCurrentPatient,
   validateForm,
-  prepareSubmissionData
+  prepareSubmissionData,
+  currentUserId
 } = usePatientImmunizationForm(route.params.patientId)
 
 const {
@@ -192,6 +194,7 @@ const {
 const showServiceForm = ref(false)
 const editingServiceIndex = ref(null)
 const loadingVisits = ref(false)
+const editingService = computed(() => editingServiceIndex.value !== null ? addedServices.value[editingServiceIndex.value] : null)
 
 // Initialize
 onMounted(async () => {
@@ -281,7 +284,7 @@ const handleSubmit = async () => {
     // Create or attach to visit based on mode
     let visitId = null
     
-    if (isNurseOrNutritionist.value && visitMode.value === 'existing') {
+  if (isNurseOrNutritionist.value && visitMode.value === 'existing') {
       // Use existing visit
       visitId = existingVisitId.value
       if (!visitId) {
@@ -289,12 +292,16 @@ const handleSubmit = async () => {
       }
     } else if (isBHS.value || visitMode.value === 'new') {
       // Create new visit
+      // Build visit payload matching faith flow; include collectedVaccinations so backend creates immunizations
+      const submissionData = prepareSubmissionData(null)
       const visitPayload = {
         patient_id: formData.value.patient_id,
         visit_date: getCurrentPHDate(),
+  recorded_by: currentUserId.value, // mirror faith: attribute visit to current user
         vitals: formData.value.vitals,
         findings: formData.value.findings,
-        service_rendered: formData.value.service_rendered
+        service_rendered: formData.value.service_rendered,
+        collectedVaccinations: submissionData.services
       }
       
       const visitResponse = await api.post('/visits', visitPayload)
@@ -305,30 +312,31 @@ const handleSubmit = async () => {
       }
     }
 
-    // Submit immunization records
-    const submissionData = prepareSubmissionData(visitId)
-    
+  // Submit immunization records only when attaching to an existing visit
+  const submissionData = prepareSubmissionData(visitId)
+
+    // Log payload for debugging when saving fails
+    console.debug('Submitting immunization data:', submissionData)
+
     // Submit each service as immunization record
-    const immunizationPromises = submissionData.services.map(async (service) => {
+  const immunizationPromises = (visitMode.value === 'existing') ? submissionData.services.map(async (service) => {
       const immunizationPayload = {
         patient_id: submissionData.patient_id,
         visit_id: visitId,
         ...service
       }
-      
-      // If outside facility, adjust inventory
-      if (!service.outside_facility && service.inventory_id) {
-        await api.post(`/vaccines/inventory/${service.inventory_id}/adjust`, {
-          type: 'ISSUE',
-          quantity: 1,
-          note: `Immunization: ${service.vaccine_name} administered`
-        })
-      }
-      
-      return api.post('/immunizations', immunizationPayload)
-    })
 
-    await Promise.all(immunizationPromises)
+      try {
+        return await api.post('/immunizations', immunizationPayload)
+      } catch (postErr) {
+        console.error('Immunization post failed for payload:', immunizationPayload, postErr?.response?.data || postErr.message || postErr)
+        throw postErr
+      }
+    }) : []
+
+    if (immunizationPromises.length) {
+      await Promise.all(immunizationPromises)
+    }
 
     addToast({ 
       title: 'Success', 

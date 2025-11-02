@@ -161,8 +161,10 @@ const {
 const selected = ref(null)
 
 function selectVisit(v) {
-  // Navigate to summary view instead of showing inline
-  router.push(`/admin/patients/${props.patientId}/visits/${v.visit_id}`)
+  // Navigate to admin visit summary view by named route for reliability
+  const id = String(v.visit_id || v.id || '')
+  if (!id) return
+  router.push({ name: 'AdminVisitSummary', params: { patientId: String(props.patientId), visitId: id } })
 }
 
 function onClose() {

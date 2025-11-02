@@ -276,9 +276,19 @@ export function useVaccinationRecordEditor(patientId, recordId) {
   /**
    * Fetch patient data
    */
+  const normalizeId = (val) => {
+    if (val == null) return val
+    if (typeof val === 'object') {
+      if ('value' in val) return normalizeId(val.value)
+      if ('id' in val) return val.id
+    }
+    return val
+  }
+
   const fetchPatientData = async (id = patientId) => {
     try {
-      const response = await api.get(`/patients/${id}`)
+      const pid = normalizeId(id)
+      const response = await api.get(`/patients/${pid}`)
       patientData.value = response.data.data || response.data
     } catch (err) {
       console.error('Error fetching patient data:', err)
@@ -291,22 +301,40 @@ export function useVaccinationRecordEditor(patientId, recordId) {
    */
   const fetchHealthWorkers = async () => {
     try {
-      const response = await api.get('/health-workers')
-      const list = response.data?.data || response.data || []
-      
-      const rawRole = (hw) => String(hw.hs_type || hw.type || '').toLowerCase()
-      
-      const isNurseOrNutritionistRole = (r) => {
-        return r.includes('nurse') || r.includes('nutrition') || r.includes('diet')
+      const res = await api.get('/health-staff')
+      // Normalize multiple possible shapes
+      let list = []
+      if (res.data?.data?.healthWorkers && Array.isArray(res.data.data.healthWorkers)) {
+        list = res.data.data.healthWorkers
+      } else if (res.data?.data?.healthStaff && Array.isArray(res.data.data.healthStaff)) {
+        list = res.data.data.healthStaff
+      } else if (Array.isArray(res.data)) {
+        list = res.data
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        list = res.data.data
+      } else if (res.data?.users && Array.isArray(res.data.users)) {
+        list = res.data.users
+      } else if (res.data?.healthWorkers && Array.isArray(res.data.healthWorkers)) {
+        list = res.data.healthWorkers
+      } else if (res.data?.healthStaff && Array.isArray(res.data.healthStaff)) {
+        list = res.data.healthStaff
+      } else {
+        console.warn('Unexpected health-staff response structure:', res.data)
+        list = []
       }
-      
+
+      const rawRole = (hw) => String(hw.hs_type || hw.hw_type || hw.role || hw.type || '').toLowerCase()
+      const isNurseOrNutritionistRole = (r) => {
+        const s = r.toLowerCase()
+        return s.includes('nurse') || s.includes('rn') || s.includes('nutritionist') || s.includes('dietitian') || s.includes('nd')
+      }
       const displayRole = (r) => {
         if (isNurseOrNutritionistRole(r)) {
           return r.includes('nutrition') || r.includes('diet') ? 'Nutritionist' : 'Nurse'
         }
         return r || 'Health Staff'
       }
-      
+
       nurses.value = list
         .filter(hw => isNurseOrNutritionistRole(rawRole(hw)))
         .map(hw => ({
@@ -335,7 +363,8 @@ export function useVaccinationRecordEditor(patientId, recordId) {
       ])
 
       // Fetch the specific vaccination record
-      const response = await api.get(`/immunizations/${id}`)
+      const rid = normalizeId(id)
+      const response = await api.get(`/immunizations/${rid}`)
       const record = response.data.data || response.data
       vaccinationRecord.value = record
 
