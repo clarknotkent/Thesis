@@ -42,7 +42,7 @@ git push origin system-prototype-v2
 2. Click **"New Project"**
 3. Select **"Deploy from GitHub repo"**
 4. Choose: `clarknotkent/Thesis`
-5. Branch: `system-prototype-v2`
+5. Branch: `system-prototype-v3`
 
 ### 3️⃣ Deploy Backend
 

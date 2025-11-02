@@ -97,3 +97,7 @@ pnpm-debug.log*
 *git-change-report-*.diff
 *git-change-report-*.patch
 *git-change-report-*.txt
+
+# Documentation folder
+docs/
+
