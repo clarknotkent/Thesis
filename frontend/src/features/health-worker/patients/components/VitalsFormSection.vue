@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   modelValue: {
     type: Object,
     required: true,
@@ -106,7 +106,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const updateField = (field, value) => {
   emit('update:modelValue', {
-    ...defineProps().modelValue,
+    ...props.modelValue,
     [field]: value
   })
 }

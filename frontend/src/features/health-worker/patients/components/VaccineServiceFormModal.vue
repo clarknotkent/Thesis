@@ -20,11 +20,11 @@
             <!-- Top toggles: NIP-only and Outside -->
             <div class="form-toggles">
               <label class="checkbox-label">
-                <input type="checkbox" v-model="showNipOnly" @change="refreshVaccineSources" />
+                <input type="checkbox" v-model="showNipOnly" @change="handleNipChange" />
                 <span>NIP only</span>
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" v-model="outsideMode" @change="onOutsideToggle" />
+                <input type="checkbox" v-model="outsideMode" @change="handleOutsideToggle" />
                 <span>Outside facility</span>
               </label>
             </div>
@@ -84,7 +84,7 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Dose Number *</label>
-              <select class="form-input" v-model="serviceForm.doseNumber" required>
+              <select class="form-input" v-model.number="serviceForm.doseNumber" required>
                 <option value="">Select dose</option>
                 <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
               </select>
@@ -114,26 +114,28 @@
                 readonly
               />
             </div>
-            <div v-if="!outsideMode" class="form-group">
+            <div class="form-group">
               <label class="form-label">Manufacturer</label>
               <input 
                 type="text"
                 class="form-input"
                 v-model="serviceForm.manufacturer"
-                placeholder="Auto-filled from inventory"
+                :readonly="!outsideMode"
+                :placeholder="outsideMode ? 'Enter manufacturer (optional)' : 'Auto-filled from inventory'"
               />
             </div>
           </div>
 
           <!-- Lot Number & Site -->
           <div class="form-row">
-            <div v-if="!outsideMode" class="form-group">
+            <div class="form-group">
               <label class="form-label">Lot Number</label>
               <input 
                 type="text"
                 class="form-input"
                 v-model="serviceForm.lotNumber"
-                placeholder="Auto-filled from inventory"
+                :readonly="!outsideMode"
+                :placeholder="outsideMode ? 'Enter lot number (optional)' : 'Auto-filled from inventory'"
               />
             </div>
             <div class="form-group">
@@ -146,6 +148,17 @@
                 <option value="right-thigh">Right Thigh</option>
               </select>
             </div>
+          </div>
+
+          <!-- Administered By (Outside only) -->
+          <div class="form-group" v-if="outsideMode">
+            <label class="form-label">Administered By (Name)</label>
+            <input
+              type="text"
+              class="form-input"
+              v-model="serviceForm.healthStaff"
+              placeholder="Enter name of administering staff"
+            />
           </div>
 
           <!-- Facility Name -->
@@ -188,6 +201,8 @@
 
 <script setup>
 import { watch, onMounted, onBeforeUnmount } from 'vue'
+import api from '@/services/api'
+import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
 
 const props = defineProps({
@@ -197,6 +212,11 @@ const props = defineProps({
   },
   editingIndex: {
     type: Number,
+    default: null
+  },
+  // editingService: full service object passed when editing an existing service
+  editingService: {
+    type: Object,
     default: null
   },
   currentPatient: {
@@ -228,54 +248,216 @@ const {
   resetServiceForm
 } = useVaccineSelection()
 
+const getPatientId = () => props.currentPatient?.id || props.currentPatient?.patient_id || props.currentPatient?.childInfo?.id || null
+
+const handleNipChange = async () => {
+  await refreshVaccineSources(getPatientId())
+}
+
+const handleOutsideToggle = async () => {
+  await onOutsideToggle(getPatientId())
+}
+
 // Initialize on mount
 onMounted(async () => {
-  await fetchVaccineInventory()
-  await fetchVaccineCatalog()
-  
+  await refreshVaccineSources(getPatientId())
+
   // Close dropdown when clicking outside
   document.addEventListener('click', closeVaccineDropdown)
 })
 
+// Ensure we remove the global click listener on unmount
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeVaccineDropdown)
 })
 
+// Local handler to close dropdown when clicking outside
 const closeVaccineDropdown = () => {
   showVaccineDropdown.value = false
 }
 
+// Wrapper to call composable's select and then update smart doses
 const selectVaccine = async (vaccine) => {
   await selectVaccineFromComposable(vaccine, updateSmartDoses)
 }
 
+// Query backend for smart-dose info and update available doses and auto-select
 const updateSmartDoses = async (vaccineId) => {
-  // TODO: Implement smart dose detection based on patient's existing records
-  // This would query the patient's immunization history and suggest next dose
-  console.log('Smart dose detection for vaccine:', vaccineId)
+  try {
+    if (!vaccineId) {
+      availableDoses.value = []
+      autoSelectHint.value = ''
+      return
+    }
+    const pid = getPatientId()
+    if (!pid) return
+    const res = await api.get(`/patients/${pid}/smart-doses`, { params: { vaccine_id: vaccineId } })
+    const data = res.data?.data || res.data || {}
+
+    // Determine all possible doses for the schedule
+    let all = data.all_doses || data.schedule_doses || []
+    if (typeof all === 'number') {
+      all = Array.from({ length: all }, (_, i) => i + 1)
+    }
+    const allArr = Array.isArray(all) ? all : []
+    availableDoses.value = allArr
+
+    // Normalize arrays for selection logic
+    const avail = Array.isArray(data.available_doses) ? data.available_doses.map(Number) : []
+    const completed = Array.isArray(data.completed_doses) ? data.completed_doses.map(Number) : []
+
+    // If backend suggests a dose, apply and hint it
+    autoSelectHint.value = ''
+    const suggested = data.auto_select != null ? Number(data.auto_select) : null
+    if (suggested && allArr.includes(suggested)) {
+      serviceForm.value.doseNumber = suggested
+      autoSelectHint.value = `Suggested: Dose ${suggested}`
+    } else if (avail.length > 0) {
+      const next = Math.min(...avail)
+      if (allArr.includes(next)) {
+        serviceForm.value.doseNumber = next
+        autoSelectHint.value = `Suggested: Dose ${next}`
+      }
+    } else if (allArr.length > 0 && completed.length > 0) {
+      const firstRemaining = allArr.find(d => !completed.includes(Number(d)))
+      if (firstRemaining) {
+        serviceForm.value.doseNumber = Number(firstRemaining)
+        autoSelectHint.value = `Suggested: Dose ${firstRemaining}`
+      }
+    } else if (
+      serviceForm.value.doseNumber &&
+      !availableDoses.value.includes(Number(serviceForm.value.doseNumber))
+    ) {
+      serviceForm.value.doseNumber = ''
+    }
+  } catch (e) {
+    // On failure, don't block UI; keep existing selections
+    console.warn('updateSmartDoses failed', e?.response?.data || e.message)
+  }
 }
 
 const updateAgeCalculation = () => {
-  if (!props.currentPatient?.childInfo?.birthDate || !serviceForm.value.dateAdministered) {
+  // Support multiple possible birthdate fields to be robust across API shapes
+  const patient = props.currentPatient || {}
+  const birthCandidates = [
+    patient?.childInfo?.birthDate,
+    patient?.date_of_birth,
+    patient?.birth_date,
+    patient?.dob,
+    patient?.birthDate
+  ]
+  const birthRaw = birthCandidates.find(b => !!b)
+
+  const adminRaw = serviceForm.value.dateAdministered
+  if (!birthRaw || !adminRaw) {
     serviceForm.value.ageAtAdmin = ''
     return
   }
 
-  const birthDate = new Date(props.currentPatient.childInfo.birthDate)
-  const adminDate = new Date(serviceForm.value.dateAdministered)
-  
-  const ageInMonths = Math.floor((adminDate - birthDate) / (1000 * 60 * 60 * 24 * 30.44))
-  const ageInDays = Math.floor((adminDate - birthDate) / (1000 * 60 * 60 * 24))
+  const parseYmd = (val) => {
+    if (!val) return null
+    if (val instanceof Date) {
+      return { y: val.getFullYear(), m: val.getMonth() + 1, d: val.getDate() }
+    }
+    if (typeof val === 'string') {
+      // Try ISO yyyy-mm-dd
+      const iso = val.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (iso) return { y: +iso[1], m: +iso[2], d: +iso[3] }
+      // Try mm/dd/yyyy
+      const us = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+      if (us) return { y: +us[3], m: +us[1], d: +us[2] }
+      // Fallback to Date parsing
+      const d = new Date(val)
+      if (!isNaN(d.getTime())) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }
+      return null
+    }
+    return null
+  }
 
-  if (ageInMonths >= 36) {
-    const years = Math.floor(ageInMonths / 12)
+  const birth = parseYmd(birthRaw)
+  const admin = parseYmd(adminRaw)
+  if (!birth || !admin) {
+    serviceForm.value.ageAtAdmin = ''
+    return
+  }
+
+  const daysInMonth = (y, m) => new Date(y, m, 0).getDate() // m is 1..12
+
+  // Compute calendar months and days difference precisely
+  let months = (admin.y - birth.y) * 12 + (admin.m - birth.m)
+  let days
+  if (admin.d < birth.d) {
+    months -= 1
+    const prevMonthYear = admin.m === 1 ? admin.y - 1 : admin.y
+    const prevMonth = admin.m === 1 ? 12 : admin.m - 1
+    const dim = daysInMonth(prevMonthYear, prevMonth)
+    days = dim - birth.d + admin.d
+  } else {
+    days = admin.d - birth.d
+  }
+
+  if (months < 0 || (months === 0 && days < 0)) {
+    serviceForm.value.ageAtAdmin = ''
+    return
+  }
+
+  if (months >= 36) {
+    const years = Math.floor(months / 12)
     serviceForm.value.ageAtAdmin = `${years} year${years !== 1 ? 's' : ''}`
   } else {
-    const months = ageInMonths
-    const days = ageInDays % 30
     serviceForm.value.ageAtAdmin = `${months} months ${days} days`
   }
 }
+
+/**
+ * Prefill service form when editing an existing service
+ */
+const populateFromEditingService = async (svc) => {
+  if (!svc) return
+  // Map common fields coming from the parent service object
+  serviceForm.value.inventoryId = svc.inventoryId || svc.inventory_id || svc.inventoryId || ''
+  serviceForm.value.vaccineId = svc.vaccineId || svc.vaccine_id || svc.vaccineId || svc.vaccine_id || ''
+  serviceForm.value.vaccineName = svc.vaccineName || svc.vaccine_name || svc.antigen_name || svc.vaccineName || ''
+  serviceForm.value.diseasePrevented = svc.diseasePrevented || svc.disease_prevented || ''
+  serviceForm.value.doseNumber = svc.doseNumber || svc.dose_number || svc.dose || ''
+  // Ensure date format is yyyy-mm-dd for input[type=date]
+  const rawDate = svc.dateAdministered || svc.date_administered || svc.date || ''
+  if (rawDate) {
+    const d = new Date(rawDate)
+    if (!isNaN(d.getTime())) {
+      const iso = d.toISOString().slice(0,10)
+      serviceForm.value.dateAdministered = iso
+    } else {
+      serviceForm.value.dateAdministered = rawDate
+    }
+  }
+  serviceForm.value.ageAtAdmin = svc.ageAtAdmin || svc.age_at_admin || ''
+  serviceForm.value.manufacturer = svc.manufacturer || ''
+  serviceForm.value.lotNumber = svc.lotNumber || svc.lot_number || ''
+  serviceForm.value.site = svc.site || ''
+  serviceForm.value.facilityName = svc.facilityName || svc.facility_name || ''
+  serviceForm.value.outsideFacility = svc.outsideFacility || svc.outside_facility || false
+  serviceForm.value.remarks = svc.remarks || svc.note || ''
+
+  // Run smart-dose suggestion for the vaccine id (if available)
+  if (serviceForm.value.vaccineId) await updateSmartDoses(serviceForm.value.vaccineId)
+  // Recompute age based on filled date
+  updateAgeCalculation()
+}
+
+// Watch editingService prop to prefill when provided
+watch(() => props.editingService, (val) => {
+  if (val) populateFromEditingService(val)
+})
+
+// Also populate when modal is shown and editingService already exists
+watch(() => props.show, (val) => {
+  if (val && props.editingService) populateFromEditingService(props.editingService)
+  if (!val) {
+    // When closing, reset form
+    resetServiceForm()
+  }
+})
 
 const closeModal = () => {
   resetServiceForm()
@@ -285,6 +467,13 @@ const closeModal = () => {
 const saveService = () => {
   // Validate required fields
   if (!serviceForm.value.vaccineId || !serviceForm.value.doseNumber || !serviceForm.value.dateAdministered) {
+    return
+  }
+
+  // If in-facility (not outside), require an inventory/lot selection
+  const isOutside = !!serviceForm.value.outsideFacility
+  if (!isOutside && !serviceForm.value.inventoryId) {
+    addToast({ title: 'Validation Error', message: 'Please select a lot/stock for in-facility vaccine', type: 'error' })
     return
   }
 

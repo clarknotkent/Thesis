@@ -178,6 +178,11 @@ export function usePatientImmunizationForm(patientId) {
       if (!service.dateAdministered) {
         errors.push(`Service ${index + 1}: Date administered is required`)
       }
+      // If service is in-facility, require an inventory/lot selection
+      const isOutside = !!(service.outsideFacility || service.outside_facility)
+      if (!isOutside && !(service.inventoryId || service.inventory_id)) {
+        errors.push(`Service ${index + 1}: Lot / inventory selection is required for in-facility vaccines`)
+      }
     })
 
     return errors
@@ -214,22 +219,70 @@ export function usePatientImmunizationForm(patientId) {
       vitals: formData.value.vitals,
       findings: formData.value.findings,
       service_rendered: formData.value.service_rendered,
-      services: addedServices.value.map(s => ({
-        inventory_id: s.inventoryId,
-        vaccine_id: s.vaccineId,
-        vaccine_name: s.vaccineName,
-        disease_prevented: s.diseasePrevented,
-        dose_number: s.doseNumber,
-        date_administered: s.dateAdministered,
-        age_at_admin: s.ageAtAdmin,
-        manufacturer: s.manufacturer,
-        lot_number: s.lotNumber,
-        site: s.site,
-        health_staff: s.healthStaff,
-        facility_name: s.facilityName,
-        outside_facility: s.outsideFacility,
-        remarks: s.remarks
-      }))
+      services: addedServices.value.map(s => {
+        // Normalize and convert empty strings to null where appropriate
+        const outsideFacility = !!(s.outsideFacility || s.outside_facility)
+        // If outside facility, force inventory fields to null
+        const inventoryIdRaw = s.inventoryId || s.inventory_id || null
+        const inventoryId = outsideFacility ? null : inventoryIdRaw
+        // Vaccine ID is required in both modes (outside: must still reference vaccine master)
+        const vaccineId = (s.vaccineId || s.vaccine_id) ? Number(s.vaccineId || s.vaccine_id) : null
+        const doseNumber = s.doseNumber ? Number(s.doseNumber) : null
+        // Ensure date is in YYYY-MM-DD format if possible
+        let dateAdmin = s.dateAdministered || s.date_administered || null
+        if (dateAdmin) {
+          try {
+            const d = new Date(dateAdmin)
+            if (!isNaN(d.getTime())) dateAdmin = d.toISOString().slice(0,10)
+          } catch (e) {
+            // leave as-is
+          }
+        }
+
+        return {
+          // Fields expected by the backend (match faith/Thesis flow)
+          inventory_id: inventoryId,
+          vaccine_id: vaccineId,
+          vaccine_name: s.vaccineName || s.vaccine_name || null,
+          disease_prevented: s.diseasePrevented || s.disease_prevented || null,
+          dose_number: doseNumber,
+          // backend expects 'administered_date' for immunization
+          administered_date: dateAdmin,
+          // backend expects 'age_at_administration'
+          age_at_administration: s.ageAtAdmin || s.age_at_admin || null,
+          manufacturer: s.manufacturer || null,
+          // Lot number can be provided for both modes (outside entries may carry external lot info)
+          lot_number: s.lotNumber || s.lot_number || null,
+          site: s.site || null,
+          // who administered (use current user id by default)
+          administered_by: currentUserId.value || s.healthStaff || s.administered_by || null,
+          // Facility name (source facility for outside, internal for in-facility)
+          facility_name: s.facilityName || s.facility_name || null,
+          // keep a boolean 'outside' flag as faith uses
+          outside: outsideFacility,
+          // Auto-concatenate useful fields into remarks
+          remarks: (() => {
+            const base = s.remarks || s.note || ''
+            const parts = []
+            // Always add Lot and Manufacturer when provided
+            const lot = s.lotNumber || s.lot_number
+            if (lot) parts.push(`Lot: ${lot}`)
+            const manuf = s.manufacturer
+            if (manuf) parts.push(`Manufacturer: ${manuf}`)
+            // Outside-specific context
+            if (outsideFacility) {
+              if (s.site) parts.push(`Site: ${s.site}`)
+              const fac = s.facilityName || s.facility_name
+              if (fac) parts.push(`Facility: ${fac}`)
+              const adminName = s.healthStaff || s.administered_by_name
+              if (adminName) parts.push(`Administered by: ${adminName}`)
+            }
+            if (base && parts.length) return `${base} | ${parts.join(' | ')}`
+            if (!base && parts.length) return parts.join(' | ')
+            return base || null
+          })()
+        }
+      })
     }
   }
 

@@ -215,6 +215,9 @@ const generateReport = async () => {
       params: { month: filters.value.month, year: filters.value.year }
     })
     reportData.value = response.data.data
+
+    // Augment FIC/CIC from patient tags so the summary rows are always populated
+    await augmentFicCicFromPatientTags()
     addToast({ title: 'Success', message: 'Report generated', type: 'success' })
   } catch (error) {
     console.error('Error generating report:', error)
@@ -334,6 +337,96 @@ const totals = computed(() => {
 
   return { totalVaccinated, maleCount, femaleCount }
 })
+
+// --- FIC/CIC augmentation using patient tags ---
+// We compute Fully Immunized Child (FIC) and Completely Immunized Child (CIC 13-23 months)
+// by scanning patient tags, independent of backend aggregation.
+const normalizeTags = (tags) => {
+  if (!tags) return []
+  if (Array.isArray(tags)) return tags.map(t => String(t).trim().toUpperCase())
+  // If tags is a comma/semicolon separated string
+  return String(tags)
+    .split(/[;,]/)
+    .map(t => t.trim().toUpperCase())
+    .filter(Boolean)
+}
+
+const isMale = (sex) => {
+  const s = String(sex || '').trim().toLowerCase()
+  return s === 'm' || s === 'male'
+}
+const isFemale = (sex) => {
+  const s = String(sex || '').trim().toLowerCase()
+  return s === 'f' || s === 'female'
+}
+
+const hasFIC = (tags) => {
+  const t = normalizeTags(tags)
+  if (t.includes('FIC')) return true
+  return t.some(x => x.includes('FULLY') && x.includes('IMMUN'))
+}
+const hasCIC = (tags) => {
+  const t = normalizeTags(tags)
+  if (t.includes('CIC')) return true
+  return t.some(x => x.includes('COMPLETE') && x.includes('IMMUN'))
+}
+
+async function fetchAllPatientsForTags() {
+  // Try to get a large page to avoid paging loops; fallback shapes handled
+  const res = await api.get('/patients', { params: { page: 1, limit: 10000 } })
+  const payload = res.data?.data || res.data || {}
+  const list = payload.patients || payload.items || payload || []
+  return Array.isArray(list) ? list : []
+}
+
+async function augmentFicCicFromPatientTags() {
+  try {
+    const patients = await fetchAllPatientsForTags()
+    let ficMale = 0, ficFemale = 0, cicMale = 0, cicFemale = 0
+    patients.forEach(p => {
+      const tags = p.tags || p.patient_tags || p.status_tags || null
+      if (!tags) return
+      const sex = p.sex || p.childInfo?.sex
+      if (hasFIC(tags)) {
+        if (isMale(sex)) ficMale++
+        else if (isFemale(sex)) ficFemale++
+        else {
+          // Unknown sex: include in total via male bucket for consistency
+          ficMale++
+        }
+      }
+      if (hasCIC(tags)) {
+        if (isMale(sex)) cicMale++
+        else if (isFemale(sex)) cicFemale++
+        else {
+          cicMale++
+        }
+      }
+    })
+
+    const ficTotal = ficMale + ficFemale
+    const cicTotal = cicMale + cicFemale
+
+    // Merge into reportData, keeping backend fields when present
+    const base = reportData.value || {}
+    const eligible = Number(base.eligiblePopulation || 0) || 0
+    reportData.value = {
+      ...base,
+      fullyImmunizedMale: ficMale,
+      fullyImmunizedFemale: ficFemale,
+      fullyImmunizedCount: ficTotal,
+      fullyImmunizedCoverage: eligible > 0 ? Math.round((ficTotal / eligible) * 100) : (base.fullyImmunizedCoverage || 0),
+      completelyImmunizedMale: cicMale,
+      completelyImmunizedFemale: cicFemale,
+      completelyImmunizedCount: cicTotal,
+      completelyImmunizedCoverage: eligible > 0 ? Math.round((cicTotal / eligible) * 100) : (base.completelyImmunizedCoverage || 0)
+    }
+  } catch (e) {
+    // Non-blocking: if patient fetch fails, leave as-is
+    // eslint-disable-next-line no-console
+    console.warn('FIC/CIC tag augmentation skipped:', e?.response?.data || e.message)
+  }
+}
 </script>
 
 <style scoped>

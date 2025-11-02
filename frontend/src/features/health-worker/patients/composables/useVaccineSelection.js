@@ -17,6 +17,8 @@ export function useVaccineSelection() {
   const outsideMode = ref(false)
   const availableDoses = ref([1, 2, 3, 4, 5])
   const autoSelectHint = ref('')
+  // Cache for remaining dose availability per vaccine_id
+  const remainingCache = ref({})
 
   // Service form state
   const serviceForm = ref({
@@ -76,21 +78,48 @@ export function useVaccineSelection() {
   /**
    * Fetch vaccine inventory (in-facility vaccines)
    */
-  const fetchVaccineInventory = async () => {
+  const fetchVaccineInventory = async (patientId = null) => {
     try {
       const params = {}
-      if (showNipOnly.value) params.is_nip = 1
+      if (showNipOnly.value) params.is_nip = true
+      const response = await api.get('/vaccines/inventory', { params })
+      const raw = response.data?.data || response.data || []
 
-      const response = await api.get('/vaccine-inventory', { params })
-      const data = response.data?.data || response.data || []
-      
-      vaccineOptions.value = Array.isArray(data) ? data : []
-      
-      // Mark expired vaccines
-      const now = new Date()
-      vaccineOptions.value.forEach(v => {
-        v.isExpired = v.expiry_date && new Date(v.expiry_date) < now
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      // helper to get patient's existing vaccines
+      const { vaccineIds, antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
+
+      const mapped = (Array.isArray(raw) ? raw : []).map(v => {
+        const exp = v.expiration_date || v.expiry_date || null
+        const antigen = v.vaccinemaster?.antigen_name || v.vaccine?.antigen_name || v.antigen_name || 'Unknown'
+        const manufacturer = v.vaccinemaster?.manufacturer || v.vaccine?.manufacturer || v.manufacturer || ''
+        const disease = v.vaccinemaster?.disease_prevented || v.vaccine?.disease_prevented || v.disease_prevented || ''
+        const stock = v.current_stock_level ?? v.current_stock ?? v.quantity ?? 0
+        const isNip = !!(v.vaccinemaster?.is_nip || v.vaccine?.is_nip || v.is_nip || v.isNip)
+        return {
+          inventory_id: v.inventory_id || v.id,
+          vaccine_id: v.vaccinemaster?.vaccine_id || v.vaccine_id || v.vaccine?.vaccine_id,
+          antigen_name: antigen,
+          disease_prevented: disease,
+          manufacturer,
+          lot_number: v.lot_number || v.batch_number || '',
+          expiration_date: exp || '',
+          current_stock_level: stock,
+          isExpired: exp ? new Date(exp).setHours(0,0,0,0) < today.getTime() : false,
+          is_nip: isNip
+        }
       })
+
+      let result = mapped
+
+      // Filter out vaccines fully completed (no remaining doses) using smart-doses endpoint
+      if (patientId) {
+        result = await filterByRemainingDoses(patientId, result)
+      }
+
+      vaccineOptions.value = result
     } catch (error) {
       console.error('Error fetching vaccine inventory:', error)
       vaccineOptions.value = []
@@ -99,28 +128,101 @@ export function useVaccineSelection() {
 
   /**
    * Fetch vaccine catalog (outside facility vaccines)
+   * Optionally exclude vaccines the patient already has (by id or antigen name)
    */
-  const fetchVaccineCatalog = async () => {
+  const fetchVaccineCatalog = async (patientId = null) => {
     try {
       const params = {}
-      if (showNipOnly.value) params.is_nip = 1
+      if (showNipOnly.value) params.is_nip = true
 
       const response = await api.get('/vaccines', { params })
-      vaccineCatalog.value = response.data?.data || response.data || []
+      // Response may be in various shapes; normalize like in faith
+      let payload = response.data?.data || response.data || []
+      if (payload && typeof payload === 'object' && Array.isArray(payload.vaccines)) {
+        payload = payload.vaccines
+      }
+
+      const list = Array.isArray(payload) ? payload : []
+
+      const { vaccineIds, antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
+
+      const mapped = list.map(v => ({
+        vaccine_id: v.vaccine_id || v.id,
+        antigen_name: v.antigen_name || v.name || 'Unknown',
+        disease_prevented: v.disease_prevented || '',
+        manufacturer: v.manufacturer || '',
+        is_nip: !!(v.is_nip || v.isNip)
+      }))
+
+      let result = mapped
+
+      // Filter out vaccines fully completed (no remaining doses) using smart-doses endpoint
+      if (patientId) {
+        result = await filterByRemainingDoses(patientId, result)
+      }
+
+      vaccineCatalog.value = result
     } catch (error) {
       console.error('Error fetching vaccine catalog:', error)
       vaccineCatalog.value = []
     }
   }
 
+  // Helper: for a list of vaccine entries, keep only those with remaining doses
+  const filterByRemainingDoses = async (patientId, list) => {
+    try {
+      const unique = Array.from(new Set(list.map(v => v.vaccine_id).filter(Boolean)))
+      // Limit checks to first 30 unique vaccines to bound network calls
+      const toCheck = unique.slice(0, 30)
+
+      // Fetch remaining info for those not in cache
+      for (const vid of toCheck) {
+        if (remainingCache.value[vid] === undefined) {
+          try {
+            const res = await api.get(`/patients/${patientId}/smart-doses`, { params: { vaccine_id: vid } })
+            const data = res.data?.data || res.data || {}
+            const remaining = Array.isArray(data.available_doses) ? data.available_doses.length : 0
+            remainingCache.value[vid] = remaining > 0
+          } catch (e) {
+            console.warn('smart-doses check failed for vaccine', vid, e?.response?.data || e.message)
+            // If we fail to check, keep it visible rather than accidentally hiding
+            remainingCache.value[vid] = true
+          }
+        }
+      }
+
+      // Filter the list: only vaccines with remaining doses or unknown (default true above)
+      return list.filter(v => {
+        const vid = v.vaccine_id
+        const hasRemaining = remainingCache.value[vid]
+        return hasRemaining !== false
+      })
+    } catch (err) {
+      console.error('filterByRemainingDoses error:', err)
+      return list
+    }
+  }
+
   /**
-   * Refresh vaccine sources based on current mode
+   * Fetch patient's existing immunizations (returns sets of vaccine_ids and antigen names)
    */
-  const refreshVaccineSources = async () => {
-    if (outsideMode.value) {
-      await fetchVaccineCatalog()
-    } else {
-      await fetchVaccineInventory()
+  const fetchPatientImmunizations = async (patientId) => {
+    try {
+      if (!patientId) return { vaccineIds: new Set(), antigenNames: new Set() }
+      const immRes = await api.get('/immunizations', { params: { patient_id: patientId, limit: 1000 } })
+      const immData = immRes.data?.data || immRes.data || []
+      const vaccineIds = new Set()
+      const antigenNames = new Set()
+      if (Array.isArray(immData)) {
+        immData.forEach(i => {
+          if (i.vaccine_id) vaccineIds.add(String(i.vaccine_id))
+          const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
+          if (name) antigenNames.add(String(name).toLowerCase())
+        })
+      }
+      return { vaccineIds, antigenNames }
+    } catch (e) {
+      return { vaccineIds: new Set(), antigenNames: new Set() }
     }
   }
 
@@ -129,16 +231,16 @@ export function useVaccineSelection() {
    */
   const onVaccineSearch = () => {
     showVaccineDropdown.value = true
-    
+
     // Clear selection if user is modifying the search term
     if (serviceForm.value.inventoryId) {
       const selectedVaccine = outsideMode.value
         ? vaccineCatalog.value.find(v => v.vaccine_id === serviceForm.value.vaccineId)
         : vaccineOptions.value.find(v => v.inventory_id === serviceForm.value.inventoryId)
-      const expectedText = selectedVaccine 
+      const expectedText = selectedVaccine
         ? `${selectedVaccine.antigen_name}${outsideMode.value ? '' : ' - ' + (selectedVaccine.manufacturer || '')}`
         : ''
-      
+
       if (vaccineSearchTerm.value !== expectedText) {
         clearVaccineSelection()
       }
@@ -179,6 +281,17 @@ export function useVaccineSelection() {
   }
 
   /**
+   * Refresh vaccine sources based on current mode
+   */
+  const refreshVaccineSources = async (patientId = null) => {
+    if (outsideMode.value) {
+      await fetchVaccineCatalog(patientId)
+    } else {
+      await fetchVaccineInventory(patientId)
+    }
+  }
+
+  /**
    * Clear vaccine selection
    */
   const clearVaccineSelection = () => {
@@ -193,10 +306,10 @@ export function useVaccineSelection() {
   /**
    * Toggle outside mode
    */
-  const onOutsideToggle = async () => {
+  const onOutsideToggle = async (patientId = null) => {
     clearVaccineSelection()
     vaccineSearchTerm.value = ''
-    await refreshVaccineSources()
+    await refreshVaccineSources(patientId)
   }
 
   /**
@@ -250,6 +363,7 @@ export function useVaccineSelection() {
     // Methods
     fetchVaccineInventory,
     fetchVaccineCatalog,
+  filterByRemainingDoses,
     refreshVaccineSources,
     onVaccineSearch,
     selectVaccine,
