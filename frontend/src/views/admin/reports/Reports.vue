@@ -214,10 +214,10 @@ const generateReport = async () => {
     const response = await api.get('/reports/monthly-immunization', {
       params: { month: filters.value.month, year: filters.value.year }
     })
-    reportData.value = response.data.data
+  reportData.value = response.data.data
 
-    // Augment FIC/CIC from patient tags so the summary rows are always populated
-    await augmentFicCicFromPatientTags()
+  // Augment FIC/CIC from patient tags restricted to selected month/year (based on last immunization date)
+  await augmentFicCicFromPatientTags(filters.value.month, filters.value.year)
     addToast({ title: 'Success', message: 'Report generated', type: 'success' })
   } catch (error) {
     console.error('Error generating report:', error)
@@ -379,30 +379,64 @@ async function fetchAllPatientsForTags() {
   return Array.isArray(list) ? list : []
 }
 
-async function augmentFicCicFromPatientTags() {
+function parseAdminDate(val) {
+  if (!val) return null
+  try {
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? null : d
+  } catch { return null }
+}
+
+async function fetchLastImmunization(patientId) {
+  try {
+    const res = await api.get('/immunizations', {
+      params: { patient_id: patientId, sort: 'administered_date:desc', limit: 1 }
+    })
+    const arr = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    const last = arr && arr.length ? arr[0] : null
+    if (!last) return null
+    const raw = last.administered_date || last.date_administered || last.dateAdministered
+    return parseAdminDate(raw)
+  } catch {
+    return null
+  }
+}
+
+async function augmentFicCicFromPatientTags(selMonth, selYear) {
   try {
     const patients = await fetchAllPatientsForTags()
+    // Pre-filter candidates with FIC/CIC tags
+    const candidates = patients.map(p => ({
+      p,
+      tags: p.tags || p.patient_tags || p.status_tags || null,
+      sex: p.sex || p.childInfo?.sex
+    })).filter(x => x.tags && (hasFIC(x.tags) || hasCIC(x.tags)))
+
+    // Count only if last immunization falls within selected month/year
     let ficMale = 0, ficFemale = 0, cicMale = 0, cicFemale = 0
-    patients.forEach(p => {
-      const tags = p.tags || p.patient_tags || p.status_tags || null
-      if (!tags) return
-      const sex = p.sex || p.childInfo?.sex
-      if (hasFIC(tags)) {
-        if (isMale(sex)) ficMale++
-        else if (isFemale(sex)) ficFemale++
-        else {
-          // Unknown sex: include in total via male bucket for consistency
-          ficMale++
+    const queue = candidates.slice()
+    const workers = Array.from({ length: Math.min(8, queue.length || 0) }, async () => {
+      while (queue.length) {
+        const item = queue.shift()
+        const lastDate = await fetchLastImmunization(item.p.patient_id || item.p.id)
+        if (!lastDate) continue
+        const mm = lastDate.getMonth() + 1
+        const yy = lastDate.getFullYear()
+        if (mm !== Number(selMonth) || yy !== Number(selYear)) continue
+
+        if (hasFIC(item.tags)) {
+          if (isMale(item.sex)) ficMale++
+          else if (isFemale(item.sex)) ficFemale++
+          else ficMale++
         }
-      }
-      if (hasCIC(tags)) {
-        if (isMale(sex)) cicMale++
-        else if (isFemale(sex)) cicFemale++
-        else {
-          cicMale++
+        if (hasCIC(item.tags)) {
+          if (isMale(item.sex)) cicMale++
+          else if (isFemale(item.sex)) cicFemale++
+          else cicMale++
         }
       }
     })
+    await Promise.all(workers)
 
     const ficTotal = ficMale + ficFemale
     const cicTotal = cicMale + cicFemale
