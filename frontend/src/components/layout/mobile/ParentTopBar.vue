@@ -3,7 +3,7 @@
     <div class="container-fluid">
       <a class="navbar-brand fw-bold" href="#">
         <i class="bi bi-shield-check me-2"></i>
-        {{ title || 'My Health Portal' }}
+        {{ title || 'My Portal' }}
       </a>
 
       <div class="navbar-nav ms-auto d-flex flex-row">
