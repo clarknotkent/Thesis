@@ -176,6 +176,12 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
   background: #f8f9fa;
 }
 
+/* Ensure the last messages are not hidden behind the sticky composer or the global bottom navbar */
+.messages-container-scroll {
+  /* leave room for the composer + bottom navbar (approx 76px) */
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
 .messages-list-chat {
   display: flex;
   flex-direction: column;
@@ -226,6 +232,10 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
   padding: 1rem;
   background: white;
   border-top: 1px solid #dee2e6;
+  /* Stick the composer above the bottom navbar so it's never covered */
+  position: sticky;
+  bottom: calc(56px + env(safe-area-inset-bottom)); /* 56px ~= bottom navbar height */
+  z-index: 1100; /* higher than bottom navbar (1000) */
 }
 
 .message-input {
@@ -342,6 +352,10 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
 
   .message-bubble {
     max-width: 85%;
+  }
+  /* On small screens increase the bottom offset slightly to match mobile navbar + composer */
+  .message-input-container {
+    bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }
 </style>
