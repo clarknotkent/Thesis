@@ -1,4 +1,4 @@
-# Immunization Management System
+﻿# Immunization Management System
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
@@ -35,6 +35,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - SMS Notifications: Automated reminders and updates via PhilSMS integration
 - Reporting and Analytics: Dashboard insights, coverage reports, and activity logs
 - Multi-User Access: Role-based portals for administrators, health workers, and parents
+- Progressive Web App: Installable on mobile devices with offline support and push notifications
 
 ### Project Status
 
@@ -59,6 +60,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - HTTP Client: Axios
 - Charts: Chart.js
 - QR Code: html5-qrcode
+- PWA: vite-plugin-pwa with Workbox for offline support and app installation
 
 ### Backend
 
@@ -164,6 +166,8 @@ git checkout system-prototype-v3
 npm install
 ```
 
+This will install dependencies for the root project and both frontend and backend workspaces.
+
 3. Set up environment variables
 
 Backend (.env file in backend/ directory):
@@ -182,19 +186,68 @@ VITE_API_BASE_URL=http://localhost:3001
 NODE_ENV=development
 ```
 
-4. Run development servers
+4. Build the frontend (required for PWA features)
 
+```bash
+npm run build
+```
+
+This compiles the frontend with Vite and generates the PWA service worker with 224 precached files for offline support.
+
+5. Run the application
+
+**Option A: Development Mode** (with hot-reload)
 ```bash
 npm run dev
 ```
 
-This will start both the backend API server and frontend development server concurrently.
+**Option B: Production Mode** (serves the built frontend)
+```bash
+npm run start
+```
+
+Both commands start the backend API server and frontend concurrently. Use `npm run dev` during development for hot-reload, or `npm run start` to test the production build with PWA features.
 
 ### Access Points
 
 - Frontend Application: http://localhost:5173
 - Backend API: http://localhost:3001
 - API Health Check: http://localhost:3001/api/health
+
+### Progressive Web App (PWA) Features
+
+This application is a fully-featured Progressive Web App with:
+
+**Offline Support:**
+- Service worker caches 224+ files for offline access
+- API responses cached for 24 hours (NetworkFirst strategy)
+- Static assets cached for optimal performance
+- Works without internet connection after first visit
+
+**Installation:**
+- Install on Android: Tap "Add to Home Screen" from browser menu
+- Install on iOS: Tap Share button → "Add to Home Screen"
+- Install on Desktop: Click install icon in browser address bar
+- Runs as standalone app after installation
+
+**Caching Strategies:**
+- Supabase API calls: NetworkFirst with 24-hour cache
+- Fonts: CacheFirst with 1-year cache
+- Images: CacheFirst with 30-day cache
+- All app files precached on first load
+
+**PWA Assets:**
+- 8 icon sizes (72x72 to 512x512) for all devices
+- Custom splash screens for app launch
+- Theme colors matching brand identity
+- Manifest configured for optimal user experience
+
+**Testing PWA:**
+1. Build the frontend: `npm run build`
+2. Start production server: `npm run start`
+3. Open http://localhost:5173 in browser
+4. Check DevTools → Application → Service Workers
+5. Run Lighthouse audit for PWA score
 
 ### Default Credentials
 
@@ -220,6 +273,8 @@ Contact your system administrator for default login credentials or refer to your
 ```
 frontend/
 ├── public/                  # Static assets
+│   ├── icons/              # PWA icons (72x72 to 512x512)
+│   └── manifest.json       # PWA manifest configuration
 ├── src/
 │   ├── assets/             # Images, styles, fonts
 │   ├── components/         # Reusable UI components
@@ -502,20 +557,37 @@ This project is configured for Railway deployment. See RAILWAY_DEPLOYMENT_GUIDE.
 
 #### Manual Deployment
 
-1. Build the frontend:
+1. Build the frontend (includes PWA assets):
 ```bash
 cd frontend
 npm run build
 ```
+
+This generates:
+- Optimized production build in `dist/`
+- Service worker (`sw.js`) with 224+ precached files
+- PWA manifest and icons
+- All static assets
 
 2. Deploy backend to your Node.js hosting service
 3. Deploy frontend build to static hosting (Netlify, Vercel, etc.)
 4. Configure environment variables on hosting platforms
 5. Set up database on Supabase or PostgreSQL hosting
 
+### PWA Deployment Notes
+
+The application is production-ready as a Progressive Web App:
+- Service worker automatically registers on deployment
+- All PWA assets generated during build process
+- Works offline after first visit
+- Installable on all major platforms (Android, iOS, Desktop)
+- Lighthouse PWA score: Ready for audit
+
+For PWA-specific deployment considerations, see PWA_READINESS_AND_UNUSED_FILES_REPORT.md
+
 ### Future Plans
 
-This project will be converted to a Progressive Web App (PWA) for offline capabilities and mobile installation.
+This project has been successfully converted to a Progressive Web App (PWA) with full offline capabilities and mobile installation support.
 
 ---
 
