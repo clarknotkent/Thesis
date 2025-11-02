@@ -15,6 +15,13 @@ router.post('/patients/:id', authenticateRequest, checkUserMapping, authorizeRol
   try {
     const patientId = req.params.id;
     const ttlSeconds = req.body?.ttlSeconds;
+    // Derive a public base URL from the incoming request to avoid hard-coded localhost in minted links
+    // Prefer proxy headers when present (e.g., Railway, Render, Nginx)
+    const forwardedProto = req.get('x-forwarded-proto');
+    const forwardedHost = req.get('x-forwarded-host');
+    const host = forwardedHost || req.get('host');
+    const proto = forwardedProto || req.protocol || 'https';
+    const baseUrl = host ? `${proto}://${host}` : undefined;
     // If caller is a guardian/parent, enforce that the patient belongs to them
     const role = (req.user && req.user.role ? String(req.user.role) : '').toLowerCase();
     const isGuardian = ['guardian','parent','guardian-parent'].includes(role);
@@ -46,7 +53,7 @@ router.post('/patients/:id', authenticateRequest, checkUserMapping, authorizeRol
         return res.status(403).json({ success: false, message: 'You can only generate QR for your own child' });
       }
     }
-    const { url, exp, frontendUrl } = await mintPatientQrUrl(patientId, { ttlSeconds });
+    const { url, exp, frontendUrl } = await mintPatientQrUrl(patientId, { ttlSeconds, baseUrl });
     res.json({ success: true, data: { url, exp, frontendUrl } });
   } catch (e) {
     console.error('Mint QR error:', e);
