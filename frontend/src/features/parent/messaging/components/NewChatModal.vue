@@ -121,7 +121,8 @@ const isDisabled = computed(() => {
 const formatStaffName = (u) => {
   const name = u.full_name || u.name || ('User #' + u.__id)
   const type = u.hs_type ? ' — ' + prettyHsType(u.hs_type) : ''
-  return name + type
+  const roleLabel = u.role ? ' — ' + prettyRole(u.role) : ''
+  return name + type + roleLabel
 }
 
 const prettyHsType = (t) => {
@@ -134,6 +135,15 @@ const prettyHsType = (t) => {
     admin: 'Admin'
   }
   return m[t] || t
+}
+
+const prettyRole = (r) => {
+  if (!r) return ''
+  const token = String(r).toLowerCase()
+  if (token === 'healthstaff' || token === 'health staff' || token === 'health_staff' || token === 'health-worker' || token === 'healthworker' || token === 'health_worker') return 'Health Staff'
+  if (token === 'admin' || token === 'administrator' || token === 'system admin') return 'Admin'
+  if (token === 'guardian' || token === 'parent') return 'Parent'
+  return r
 }
 </script>
 

@@ -74,6 +74,7 @@ import ConversationsListSection from '@/features/health-worker/messages/componen
 import ChatViewSection from '@/features/health-worker/messages/components/ChatViewSection.vue'
 import NewConversationModal from '@/features/health-worker/messages/components/NewConversationModal.vue'
 import { conversationAPI, messageAPI } from '@/services/api'
+import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 import { useToast } from '@/composables/useToast'
 import axios from 'axios'
@@ -337,17 +338,14 @@ const scrollToBottom = () => {
 
 const fetchAvailableUsers = async () => {
   try {
-    const response = await axios.get('/api/users', {
+    // Use the shared api instance so baseURL and interceptors apply in production
+    const response = await api.get('/users', {
       params: {
         limit: 100,
         page: 1,
         status: 'active'
-      },
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('authToken')}`
       }
     })
-    
     const users = response.data?.users || []
     
     if (users.length === 0) {
