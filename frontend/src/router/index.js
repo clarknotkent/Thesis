@@ -701,7 +701,7 @@ const routes = [
     name: 'ParentHome',
     component: ParentHome,
     meta: {
-      title: 'My Health Portal - ImmunizeMe',
+      title: 'My Portal - ImmunizeMe',
       requiresAuth: true,
       role: 'parent'
     }
