@@ -41,9 +41,9 @@
             <div class="message-header">
               <div style="display:flex;align-items:center;gap:0.5rem;">
                 <h6 class="message-sender" style="margin:0">{{ message.sender }}</h6>
-                <small v-if="message.role" class="sender-role badge bg-secondary text-white" style="font-weight:600; font-size:0.65rem; text-transform:capitalize;">{{ prettyRole(message.role) }}</small>
+                <small v-if="message.role" class="sender-role badge bg-primary-subtle text-black me-2" style="font-weight:600; font-size:0.65rem; text-transform:capitalize;">{{ prettyRole(message.role) }}</small>
               </div>
-              <span class="message-time">{{ formatTime(message.created_at) }}</span>
+              <span class="message-time">{{ formatTimePH(message.created_at) }}</span>
             </div>
             <p class="message-text">{{ message.text }}</p>
           </div>
@@ -324,6 +324,27 @@ const prettyRole = (r) => {
   if (token === 'admin' || token === 'administrator' || token === 'system admin') return 'Admin'
   if (token === 'guardian' || token === 'parent') return 'Parent'
   return r
+}
+
+// Philippine time display (UTC+8), aligned with BHS UI conventions
+const shiftHours = (date, hours) => new Date(date.getTime() + hours * 60 * 60 * 1000)
+
+const formatTimePH = (s) => {
+  if (!s) return ''
+  const dateOrig = new Date(s)
+  const date = shiftHours(dateOrig, 8)
+  const now = shiftHours(new Date(), 8)
+  const diff = now - date
+
+  if (diff < 60000) return 'now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
+  if (diff < 86400000) {
+    return date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+  }
+  if (diff < 604800000) {
+    return date.toLocaleDateString('en-PH', { weekday: 'short' })
+  }
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
 }
 </script>
 

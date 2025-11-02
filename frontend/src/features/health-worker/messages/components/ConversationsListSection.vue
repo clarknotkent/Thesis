@@ -1,17 +1,12 @@
 <template>
   <div class="conversations-list-section">
-    <!-- Messages Header -->
-    <div class="messages-header">
-      <div class="header-content">
-        <h4 class="mb-0">
-          <i class="bi bi-chat-dots me-2"></i>
-          Messages
-        </h4>
-        <button @click="$emit('new-conversation')" class="new-message-btn">
-          <i class="bi bi-plus-circle me-1"></i>
-          New
-        </button>
-      </div>
+    <!-- Messages Header (match Parent UI) -->
+    <div class="section-header d-flex justify-content-between align-items-center">
+      <h5 class="section-title mb-0">Messages</h5>
+      <button class="btn btn-primary btn-sm" @click="$emit('new-conversation')">
+        <i class="bi bi-plus-circle me-1"></i>
+        New Chat
+      </button>
     </div>
 
     <!-- Search Bar -->
@@ -40,7 +35,7 @@
         <div class="message-content">
           <div class="message-header">
             <h6 class="sender-name">{{ getConversationTitle(conv) }}</h6>
-            <small class="message-time">{{ formatTime(conv.latest_message_time || conv.created_at) }}</small>
+            <small class="message-time">{{ formatTimePH(conv.latest_message_time || conv.created_at) }}</small>
           </div>
           <p class="message-preview">{{ conv.latest_message || 'No messages yet' }}</p>
           <span v-if="conv.unread_count > 0" class="unread-badge">{{ conv.unread_count }}</span>
@@ -86,6 +81,27 @@ defineProps({
 })
 
 defineEmits(['new-conversation', 'open-conversation', 'update:searchQuery'])
+
+// Philippine time formatter (UTC+8), aligned with shared chat behavior
+const shiftHours = (date, hours) => new Date(date.getTime() + hours * 60 * 60 * 1000)
+
+const formatTimePH = (s) => {
+  if (!s) return ''
+  const dateOrig = new Date(s)
+  const date = shiftHours(dateOrig, 8) // convert to UTC+8
+  const now = shiftHours(new Date(), 8)
+  const diff = now - date
+
+  if (diff < 60000) return 'now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
+  if (diff < 86400000) {
+    return date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+  }
+  if (diff < 604800000) {
+    return date.toLocaleDateString('en-PH', { weekday: 'short' })
+  }
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+}
 </script>
 
 <style scoped>
@@ -95,40 +111,18 @@ defineEmits(['new-conversation', 'open-conversation', 'update:searchQuery'])
   height: 100%;
 }
 
-.messages-header {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 0.5rem;
+/* Match ParentMessages header look */
+.section-header {
   margin-bottom: 1rem;
-  border-left: 4px solid #007bff;
+  padding: 1rem;
+  padding-bottom: 0;
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.new-message-btn {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  display: flex;
-  align-items: center;
-}
-
-.new-message-btn:hover {
-  background: #0056b3;
-}
-
-.new-message-btn i {
-  font-size: 0.9rem;
+.section-title {
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+  font-size: 1.25rem;
 }
 
 .search-bar {
@@ -165,6 +159,7 @@ defineEmits(['new-conversation', 'open-conversation', 'update:searchQuery'])
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   flex: 1;
   overflow-y: auto;
+  padding-bottom: 60px;
 }
 
 .message-item {

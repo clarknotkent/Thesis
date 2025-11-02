@@ -1,13 +1,6 @@
 <template>
   <HealthWorkerLayout>
     <div class="messages-container">
-      <!-- Back Button -->
-      <div class="back-button-container">
-        <button @click="goBack" class="back-button">
-          <i class="bi bi-arrow-left"></i>
-          <span>Back</span>
-        </button>
-      </div>
 
       <!-- Loading State -->
       <div v-if="loading && !selectedConversation" class="loading-state">
