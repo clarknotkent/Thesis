@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout :title="pageTitle">
+  <ParentLayout title="My Schedule">
     <!-- Fixed Header Section -->
     <div class="schedule-details-header-section">
       <div class="header-bar">
@@ -84,8 +84,17 @@ const error = ref(null)
 const childName = ref('')
 const schedules = ref([])
 
+// Extract short name (first + last name only)
+const shortName = computed(() => {
+  if (!childName.value) return ''
+  const parts = childName.value.trim().split(' ')
+  if (parts.length <= 2) return childName.value // Already short
+  // Return first and last name only
+  return `${parts[0]} ${parts[parts.length - 1]}`
+})
+
 const pageTitle = computed(() => {
-  return childName.value ? `${childName.value}'s Schedule` : 'Schedule'
+  return shortName.value ? `${shortName.value}'s Schedule` : 'Schedule'
 })
 
 const goBack = () => {

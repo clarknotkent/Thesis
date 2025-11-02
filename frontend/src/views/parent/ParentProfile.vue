@@ -1,5 +1,5 @@
 ﻿<template>
-  <ParentLayout>
+  <ParentLayout title="My Profile">
     <div class="profile-container">
       <!-- Profile Header -->
       <ProfileHeader 
