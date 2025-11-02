@@ -10,6 +10,9 @@ import './assets/styles/index.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { Dropdown } from 'bootstrap'
 
+// Import offline functionality
+import { initializeOffline } from './offlineInit'
+
 const app = createApp(App)
 const pinia = createPinia()
 
@@ -63,3 +66,10 @@ app.mount('#app')
 
 // Initial hydration
 nextTick(() => initDropdowns())
+
+// Initialize offline functionality (IndexedDB + sync)
+initializeOffline().then(() => {
+	console.log('🚀 App ready with offline support')
+}).catch((error) => {
+	console.error('Failed to initialize offline support:', error)
+})
