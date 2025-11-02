@@ -11,6 +11,14 @@ const FRONTEND_PATIENT_RECORDS_PATH = process.env.FRONTEND_PATIENT_RECORDS_PATH 
 const DEFAULT_TTL = parseInt(process.env.APP_QR_DEFAULT_TTL_SECONDS || '15552000', 10); // ~180 days
 
 console.log('QR Service env check: APP_QR_SECRET loaded:', !!process.env.APP_QR_SECRET, 'PUBLIC_BASE_URL:', PUBLIC_BASE_URL)
+if (process.env.NODE_ENV === 'production') {
+  if (/localhost/i.test(PUBLIC_BASE_URL)) {
+    console.warn('[qrService] WARNING: PUBLIC_BASE_URL is set to localhost in production. Minted QR codes will point to localhost. Set PUBLIC_BASE_URL to your public backend URL.');
+  }
+  if (/localhost/i.test(FRONTEND_BASE_URL)) {
+    console.warn('[qrService] WARNING: FRONTEND_BASE_URL is set to localhost in production. QR redirects will send users to localhost. Set FRONTEND_BASE_URL to your public frontend URL.');
+  }
+}
 
 function base64url(buf) {
   return Buffer.from(buf).toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -29,12 +37,13 @@ function buildFrontendRecordsUrl(patientId) {
   return `${FRONTEND_BASE_URL}${path}`;
 }
 
-function buildPublicQrUrl(patientId, nonce, exp) {
+function buildPublicQrUrl(patientId, nonce, exp, overrideBaseUrl) {
   const s = sign(payloadString(patientId, nonce, exp));
   const query = new URLSearchParams();
   if (exp) query.set('x', String(exp));
   query.set('t', s);
-  return `${PUBLIC_BASE_URL}/qr/p/${patientId}?${query.toString()}`;
+  const base = (overrideBaseUrl || '').replace(/\/$/, '') || PUBLIC_BASE_URL;
+  return `${base}/qr/p/${patientId}?${query.toString()}`;
 }
 
 async function getNonceForPatient(patientId, supabase = serviceSupabase) {
@@ -74,7 +83,7 @@ async function mintPatientQrUrl(patientId, opts = {}, supabase = serviceSupabase
   const nowSec = Math.floor(Date.now() / 1000);
   const exp = opts.exp || (ttl > 0 ? nowSec + ttl : undefined);
   const nonce = await ensureNonce(patientId, supabase);
-  const url = buildPublicQrUrl(patientId, nonce, exp);
+  const url = buildPublicQrUrl(patientId, nonce, exp, opts.baseUrl);
   return { url, exp, frontendUrl: buildFrontendRecordsUrl(patientId) };
 }
 
