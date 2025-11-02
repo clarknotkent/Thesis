@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { syncAfterLogin } from '@/offlineInit'
 
 const authToken = ref(localStorage.getItem('authToken'))
 const userRole = ref(localStorage.getItem('userRole'))
@@ -31,9 +32,14 @@ export const useAuth = () => {
       localStorage.setItem('userInfo', JSON.stringify(info))
       localStorage.setItem('authUser', JSON.stringify(info)) // For compatibility
     }
+
+    // Trigger offline sync after successful login
+    syncAfterLogin().catch(err => {
+      console.error('Failed to sync data after login:', err)
+    })
   }
 
-  const logout = () => {
+  const logout = async () => {
     authToken.value = null
     userRole.value = null
     userInfo.value = null
@@ -42,6 +48,10 @@ export const useAuth = () => {
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')
     localStorage.removeItem('authUser') // Remove both keys
+
+    // Clear offline data on logout
+    const { clearOfflineDataOnLogout } = await import('@/offlineInit')
+    await clearOfflineDataOnLogout()
   }
 
   const updateUserInfo = (info) => {
