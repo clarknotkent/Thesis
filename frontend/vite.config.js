@@ -15,7 +15,7 @@ export default defineConfig({
         short_name: 'ImmunizeMe',
         description: 'Healthcare and vaccination management system',
         theme_color: '#0d6efd',
-        background_color: '#ffffff',
+        background_color: '#0d6efd',
         display: 'standalone',
         scope: '/',
         start_url: '/',
