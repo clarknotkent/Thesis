@@ -138,6 +138,11 @@ const fetchSchedule = async () => {
     
   } catch (err) {
     console.error('Error fetching schedule:', err)
+    const status = err?.response?.status
+    if (status === 403 || status === 404) {
+      // Child not accessible or missing -> Not Found page
+      return router.replace('/not-found')
+    }
     error.value = 'Failed to load vaccination schedule. Please try again.'
   } finally {
     loading.value = false

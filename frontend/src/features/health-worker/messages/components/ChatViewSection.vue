@@ -34,7 +34,7 @@
           <div class="message-bubble">
             <div class="message-text">{{ msg.message_content }}</div>
             <div class="message-meta">
-              <small>{{ formatTime(msg.created_at) }}</small>
+              <small>{{ formatTimePH(msg.created_at) }}</small>
             </div>
           </div>
         </div>
@@ -110,6 +110,27 @@ defineProps({
 })
 
 defineEmits(['close-chat', 'update:messageText', 'send-message'])
+
+// Local time formatter aligned with shared chat: display times in Philippine Time (UTC+8)
+const shiftHours = (date, hours) => new Date(date.getTime() + hours * 60 * 60 * 1000)
+
+const formatTimePH = (s) => {
+  if (!s) return ''
+  const dateOrig = new Date(s)
+  const date = shiftHours(dateOrig, 8) // convert to UTC+8
+  const now = shiftHours(new Date(), 8)
+  const diff = now - date
+
+  if (diff < 60000) return 'now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
+  if (diff < 86400000) {
+    return date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+  }
+  if (diff < 604800000) {
+    return date.toLocaleDateString('en-PH', { weekday: 'short' })
+  }
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+}
 </script>
 
 <style scoped>
@@ -176,10 +197,10 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
   background: #f8f9fa;
 }
 
-/* Ensure the last messages are not hidden behind the sticky composer or the global bottom navbar */
+/* Ensure messages don't get hidden behind the fixed mobile bottom navbar
+   Give extra bottom padding equal to the input area + expected bottom navbar height */
 .messages-container-scroll {
-  /* leave room for the composer + bottom navbar (approx 76px) */
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  padding-bottom: calc(1rem + 92px);
 }
 
 .messages-list-chat {
@@ -232,10 +253,11 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
   padding: 1rem;
   background: white;
   border-top: 1px solid #dee2e6;
-  /* Stick the composer above the bottom navbar so it's never covered */
+  /* Make input sticky so it stays visible above fixed bottom navbars */
   position: sticky;
-  bottom: calc(56px + env(safe-area-inset-bottom)); /* 56px ~= bottom navbar height */
-  z-index: 1100; /* higher than bottom navbar (1000) */
+  bottom: 60px; /* default offset to sit above mobile bottom navbar */
+  z-index: 1100; /* above most layout elements but below global overlays */
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
 }
 
 .message-input {
@@ -353,9 +375,18 @@ defineEmits(['close-chat', 'update:messageText', 'send-message'])
   .message-bubble {
     max-width: 85%;
   }
-  /* On small screens increase the bottom offset slightly to match mobile navbar + composer */
+}
+
+/* Additional sticky adjustments for small mobile viewports where a fixed bottom
+   navbar is present (match MobileBottomNavbar height and safe-area insets) */
+@media (max-width: 576px) {
   .message-input-container {
-    bottom: calc(76px + env(safe-area-inset-bottom));
+    bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  /* Slightly larger messages container bottom padding on small screens */
+  .messages-container-scroll {
+    padding-bottom: calc(1rem + 60px);
   }
 }
 </style>

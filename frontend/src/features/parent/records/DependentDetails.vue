@@ -171,6 +171,12 @@ const fetchPatientDetails = async () => {
     await fetchMedicalHistory(patientId)
   } catch (error) {
     console.error('Error fetching patient details:', error)
+    const status = error?.response?.status
+    if (status === 403 || status === 404) {
+      // Not owned or missing -> show Not Found page
+      router.replace('/not-found')
+      return
+    }
   } finally {
     loading.value = false
   }

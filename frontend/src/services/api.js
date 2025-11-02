@@ -36,9 +36,21 @@ api.interceptors.response.use(
       localStorage.removeItem('authToken')
       localStorage.removeItem('authUser')
       window.location.href = '/auth/login'
-    } else if (error.response?.status === 403) {
-      // Forbidden
-      console.error('Access forbidden')
+    } else if (error.response?.status === 403 || error.response?.status === 404) {
+      // For patient-related routes, send the user to a friendly Not Found page
+      try {
+        const url = (error.config?.url || '').toString()
+        // Match protected resources for the guardian UI
+        const isPatientResource = /\/patients\//.test(url) || /\/parent\/children\//.test(url)
+        if (isPatientResource) {
+          // Avoid infinite redirects if we're already on NotFound
+          if (window.location.pathname !== '/not-found') {
+            window.location.href = '/not-found'
+            return
+          }
+        }
+      } catch (_) {}
+      console.error('Access forbidden or resource not found')
     } else if (error.response?.status >= 500) {
       // Server errors
       console.error('Server error occurred')
