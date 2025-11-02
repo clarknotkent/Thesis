@@ -39,7 +39,10 @@
           </div>
           <div class="message-content">
             <div class="message-header">
-              <h6 class="message-sender">{{ message.sender }}</h6>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <h6 class="message-sender" style="margin:0">{{ message.sender }}</h6>
+                <small v-if="message.role" class="sender-role badge bg-secondary text-white" style="font-weight:600; font-size:0.65rem; text-transform:capitalize;">{{ prettyRole(message.role) }}</small>
+              </div>
               <span class="message-time">{{ formatTime(message.created_at) }}</span>
             </div>
             <p class="message-text">{{ message.text }}</p>
@@ -142,15 +145,18 @@ const fetchConversations = async () => {
       const txt = it.latest_message || it.last_message || it.last_message_body || it.message_preview || it.message_body || ''
       // Try to get other participant's name from participants array
       let sender = 'Conversation'
+      let senderRole = ''
       const list = Array.isArray(it.participants) ? it.participants : []
       const others = list.filter(p => String(p.user_id || p.id) !== me)
       if (others.length) {
         const p = others[0]
         sender = p.fullname || p.full_name || p.participant_name || `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() || sender
+        // read role from participant if provided
+        senderRole = p.role || p.user_role || p.userRole || ''
       } else if (it.subject) {
         sender = it.subject
       }
-      return { id, sender, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
+      return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
     })
   } catch (e) {
     console.error('Failed to fetch conversations:', e)
@@ -211,13 +217,28 @@ const openNewChat = async () => {
   showNewModal.value = true
   if (staffOptions.value.length === 0) {
     try {
-      const { data } = await api.get('/users', { params: { role: 'healthworker', limit: 50 } })
-      const raw = data?.users || data?.data || []
+      // Fetch both health staff and admins and combine them so guardians can message either
+      const [hwRes, adminRes] = await Promise.all([
+        api.get('/users', { params: { role: 'healthworker', limit: 100 } }),
+        api.get('/users', { params: { role: 'admin', limit: 100 } })
+      ])
+      const hwRaw = hwRes?.data?.users || hwRes?.data || []
+      const adminRaw = adminRes?.data?.users || adminRes?.data || []
+      // Combine and dedupe by id
+      const combinedRaw = [...(hwRaw || []), ...(adminRaw || [])]
+      const byId = {};
+      combinedRaw.forEach(u => {
+        const id = u.user_id || u.id || u.__id
+        if (!id) return
+        if (!byId[id]) byId[id] = u
+      })
+      const raw = Object.values(byId)
       staffOptions.value = raw.map(u => ({
         __id: u.user_id || u.id || u.__id,
         full_name: u.name || `${u.firstname || u.first_name || ''} ${u.surname || u.last_name || ''}`.trim(),
         hs_type: u.hs_type || u.type || null,
-        last_login: u.lastLogin || u.last_login || null
+        last_login: u.lastLogin || u.last_login || null,
+        role: u.role || null
       })).filter(u => !!u.__id)
     } catch (e) {
       console.error('Failed to load staff list', e)
@@ -294,6 +315,15 @@ const formatTime = (timestamp) => {
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}d ago`
   return date.toLocaleDateString()
+}
+
+const prettyRole = (r) => {
+  if (!r) return ''
+  const token = String(r).toLowerCase()
+  if (token === 'healthstaff' || token === 'health staff' || token === 'health_staff' || token === 'health-worker' || token === 'healthworker' || token === 'health_worker') return 'Health Staff'
+  if (token === 'admin' || token === 'administrator' || token === 'system admin') return 'Admin'
+  if (token === 'guardian' || token === 'parent') return 'Parent'
+  return r
 }
 </script>
 
