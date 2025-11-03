@@ -71,7 +71,7 @@
                     </div>
                     
                     <!-- Status Filter -->
-                    <select class="form-select form-select-sm" style="max-width: 150px;" v-model="selectedStatus" @change="applyFilters">
+                    <select class="form-select form-select-sm" style="max-width: 150px;" v-model="selectedStatus" @change="applyFilters" :disabled="showDeleted">
                       <option value="">All Status</option>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -92,6 +92,10 @@
 
                   <!-- Action Buttons -->
                   <div class="d-flex gap-2 align-items-center">
+                    <div class="form-check form-switch me-2">
+                      <input class="form-check-input" type="checkbox" id="toggleDeleted" v-model="showDeleted" @change="applyFilters">
+                      <label class="form-check-label" for="toggleDeleted">Show Deleted</label>
+                    </div>
                     <button class="btn btn-sm btn-outline-primary" @click="resetFilters">
                       <i class="bi bi-arrow-clockwise me-1"></i>Reset
                     </button>
@@ -121,9 +125,13 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="patient in patients" :key="patient.id">
+                      <tr v-for="patient in sortedPatients" :key="patient.id" :class="{ 'table-secondary': patient.status === 'inactive' }">
                         <td class="text-center align-middle fw-semibold text-primary">{{ patient.id }}</td>
-                        <td class="text-center align-middle fw-semibold">{{ patient.childInfo.name }}</td>
+                        <td class="text-center align-middle fw-semibold">
+                          {{ patient.childInfo.name }}
+                          <span v-if="patient.status === 'inactive'" class="badge rounded-pill text-bg-secondary ms-2">Inactive</span>
+                          <span v-else-if="patient.status === 'archived'" class="badge rounded-pill text-bg-danger ms-2">Archived</span>
+                        </td>
                         <td class="text-center align-middle">{{ patient.childInfo.sex }}</td>
                         <td class="text-center align-middle">{{ formatDate(patient.childInfo.birthDate) }}</td>
                         <td class="text-center align-middle">{{ calculateAge(patient.childInfo.birthDate) }}</td>
@@ -149,17 +157,43 @@
                             >
                               <i class="bi bi-eye me-1"></i>View
                             </router-link>
-                            <button 
-                              class="btn btn-sm btn-outline-danger" 
-                              @click="deletePatient(patient)"
-                              title="Delete Patient"
+                            <button
+                              v-if="patient.status === 'archived'"
+                              class="btn btn-sm btn-outline-success"
+                              @click="restorePatient(patient)"
+                              title="Restore Patient"
                             >
-                              <i class="bi bi-trash"></i>
+                              <i class="bi bi-arrow-counterclockwise"></i>
                             </button>
+                            <template v-else>
+                              <button 
+                                class="btn btn-sm btn-outline-warning" 
+                                v-if="patient.status !== 'inactive'"
+                                @click="setPatientStatus(patient, 'inactive')"
+                                title="Deactivate"
+                              >
+                                <i class="bi bi-slash-circle"></i>
+                              </button>
+                              <button 
+                                class="btn btn-sm btn-outline-success" 
+                                v-else
+                                @click="setPatientStatus(patient, 'active')"
+                                title="Set Active"
+                              >
+                                <i class="bi bi-check-circle"></i>
+                              </button>
+                              <button 
+                                class="btn btn-sm btn-outline-danger" 
+                                @click="deletePatient(patient)"
+                                title="Delete Patient"
+                              >
+                                <i class="bi bi-trash"></i>
+                              </button>
+                            </template>
                           </div>
                         </td>
                       </tr>
-                      <tr v-if="patients.length === 0">
+                      <tr v-if="sortedPatients.length === 0">
                         <td colspan="9" class="text-center text-muted py-4">
                           <i class="bi bi-inbox" style="font-size: 2rem;"></i>
                           <p class="mb-0 mt-2">No patients found</p>
@@ -170,7 +204,7 @@
                 </div>
 
                 <!-- Pagination Footer -->
-                <div v-if="patients.length > 0" class="pagination-footer border-top mt-3 pt-3">
+                <div v-if="sortedPatients.length > 0" class="pagination-footer border-top mt-3 pt-3">
                   <AppPagination
                     :currentPage="currentPage"
                     :totalPages="totalPages"
@@ -193,7 +227,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
@@ -213,6 +247,7 @@ const patients = ref([])
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedGender = ref('')
+const showDeleted = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(5) // Set to 5 items per page as requested
 const totalItems = ref(0)
@@ -228,7 +263,14 @@ const fetchPatients = async () => {
     }
     
     if (searchQuery.value) params.search = searchQuery.value
-    if (selectedStatus.value) params.status = selectedStatus.value
+    // Apply status filters
+    if (showDeleted.value) {
+      params.status = 'archived'
+    } else if (selectedStatus.value) {
+      params.status = selectedStatus.value
+    } else {
+      params.status = 'not_archived'
+    }
     if (selectedGender.value) {
       // Send both gender and sex to handle API variants
       params.gender = selectedGender.value
@@ -259,7 +301,8 @@ const fetchPatients = async () => {
       },
       guardian_contact_number: p.guardian_contact_number || p.guardian?.contact_number || '',
       family_number: p.guardian_family_number || p.family_number || '',
-      lastVaccination: p.last_vaccination_date || null
+      lastVaccination: p.last_vaccination_date || null,
+      status: (p.status || (p.is_deleted ? 'archived' : 'active')).toLowerCase()
     }))
 
   // Prefer server-provided totalCount/totalPages. Only fallback to local count as last resort.
@@ -384,9 +427,79 @@ const deletePatient = async (patient) => {
   }
 }
 
+const restorePatient = async (patient) => {
+  const name = patient.childInfo?.name || 'this patient'
+  try {
+    await confirm({
+      title: 'Restore Patient Record',
+      message: `Are you sure you want to restore the patient record for "${name}"?\n\nThis will also restore related schedules and re-enable reminders.`,
+      variant: 'primary',
+      confirmText: 'Restore',
+      cancelText: 'Cancel'
+    })
+
+    await api.post(`/patients/${patient.id}/restore`)
+    addToast({ title: 'Restored', message: `Patient "${name}" has been restored.`, type: 'success' })
+    await fetchPatients()
+  } catch (error) {
+    console.error('Error restoring patient:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to restore patient'
+    addToast({ title: 'Error', message: errorMessage, type: 'error' })
+  }
+}
+
+const setPatientStatus = async (patient, newStatus) => {
+  // Confirm first; if cancelled, exit silently
+  try {
+    if (newStatus === 'inactive') {
+      await confirm({
+        title: 'Deactivate Patient',
+        message: `This will pause reminders and soft-delete pending schedules for "${patient.childInfo?.name || patient.id}". Continue?`,
+        variant: 'warning',
+        confirmText: 'Deactivate',
+        cancelText: 'Cancel'
+      })
+    } else {
+      await confirm({
+        title: 'Set Patient Active',
+        message: `This will restore schedules and resume reminders for "${patient.childInfo?.name || patient.id}". Continue?`,
+        variant: 'primary',
+        confirmText: 'Set Active',
+        cancelText: 'Cancel'
+      })
+    }
+  } catch {
+    return
+  }
+
+  try {
+    await api.put(`/patients/${patient.id}`, { status: newStatus })
+    const verb = newStatus === 'inactive' ? 'set to Inactive (cascade applied)' : 'set to Active (restored)'
+    addToast({ title: 'Updated', message: `Patient "${patient.childInfo?.name || patient.id}" ${verb}.`, type: 'success' })
+    await fetchPatients()
+  } catch (error) {
+    console.error('Error updating patient status:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to update status'
+    addToast({ title: 'Error', message: errorMessage, type: 'error' })
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   fetchPatients()
+})
+
+// Active first, then inactive; archived handled via Show Deleted toggle
+const sortedPatients = computed(() => {
+  const arr = [...patients.value]
+  return arr.sort((a, b) => {
+    const ra = a.status === 'inactive' ? 1 : 0
+    const rb = b.status === 'inactive' ? 1 : 0
+    if (ra !== rb) return ra - rb
+    const ida = Number(a.id) || 0
+    const idb = Number(b.id) || 0
+    return ida - idb
+  })
 })
 </script>
 

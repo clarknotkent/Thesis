@@ -6,6 +6,7 @@ const {
   getPatientById,
   updatePatient,
   deletePatient,
+  restorePatient,
   getAllPatients,
   getPatientSchedule,
   updatePatientTag,
@@ -67,6 +68,9 @@ router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin'
 
 // DELETE /api/patients/:id - Delete patient
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deletePatient);
+
+// POST /api/patients/:id/restore - Restore soft deleted patient
+router.post('/:id/restore', authenticateRequest, checkUserMapping, authorizeRole(['admin']), restorePatient);
 
 // GET /api/patients/:id/schedule - Get patient vaccination schedule (ownership enforced for guardians)
 router.get('/:id/schedule', authenticateRequest, authorizePatientReadAccess, getPatientSchedule);

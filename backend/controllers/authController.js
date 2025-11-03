@@ -264,6 +264,15 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Explicitly block soft-deleted users at login
+    if (appUser.is_deleted === true) {
+      try {
+        const { logActivity } = require('../models/activityLogger');
+        await logActivity({ action_type: ACTIVITY.USER.LOGIN_FAILED, description: 'Failed login (user is soft-deleted)', user_id: appUser.user_id, entity_type: 'user', entity_id: appUser.user_id });
+      } catch(_) {}
+      return res.status(403).json({ message: 'Account is deactivated. Please contact an administrator.' });
+    }
+
     // Resolve email; we only use email sign-in
   const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
     if (!emailToUse) {

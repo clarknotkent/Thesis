@@ -10,14 +10,163 @@ const patientModel = {
   getAllPatients: async (filters = {}, page = 1, limit = 5, client) => {
     try {
       const supabase = withClient(client);
-      let query = supabase
-        .from('patients_view')
-        .select('*', { count: 'exact' });
+      // Decide source: for archived/deleted listings we must query base table because views may exclude deleted rows
+      const rawStatus = filters.status ? String(filters.status).toLowerCase() : '';
+      const archivedMode = rawStatus === 'archived' || rawStatus === 'deleted';
+
+      // Global ordering: when not archived and no explicit status slice, show Active patients on earlier pages and push Inactive to the end
+      const globalStatusOrder = !archivedMode && (!rawStatus || rawStatus === 'not_archived');
+      if (globalStatusOrder) {
+        // Build base query with filters and order by status, then paginate
+        let baseQuery = supabase
+          .from('patients')
+          .select('patient_id, is_deleted, status, tags', { count: 'exact' })
+          .eq('is_deleted', false);
+
+        if (filters.search) {
+          const like = String(filters.search).trim().replace(/%/g, '');
+          baseQuery = baseQuery.or(
+            `firstname.ilike.%${like}%,middlename.ilike.%${like}%,surname.ilike.%${like}%`
+          );
+        }
+        if (filters.sexOptions && Array.isArray(filters.sexOptions) && filters.sexOptions.length > 0) {
+          baseQuery = baseQuery.in('sex', filters.sexOptions);
+        } else if (filters.sex) {
+          baseQuery = baseQuery.eq('sex', filters.sex);
+        }
+        if (filters.barangay) {
+          baseQuery = baseQuery.eq('barangay', filters.barangay);
+        }
+        if (filters.age_group) {
+          const today = new Date();
+          let startDate, endDate;
+          switch (filters.age_group) {
+            case 'newborn':
+              startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
+              endDate = today;
+              break;
+            case 'infant':
+              startDate = new Date(today.getFullYear(), today.getMonth() - 12, today.getDate());
+              endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 28);
+              break;
+            case 'toddler':
+              startDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+              endDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+              break;
+          }
+          if (startDate && endDate) {
+            baseQuery = baseQuery
+              .gte('date_of_birth', startDate.toISOString())
+              .lte('date_of_birth', endDate.toISOString());
+          }
+        }
+
+        const offset = (page - 1) * limit;
+        const { data: baseRows, error: baseErr, count } = await baseQuery
+          .order('status', { ascending: true, nullsFirst: true })
+          .order('patient_id', { ascending: true })
+          .range(offset, offset + limit - 1);
+        if (baseErr) throw baseErr;
+
+        const ids = Array.from(new Set((baseRows || []).map(r => r.patient_id).filter(v => v != null)));
+        if (ids.length === 0) {
+          return {
+            patients: [],
+            totalCount: count || 0,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil((count || 0) / limit)
+          };
+        }
+
+        const { data: viewRows, error: viewErr } = await supabase
+          .from('patients_view')
+          .select('*')
+          .in('patient_id', ids);
+        if (viewErr) throw viewErr;
+
+        // Compute ages
+        const withAge = (viewRows || []).map(p => {
+          const birth = p.date_of_birth ? new Date(p.date_of_birth) : null;
+          if (!birth) return { ...p, age_months: null, age_days: null };
+          const today = new Date();
+          let months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
+          if (today.getDate() < birth.getDate()) months--;
+          const ref = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+          const days = (today.getDate() >= birth.getDate()) ? (today.getDate() - birth.getDate()) : (ref - birth.getDate() + today.getDate());
+          return { ...p, age_months: Math.max(0, months), age_days: Math.max(0, days) };
+        });
+
+        // Enrich last vaccination
+        try {
+          const { data: imms, error: immErr } = await supabase
+            .from('immunizationhistory_view')
+            .select('patient_id, vaccine_id, vaccine_antigen_name, administered_date')
+            .in('patient_id', ids)
+            .order('administered_date', { ascending: false });
+          if (immErr) throw immErr;
+          const latestByPatient = new Map();
+          for (const row of (imms || [])) {
+            const pid = row.patient_id;
+            if (!pid) continue;
+            if (!latestByPatient.has(pid)) latestByPatient.set(pid, row);
+          }
+          for (let i = 0; i < withAge.length; i++) {
+            const p = withAge[i];
+            const last = latestByPatient.get(p.patient_id);
+            if (last) {
+              withAge[i] = {
+                ...p,
+                last_vaccination_date: last.administered_date || null,
+                last_vaccine_name: last.vaccine_antigen_name || null,
+                last_vaccine_id: last.vaccine_id || null,
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to enrich patients with last vaccination (non-blocking):', e?.message || e);
+        }
+
+        // Attach derived status using the baseRows we already have
+        const baseById = new Map((baseRows || []).map(r => [r.patient_id, r]));
+        const enriched = withAge.map(p => {
+          const base = baseById.get(p.patient_id) || p;
+          const isArchived = !!base.is_deleted;
+          const rs = (base.status || '').toString().toLowerCase();
+          const status = isArchived ? 'archived' : (rs === 'inactive' ? 'inactive' : 'active');
+          return { ...p, status };
+        });
+
+        // Keep the same order as ids (Active first)
+        const orderIndex = new Map(ids.map((v, i) => [v, i]));
+        enriched.sort((a, b) => (orderIndex.get(a.patient_id) ?? 0) - (orderIndex.get(b.patient_id) ?? 0));
+
+        return {
+          patients: enriched,
+          totalCount: count || 0,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil((count || 0) / limit)
+        };
+      }
+      let query = archivedMode
+        ? supabase.from('patients').select('*', { count: 'exact' }).eq('is_deleted', true)
+        : supabase.from('patients_view').select('*', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
-        // patients_view exposes 'full_name' rather than 'patient_name'
-        query = query.ilike('full_name', `%${filters.search}%`);
+        const term = String(filters.search).trim();
+        if (archivedMode) {
+          // Base table does not have full_name; search across name parts
+          // Supabase or() syntax: field.ilike.*|field.ilike.*
+          const like = term.replace(/%/g, '');
+          query = query.or(
+            `firstname.ilike.%${like}%,middlename.ilike.%${like}%,surname.ilike.%${like}%`
+          );
+        } else {
+          // patients_view exposes 'full_name'
+          query = query.ilike('full_name', `%${term}%`);
+        }
       }
 
       if (filters.sexOptions && Array.isArray(filters.sexOptions) && filters.sexOptions.length > 0) {
@@ -60,19 +209,38 @@ const patientModel = {
       // Additional tag/status filters
       if (filters.status) {
         const status = String(filters.status).toLowerCase();
-        if (status === 'fic' || status === 'completed' || status === 'up_to_date' || status === 'uptodate' || status === 'up-to-date') {
+        if (status === 'archived' || status === 'deleted') {
+          // archivedMode already applies is_deleted=true for base table; nothing extra needed
+        } else if (status === 'not_archived') {
+          // Show only non-deleted patients
+          query = query.eq('is_deleted', false);
+        } else if (status === 'active' || status === 'inactive') {
+          // Filter by new patients.status field from BASE table, then apply IDs to the listing query
+          const desired = status === 'inactive' ? 'Inactive' : 'Active';
+          const { data: baseMatch, error: baseMatchErr } = await supabase
+            .from('patients')
+            .select('patient_id')
+            .eq('is_deleted', false)
+            .eq('status', desired);
+          if (baseMatchErr) throw baseMatchErr;
+          const ids = Array.from(new Set((baseMatch || []).map(r => r.patient_id).filter(v => v != null)));
+          if (ids.length === 0) {
+            return {
+              patients: [],
+              totalCount: 0,
+              page: parseInt(page),
+              limit: parseInt(limit),
+              totalPages: 0
+            };
+          }
+          query = query.in('patient_id', ids).eq('is_deleted', false);
+        } else if (status === 'fic' || status === 'completed' || status === 'up_to_date' || status === 'uptodate' || status === 'up-to-date') {
           // Treat 'completed' as FIC
           query = query.ilike('tags', '%FIC%');
         } else if (status === 'cic') {
           query = query.ilike('tags', '%CIC%');
         } else if (status === 'defaulter') {
           query = query.ilike('tags', '%Defaulter%');
-        } else if (status === 'active') {
-          // Active patients (not deleted). Fallback to is_deleted=false if present
-          query = query.eq('is_deleted', false);
-        } else if (status === 'inactive') {
-          // Inactive (soft-deleted) patients
-          query = query.eq('is_deleted', true);
         } else if (status === 'due') {
           // Patients who have at least one schedule with status 'Due' or 'Overdue'
           const { data: sch, error: schErr } = await supabase
@@ -103,6 +271,8 @@ const patientModel = {
 
       if (error) throw error;
 
+      // No extra base-table status lookup required; derive from is_deleted and tags
+
       // Compute age months/days for each patient
       const withAge = (data || []).map(p => {
         const birth = p.date_of_birth ? new Date(p.date_of_birth) : null;
@@ -122,7 +292,7 @@ const patientModel = {
           // Query immunization history for these patients and reduce to the most recent per patient
           const { data: imms, error: immErr } = await supabase
             .from('immunizationhistory_view')
-            .select('patient_id, vaccine_id, vaccine_antigen_name, antigen_name, vaccine_name, administered_date')
+            .select('patient_id, vaccine_id, vaccine_antigen_name, administered_date')
             .in('patient_id', ids)
             .order('administered_date', { ascending: false });
           if (immErr) throw immErr;
@@ -141,7 +311,7 @@ const patientModel = {
             const p = withAge[i];
             const last = latestByPatient.get(p.patient_id);
             if (last) {
-              const name = last.vaccine_antigen_name || last.antigen_name || last.vaccine_name || null;
+              const name = last.vaccine_antigen_name || null;
               withAge[i] = {
                 ...p,
                 last_vaccination_date: last.administered_date || null,
@@ -155,8 +325,32 @@ const patientModel = {
         console.warn('Failed to enrich patients with last vaccination (non-blocking):', enrichErr?.message || enrichErr);
       }
 
+      // Attach derived status fields from BASE patients table (authoritative for status/is_deleted)
+      let baseById = new Map();
+      try {
+        const ids = withAge.map(p => p.patient_id).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: baseRows, error: baseErr } = await supabase
+            .from('patients')
+            .select('patient_id, is_deleted, status, tags')
+            .in('patient_id', ids);
+          if (baseErr) throw baseErr;
+          baseById = new Map((baseRows || []).map(r => [r.patient_id, r]));
+        }
+      } catch (e) {
+        console.warn('Failed to fetch base patient status (non-blocking):', e?.message || e);
+      }
+
+      const enriched = withAge.map(p => {
+        const base = baseById.get(p.patient_id) || p;
+        const isArchived = !!base.is_deleted;
+        const rawStatus = (base.status || '').toString().toLowerCase();
+        const status = isArchived ? 'archived' : (rawStatus === 'inactive' ? 'inactive' : 'active');
+        return { ...p, status };
+      });
+
       return {
-        patients: withAge,
+        patients: enriched,
         totalCount: count || 0,
         page: parseInt(page),
         limit: parseInt(limit),
@@ -274,18 +468,62 @@ const patientModel = {
       const srcField = isMother ? 'mother_name' : 'father_name';
       const tgtField = isMother ? 'father_name' : 'mother_name';
       const tgtContactField = isMother ? 'father_contact_number' : 'mother_contact_number';
-      const { data, error } = await supabase
+      const tgtOccupationField = isMother ? 'father_occupation' : 'mother_occupation';
+      // First, try strict equality (fast, exact)
+      let { data, error } = await supabase
         .from('patients')
-        .select(`${tgtField}, ${tgtContactField}`)
+        .select(`${tgtField}, ${tgtContactField}, ${tgtOccupationField}`)
         .eq(srcField, name)
         .neq(tgtField, null)
         .not(tgtField, 'eq', '')
         .eq('is_deleted', false)
         .limit(2000);
       if (error) throw error;
+      // Fallback: if no rows matched due to case/spacing differences, try ilike and then post-filter by normalized equality
+      const normalize = (s) => (s || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
+      const normalizedTarget = normalize(name);
+      if (!data || data.length === 0) {
+        const likeTerm = name.toString().trim().replace(/%/g, '').replace(/\s+/g, ' ');
+        const { data: altData, error: altErr } = await supabase
+          .from('patients')
+          .select(`${srcField}, ${tgtField}, ${tgtContactField}, ${tgtOccupationField}`)
+          .ilike(srcField, `%${likeTerm}%`)
+          .neq(tgtField, null)
+          .not(tgtField, 'eq', '')
+          .eq('is_deleted', false)
+          .limit(2000);
+        if (altErr) throw altErr;
+        data = (altData || []).filter(r => normalize(r[srcField]) === normalizedTarget);
+        // Additional fallback: match on first and last tokens ignoring middle names/initials
+        if (!data || data.length === 0) {
+          const tokens = normalizedTarget.split(' ').filter(Boolean);
+          const firstToken = tokens[0] || '';
+          const lastToken = tokens[tokens.length - 1] || '';
+          if (lastToken) {
+            const { data: altData2, error: altErr2 } = await supabase
+              .from('patients')
+              .select(`${srcField}, ${tgtField}, ${tgtContactField}, ${tgtOccupationField}`)
+              .ilike(srcField, `%${lastToken}%`)
+              .neq(tgtField, null)
+              .not(tgtField, 'eq', '')
+              .eq('is_deleted', false)
+              .limit(2000);
+            if (altErr2) throw altErr2;
+            const tokenize = (s) => (s || '').toString().trim().replace(/\s+/g, ' ').toLowerCase().split(' ').filter(Boolean);
+            data = (altData2 || []).filter(r => {
+              const toks = tokenize(r[srcField]);
+              if (toks.length === 0) return false;
+              const candFirst = toks[0];
+              const candLast = toks[toks.length - 1];
+              return candLast === lastToken && (!firstToken || candFirst === firstToken);
+            });
+          }
+        }
+      }
       // Count frequency and capture most common contact per name
       const counts = new Map();
       const contactCounts = new Map(); // name -> Map(contact->count)
+      const occupationCounts = new Map(); // name -> Map(occupation->count)
       (data || []).forEach(row => {
         const v = row && row[tgtField] ? String(row[tgtField]).trim() : '';
         if (!v) return;
@@ -295,6 +533,12 @@ const patientModel = {
           if (!contactCounts.has(v)) contactCounts.set(v, new Map());
           const cmap = contactCounts.get(v);
           cmap.set(contact, (cmap.get(contact) || 0) + 1);
+        }
+        const occ = row && row[tgtOccupationField] ? String(row[tgtOccupationField]).trim() : '';
+        if (occ) {
+          if (!occupationCounts.has(v)) occupationCounts.set(v, new Map());
+          const omap = occupationCounts.get(v);
+          omap.set(occ, (omap.get(occ) || 0) + 1);
         }
       });
       if (counts.size === 0) return null;
@@ -306,6 +550,7 @@ const patientModel = {
         }
       }
       let bestContact = null;
+      let bestOccupation = null;
       if (best && contactCounts.has(best)) {
         const cmap = contactCounts.get(best);
         // pick most common contact; if tie choose lexicographically smallest
@@ -317,55 +562,100 @@ const patientModel = {
         }
         bestContact = bc;
       }
-      return { name: best, count: bestCount, contact_number: bestContact };
+      if (best && occupationCounts.has(best)) {
+        const omap = occupationCounts.get(best);
+        let bo = null; let boCount = -1;
+        for (const [occ, c] of omap.entries()) {
+          if (c > boCount || (c === boCount && (bo == null || occ.localeCompare(bo) < 0))) {
+            bo = occ; boCount = c;
+          }
+        }
+        bestOccupation = bo;
+      }
+      // Secondary lookup: If no occupation derived from patient records, try resolving from guardians/users by exact normalized name match
+      if (best && !bestOccupation) {
+        try {
+          const parts = best.trim().split(/\s+/);
+          const first = parts[0] || '';
+          const last = parts[parts.length - 1] || '';
+          // Query candidates by surname to keep result small, then filter in code
+          const { data: users, error: uErr } = await supabase
+            .from('users')
+            .select('surname, firstname, middlename, role, guardians:guardians!guardians_user_id_fkey(occupation)')
+            .eq('role', 'Guardian')
+            .ilike('surname', `%${last}%`)
+            .limit(50);
+          if (!uErr && Array.isArray(users)) {
+            const targetNorm = normalize(best);
+            for (const u of users) {
+              const full = [u.firstname, u.middlename, u.surname].filter(Boolean).join(' ');
+              if (normalize(full) === targetNorm) {
+                const g = Array.isArray(u.guardians) ? u.guardians.find(x => x) : u.guardians;
+                if (g && g.occupation) { bestOccupation = g.occupation; break; }
+              }
+            }
+          }
+        } catch (_) { /* non-blocking */ }
+      }
+      return { name: best, count: bestCount, contact_number: bestContact, occupation: bestOccupation };
     } catch (error) {
       console.error('Error getting co-parent for name:', error);
       throw error;
     }
   },
 
-  // Suggestions of parents with contacts, deduped, from patients table only (no guardians)
+  // Suggestions of parents with contacts and occupations, deduped, from patients table only (no guardians)
   listParentsWithContacts: async (type = 'mother', client) => {
     try {
       const supabase = withClient(client);
       const isMother = (type || 'mother').toString().toLowerCase() === 'mother';
       const nameField = isMother ? 'mother_name' : 'father_name';
       const contactField = isMother ? 'mother_contact_number' : 'father_contact_number';
+      const occupationField = isMother ? 'mother_occupation' : 'father_occupation';
       const { data, error } = await supabase
         .from('patients')
-        .select(`${nameField}, ${contactField}`)
+        .select(`${nameField}, ${contactField}, ${occupationField}`)
         .neq(nameField, null)
         .not(nameField, 'eq', '')
         .eq('is_deleted', false)
         .limit(5000);
       if (error) throw error;
-      // Build a map of name -> contact frequency; prefer most common contact
+      // Build a map of name -> contact frequency and occupation frequency; prefer most common values
       const byName = new Map();
       (data || []).forEach(row => {
         const name = row && row[nameField] ? String(row[nameField]).trim() : '';
         if (!name) return;
         const contact = row && row[contactField] ? String(row[contactField]).trim() : '';
-        if (!byName.has(name)) byName.set(name, new Map());
+        const occupation = row && row[occupationField] ? String(row[occupationField]).trim() : '';
+        if (!byName.has(name)) byName.set(name, { contacts: new Map(), occupations: new Map() });
+        const entry = byName.get(name);
         if (contact) {
-          const cmap = byName.get(name);
-          cmap.set(contact, (cmap.get(contact) || 0) + 1);
+          entry.contacts.set(contact, (entry.contacts.get(contact) || 0) + 1);
         } else {
-          // Record empty contact presence to ensure the name is included even if no contact recorded
-          const cmap = byName.get(name);
-          cmap.set('', (cmap.get('') || 0) + 1);
+          entry.contacts.set('', (entry.contacts.get('') || 0) + 1);
+        }
+        if (occupation) {
+          entry.occupations.set(occupation, (entry.occupations.get(occupation) || 0) + 1);
         }
       });
       // Create array, picking most common contact
       const list = [];
-      for (const [name, cmap] of byName.entries()) {
+      for (const [name, entry] of byName.entries()) {
         let bestContact = '';
-        let bestCount = -1;
-        for (const [contact, c] of cmap.entries()) {
-          if (c > bestCount || (c === bestCount && contact.localeCompare(bestContact) < 0)) {
-            bestContact = contact; bestCount = c;
+        let bestContactCount = -1;
+        for (const [contact, c] of entry.contacts.entries()) {
+          if (c > bestContactCount || (c === bestContactCount && contact.localeCompare(bestContact) < 0)) {
+            bestContact = contact; bestContactCount = c;
           }
         }
-        list.push({ full_name: name, contact_number: bestContact || null });
+        let bestOccupation = null;
+        let bestOccCount = -1;
+        for (const [occ, c] of entry.occupations.entries()) {
+          if (c > bestOccCount || (c === bestOccCount && (bestOccupation == null || occ.localeCompare(bestOccupation) < 0))) {
+            bestOccupation = occ; bestOccCount = c;
+          }
+        }
+        list.push({ full_name: name, contact_number: bestContact || null, occupation: bestOccupation || null });
       }
       // Sort by name
       list.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''));
@@ -388,6 +678,18 @@ const patientModel = {
 
       if (error && error.code !== 'PGRST116') throw error;
       if (!data) return null;
+
+      // Derive status from BASE patients row to ensure accuracy regardless of view projection
+      try {
+        const { data: baseRow } = await supabase
+          .from('patients')
+          .select('is_deleted, status, tags')
+          .eq('patient_id', id)
+          .maybeSingle();
+        const isArchived = !!(baseRow ? baseRow.is_deleted : data.is_deleted);
+        const rawStatus = ((baseRow ? baseRow.status : data.status) || '').toString().toLowerCase();
+        data.status = isArchived ? 'archived' : (rawStatus === 'inactive' ? 'inactive' : 'active');
+      } catch (_) {}
 
       // Fetch guardian phone number and override patient contact_number
       if (data.guardian_id) {
@@ -497,6 +799,7 @@ const patientModel = {
         father_contact_number: patientData.father_contact_number,
         family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
         tags: null, // Force null for tags due to database constraint
+        status: 'Active', // Default to Active for new patients
         created_by: patientData.created_by || null,
         updated_by: patientData.created_by || patientData.updated_by || null
       };
@@ -568,9 +871,86 @@ const patientModel = {
       // Ensure updated_by is present if provided
       if (patientData.updated_by) updateData.updated_by = patientData.updated_by;
 
+      // Handle status updates and cascades (status vs archived)
+      const incomingStatusToken = updateData.status;
+      if (typeof incomingStatusToken !== 'undefined') {
+        const st = String(incomingStatusToken).toLowerCase();
+        if (st === 'archived' || st === 'deleted') {
+          // Soft delete the patient and cascade
+          const del = await patientModel.deletePatient(id, updateData.updated_by || null, supabase);
+          return del && del.patient ? del.patient : del;
+        } else if (st === 'inactive' || st === 'active') {
+          // Update patients.status (Active/Inactive) without archiving
+          const newStatus = (st === 'inactive') ? 'Inactive' : 'Active';
+          const { error: statusErr } = await supabase
+            .from('patients')
+            .update({ status: newStatus, is_deleted: false, updated_at: new Date().toISOString(), updated_by: updateData.updated_by || null })
+            .eq('patient_id', id);
+          if (statusErr) {
+            // Surface the error so the controller can return a 500 and the UI shows a failure toast
+            throw statusErr;
+          }
+          if (newStatus === 'Inactive') {
+            // Cascade: soft-delete pending schedules and cancel future SMS
+            try {
+              await supabase
+                .from('patientschedule')
+                .update({ is_deleted: true, updated_at: new Date().toISOString() })
+                .eq('patient_id', id)
+                .eq('is_deleted', false);
+            } catch (_) {}
+            try {
+              const { data: updatedSms } = await supabase
+                .from('sms_logs')
+                .update({ is_deleted: true, status: 'cancelled', error_message: 'Cancelled: patient inactive', updated_at: new Date().toISOString() })
+                .eq('patient_id', id)
+                .eq('status', 'pending')
+                .eq('type', 'scheduled')
+                .select('id');
+              console.log('[updatePatient] Inactive cascade cancelled SMS count:', Array.isArray(updatedSms) ? updatedSms.length : 0);
+            } catch (_) {}
+          } else {
+            // newStatus === 'Active' → restore schedules and rebuild SMS
+            try {
+              await supabase
+                .from('patientschedule')
+                .update({ is_deleted: false, updated_at: new Date().toISOString() })
+                .eq('patient_id', id);
+            } catch (_) {}
+            // Defer heavy message regeneration to avoid timeouts
+            try {
+              const runAsync = async () => { try { await updateMessagesForPatient(id, supabase); } catch (_) {} };
+              if (typeof setImmediate === 'function') setImmediate(runAsync); else setTimeout(runAsync, 0);
+            } catch (_) {}
+          }
+          // Return the updated patient row immediately for status-only updates
+          const { data: updatedRow } = await supabase
+            .from('patients')
+            .select('*')
+            .eq('patient_id', id)
+            .single();
+          return updatedRow;
+        }
+      }
+
+      // Remove null/undefined keys to avoid overwriting required fields with nulls on partial updates
+      const sanitized = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
+      );
+
+      // If nothing to update (e.g., only nulls were provided), return current row without writing
+      if (Object.keys(sanitized).length === 0) {
+        const { data: current } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('patient_id', id)
+          .single();
+        return current;
+      }
+
       const { data, error } = await supabase
         .from('patients')
-        .update(updateData)
+        .update(sanitized)
         .eq('patient_id', id)
         .select()
         .single();
@@ -613,6 +993,14 @@ const patientModel = {
         .single();
 
       if (error) throw error;
+      // Cascade: soft-delete schedules
+      try {
+        await supabase
+          .from('patientschedule')
+          .update({ is_deleted: true, updated_at: new Date().toISOString() })
+          .eq('patient_id', id)
+          .eq('is_deleted', false);
+      } catch (_) {}
       // Mark related pending scheduled SMS logs as soft-deleted/cancelled synchronously
       let cancelledSmsCount = 0;
       try {
@@ -642,6 +1030,84 @@ const patientModel = {
       return { patient: data, cancelledSmsCount };
     } catch (error) {
       console.error('Error deleting patient:', error);
+      throw error;
+    }
+  },
+
+  // Restore a soft-deleted patient and cascade restore
+  restorePatient: async (id, actorId = null, client) => {
+    try {
+      const supabase = withClient(client);
+      // Validate guardian is active (not deleted) before restoring patient
+      let guardianId = null;
+      try {
+        const { data: prow, error: pErr } = await supabase
+          .from('patients')
+          .select('guardian_id')
+          .eq('patient_id', id)
+          .maybeSingle();
+        if (pErr) throw pErr;
+        guardianId = prow?.guardian_id || null;
+      } catch (preErr) {
+        console.warn('[restorePatient] Failed to fetch patient guardian_id (non-blocking):', preErr?.message || preErr);
+      }
+      if (guardianId) {
+        const { data: grow, error: gErr } = await supabase
+          .from('guardians')
+          .select('is_deleted')
+          .eq('guardian_id', guardianId)
+          .maybeSingle();
+        if (gErr) {
+          console.warn('[restorePatient] Guardian lookup error (non-blocking):', gErr?.message || gErr);
+        } else if (grow && grow.is_deleted) {
+          const err = new Error('Cannot restore patient: the guardian is archived. Restore the guardian first.');
+          err.statusCode = 400;
+          err.code = 'GUARDIAN_DELETED';
+          throw err;
+        }
+      }
+      const { data, error } = await supabase
+        .from('patients')
+        .update({ is_deleted: false, deleted_at: null, deleted_by: null, status: 'Active', updated_at: new Date().toISOString(), updated_by: actorId || null })
+        .eq('patient_id', id)
+        .select('patient_id')
+        .single();
+      if (error) throw error;
+      try {
+        await supabase
+          .from('patientschedule')
+          .update({ is_deleted: false, updated_at: new Date().toISOString() })
+          .eq('patient_id', id);
+      } catch (_) {}
+      // Restore SMS logs: mark all as not deleted, and re-pend future scheduled messages
+      try {
+        const nowIso = new Date().toISOString();
+        // First, mark sms_logs as not deleted
+        await supabase
+          .from('sms_logs')
+          .update({ is_deleted: false, updated_at: new Date().toISOString() })
+          .eq('patient_id', id)
+          .eq('is_deleted', true);
+
+        // Restore scheduled future messages to pending so scheduler can pick them again
+        await supabase
+          .from('sms_logs')
+          .update({ status: 'pending', updated_at: new Date().toISOString(), error_message: null })
+          .eq('patient_id', id)
+          .eq('is_deleted', false)
+          .eq('type', 'scheduled')
+          .gte('scheduled_at', nowIso);
+      } catch (restoreErr) {
+        console.warn('[restorePatient] Failed to restore sms_logs (non-blocking):', restoreErr?.message || restoreErr);
+      }
+      // Defer potentially heavy message regeneration to avoid request timeout
+      try {
+        const runAsync = async () => { try { await updateMessagesForPatient(id, supabase); } catch (_) {} };
+        if (typeof setImmediate === 'function') setImmediate(runAsync); else setTimeout(runAsync, 0);
+      } catch (_) {}
+      return data;
+    } catch (error) {
+      console.error('Error restoring patient:', error);
       throw error;
     }
   },

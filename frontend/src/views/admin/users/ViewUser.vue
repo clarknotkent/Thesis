@@ -103,14 +103,14 @@
                   <i class="bi bi-key me-2"></i>Reset Password
                 </button>
                 <button 
-                  v-if="userData?.status === 'active'"
+                  v-if="userData?.status !== 'archived'"
                   class="btn btn-danger"
                   @click="openDeleteModal"
                 >
                   <i class="bi bi-trash me-2"></i>Delete User
                 </button>
                 <button
-                  v-else
+                  v-else-if="userData?.status === 'archived'"
                   class="btn btn-success"
                   @click="openRestoreModal"
                 >
@@ -233,16 +233,16 @@ const fetchUserData = async () => {
     const user = response.user || response
     
     // Map backend fields to display structure
-    userData.value = {
+  userData.value = {
       id: user.id || user.user_id,
       firstName: user.firstname || user.firstName || '',
       middleName: user.middlename || user.middleName || '',
       lastName: user.surname || user.lastName || '',
       email: user.email || '',
       role: user.role || '',
-      // prefer new hs_type field, but fall back to older names for compatibility
+    // prefer new hs_type field, but fall back to older names for compatibility
       hsType: user.hs_type || user.hsType || user.hw_type || user.hwType || '',
-  status: user.is_deleted ? 'inactive' : (user.status || 'active'),
+    status: user.is_deleted ? 'archived' : (user.status || 'active'),
       licenseNumber: user.professional_license_no || user.license_number || user.licenseNumber || '',
       employeeId: user.employee_id || user.employeeId || '',
       phoneNumber: user.phone_number || user.phoneNumber || '',
@@ -283,7 +283,11 @@ const roleDisplayName = computed(() => {
 
 const statusBadgeClass = computed(() => {
   if (!userData.value) return 'bg-secondary'
-  return userData.value.status === 'active' ? 'bg-success' : 'bg-secondary'
+  const s = String(userData.value.status || '').toLowerCase()
+  if (s === 'active') return 'bg-success'
+  if (s === 'inactive') return 'bg-secondary'
+  if (s === 'archived') return 'bg-dark'
+  return 'bg-secondary'
 })
 
 const roleBadgeClass = computed(() => {
