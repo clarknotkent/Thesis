@@ -1,17 +1,9 @@
-import api from './api';
+import offlineAPI from './offlineAPI';
 
-export const getFaqs = () => {
-  return api.get('/faqs');
-};
+export const getFaqs = () => offlineAPI.get('/faqs');
 
-export const createFaq = (faqData) => {
-  return api.post('/faqs', faqData);
-};
+export const createFaq = (faqData) => offlineAPI.post('/faqs', faqData);
 
-export const updateFaq = (id, faqData) => {
-    return api.put(`/faqs/${id}`, faqData);
-};
+export const updateFaq = (id, faqData) => offlineAPI.put(`/faqs/${id}`, faqData);
 
-export const deleteFaq = (id) => {
-    return api.delete(`/faqs/${id}`);
-};
+export const deleteFaq = (id) => offlineAPI.delete(`/faqs/${id}`);

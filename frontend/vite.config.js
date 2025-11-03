@@ -66,7 +66,34 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
+        navigateFallback: '/',
+        navigateFallbackAllowlist: [
+          /^\/$/,
+          /^\/parent\//,
+          /^\/admin\//,
+          /^\/bhs\//
+        ],
         runtimeCaching: [
+          {
+            // Cache route modules served by Vite dev server (enables better offline during dev)
+            // Note: In production, chunks are precached automatically.
+            urlPattern: /^(?:\/src\/).+\.(?:js|ts|vue|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dev-src-modules',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            // Cache Vite HMR client and helper modules best-effort (dev only)
+            urlPattern: /^\/@vite\/.*/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'vite-internals',
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
           {
             // Cache API requests to backend while allowing fresh network when available
             urlPattern: /^\/api\/.*$/,

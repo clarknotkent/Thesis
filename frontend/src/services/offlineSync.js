@@ -6,6 +6,7 @@
 
 import indexedDBService, { STORES } from './indexedDB';
 import api from './api';
+import { getRole as getAuthRole } from './auth';
 
 class OfflineSyncService {
   constructor() {
@@ -16,6 +17,53 @@ class OfflineSyncService {
     
     // Setup online/offline event listeners
     this.initNetworkListeners();
+  }
+
+  // --- helpers to normalize and unwrap payloads (minimal, local copy) ---
+  unwrapPayload(data) {
+    if (data == null) return data;
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') {
+      if (Array.isArray(data.data)) return data.data;
+      if (data.data && typeof data.data === 'object') return data.data;
+      if (Array.isArray(data.items)) return data.items;
+      if (data.rows && Array.isArray(data.rows)) return data.rows;
+    }
+    return data;
+  }
+
+  getIdField(storeName) {
+    const idFields = {
+      [STORES.patients]: 'patient_id',
+      [STORES.immunizations]: 'immunization_id',
+      [STORES.schedules]: 'schedule_id',
+      [STORES.visits]: 'visit_id',
+      [STORES.vaccines]: 'vaccine_id',
+      [STORES.guardians]: 'guardian_id',
+      [STORES.users]: 'user_id',
+      [STORES.messages]: 'message_id',
+      [STORES.notifications]: 'notification_id',
+      [STORES.conversations]: 'conversation_id',
+    };
+    return idFields[storeName] || null;
+  }
+
+  normalizeRecordForStore(storeName, record) {
+    if (!record || typeof record !== 'object') return record;
+    const idField = this.getIdField(storeName);
+    if (!idField) return record;
+    if (record[idField]) return record;
+    const aliases = ['id', 'uuid', 'UID', 'guid'];
+    for (const k of aliases) {
+      if (record[k]) return { ...record, [idField]: record[k] };
+    }
+    const camelFromSnake = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const camel = camelFromSnake(idField);
+    if (record[camel]) return { ...record, [idField]: record[camel] };
+    // Fallback: synthesize stable key
+    const str = (() => { try { return JSON.stringify(record) } catch { return String(Date.now()) } })();
+    let h = 0; for (let i=0;i<str.length;i++){ h=((h<<5)-h)+str.charCodeAt(i); h|=0; }
+    return { ...record, [idField]: `tmp_${Math.abs(h).toString(36)}` };
   }
 
   /**
@@ -95,35 +143,51 @@ class OfflineSyncService {
       // First, process pending operations (offline changes)
       await this.processPendingOperations();
 
-      // Then fetch fresh data from API
-      const syncOperations = [
-        this.syncPatients(),
-        this.syncVaccines(),
-        this.syncImmunizations(),
-        this.syncUsers(),
-        this.syncGuardians(),
-        // this.syncSchedules(), // TODO: Endpoint doesn't exist yet
-        this.syncVisits(),
-        // this.syncInventory(), // TODO: Endpoint doesn't exist yet
-        // this.syncMessages(), // TODO: Endpoint doesn't exist yet
-        this.syncNotifications(),
-        this.syncHealthStaff(), // Health worker accounts
-        this.syncConversations(),
-        this.syncDeworming(),
-        this.syncVitamina(),
-        // this.syncVitals(), // TODO: Endpoint doesn't exist yet
-        this.syncFAQs(),
-        // this.syncReports(), // TODO: Endpoint doesn't exist yet
-        this.syncReceivingReports(),
-        this.syncActivityLogs(),
-        this.syncSMSLogs(),
-        this.syncVaccineSchedules(),
-        this.syncVaccineTransactions(),
-        this.syncSMSTemplates(),
-        // this.syncSettings(), // TODO: Endpoint doesn't exist yet
+      // Then fetch fresh data from API conditionally based on role
+  const roleRaw = (getAuthRole?.() || localStorage.getItem('userRole') || '').toLowerCase();
+  const isAdmin = roleRaw === 'admin' || roleRaw === 'administrator';
+  const staffRoleSet = new Set(['healthstaff','health_worker','healthworker','bhs','nurse','midwife','staff']);
+  const isStaff = isAdmin || staffRoleSet.has(roleRaw);
+
+      // Build operations lazily so staff-only calls are not executed for non-staff users
+      const baseOps = [
+        () => this.syncVaccines(),
+        () => this.syncNotifications(),
+        () => this.syncConversations(),
+        () => this.syncFAQs(),
       ];
 
-      const results = await Promise.allSettled(syncOperations);
+      const staffOps = [
+        () => this.syncPatients(),
+        () => this.syncImmunizations(),
+        () => this.syncUsers(),
+        () => this.syncGuardians(),
+        () => this.syncVisits(),
+        () => this.syncDeworming(),
+        () => this.syncVitamina(),
+      ];
+
+      const parentOps = [
+        () => this.syncParentChildren?.(),
+      ];
+
+      // Admin-only datasets (restrict these harder to avoid 403s on health staff)
+      const adminOnlyOps = [
+        // () => this.syncInventory(), // TODO
+        // () => this.syncReports(), // TODO
+        () => this.syncReceivingReports(),
+        () => this.syncActivityLogs(),
+        () => this.syncSMSLogs(),
+        () => this.syncVaccineSchedules(),
+        () => this.syncVaccineTransactions(),
+        () => this.syncSMSTemplates(),
+        () => this.syncHealthStaff(),
+      ];
+
+      const opsToRun = isAdmin
+        ? [...baseOps, ...staffOps, ...adminOnlyOps]
+        : (isStaff ? [...baseOps, ...staffOps] : [...baseOps, ...parentOps]);
+      const results = await Promise.allSettled(opsToRun.map(fn => fn()));
       
       // Log results
       results.forEach((result, index) => {
@@ -350,6 +414,25 @@ class OfflineSyncService {
   }
 
   /**
+   * Sync only the current guardian's children (parent role)
+   */
+  async syncParentChildren() {
+    try {
+      const response = await api.get('/parent/children');
+      const payload = this.unwrapPayload(response.data);
+      const list = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+      if (list.length > 0) {
+        const normalized = list.map(r => this.normalizeRecordForStore(STORES.patients, r));
+        await indexedDBService.putBulk(STORES.patients, normalized);
+        console.log(`📥 Synced ${normalized.length} children for current guardian`);
+      }
+    } catch (error) {
+      console.error('Failed to sync parent children:', error);
+      // For parents, this is the preferred dataset; don't rethrow to avoid aborting entire sync
+    }
+  }
+
+  /**
    * Sync vaccines data
    */
   async syncVaccines() {
@@ -499,11 +582,12 @@ class OfflineSyncService {
   async syncNotifications() {
     try {
       const response = await api.get('/notifications');
-      const notifications = response.data;
-      
-      if (Array.isArray(notifications) && notifications.length > 0) {
-        await indexedDBService.putBulk(STORES.notifications, notifications);
-        console.log(`📥 Synced ${notifications.length} notifications`);
+      const payload = this.unwrapPayload(response.data);
+      const list = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+      if (list.length > 0) {
+        const normalized = list.map(r => this.normalizeRecordForStore(STORES.notifications, r));
+        await indexedDBService.putBulk(STORES.notifications, normalized);
+        console.log(`📥 Synced ${normalized.length} notifications`);
       }
     } catch (error) {
       console.error('Failed to sync notifications:', error);
@@ -525,6 +609,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${healthStaff.length} health staff`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping health staff (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync health staff:', error);
       throw error;
     }
@@ -536,11 +624,12 @@ class OfflineSyncService {
   async syncConversations() {
     try {
       const response = await api.get('/conversations');
-      const conversations = response.data;
-      
-      if (Array.isArray(conversations) && conversations.length > 0) {
-        await indexedDBService.putBulk(STORES.conversations, conversations);
-        console.log(`📥 Synced ${conversations.length} conversations`);
+      const payload = this.unwrapPayload(response.data);
+      const list = Array.isArray(payload) ? payload : (payload ? [payload] : []);
+      if (list.length > 0) {
+        const normalized = list.map(r => this.normalizeRecordForStore(STORES.conversations, r));
+        await indexedDBService.putBulk(STORES.conversations, normalized);
+        console.log(`📥 Synced ${normalized.length} conversations`);
       }
     } catch (error) {
       console.error('Failed to sync conversations:', error);
@@ -651,6 +740,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${receivingReports.length} receiving reports`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping receiving reports (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync receiving reports:', error);
       throw error;
     }
@@ -669,6 +762,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${activityLogs.length} activity logs`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping activity logs (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync activity logs:', error);
       throw error;
     }
@@ -687,6 +784,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${smsLogs.length} SMS logs`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping SMS logs (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync SMS logs:', error);
       throw error;
     }
@@ -705,6 +806,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${schedules.length} vaccine schedules`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping vaccine schedules (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync vaccine schedules:', error);
       throw error;
     }
@@ -723,6 +828,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${transactions.length} vaccine transactions`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping vaccine transactions (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync vaccine transactions:', error);
       throw error;
     }
@@ -741,6 +850,10 @@ class OfflineSyncService {
         console.log(`📥 Synced ${templates.length} SMS templates`);
       }
     } catch (error) {
+      if (error?.response?.status === 403) {
+        console.info('🔒 Skipping SMS templates (forbidden for this role)');
+        return;
+      }
       console.error('Failed to sync SMS templates:', error);
       throw error;
     }
