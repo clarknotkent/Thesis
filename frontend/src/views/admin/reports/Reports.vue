@@ -167,7 +167,7 @@
 import { ref, computed } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
 import { nowPH, formatPHDate } from '@/utils/dateUtils'
 

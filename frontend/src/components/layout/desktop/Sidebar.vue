@@ -41,12 +41,61 @@
           </li>
         </template>
       </ul>
+
+      <!-- Offline Sync Section (Admin Only) -->
+      <div v-if="userRole === 'admin'" class="offline-section">
+        <div class="offline-header" @click="toggleOfflineDetails">
+          <div class="d-flex align-items-center">
+            <i :class="statusIcon" :style="{ color: statusColor }"></i>
+            <span class="ms-2">{{ connectionStatus }}</span>
+          </div>
+        </div>
+        
+        <div v-if="showOfflineDetails" class="offline-details">
+          <div class="detail-item">
+            <small class="text-muted">Last Sync</small>
+            <small class="fw-bold">{{ formattedLastSyncTime }}</small>
+          </div>
+          <div class="detail-item" v-if="pendingSyncCount > 0">
+            <small class="text-muted">Pending</small>
+            <small class="fw-bold text-warning">{{ pendingSyncCount }} changes</small>
+          </div>
+          
+          <!-- Storage Stats -->
+          <div v-if="storageStats" class="storage-stats mt-2">
+            <small class="text-muted d-block mb-2">Cached Records:</small>
+            <div class="stats-grid">
+              <div v-for="(count, store) in storageStats" :key="store" class="stat-item">
+                <small class="text-muted">{{ formatStoreName(store) }}</small>
+                <small class="fw-bold">{{ count }}</small>
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            class="btn btn-sm btn-primary w-100 mt-2" 
+            @click="handleSync"
+            :disabled="isSyncing || !isOnline"
+          >
+            <i class="bi bi-arrow-repeat me-1" :class="{ 'spin': isSyncing }"></i>
+            {{ isSyncing ? 'Syncing...' : 'Sync Now' }}
+          </button>
+          <button 
+            class="btn btn-sm btn-outline-danger w-100 mt-2" 
+            @click="handleClearData"
+          >
+            <i class="bi bi-trash me-1"></i>
+            Clear Cache
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useOffline } from '@/composables/useOffline'
 
 const props = defineProps({
   isOpen: {
@@ -57,6 +106,76 @@ const props = defineProps({
     type: String,
     default: 'admin'
   }
+})
+
+// Offline sync composable (only for admin)
+const {
+  isOnline,
+  isSyncing,
+  connectionStatus,
+  formattedLastSyncTime,
+  pendingSyncCount,
+  connectionStatusColor,
+  syncData,
+  clearOfflineData,
+  getStorageStats
+} = props.userRole === 'admin' ? useOffline() : {}
+
+const showOfflineDetails = ref(false)
+const storageStats = ref(null)
+
+const toggleOfflineDetails = async () => {
+  showOfflineDetails.value = !showOfflineDetails.value
+  
+  // Load storage stats when opening
+  if (showOfflineDetails.value && getStorageStats) {
+    storageStats.value = await getStorageStats()
+  }
+}
+
+const handleSync = async () => {
+  await syncData()
+  // Refresh stats after sync
+  if (showOfflineDetails.value && getStorageStats) {
+    storageStats.value = await getStorageStats()
+  }
+}
+
+const handleClearData = async () => {
+  if (confirm('Clear offline cache? This will only remove locally stored data. Your data in the database is safe and will re-sync automatically.')) {
+    await clearOfflineData()
+    storageStats.value = null
+    showOfflineDetails.value = false
+  }
+}
+
+const formatStoreName = (store) => {
+  const names = {
+    patients: 'Patients',
+    immunizations: 'Immunizations',
+    vaccines: 'Vaccines',
+    users: 'Users',
+    guardians: 'Guardians',
+    schedules: 'Schedules',
+    visits: 'Visits',
+    inventory: 'Inventory',
+    messages: 'Messages',
+    notifications: 'Notifications'
+  }
+  return names[store] || store.charAt(0).toUpperCase() + store.slice(1)
+}
+
+const statusIcon = computed(() => {
+  if (!isOnline || !isOnline.value) return 'bi bi-wifi-off'
+  if (isSyncing && isSyncing.value) return 'bi bi-arrow-repeat spin'
+  return 'bi bi-wifi'
+})
+
+const statusColor = computed(() => {
+  if (!isOnline || !isOnline.value) return '#dc3545'
+  if (isSyncing && isSyncing.value) return '#ffc107'
+  if (pendingSyncCount && pendingSyncCount.value > 0) return '#0dcaf0'
+  return '#198754'
 })
 
 const menuItems = computed(() => {
@@ -106,6 +225,8 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
   padding: 5px 0;
   overflow-y: auto;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar.show {
@@ -118,6 +239,13 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
 
 .sidebar-content {
   padding: 0 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav {
+  flex: 1;
 }
 
 .nav-header {
@@ -155,6 +283,99 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
 .nav-link i {
   font-size: 1.1rem;
   width: 20px;
+}
+
+/* Offline Section */
+.offline-section {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+  background: #fff;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.offline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 0.5rem;
+}
+
+.offline-header:hover {
+  background-color: #f8f9fa;
+}
+
+.offline-header i {
+  font-size: 1.1rem;
+}
+
+.offline-header span {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.offline-details {
+  padding: 0 0.75rem 0.75rem;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.detail-item:last-of-type {
+  border-bottom: none;
+}
+
+.storage-stats {
+  border-top: 1px solid #f1f3f5;
+  padding-top: 0.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  background: #f8f9fa;
+  border-radius: 0.25rem;
+}
+
+.spin {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Desktop: Sidebar toggleable, content adjusted */

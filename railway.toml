@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "bash build.sh"
+
+[deploy]
+startCommand = "npx serve -s frontend/dist -l $PORT"

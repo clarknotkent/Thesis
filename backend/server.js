@@ -5,6 +5,8 @@ const { logRequest, handleErrors } = require('./middlewares/authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Allow Express to respect X-Forwarded-* headers when behind a proxy (Railway, Render, Nginx)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors());

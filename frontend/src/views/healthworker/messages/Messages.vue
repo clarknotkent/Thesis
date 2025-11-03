@@ -1,13 +1,6 @@
 <template>
   <HealthWorkerLayout>
     <div class="messages-container">
-      <!-- Back Button -->
-      <div class="back-button-container">
-        <button @click="goBack" class="back-button">
-          <i class="bi bi-arrow-left"></i>
-          <span>Back</span>
-        </button>
-      </div>
 
       <!-- Loading State -->
       <div v-if="loading && !selectedConversation" class="loading-state">
@@ -73,10 +66,10 @@ import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vu
 import ConversationsListSection from '@/features/health-worker/messages/components/ConversationsListSection.vue'
 import ChatViewSection from '@/features/health-worker/messages/components/ChatViewSection.vue'
 import NewConversationModal from '@/features/health-worker/messages/components/NewConversationModal.vue'
-import { conversationAPI, messageAPI } from '@/services/api'
+import { conversationAPI, messageAPI } from '@/services/offlineAPI'
+import api from '@/services/offlineAPI'
 import { getUserId } from '@/services/auth'
 import { useToast } from '@/composables/useToast'
-import axios from 'axios'
 
 const router = useRouter()
 const { addToast } = useToast()
@@ -337,17 +330,14 @@ const scrollToBottom = () => {
 
 const fetchAvailableUsers = async () => {
   try {
-    const response = await axios.get('/api/users', {
+    // Use the shared api instance so baseURL and interceptors apply in production
+    const response = await api.get('/users', {
       params: {
         limit: 100,
         page: 1,
         status: 'active'
-      },
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('authToken')}`
       }
     })
-    
     const users = response.data?.users || []
     
     if (users.length === 0) {

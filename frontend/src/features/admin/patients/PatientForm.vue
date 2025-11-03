@@ -353,6 +353,8 @@
           Save Record
         </button>
     </div>
+    <!-- Inline offline queued hint under actions -->
+    <QueuedHint class="mt-2" />
   </form>
 </template>
 
@@ -362,7 +364,8 @@ import GuardianSelector from './GuardianSelector.vue'
 import ParentNameSelector from './ParentNameSelector.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
+import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
 
 const props = defineProps({
   initialData: {
@@ -456,20 +459,31 @@ const formatGuardianNameFirstMiddleLast = (guardian) => {
   return guardian?.full_name || ''
 }
 
-const applyParentAutofill = (guardian, relationship) => {
+const applyParentAutofill = (guardian, relationship, force = false) => {
   if (!guardian || !relationship) return
   const rel = String(relationship).toLowerCase()
-  if (rel === 'mother') {
-    // Only set or overwrite if empty to allow manual edits later
-    if (!formData.value.mother_name) formData.value.mother_name = formatGuardianNameFirstMiddleLast(guardian)
-    // Do not override if user already typed a different contact unless empty
-    if (!formData.value.mother_contact_number) formData.value.mother_contact_number = guardian.contact_number || ''
-  } else if (rel === 'father') {
-    if (!formData.value.father_name) formData.value.father_name = formatGuardianNameFirstMiddleLast(guardian)
-    if (!formData.value.father_contact_number) formData.value.father_contact_number = guardian.contact_number || ''
-  }
-  // Also try to auto-fill the opposite parent based on patients data (co-parent inference)
-  fetchCoParentAndFill(rel)
+    if (rel === 'mother') {
+      // Always reflect guardian when forced; otherwise only when empty
+      if (force || !formData.value.mother_name) formData.value.mother_name = formatGuardianNameFirstMiddleLast(guardian)
+      if (force || !formData.value.mother_contact_number) formData.value.mother_contact_number = guardian.contact_number || ''
+      if (force || !formData.value.mother_occupation) formData.value.mother_occupation = guardian.occupation || ''
+    } else if (rel === 'father') {
+      if (force || !formData.value.father_name) formData.value.father_name = formatGuardianNameFirstMiddleLast(guardian)
+      if (force || !formData.value.father_contact_number) formData.value.father_contact_number = guardian.contact_number || ''
+      if (force || !formData.value.father_occupation) formData.value.father_occupation = guardian.occupation || ''
+    }
+    // Also try to auto-fill the opposite parent based on patients data (co-parent inference)
+    fetchCoParentAndFill(rel)
+}
+
+const resetParentFields = () => {
+  formData.value.mother_name = ''
+  formData.value.mother_contact_number = ''
+  formData.value.mother_occupation = ''
+  formData.value.father_name = ''
+  formData.value.father_contact_number = ''
+  formData.value.father_occupation = ''
+
 }
 
 const onGuardianSelected = (guardian) => {
@@ -477,8 +491,13 @@ const onGuardianSelected = (guardian) => {
   if (guardian && guardian.family_number) {
     formData.value.family_number = guardian.family_number
   }
-  // Apply autofill if the current relationship is Mother or Father
-  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian)
+    // Reset parent fields and apply autofill if the current relationship is Mother or Father
+    resetParentFields()
+    applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
+  // If occupation is not present in the lightweight guardian payload, fetch details
+  if (guardian && guardian.guardian_id && (guardian.occupation == null || guardian.occupation === undefined)) {
+    loadGuardianDetails(guardian.guardian_id)
+  }
 }
 
 // When picking from suggestions, also fill contact if empty
@@ -486,12 +505,18 @@ const onMotherSelected = (opt) => {
   if (!formData.value.mother_contact_number && opt?.contact_number) {
     formData.value.mother_contact_number = opt.contact_number
   }
+  if (!formData.value.mother_occupation && opt?.occupation) {
+    formData.value.mother_occupation = opt.occupation
+  }
   // Try to infer father from patients data when mother is chosen
   fetchCoParentAndFill('mother')
 }
 const onFatherSelected = (opt) => {
   if (!formData.value.father_contact_number && opt?.contact_number) {
     formData.value.father_contact_number = opt.contact_number
+  }
+  if (!formData.value.father_occupation && opt?.occupation) {
+    formData.value.father_occupation = opt.occupation
   }
   // Try to infer mother from patients data when father is chosen
   fetchCoParentAndFill('father')
@@ -506,15 +531,20 @@ const getContactForName = (name, type) => {
   return found?.contact_number || null
 }
 
+// Normalize a name by trimming and collapsing internal whitespace
+const normalizeName = (v) => (v ?? '').toString().trim().replace(/\s+/g, ' ')
+
 // Use patients data to infer the opposite parent and fill if empty; fallback to guardian family linkage
 const fetchCoParentAndFill = async (type) => {
   try {
     const isMother = String(type).toLowerCase() === 'mother'
-    const chosenName = isMother ? formData.value.mother_name : formData.value.father_name
+    const chosenNameRaw = isMother ? formData.value.mother_name : formData.value.father_name
+    const chosenName = normalizeName(chosenNameRaw)
     if (!chosenName) return
     const res = await api.get('/patients/parents/coparent', { params: { type: isMother ? 'mother' : 'father', name: chosenName } })
     const suggestion = res.data?.data?.name
     const suggestedContact = res.data?.data?.contact_number
+    const suggestedOccupation = res.data?.data?.occupation
     const target = isMother ? 'father' : 'mother'
     if (suggestion && !formData.value[`${target}_name`]) {
       formData.value[`${target}_name`] = suggestion
@@ -523,6 +553,9 @@ const fetchCoParentAndFill = async (type) => {
       const finalContact = fromApi || fromOptions || null
       if (finalContact && !formData.value[`${target}_contact_number`]) {
         formData.value[`${target}_contact_number`] = finalContact
+      }
+      if (suggestedOccupation && !formData.value[`${target}_occupation`]) {
+        formData.value[`${target}_occupation`] = suggestedOccupation
       }
     }
   } catch (e) {
@@ -537,7 +570,8 @@ const handleSubmit = () => {
 // React when relationship changes to apply autofill for the selected guardian
 watch(() => formData.value.relationship_to_guardian, (newRel) => {
   if (!newRel) return
-  applyParentAutofill(selectedGuardian.value, newRel)
+  resetParentFields()
+  applyParentAutofill(selectedGuardian.value, newRel, true)
 })
 
 // Suggestions come exclusively from backend patients data (already deduped, with contacts)
@@ -563,5 +597,22 @@ const fatherOptions = computed(() => {
   const arr = Array.from(map.values())
   return arr.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || ''))
 })
+
+// Fetch richer guardian details (including occupation) after selection to improve autofill
+const loadGuardianDetails = async (guardianId) => {
+  try {
+    const res = await api.get(`/guardians/${guardianId}`)
+    const g = res.data?.data || res.data || null
+    if (g) {
+      // Merge occupation/contact into the in-memory selected guardian
+      selectedGuardian.value = { ...(selectedGuardian.value || {}), occupation: g.occupation || selectedGuardian.value?.occupation, contact_number: selectedGuardian.value?.contact_number || g.contact_number }
+      // Re-apply autofill with richer data if fields are still empty
+        resetParentFields()
+        applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
+    }
+  } catch (e) {
+    console.warn('Failed to load guardian details (non-blocking):', e?.message || e)
+  }
+}
 
 </script>

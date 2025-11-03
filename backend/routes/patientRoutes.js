@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
+const { authenticateRequest, authorizeRole, checkUserMapping, authorizePatientReadAccess } = require('../middlewares/authMiddleware');
 const { 
   createPatient,
   getPatientById,
   updatePatient,
   deletePatient,
+  restorePatient,
   getAllPatients,
   getPatientSchedule,
   updatePatientTag,
@@ -58,8 +59,9 @@ router.get('/parents/coparent', authenticateRequest, getCoParentSuggestion);
 // POST /api/patients - Register new patient
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), createPatient);
 
-// GET /api/patients/:id - Get specific patient details (no user mapping required for reads)
-router.get('/:id', authenticateRequest, getPatientById);
+// GET /api/patients/:id - Get specific patient details
+// Staff can access any; guardians/parents must own the patient
+router.get('/:id', authenticateRequest, authorizePatientReadAccess, getPatientById);
 
 // PUT /api/patients/:id - Update patient
 router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updatePatient);
@@ -67,20 +69,23 @@ router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin'
 // DELETE /api/patients/:id - Delete patient
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deletePatient);
 
-// GET /api/patients/:id/schedule - Get patient vaccination schedule
-router.get('/:id/schedule', authenticateRequest, checkUserMapping, getPatientSchedule);
+// POST /api/patients/:id/restore - Restore soft deleted patient
+router.post('/:id/restore', authenticateRequest, checkUserMapping, authorizeRole(['admin']), restorePatient);
+
+// GET /api/patients/:id/schedule - Get patient vaccination schedule (ownership enforced for guardians)
+router.get('/:id/schedule', authenticateRequest, authorizePatientReadAccess, getPatientSchedule);
 
 // PUT /api/patients/:id/tag - Update patient tag
 router.put('/:id/tag', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updatePatientTag);
 
-// GET /api/patients/:id/birth-history - Get patient birth history
-router.get('/:id/birth-history', authenticateRequest, checkUserMapping, getBirthHistory);
+// GET /api/patients/:id/birth-history - Get patient birth history (ownership enforced for guardians)
+router.get('/:id/birth-history', authenticateRequest, authorizePatientReadAccess, getBirthHistory);
 
 // PUT /api/patients/:id/birth-history - Update patient birth history
 router.put('/:id/birth-history', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updateBirthHistory);
 
-// GET /api/patients/:id/vitals - Get patient vitals (deprecated; still requires auth)
-router.get('/:id/vitals', authenticateRequest, checkUserMapping, getVitals);
+// GET /api/patients/:id/vitals - Get patient vitals (deprecated; still requires auth + ownership)
+router.get('/:id/vitals', authenticateRequest, authorizePatientReadAccess, getVitals);
 
 // PUT /api/patients/:id/vitals - Update patient vitals
 router.put('/:id/vitals', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updateVitals);
@@ -91,7 +96,7 @@ router.post('/onboard', authenticateRequest, checkUserMapping, authorizeRole(['a
 // POST /api/patients/:id/update-schedules - Update patient schedule statuses (admin-only maintenance)
 router.post('/:id/update-schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updatePatientSchedules);
 
-// GET /api/patients/:id/smart-doses?vaccine_id= - Smart dose options based on schedule and history
-router.get('/:id/smart-doses', authenticateRequest, checkUserMapping, getSmartDoseOptions);
+// GET /api/patients/:id/smart-doses?vaccine_id= - Smart dose options (ownership enforced for guardians)
+router.get('/:id/smart-doses', authenticateRequest, authorizePatientReadAccess, getSmartDoseOptions);
 
 module.exports = router;

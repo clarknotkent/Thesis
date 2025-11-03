@@ -56,7 +56,7 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import PatientInfoTab from './components/PatientInfoTab.vue'
 import VaccinationHistoryTab from './components/VaccinationHistoryTab.vue'
 import MedicalHistoryTab from './components/MedicalHistoryTab.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()
@@ -171,6 +171,12 @@ const fetchPatientDetails = async () => {
     await fetchMedicalHistory(patientId)
   } catch (error) {
     console.error('Error fetching patient details:', error)
+    const status = error?.response?.status
+    if (status === 403 || status === 404) {
+      // Not owned or missing -> show Not Found page
+      router.replace('/not-found')
+      return
+    }
   } finally {
     loading.value = false
   }

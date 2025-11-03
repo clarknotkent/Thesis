@@ -38,8 +38,8 @@ const userModel = {
   getAllUsers: async (filters = {}, page = 1, limit = 10) => {
     try {
       let query = supabase
-    .from('users_with_uuid')
-  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, last_login, contact_number, employee_id, professional_license_no, is_deleted, supabase_uuid, created_by, updated_by', { count: 'exact' });
+        .from('users_with_uuid')
+        .select('user_id, username, email, role, hs_type, firstname, middlename, surname, last_login, contact_number, employee_id, professional_license_no, is_deleted, supabase_uuid, created_by, updated_by', { count: 'exact' });
 
       // Apply filters
       if (filters.search) {
@@ -65,10 +65,12 @@ const userModel = {
       }
 
       if (filters.status) {
-        if (filters.status === 'active') {
-          query = query.eq('is_deleted', false);
-        } else if (filters.status === 'inactive') {
+        const st = String(filters.status).toLowerCase();
+        if (st === 'archived') {
           query = query.eq('is_deleted', true);
+        } else if (st === 'not_archived' || st === 'active' || st === 'inactive') {
+          // Without a dedicated status column, treat all non-deleted as visible
+          query = query.eq('is_deleted', false);
         }
       }
 
@@ -84,6 +86,21 @@ const userModel = {
 
       if (error) throw error;
 
+      // Fetch base user_status from users table to support visible 'inactive' vs 'active'
+      let statusMap = {};
+      try {
+        const ids = (data || []).map(u => u.user_id).filter(Boolean);
+        if (ids.length) {
+          const { data: srows } = await supabase
+            .from('users')
+            .select('user_id, user_status')
+            .in('user_id', ids);
+          if (Array.isArray(srows)) {
+            statusMap = srows.reduce((acc, r) => { acc[r.user_id] = (r.user_status || 'active'); return acc; }, {});
+          }
+        }
+      } catch (_) { /* if status column missing, treat all as active */ }
+
       if (data && data.length) {
         const f = data[0];
         console.log('[userModel.getAllUsers] RESULT count', count || data.length, 'firstUser', { id: f.user_id, created_by: f.created_by, updated_by: f.updated_by });
@@ -92,8 +109,10 @@ const userModel = {
       }
 
       return {
-  users: (data || []).map(u => {
+        users: (data || []).map(u => {
           const roleDisplay = toDisplayRole(u.role);
+          const baseStatus = String(statusMap[u.user_id] || 'active').toLowerCase();
+          const derivedStatus = u.is_deleted ? 'archived' : (baseStatus === 'inactive' ? 'inactive' : 'active');
           return {
             id: u.user_id,
             username: u.username,
@@ -105,7 +124,8 @@ const userModel = {
             hs_type: u.hs_type || null,
             employee_id: u.employee_id || null,
             professional_license_no: u.professional_license_no || null,
-            status: u.is_deleted ? 'inactive' : 'active',
+            status: derivedStatus,
+            user_status: baseStatus,
             lastLogin: u.last_login || null,
             contact_number: u.contact_number || null,
             name: [u.firstname, u.middlename, u.surname].filter(Boolean).join(' '),
@@ -130,12 +150,25 @@ const userModel = {
     try {
       const { data, error } = await supabase
         .from('users_with_uuid')
-  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid, is_deleted')
+        .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, sex, birthdate, employee_id, professional_license_no, supabase_uuid, is_deleted')
         .eq('user_id', id)
         .single();
 
   if (error && error.code !== 'PGRST116') throw error;
-  return data || null;
+  if (!data) return null;
+  // Enrich with status from base table if available
+  try {
+    const { data: srow } = await supabase
+      .from('users')
+      .select('user_status')
+      .eq('user_id', id)
+      .single();
+    const baseStatus = (srow?.user_status || 'active').toLowerCase();
+    const derivedStatus = data.is_deleted ? 'archived' : (baseStatus === 'inactive' ? 'inactive' : 'active');
+    return { ...data, user_status: baseStatus, status: derivedStatus };
+  } catch(_) {
+    return { ...data, user_status: 'active', status: data.is_deleted ? 'archived' : 'active' };
+  }
     } catch (error) {
       console.error('Error fetching user by ID:', error);
       throw error;
@@ -174,7 +207,10 @@ const userModel = {
         address: userData.address || null,
         sex: userData.sex || 'Other',
         birthdate: userData.birthdate || null,
-        is_deleted: userData.status === 'inactive',
+        // visible activity flag stored in users.user_status
+        user_status: ((userData.user_status || userData.status) === 'inactive') ? 'inactive' : 'active',
+        // archived is represented by is_deleted; default new users to not archived
+        is_deleted: false,
   professional_license_no: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.professional_license_no || null) : null,
   employee_id: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.employee_id || null) : null,
         hs_type: hsType,
@@ -236,9 +272,19 @@ const userModel = {
         delete updateData.password;
       }
 
-      if (typeof updates.status !== 'undefined') {
-        updateData.is_deleted = updates.status === 'inactive';
-        delete updateData.status;
+      const incomingStatusToken = (typeof updates.user_status !== 'undefined') ? updates.user_status : updates.status;
+      if (typeof incomingStatusToken !== 'undefined') {
+        const st = String(incomingStatusToken).toLowerCase();
+        if (st === 'archived') {
+          updateData.is_deleted = true;
+          updateData.user_status = 'inactive'; // keep a logical visible state for when restored
+        } else if (st === 'active' || st === 'inactive') {
+          updateData.is_deleted = false;
+          updateData.user_status = st;
+        } else {
+          // unknown token: ignore status
+          delete updateData.user_status;
+        }
       }
 
       // Whitelist allowed columns to avoid unknown column errors
@@ -252,7 +298,7 @@ const userModel = {
         updateData.updated_by = updates.actor_id;
       }
 
-      const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
+  const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'user_status', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
       const filtered = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.includes(k)));
 
       // Normalize contact number
@@ -333,7 +379,7 @@ const userModel = {
     try {
       const { data, error } = await supabase
         .from('users')
-        .update({ is_deleted: false, deleted_at: null, deleted_by: null })
+        .update({ is_deleted: false, deleted_at: null, deleted_by: null, user_status: 'active' })
         .eq('user_id', id)
         .select('user_id')
         .single();

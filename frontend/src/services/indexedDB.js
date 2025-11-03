@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'ImmunizeMeDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Incremented for additional stores
 
 // Define all object stores (tables)
 const STORES = {
@@ -20,6 +20,17 @@ const STORES = {
   notifications: 'notifications',
   activityLogs: 'activityLogs',
   smsLogs: 'smsLogs',
+  conversations: 'conversations',
+  deworming: 'deworming',
+  vitamina: 'vitamina',
+  vitals: 'vitals',
+  faqs: 'faqs',
+  reports: 'reports',
+  receivingReports: 'receivingReports',
+  vaccineSchedules: 'vaccineSchedules',
+  vaccineTransactions: 'vaccineTransactions',
+  smsTemplates: 'smsTemplates',
+  settings: 'settings',
   pendingSync: 'pendingSync', // Queue for offline operations
   metadata: 'metadata', // Store sync timestamps
 };
@@ -133,6 +144,76 @@ class IndexedDBService {
         if (!db.objectStoreNames.contains(STORES.smsLogs)) {
           const smsLogsStore = db.createObjectStore(STORES.smsLogs, { keyPath: 'log_id' });
           smsLogsStore.createIndex('sent_at', 'sent_at', { unique: false });
+        }
+
+        // Conversations store
+        if (!db.objectStoreNames.contains(STORES.conversations)) {
+          const conversationsStore = db.createObjectStore(STORES.conversations, { keyPath: 'conversation_id' });
+          conversationsStore.createIndex('patient_id', 'patient_id', { unique: false });
+          conversationsStore.createIndex('created_at', 'created_at', { unique: false });
+        }
+
+        // Deworming store
+        if (!db.objectStoreNames.contains(STORES.deworming)) {
+          const dewormingStore = db.createObjectStore(STORES.deworming, { keyPath: 'deworming_id' });
+          dewormingStore.createIndex('patient_id', 'patient_id', { unique: false });
+          dewormingStore.createIndex('administered_date', 'administered_date', { unique: false });
+        }
+
+        // Vitamin A store
+        if (!db.objectStoreNames.contains(STORES.vitamina)) {
+          const vitaminaStore = db.createObjectStore(STORES.vitamina, { keyPath: 'vitamina_id' });
+          vitaminaStore.createIndex('patient_id', 'patient_id', { unique: false });
+          vitaminaStore.createIndex('administered_date', 'administered_date', { unique: false });
+        }
+
+        // Vitals store
+        if (!db.objectStoreNames.contains(STORES.vitals)) {
+          const vitalsStore = db.createObjectStore(STORES.vitals, { keyPath: 'vitals_id' });
+          vitalsStore.createIndex('patient_id', 'patient_id', { unique: false });
+          vitalsStore.createIndex('recorded_at', 'recorded_at', { unique: false });
+        }
+
+        // FAQs store
+        if (!db.objectStoreNames.contains(STORES.faqs)) {
+          const faqsStore = db.createObjectStore(STORES.faqs, { keyPath: 'faq_id' });
+          faqsStore.createIndex('category', 'category', { unique: false });
+        }
+
+        // Reports store
+        if (!db.objectStoreNames.contains(STORES.reports)) {
+          const reportsStore = db.createObjectStore(STORES.reports, { keyPath: 'report_id' });
+          reportsStore.createIndex('created_at', 'created_at', { unique: false });
+        }
+
+        // Receiving Reports store
+        if (!db.objectStoreNames.contains(STORES.receivingReports)) {
+          const receivingReportsStore = db.createObjectStore(STORES.receivingReports, { keyPath: 'receiving_report_id' });
+          receivingReportsStore.createIndex('received_date', 'received_date', { unique: false });
+        }
+
+        // Vaccine Schedules store
+        if (!db.objectStoreNames.contains(STORES.vaccineSchedules)) {
+          const vaccineSchedulesStore = db.createObjectStore(STORES.vaccineSchedules, { keyPath: 'schedule_id' });
+          vaccineSchedulesStore.createIndex('vaccine_id', 'vaccine_id', { unique: false });
+        }
+
+        // Vaccine Transactions store
+        if (!db.objectStoreNames.contains(STORES.vaccineTransactions)) {
+          const vaccineTransactionsStore = db.createObjectStore(STORES.vaccineTransactions, { keyPath: 'transaction_id' });
+          vaccineTransactionsStore.createIndex('inventory_id', 'inventory_id', { unique: false });
+          vaccineTransactionsStore.createIndex('transaction_date', 'transaction_date', { unique: false });
+        }
+
+        // SMS Templates store
+        if (!db.objectStoreNames.contains(STORES.smsTemplates)) {
+          const smsTemplatesStore = db.createObjectStore(STORES.smsTemplates, { keyPath: 'template_id' });
+          smsTemplatesStore.createIndex('template_name', 'template_name', { unique: false });
+        }
+
+        // Settings store
+        if (!db.objectStoreNames.contains(STORES.settings)) {
+          db.createObjectStore(STORES.settings, { keyPath: 'setting_key' });
         }
 
         // Pending Sync Queue (for offline operations)
@@ -289,10 +370,11 @@ class IndexedDBService {
   /**
    * Add operation to pending sync queue
    */
-  async addToPendingSync(operation, storeName, data) {
+  async addToPendingSync(operation, storeName, data, endpoint = null) {
     const syncItem = {
       operation, // 'create', 'update', 'delete'
       storeName,
+      endpoint,
       data,
       timestamp: new Date().toISOString(),
       retries: 0,
@@ -343,6 +425,50 @@ class IndexedDBService {
   async filter(storeName, filterFn) {
     const allData = await this.getAll(storeName);
     return allData.filter(filterFn);
+  }
+
+  /**
+   * Reconcile a temporary ID with the server-assigned ID
+   * - Reads record by tempId (must be current key value)
+   * - Merges with serverData
+   * - Writes new record with serverId under the idField keyPath
+   * - Removes _tempId and _pending flags
+   */
+  async reconcileTempId(storeName, idField, tempId, serverId, serverData = {}) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction([storeName], 'readwrite');
+      const store = tx.objectStore(storeName);
+
+      const getReq = store.get(tempId);
+      getReq.onsuccess = () => {
+        const existing = getReq.result;
+        if (!existing) {
+          // Nothing to reconcile; just write serverData using serverId
+          const record = { ...(serverData || {}), [idField]: serverId };
+          if ('_tempId' in record) delete record._tempId;
+          if ('_pending' in record) delete record._pending;
+          const putReq = store.put(record);
+          putReq.onsuccess = () => resolve(true);
+          putReq.onerror = () => reject(putReq.error);
+          return;
+        }
+
+        const merged = { ...existing, ...(serverData || {}) };
+        merged[idField] = serverId;
+        if ('_tempId' in merged) delete merged._tempId;
+        if ('_pending' in merged) delete merged._pending;
+
+        const deleteReq = store.delete(tempId);
+        deleteReq.onsuccess = () => {
+          const putReq = store.put(merged);
+          putReq.onsuccess = () => resolve(true);
+          putReq.onerror = () => reject(putReq.error);
+        };
+        deleteReq.onerror = () => reject(deleteReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
   }
 
   /**

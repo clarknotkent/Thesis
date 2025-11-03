@@ -8,7 +8,7 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRole, isAuthenticated, getUserId, getUser } from '@/services/auth'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,8 +89,8 @@ onMounted(async () => {
       return router.replace({ name: 'ParentDependentDetails', params: { id } })
     } catch (e) {
       try { console.warn('[PatientRoute] Parent does not own child or request failed:', e?.response?.status) } catch {}
-      // Not their child or not accessible; redirect home with a hint
-      return router.replace({ name: 'ParentHome', query: { unauthorizedChild: '1' } })
+      // Not their child or not accessible; show a Not Found page
+      return router.replace({ path: '/not-found' })
     }
   }
   // Fallback: send to landing

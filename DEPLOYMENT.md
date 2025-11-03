@@ -338,6 +338,15 @@ After setting domains, update:
 | `SEMAPHORE_API_KEY` | Optional | SMS service API key | `xxx-xxx` |
 | `TZ` | Optional | Timezone | `Asia/Manila` |
 
+#### QR Links: Public URLs (IMPORTANT)
+
+To ensure QR codes work after deployment, set these two variables in the Backend service:
+
+- `PUBLIC_BASE_URL` — The public URL where your backend is reachable (used to MINT QR links pointing to `/qr/p/:id`). Example: `https://api.immunizeme.example.com`
+- `FRONTEND_BASE_URL` — The public URL of your frontend SPA (where users should be redirected after QR verification). Example: `https://app.immunizeme.example.com`
+
+Do NOT leave these as `localhost` in production. If unset, the backend used to fall back to `localhost`, causing deployed QR codes to redirect to your local machine. The app now tries to derive the mint URL from the incoming request, but you should still set both vars explicitly for consistency.
+
 ### Frontend Environment Variables
 
 | Variable | Required | Description | Example |

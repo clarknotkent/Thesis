@@ -4,11 +4,11 @@
       <i class="bi bi-chat-square-dots text-muted mb-2" style="font-size: 2rem;"></i>
       <p class="text-muted mb-0">No messages yet. Start the conversation!</p>
     </div>
-    <div v-else>
+    <div v-else >
       <div
         v-for="message in messages"
         :key="message.message_id"
-        class="message-wrapper mb-3"
+        class="message-wrapper mb-2"
         :class="{
           'message-sent': message.sender_id === currentUserId,
           'message-received': message.sender_id !== currentUserId
@@ -90,6 +90,7 @@ defineExpose({ scrollToBottom });
   min-height: 0; /* allow shrinking inside column flex */
   height: 0; /* key: prevents auto min-content height from blocking overflow */
   flex: 1 1 auto; /* grow to fill, shrink when needed */
+  padding-bottom: 1% !important;
 }
 
 .message-wrapper {

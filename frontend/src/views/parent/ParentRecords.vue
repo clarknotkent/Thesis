@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout title="My Family's Records">
+  <ParentLayout title="My Records">
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -47,7 +47,7 @@
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const loading = ref(true)
 const error = ref(null)

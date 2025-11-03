@@ -2,8 +2,8 @@
  * Composable for managing patient registration form
  * Handles form state, guardian selection, parent autofill, and validation
  */
-import { ref, computed, reactive } from 'vue'
-import api from '@/services/api'
+import { ref, computed, reactive, watch } from 'vue'
+import api from '@/services/offlineAPI'
 
 export function usePatientForm() {
   // State
@@ -107,28 +107,45 @@ export function usePatientForm() {
 
   /**
    * Apply parent autofill based on guardian selection
+   * force=true will override existing values to avoid stale data when guardian/relationship changes
    */
-  const applyParentAutofill = (guardian, relationship) => {
+  const applyParentAutofill = (guardian, relationship, force = false) => {
     if (!guardian || !relationship) return
     const rel = String(relationship).toLowerCase()
-    
+
     if (rel === 'mother') {
-      if (!formData.value.mother_name) {
+      if (force || !formData.value.mother_name) {
         formData.value.mother_name = formatGuardianNameFirstMiddleLast(guardian)
       }
-      if (!formData.value.mother_contact_number) {
+      if (force || !formData.value.mother_contact_number) {
         formData.value.mother_contact_number = guardian.contact_number || ''
       }
+      if (force || !formData.value.mother_occupation) {
+        formData.value.mother_occupation = guardian.occupation || ''
+      }
     } else if (rel === 'father') {
-      if (!formData.value.father_name) {
+      if (force || !formData.value.father_name) {
         formData.value.father_name = formatGuardianNameFirstMiddleLast(guardian)
       }
-      if (!formData.value.father_contact_number) {
+      if (force || !formData.value.father_contact_number) {
         formData.value.father_contact_number = guardian.contact_number || ''
       }
+      if (force || !formData.value.father_occupation) {
+        formData.value.father_occupation = guardian.occupation || ''
+      }
     }
-    
+
     fetchCoParentAndFill(rel)
+  }
+
+  // Clear both parents fields to avoid stale values when guardian/relationship changes
+  const resetParentFields = () => {
+    formData.value.mother_name = ''
+    formData.value.mother_contact_number = ''
+    formData.value.mother_occupation = ''
+    formData.value.father_name = ''
+    formData.value.father_contact_number = ''
+    formData.value.father_occupation = ''
   }
 
   /**
@@ -137,7 +154,9 @@ export function usePatientForm() {
   const fetchCoParentAndFill = async (type) => {
     try {
       const isMother = String(type).toLowerCase() === 'mother'
-      const chosenName = isMother ? formData.value.mother_name : formData.value.father_name
+      const normalizeName = (v) => (v ?? '').toString().trim().replace(/\s+/g, ' ')
+      const chosenNameRaw = isMother ? formData.value.mother_name : formData.value.father_name
+      const chosenName = normalizeName(chosenNameRaw)
       if (!chosenName) return
 
       const res = await api.get('/patients/parents/coparent', {
@@ -149,6 +168,7 @@ export function usePatientForm() {
 
       const suggestion = res.data?.data?.name
       const suggestedContact = res.data?.data?.contact_number
+      const suggestedOccupation = res.data?.data?.occupation
       const target = isMother ? 'father' : 'mother'
 
       if (suggestion && !formData.value[`${target}_name`]) {
@@ -161,6 +181,24 @@ export function usePatientForm() {
         if (finalContact && !formData.value[`${target}_contact_number`]) {
           formData.value[`${target}_contact_number`] = finalContact
         }
+        if (suggestedOccupation && !formData.value[`${target}_occupation`]) {
+          formData.value[`${target}_occupation`] = suggestedOccupation
+        }
+      }
+
+      // If no suggestion or still missing data, open suggestions for the co-parent
+      const missingContact = !formData.value[`${target}_contact_number`]
+      const missingOcc = !formData.value[`${target}_occupation`]
+      const targetNameEmpty = !formData.value[`${target}_name`]
+      if (!suggestion || targetNameEmpty || missingContact || missingOcc) {
+        if (target === 'father') {
+          // Prepare and show father suggestions
+          filterFatherOptions()
+          showFatherDropdown.value = true
+        } else {
+          filterMotherOptions()
+          showMotherDropdown.value = true
+        }
       }
     } catch (e) {
       console.warn('Co-parent suggestion error:', e?.message || e)
@@ -170,7 +208,7 @@ export function usePatientForm() {
   /**
    * Handle guardian selection
    */
-  const onGuardianSelected = () => {
+  const onGuardianSelected = async () => {
     const selected = guardians.value.find(g => g.guardian_id === formData.value.guardian_id)
     selectedGuardian.value = selected || null
     
@@ -178,7 +216,28 @@ export function usePatientForm() {
       formData.value.family_number = selected.family_number || ''
     }
     
-    applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian)
+  // Ensure parents always reflect the current guardian + relationship
+  resetParentFields()
+  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
+
+    // If after guardian-based autofill occupation is still missing for the selected role, show suggestions for that parent
+    const rel = (formData.value.relationship_to_guardian || '').toString().toLowerCase()
+    if (rel === 'mother') {
+      if (!formData.value.mother_occupation) {
+        filterMotherOptions()
+        showMotherDropdown.value = true
+      }
+    } else if (rel === 'father') {
+      if (!formData.value.father_occupation) {
+        filterFatherOptions()
+        showFatherDropdown.value = true
+      }
+    }
+
+    // Load richer guardian details (occupation) if missing, then re-apply
+    if (selected && selected.guardian_id && (selected.occupation == null || selected.occupation === undefined)) {
+      await loadGuardianDetails(selected.guardian_id)
+    }
   }
 
   /**
@@ -206,6 +265,48 @@ export function usePatientForm() {
     }
     fetchCoParentAndFill('father')
   }
+
+  /**
+   * Fetch guardian details to get occupation/contact if not present in the dropdown payload
+   */
+  const loadGuardianDetails = async (guardianId) => {
+    try {
+      const res = await api.get(`/guardians/${guardianId}`)
+      const g = res.data?.data || res.data || null
+      if (g) {
+        selectedGuardian.value = {
+          ...(selectedGuardian.value || {}),
+          occupation: g.occupation || selectedGuardian.value?.occupation,
+          contact_number: selectedGuardian.value?.contact_number || g.contact_number
+        }
+  // Re-apply autofill now that we have occupation
+  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
+      }
+    } catch (e) {
+      console.warn('Failed to load guardian details (non-blocking):', e?.message || e)
+    }
+  }
+
+  // React when relationship changes to apply autofill for the selected guardian
+  watch(() => formData.value.relationship_to_guardian, (newRel) => {
+    if (!newRel) return
+    resetParentFields()
+    applyParentAutofill(selectedGuardian.value, newRel, true)
+    // If occupation is still missing for the selected role, open suggestions
+    const rel = (newRel || '').toString().toLowerCase()
+    if (rel === 'mother' && !formData.value.mother_occupation) {
+      filterMotherOptions()
+      showMotherDropdown.value = true
+    } else if (rel === 'father' && !formData.value.father_occupation) {
+      filterFatherOptions()
+      showFatherDropdown.value = true
+    }
+  })
+
+  // Ensure guardian id changes trigger selection handler
+  watch(() => formData.value.guardian_id, () => {
+    onGuardianSelected()
+  })
 
   /**
    * Filter mother options based on search query

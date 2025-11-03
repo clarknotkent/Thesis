@@ -102,12 +102,25 @@ class OfflineSyncService {
         this.syncImmunizations(),
         this.syncUsers(),
         this.syncGuardians(),
-        this.syncSchedules(),
+        // this.syncSchedules(), // TODO: Endpoint doesn't exist yet
         this.syncVisits(),
-        this.syncInventory(),
-        this.syncMessages(),
+        // this.syncInventory(), // TODO: Endpoint doesn't exist yet
+        // this.syncMessages(), // TODO: Endpoint doesn't exist yet
         this.syncNotifications(),
         this.syncHealthStaff(), // Health worker accounts
+        this.syncConversations(),
+        this.syncDeworming(),
+        this.syncVitamina(),
+        // this.syncVitals(), // TODO: Endpoint doesn't exist yet
+        this.syncFAQs(),
+        // this.syncReports(), // TODO: Endpoint doesn't exist yet
+        this.syncReceivingReports(),
+        this.syncActivityLogs(),
+        this.syncSMSLogs(),
+        this.syncVaccineSchedules(),
+        this.syncVaccineTransactions(),
+        this.syncSMSTemplates(),
+        // this.syncSettings(), // TODO: Endpoint doesn't exist yet
       ];
 
       const results = await Promise.allSettled(syncOperations);
@@ -156,6 +169,11 @@ class OfflineSyncService {
         
         // Increment retry count
         op.retries = (op.retries || 0) + 1;
+        // Simple exponential backoff before retrying next rounds
+        const backoffMs = Math.min(30000, 1000 * Math.pow(2, Math.min(5, op.retries - 1)));
+        try {
+          await new Promise((res) => setTimeout(res, backoffMs));
+        } catch (_) {}
         
         // If too many retries, mark as failed
         if (op.retries >= 3) {
@@ -172,7 +190,7 @@ class OfflineSyncService {
    * Execute a pending operation
    */
   async executePendingOperation(op) {
-    const { operation, storeName, data } = op;
+    const { operation, storeName, data, endpoint } = op;
     
     // Check if delete operation - only admins can delete
     if (operation === 'delete') {
@@ -185,14 +203,55 @@ class OfflineSyncService {
     
     switch (operation) {
       case 'create':
-        return this.createOnServer(storeName, data);
+        {
+          // If original endpoint is available, prefer replaying exact route
+          const serverData = endpoint
+            ? (await api.post(endpoint, data)).data
+            : await this.createOnServer(storeName, data);
+          // Reconcile temp ID with server ID if needed
+          try {
+            const idField = this.getIdFieldForStore(storeName);
+            const tempId = data?._tempId || (idField ? data?.[idField] : null);
+            const serverId = idField ? (serverData?.[idField] || serverData?.id) : (serverData?.id || null);
+            if (idField && tempId && serverId && tempId !== serverId) {
+              await indexedDBService.reconcileTempId(storeName, idField, tempId, serverId, serverData);
+            }
+          } catch (e) {
+            console.warn('Reconcile temp ID failed:', e);
+          }
+          return serverData;
+        }
       case 'update':
+        if (endpoint) {
+          return (await api.put(endpoint, data)).data;
+        }
         return this.updateOnServer(storeName, data);
       case 'delete':
+        if (endpoint) {
+          return (await api.delete(endpoint)).data;
+        }
         return this.deleteOnServer(storeName, data);
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
+  }
+
+  /**
+   * Get ID field from store name
+   */
+  getIdFieldForStore(storeName) {
+    const idFields = {
+      [STORES.patients]: 'patient_id',
+      [STORES.immunizations]: 'immunization_id',
+      [STORES.schedules]: 'schedule_id',
+      [STORES.visits]: 'visit_id',
+      [STORES.vaccines]: 'vaccine_id',
+      [STORES.guardians]: 'guardian_id',
+      [STORES.users]: 'user_id',
+      [STORES.messages]: 'message_id',
+      [STORES.notifications]: 'notification_id',
+    };
+    return idFields[storeName] || null;
   }
 
   /**
@@ -467,6 +526,246 @@ class OfflineSyncService {
       }
     } catch (error) {
       console.error('Failed to sync health staff:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync conversations data
+   */
+  async syncConversations() {
+    try {
+      const response = await api.get('/conversations');
+      const conversations = response.data;
+      
+      if (Array.isArray(conversations) && conversations.length > 0) {
+        await indexedDBService.putBulk(STORES.conversations, conversations);
+        console.log(`📥 Synced ${conversations.length} conversations`);
+      }
+    } catch (error) {
+      console.error('Failed to sync conversations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync deworming data
+   */
+  async syncDeworming() {
+    try {
+      const response = await api.get('/deworming');
+      const deworming = response.data;
+      
+      if (Array.isArray(deworming) && deworming.length > 0) {
+        await indexedDBService.putBulk(STORES.deworming, deworming);
+        console.log(`📥 Synced ${deworming.length} deworming records`);
+      }
+    } catch (error) {
+      console.error('Failed to sync deworming:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync vitamin A data
+   */
+  async syncVitamina() {
+    try {
+      const response = await api.get('/vitamina');
+      const vitamina = response.data;
+      
+      if (Array.isArray(vitamina) && vitamina.length > 0) {
+        await indexedDBService.putBulk(STORES.vitamina, vitamina);
+        console.log(`📥 Synced ${vitamina.length} vitamin A records`);
+      }
+    } catch (error) {
+      console.error('Failed to sync vitamin A:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync vitals data
+   */
+  async syncVitals() {
+    try {
+      const response = await api.get('/vitals');
+      const vitals = response.data;
+      
+      if (Array.isArray(vitals) && vitals.length > 0) {
+        await indexedDBService.putBulk(STORES.vitals, vitals);
+        console.log(`📥 Synced ${vitals.length} vitals records`);
+      }
+    } catch (error) {
+      console.error('Failed to sync vitals:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync FAQs data
+   */
+  async syncFAQs() {
+    try {
+      const response = await api.get('/faqs');
+      const faqs = response.data;
+      
+      if (Array.isArray(faqs) && faqs.length > 0) {
+        await indexedDBService.putBulk(STORES.faqs, faqs);
+        console.log(`📥 Synced ${faqs.length} FAQs`);
+      }
+    } catch (error) {
+      console.error('Failed to sync FAQs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync reports data
+   */
+  async syncReports() {
+    try {
+      const response = await api.get('/reports');
+      const reports = response.data;
+      
+      if (Array.isArray(reports) && reports.length > 0) {
+        await indexedDBService.putBulk(STORES.reports, reports);
+        console.log(`📥 Synced ${reports.length} reports`);
+      }
+    } catch (error) {
+      console.error('Failed to sync reports:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync receiving reports data
+   */
+  async syncReceivingReports() {
+    try {
+      const response = await api.get('/receiving-reports');
+      const receivingReports = response.data;
+      
+      if (Array.isArray(receivingReports) && receivingReports.length > 0) {
+        await indexedDBService.putBulk(STORES.receivingReports, receivingReports);
+        console.log(`📥 Synced ${receivingReports.length} receiving reports`);
+      }
+    } catch (error) {
+      console.error('Failed to sync receiving reports:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync activity logs data
+   */
+  async syncActivityLogs() {
+    try {
+      const response = await api.get('/activity-logs');
+      const activityLogs = response.data;
+      
+      if (Array.isArray(activityLogs) && activityLogs.length > 0) {
+        await indexedDBService.putBulk(STORES.activityLogs, activityLogs);
+        console.log(`📥 Synced ${activityLogs.length} activity logs`);
+      }
+    } catch (error) {
+      console.error('Failed to sync activity logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync SMS logs data
+   */
+  async syncSMSLogs() {
+    try {
+      const response = await api.get('/sms/history');
+      const smsLogs = response.data;
+      
+      if (Array.isArray(smsLogs) && smsLogs.length > 0) {
+        await indexedDBService.putBulk(STORES.smsLogs, smsLogs);
+        console.log(`📥 Synced ${smsLogs.length} SMS logs`);
+      }
+    } catch (error) {
+      console.error('Failed to sync SMS logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync vaccine schedules data
+   */
+  async syncVaccineSchedules() {
+    try {
+      const response = await api.get('/vaccines/schedules');
+      const schedules = response.data;
+      
+      if (Array.isArray(schedules) && schedules.length > 0) {
+        await indexedDBService.putBulk(STORES.vaccineSchedules, schedules);
+        console.log(`📥 Synced ${schedules.length} vaccine schedules`);
+      }
+    } catch (error) {
+      console.error('Failed to sync vaccine schedules:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync vaccine transactions data
+   */
+  async syncVaccineTransactions() {
+    try {
+      const response = await api.get('/vaccines/transactions');
+      const transactions = response.data;
+      
+      if (Array.isArray(transactions) && transactions.length > 0) {
+        await indexedDBService.putBulk(STORES.vaccineTransactions, transactions);
+        console.log(`📥 Synced ${transactions.length} vaccine transactions`);
+      }
+    } catch (error) {
+      console.error('Failed to sync vaccine transactions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync SMS templates data
+   */
+  async syncSMSTemplates() {
+    try {
+      const response = await api.get('/sms/templates');
+      const templates = response.data;
+      
+      if (Array.isArray(templates) && templates.length > 0) {
+        await indexedDBService.putBulk(STORES.smsTemplates, templates);
+        console.log(`📥 Synced ${templates.length} SMS templates`);
+      }
+    } catch (error) {
+      console.error('Failed to sync SMS templates:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync settings data
+   */
+  async syncSettings() {
+    try {
+      const response = await api.get('/settings');
+      const settings = response.data;
+      
+      if (settings && typeof settings === 'object') {
+        // Settings might be an object, convert to array of key-value pairs
+        const settingsArray = Object.entries(settings).map(([key, value]) => ({
+          setting_key: key,
+          setting_value: value
+        }));
+        
+        await indexedDBService.putBulk(STORES.settings, settingsArray);
+        console.log(`📥 Synced ${settingsArray.length} settings`);
+      }
+    } catch (error) {
+      console.error('Failed to sync settings:', error);
       throw error;
     }
   }

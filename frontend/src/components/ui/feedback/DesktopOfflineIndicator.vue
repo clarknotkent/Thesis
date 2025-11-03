@@ -1,5 +1,6 @@
 <template>
-  <div class="offline-indicator" :class="indicatorClass">
+  <!-- Desktop Only: Floating indicator at bottom left -->
+  <div class="desktop-offline-indicator d-none d-xl-block" :class="indicatorClass">
     <!-- Main status bar -->
     <div class="status-bar" @click="toggleDetails">
       <i :class="statusIcon"></i>
@@ -64,7 +65,7 @@
               </div>
             </div>
             <button 
-              class="btn btn-sm btn-outline-danger mt-2"
+              class="btn btn-sm btn-outline-danger mt-2 w-100"
               @click="handleClearData"
             >
               <i class="bi bi-trash"></i>
@@ -78,8 +79,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useOffline } from '@/composables/useOffline';
+import { ref, computed, onMounted } from 'vue'
+import { useOffline } from '@/composables/useOffline'
 
 const {
   isOnline,
@@ -88,110 +89,108 @@ const {
   pendingSyncCount,
   formattedLastSyncTime,
   connectionStatus,
-  connectionStatusColor,
   syncData,
   clearOfflineData,
   getStorageStats,
-} = useOffline();
+} = useOffline()
 
-const showDetails = ref(false);
-const showStorageDetails = ref(false);
-const storageStats = ref(null);
+const showDetails = ref(false)
+const showStorageDetails = ref(false)
+const storageStats = ref(null)
 
 const indicatorClass = computed(() => ({
   'online': isOnline.value,
   'offline': !isOnline.value,
   'syncing': isSyncing.value,
   'has-pending': pendingSyncCount.value > 0,
-}));
+}))
 
 const statusIcon = computed(() => {
-  if (isSyncing.value) return 'bi bi-arrow-repeat spinner';
-  if (isOnline.value) return 'bi bi-wifi';
-  return 'bi bi-wifi-off';
-});
+  if (isSyncing.value) return 'bi bi-arrow-repeat spinner'
+  if (isOnline.value) return 'bi bi-wifi'
+  return 'bi bi-wifi-off'
+})
 
 const totalCachedRecords = computed(() => {
-  if (!storageStats.value) return 0;
-  return Object.values(storageStats.value).reduce((sum, count) => sum + count, 0);
-});
+  if (!storageStats.value) return 0
+  return Object.values(storageStats.value).reduce((sum, count) => sum + count, 0)
+})
 
 const toggleDetails = () => {
-  showDetails.value = !showDetails.value;
+  showDetails.value = !showDetails.value
   if (showDetails.value && !storageStats.value) {
-    loadStorageStats();
+    loadStorageStats()
   }
-};
+}
 
 const handleSync = async () => {
   try {
-    await syncData();
-    await loadStorageStats();
+    await syncData()
+    await loadStorageStats()
   } catch (error) {
-    console.error('Sync failed:', error);
-    alert('Sync failed. Please try again.');
+    console.error('Sync failed:', error)
+    alert('Sync failed. Please try again.')
   }
-};
+}
 
 const handleClearData = async () => {
   if (!confirm('Are you sure you want to clear all offline data? This cannot be undone.')) {
-    return;
+    return
   }
 
   try {
-    await clearOfflineData();
-    await loadStorageStats();
-    alert('Offline data cleared successfully.');
+    await clearOfflineData()
+    await loadStorageStats()
+    alert('Offline data cleared successfully.')
   } catch (error) {
-    console.error('Failed to clear data:', error);
-    alert('Failed to clear offline data.');
+    console.error('Failed to clear data:', error)
+    alert('Failed to clear offline data.')
   }
-};
+}
 
 const loadStorageStats = async () => {
   try {
-    storageStats.value = await getStorageStats();
+    storageStats.value = await getStorageStats()
   } catch (error) {
-    console.error('Failed to load storage stats:', error);
+    console.error('Failed to load storage stats:', error)
   }
-};
+}
 
 const formatStoreName = (store) => {
-  // Convert camelCase to Title Case with spaces
   return store
     .replace(/([A-Z])/g, ' $1')
     .replace(/^./, (str) => str.toUpperCase())
-    .trim();
-};
+    .trim()
+}
 
 onMounted(() => {
-  loadStorageStats();
-});
+  loadStorageStats()
+})
 </script>
 
 <style scoped>
-.offline-indicator {
+.desktop-offline-indicator {
   position: fixed;
-  top: 60px;
-  right: 20px;
+  bottom: 20px;
+  left: 20px;
   max-width: 350px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
-.offline-indicator.online {
+.desktop-offline-indicator.online {
   border-left: 4px solid #198754;
 }
 
-.offline-indicator.offline {
+.desktop-offline-indicator.offline {
   border-left: 4px solid #dc3545;
 }
 
-.offline-indicator.syncing {
+.desktop-offline-indicator.syncing {
   border-left: 4px solid #ffc107;
 }
 
@@ -296,7 +295,6 @@ onMounted(() => {
   color: #0d6efd;
 }
 
-/* Transitions */
 .slide-down-enter-active,
 .slide-down-leave-active {
   transition: all 0.3s ease;
@@ -317,15 +315,5 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .offline-indicator {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    max-width: none;
-  }
 }
 </style>
