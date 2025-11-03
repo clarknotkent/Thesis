@@ -165,7 +165,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
 
 const route = useRoute()

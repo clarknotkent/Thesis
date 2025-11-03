@@ -25,7 +25,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { getUserId } from '@/services/auth'
 
 const props = defineProps({})

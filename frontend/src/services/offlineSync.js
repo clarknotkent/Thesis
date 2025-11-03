@@ -169,6 +169,11 @@ class OfflineSyncService {
         
         // Increment retry count
         op.retries = (op.retries || 0) + 1;
+        // Simple exponential backoff before retrying next rounds
+        const backoffMs = Math.min(30000, 1000 * Math.pow(2, Math.min(5, op.retries - 1)));
+        try {
+          await new Promise((res) => setTimeout(res, backoffMs));
+        } catch (_) {}
         
         // If too many retries, mark as failed
         if (op.retries >= 3) {
@@ -185,7 +190,7 @@ class OfflineSyncService {
    * Execute a pending operation
    */
   async executePendingOperation(op) {
-    const { operation, storeName, data } = op;
+    const { operation, storeName, data, endpoint } = op;
     
     // Check if delete operation - only admins can delete
     if (operation === 'delete') {
@@ -198,14 +203,55 @@ class OfflineSyncService {
     
     switch (operation) {
       case 'create':
-        return this.createOnServer(storeName, data);
+        {
+          // If original endpoint is available, prefer replaying exact route
+          const serverData = endpoint
+            ? (await api.post(endpoint, data)).data
+            : await this.createOnServer(storeName, data);
+          // Reconcile temp ID with server ID if needed
+          try {
+            const idField = this.getIdFieldForStore(storeName);
+            const tempId = data?._tempId || (idField ? data?.[idField] : null);
+            const serverId = idField ? (serverData?.[idField] || serverData?.id) : (serverData?.id || null);
+            if (idField && tempId && serverId && tempId !== serverId) {
+              await indexedDBService.reconcileTempId(storeName, idField, tempId, serverId, serverData);
+            }
+          } catch (e) {
+            console.warn('Reconcile temp ID failed:', e);
+          }
+          return serverData;
+        }
       case 'update':
+        if (endpoint) {
+          return (await api.put(endpoint, data)).data;
+        }
         return this.updateOnServer(storeName, data);
       case 'delete':
+        if (endpoint) {
+          return (await api.delete(endpoint)).data;
+        }
         return this.deleteOnServer(storeName, data);
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
+  }
+
+  /**
+   * Get ID field from store name
+   */
+  getIdFieldForStore(storeName) {
+    const idFields = {
+      [STORES.patients]: 'patient_id',
+      [STORES.immunizations]: 'immunization_id',
+      [STORES.schedules]: 'schedule_id',
+      [STORES.visits]: 'visit_id',
+      [STORES.vaccines]: 'vaccine_id',
+      [STORES.guardians]: 'guardian_id',
+      [STORES.users]: 'user_id',
+      [STORES.messages]: 'message_id',
+      [STORES.notifications]: 'notification_id',
+    };
+    return idFields[storeName] || null;
   }
 
   /**

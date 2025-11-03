@@ -109,7 +109,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
 
 const faqs = ref([])

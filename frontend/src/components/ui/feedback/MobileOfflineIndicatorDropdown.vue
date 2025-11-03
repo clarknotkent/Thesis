@@ -12,9 +12,12 @@
       type="button"
       @click="toggleDropdown"
     >
-      <i :class="statusIcon" :style="{ color: statusColor }" class="fs-5"></i>
+      <div class="d-flex align-items-center gap-2">
+        <i :class="statusIcon" :style="{ color: statusColor }" class="fs-5"></i>
+        <span class="last-sync-badge d-none d-sm-inline small text-white-50">Last: {{ formattedLastSyncTime }}</span>
+      </div>
       <span v-if="pendingSyncCount > 0" class="badge bg-warning position-absolute top-0 start-100 translate-middle">
-        {{ pendingSyncCount }}
+        {{ pendingSyncCount > 99 ? '99+' : pendingSyncCount }}
       </span>
     </button>
     

@@ -14,6 +14,12 @@
 
       <div class="navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
+          <!-- Connection Status (Desktop) -->
+          <li class="nav-item d-none d-lg-flex align-items-center me-2">
+            <i :class="statusIcon" class="me-2 text-white"></i>
+            <span class="badge bg-secondary me-2">Last: {{ formattedLastSyncTime }}</span>
+            <span v-if="pendingSyncCount > 0" class="badge bg-warning text-dark">{{ pendingClamped }}</span>
+          </li>
           <!-- User Menu -->
           <li class="nav-item dropdown">
             <a
@@ -57,6 +63,7 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { logout as doLogout } from '@/services/auth'
+import { useOffline } from '@/composables/useOffline'
 
 const props = defineProps({
   userRole: {
@@ -72,6 +79,16 @@ const props = defineProps({
 const emit = defineEmits(['toggle-sidebar'])
 const router = useRouter()
 const dropdownOpen = ref(false)
+const { isOnline, isSyncing, pendingSyncCount, formattedLastSyncTime } = useOffline()
+const statusIcon = computed(() => {
+  if (isSyncing.value) return 'bi bi-arrow-repeat spinner'
+  if (isOnline.value) return 'bi bi-wifi'
+  return 'bi bi-wifi-off'
+})
+const pendingClamped = computed(() => {
+  const n = Number(pendingSyncCount.value || 0)
+  return n > 99 ? '99+' : `${n}`
+})
 
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value

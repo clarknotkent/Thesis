@@ -3,7 +3,7 @@
  * Handles patient data loading, vaccination history, scheduled vaccinations, and medical history
  */
 import { ref, computed } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 export function usePatientDetails(patientId) {
   // State

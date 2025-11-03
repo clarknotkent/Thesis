@@ -8,7 +8,7 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRole, isAuthenticated, getUserId, getUser } from '@/services/auth'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const route = useRoute()
 const router = useRouter()

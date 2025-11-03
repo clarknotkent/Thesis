@@ -3,7 +3,7 @@
  * Handles form state, guardian selection, parent autofill, and validation
  */
 import { ref, computed, reactive, watch } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 export function usePatientForm() {
   // State

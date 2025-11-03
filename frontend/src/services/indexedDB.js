@@ -370,10 +370,11 @@ class IndexedDBService {
   /**
    * Add operation to pending sync queue
    */
-  async addToPendingSync(operation, storeName, data) {
+  async addToPendingSync(operation, storeName, data, endpoint = null) {
     const syncItem = {
       operation, // 'create', 'update', 'delete'
       storeName,
+      endpoint,
       data,
       timestamp: new Date().toISOString(),
       retries: 0,
@@ -424,6 +425,50 @@ class IndexedDBService {
   async filter(storeName, filterFn) {
     const allData = await this.getAll(storeName);
     return allData.filter(filterFn);
+  }
+
+  /**
+   * Reconcile a temporary ID with the server-assigned ID
+   * - Reads record by tempId (must be current key value)
+   * - Merges with serverData
+   * - Writes new record with serverId under the idField keyPath
+   * - Removes _tempId and _pending flags
+   */
+  async reconcileTempId(storeName, idField, tempId, serverId, serverData = {}) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction([storeName], 'readwrite');
+      const store = tx.objectStore(storeName);
+
+      const getReq = store.get(tempId);
+      getReq.onsuccess = () => {
+        const existing = getReq.result;
+        if (!existing) {
+          // Nothing to reconcile; just write serverData using serverId
+          const record = { ...(serverData || {}), [idField]: serverId };
+          if ('_tempId' in record) delete record._tempId;
+          if ('_pending' in record) delete record._pending;
+          const putReq = store.put(record);
+          putReq.onsuccess = () => resolve(true);
+          putReq.onerror = () => reject(putReq.error);
+          return;
+        }
+
+        const merged = { ...existing, ...(serverData || {}) };
+        merged[idField] = serverId;
+        if ('_tempId' in merged) delete merged._tempId;
+        if ('_pending' in merged) delete merged._pending;
+
+        const deleteReq = store.delete(tempId);
+        deleteReq.onsuccess = () => {
+          const putReq = store.put(merged);
+          putReq.onsuccess = () => resolve(true);
+          putReq.onerror = () => reject(putReq.error);
+        };
+        deleteReq.onerror = () => reject(deleteReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
   }
 
   /**
