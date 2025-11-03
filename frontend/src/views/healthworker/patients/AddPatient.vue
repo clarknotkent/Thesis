@@ -171,29 +171,14 @@
 
             <div class="form-group">
               <label class="form-label">Mother's Name <span class="required">*</span></label>
-              <div class="parent-selector">
-                <input 
-                  type="text" 
-                  class="form-input" 
-                  v-model="formData.mother_name" 
-                  required
-                  placeholder="Search or enter mother's name"
-                  @input="filterMotherOptions"
-                  @focus="showMotherDropdown = true"
-                  @blur="hideMotherDropdown"
-                />
-                <div v-if="showMotherDropdown && filteredMotherOptions.length" class="dropdown-menu">
-                  <div 
-                    v-for="opt in filteredMotherOptions" 
-                    :key="opt.full_name" 
-                    class="dropdown-item"
-                    @mousedown="selectMother(opt)"
-                  >
-                    <div class="dropdown-name">{{ opt.full_name }}</div>
-                    <div class="dropdown-contact" v-if="opt.contact_number">{{ opt.contact_number }}</div>
-                  </div>
-                </div>
-              </div>
+              <ParentNameSelector
+                v-model="formData.mother_name"
+                :options="motherOptions"
+                placeholder="Search/select mother..."
+                :disabled="submitting"
+                :required="true"
+                @selected="onMotherSelected"
+              />
             </div>
 
             <div class="form-group">
@@ -220,28 +205,13 @@
 
             <div class="form-group">
               <label class="form-label">Father's Name</label>
-              <div class="parent-selector">
-                <input 
-                  type="text" 
-                  class="form-input" 
-                  v-model="formData.father_name" 
-                  placeholder="Search or enter father's name"
-                  @input="filterFatherOptions"
-                  @focus="showFatherDropdown = true"
-                  @blur="hideFatherDropdown"
-                />
-                <div v-if="showFatherDropdown && filteredFatherOptions.length" class="dropdown-menu">
-                  <div 
-                    v-for="opt in filteredFatherOptions" 
-                    :key="opt.full_name" 
-                    class="dropdown-item"
-                    @mousedown="selectFather(opt)"
-                  >
-                    <div class="dropdown-name">{{ opt.full_name }}</div>
-                    <div class="dropdown-contact" v-if="opt.contact_number">{{ opt.contact_number }}</div>
-                  </div>
-                </div>
-              </div>
+              <ParentNameSelector
+                v-model="formData.father_name"
+                :options="fatherOptions"
+                placeholder="Search/select father..."
+                :disabled="submitting"
+                @selected="onFatherSelected"
+              />
             </div>
 
             <div class="form-group">
@@ -402,6 +372,7 @@ import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
 import { usePatientForm } from '@/features/health-worker/patients/composables'
+import ParentNameSelector from '@/features/admin/patients/ParentNameSelector.vue'
 
 const router = useRouter()
 

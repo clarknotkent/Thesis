@@ -157,7 +157,7 @@
                     </span>
                   </td>
                   <td>
-                    <span class="badge" :class="user.status === 'active' ? 'bg-success' : 'bg-secondary'">
+                    <span class="badge" :class="statusBadgeClass(user.status)">
                       {{ user.status }}
                     </span>
                   </td>
@@ -171,7 +171,7 @@
                         <i class="bi bi-eye me-1"></i>View
                       </router-link>
                       <button 
-                        v-if="user.status === 'active'"
+                        v-if="user.status !== 'archived'"
                         class="btn btn-sm btn-danger" 
                         @click="confirmDeleteUser(user)"
                         :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : ''"
@@ -179,7 +179,7 @@
                         <i class="bi bi-trash me-1"></i>Delete
                       </button>
                       <button
-                        v-else
+                        v-else-if="user.status === 'archived'"
                         class="btn btn-sm btn-success"
                         @click="openRestoreModal(user)"
                       >
@@ -535,9 +535,9 @@ const fetchUsers = async () => {
   loading.value = true
   try {
     const role = activeFilter.value !== 'all' ? activeFilter.value : ''
-    // When "Show Deleted" is ON, request only soft-deleted users (status = 'inactive').
-    // Otherwise, default to active users only.
-    const status = showDeleted.value ? 'inactive' : 'active'
+    // When "Show Archived" is ON, request only archived users.
+    // Otherwise, request all non-archived (active + inactive).
+    const status = showDeleted.value ? 'archived' : 'not_archived'
     const { users: rows, pagination } = await apiListUsers({
       page: currentPage.value,
       limit: itemsPerPage,
@@ -545,7 +545,7 @@ const fetchUsers = async () => {
       role,
       status
     })
-    users.value = rows.map(u => {
+    const mapped = rows.map(u => {
       const rawLast = u.lastLogin || u.last_login || null
       return {
         id: u.id,
@@ -558,6 +558,15 @@ const fetchUsers = async () => {
         // Frontend-controlled PH timezone display for last login
         lastLoginDisplay: rawLast ? formatDatePH(rawLast) : 'Never'
       }
+    })
+    // Sort so inactive users appear at the end (but remain visible), preserving numeric id order otherwise
+    const weight = (s) => (String(s).toLowerCase() === 'inactive' ? 1 : 0)
+    users.value = mapped.sort((a, b) => {
+      const wa = weight(a.status), wb = weight(b.status)
+      if (wa !== wb) return wa - wb
+      const ia = Number(a.id) || 0
+      const ib = Number(b.id) || 0
+      return ia - ib
     })
     totalItems.value = pagination?.totalItems || rows.length
     totalPages.value = pagination?.totalPages || Math.ceil(totalItems.value / itemsPerPage)
@@ -620,7 +629,7 @@ const openUserModal = async (user = null) => {
         email: full.email || user.email,
         role: mapBackendRoleToOption(full.role || user.role || ''),
         hwType: full.hw_type || '',
-        status: full.is_deleted ? 'inactive' : (user.status || 'active'),
+        status: full.is_deleted ? 'archived' : (full.status || user.status || 'active'),
         password: '',
         licenseNumber: full.professional_license_no || user.licenseNumber || '',
         employeeId: full.employee_id || user.employeeId || '',
@@ -873,6 +882,15 @@ const getRoleDisplayName = (role) => {
       return role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     }
   }
+}
+
+// Status badge helper
+const statusBadgeClass = (status) => {
+  const s = String(status || '').toLowerCase()
+  if (s === 'active') return 'bg-success'
+  if (s === 'inactive') return 'bg-secondary'
+  if (s === 'archived') return 'bg-dark'
+  return 'bg-secondary'
 }
 
 const formatDate = (date) => {

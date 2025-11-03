@@ -28,6 +28,8 @@ const mapPatientPayload = (body) => ({
   father_contact_number: body.father_contact_number || body.fatherContactNumber || null,
   family_number: body.family_number || body.familyNumber || null,
   tags: body.tags || null,
+  // Pass through status for Active/Inactive/Archived flows
+  status: body.status || body.patient_status || body.patientStatus || undefined,
   // Accept birth history nested payloads for onboarding
   birthhistory: body.birthhistory || body.birth_history || body.medical_history || null
 });
@@ -713,11 +715,40 @@ const updatePatientSchedules = async (req, res) => {
   }
 };
 
+// Restore a soft-deleted patient (and cascade restore)
+const restorePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const actorId = req.user?.user_id || null;
+    const restored = await patientModel.restorePatient(id, actorId, getSupabaseForRequest(req));
+    if (!restored) {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+    try {
+      await logActivity({
+        action_type: ACTIVITY.CHILD.RESTORE,
+        description: `Restored patient ${id}`,
+        user_id: actorId,
+        entity_type: 'child',
+        entity_id: id
+      });
+    } catch (_) {}
+    res.json({ success: true, message: 'Patient restored successfully' });
+  } catch (error) {
+    console.error('Error restoring patient:', error);
+    if (error && (error.statusCode === 400 || error.code === 'GUARDIAN_DELETED')) {
+      return res.status(400).json({ success: false, message: error.message || 'Cannot restore patient: guardian is archived' });
+    }
+    res.status(500).json({ success: false, message: 'Failed to restore patient', error: error.message });
+  }
+};
+
 module.exports = {
   createPatient,
   getPatientById,
   updatePatient,
   deletePatient,
+  restorePatient,
   getAllPatients,
   getPatientSchedule,
   updatePatientTag,
