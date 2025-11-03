@@ -14,12 +14,6 @@
 
       <div class="navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
-          <!-- Connection Status (Desktop) -->
-          <li class="nav-item d-none d-lg-flex align-items-center me-2">
-            <i :class="statusIcon" class="me-2 text-white"></i>
-            <span class="badge bg-secondary me-2">Last: {{ formattedLastSyncTime }}</span>
-            <span v-if="pendingSyncCount > 0" class="badge bg-warning text-dark">{{ pendingClamped }}</span>
-          </li>
           <!-- User Menu -->
           <li class="nav-item dropdown">
             <a

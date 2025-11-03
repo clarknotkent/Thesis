@@ -1,4 +1,4 @@
-const { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById } = require('../models/visitModel');
+const { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay } = require('../models/visitModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
@@ -59,6 +59,13 @@ const postVisit = async (req, res) => {
     const created = await createVisit(payload, supabase);
     res.status(201).json(created);
   } catch (error) {
+    if (error && (error.code === 'VISIT_DUPLICATE_PER_DAY' || error.status === 409)) {
+      return res.status(409).json({
+        message: 'Visit already exists for this patient on this date. Please update the existing visit instead.',
+        code: 'VISIT_DUPLICATE_PER_DAY',
+        existing_visit_id: error.existingVisitId || null
+      });
+    }
     console.error('Error creating visit', error);
     res.status(500).json({ message: 'Failed to create visit' });
   }
@@ -110,4 +117,19 @@ const ensureVisit = async (req, res) => {
 };
 
 module.exports = { getVisits, getVisit, postVisit, updateVisit, ensureVisit };
+// Lightweight existence check (no writes) for UI pre-flight/toast
+const existsVisit = async (req, res) => {
+  try {
+    const { patient_id, visit_date } = req.query || {};
+    if (!patient_id) return res.status(400).json({ message: 'patient_id is required' });
+    const supabase = getSupabaseForRequest(req);
+    const existing = await findExistingVisitForDay(patient_id, visit_date, null, supabase);
+    return res.json({ exists: !!existing, visit_id: existing?.visit_id || null });
+  } catch (error) {
+    console.error('Failed to check visit existence:', error);
+    res.status(500).json({ message: 'Failed to check visit existence' });
+  }
+};
+
+module.exports = { getVisits, getVisit, postVisit, updateVisit, ensureVisit, existsVisit };
 

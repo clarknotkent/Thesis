@@ -108,4 +108,11 @@ export const messageAPI = {
   markAsRead: (messageId) => api.post(`/messages/${messageId}/read`)
 }
 
+// Visits API (lightweight)
+export const visitsAPI = {
+  // Non-destructive existence check for same-day visit
+  existsCheck: (patientId, visitDateIso) =>
+    api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
+}
+
 export default api
