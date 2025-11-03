@@ -1,4 +1,5 @@
 import api from '@/services/offlineAPI';
+import offlineSync from '@/services/offlineSync';
 import { getUserId } from '@/services/auth';
 
 // Helper to normalize user ID
@@ -56,22 +57,48 @@ export const getConversationTitle = (conv, currentUserId) => {
 
 // Load conversations
 export const loadConversations = async () => {
-  const res = await api.get('/conversations');
-  return res.data.items || res.data || [];
+  try {
+    const res = await api.get('/conversations');
+    return res.data.items || res.data || [];
+  } catch (e) {
+    // Offline fallback to parent snapshot
+    try {
+      const snap = await offlineSync.getParentSnapshot();
+      return Array.isArray(snap?.conversations) ? snap.conversations : [];
+    } catch (_) {
+      return [];
+    }
+  }
 };
 
 // Load messages for a conversation
 export const loadMessages = async (conversationId) => {
-  const res = await api.get(`/messages/${conversationId}`);
-  return res.data.items || res.data || [];
+  try {
+    const res = await api.get(`/messages/${conversationId}`);
+    return res.data.items || res.data || [];
+  } catch (e) {
+    // Offline fallback: read from parent snapshot cache
+    try {
+      const snap = await offlineSync.getParentSnapshot();
+      const all = Array.isArray(snap?.messages) ? snap.messages : [];
+      return all.filter(m => String(m.conversation_id || m.conversationId || m.cid) === String(conversationId));
+    } catch (_) {
+      return [];
+    }
+  }
 };
 
 // Send a message
 export const sendMessage = async (conversationId, messageContent) => {
-  await api.post('/messages', { 
-    conversation_id: conversationId, 
-    message_content: messageContent 
-  });
+  try {
+    await api.post('/messages', { 
+      conversation_id: conversationId, 
+      message_content: messageContent 
+    });
+  } catch (e) {
+    // If offline, rely on background sync queue of offlineAPI; no-op here
+    return;
+  }
 };
 
 // Create a new conversation

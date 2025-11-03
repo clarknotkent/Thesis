@@ -12,6 +12,14 @@ import { Dropdown } from 'bootstrap'
 
 // Import offline functionality
 import { initializeOffline } from './services/offline'
+// Ensure PWA service worker registration across dev/prod
+// (vite-plugin-pwa will provide this virtual module)
+let registerSW
+try {
+	// dynamic import to avoid breaking non-PWA builds
+	// eslint-disable-next-line no-undef
+	registerSW = (await import('virtual:pwa-register')).registerSW
+} catch (_) {}
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -83,3 +91,24 @@ try {
 	// Fallback: attempt to initialize
 	initializeOffline().catch(() => {})
 }
+
+// Register the service worker (dev/prod)
+try {
+	if (registerSW) {
+		registerSW({ immediate: true })
+	}
+} catch (_) {}
+
+// Pre-warm critical parent views in dev so routes work offline after first load
+try {
+	if (navigator.onLine) {
+		Promise.allSettled([
+			import('@/views/parent/ParentHome.vue'),
+			import('@/views/parent/ParentRecords.vue'),
+			import('@/views/parent/ParentSchedule.vue'),
+			import('@/views/parent/ParentProfile.vue'),
+			import('@/views/parent/ParentNotifications.vue'),
+			import('@/views/parent/ParentMessages.vue'),
+		])
+	}
+} catch (_) {}
