@@ -256,7 +256,6 @@ const formatTimePH = (s) => {
   /* Make input sticky so it stays visible above fixed bottom navbars */
   position: sticky;
   bottom: 60px; /* default offset to sit above mobile bottom navbar */
-  z-index: 1100; /* above most layout elements but below global overlays */
   box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
 }
 

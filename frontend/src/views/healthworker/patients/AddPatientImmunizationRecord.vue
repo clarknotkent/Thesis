@@ -55,7 +55,7 @@
 
         <!-- Vital Signs -->
         <VitalsFormSection
-          v-if="!hideVitals"
+          v-if="!hideVitals && visitMode === 'new'"
           v-model="formData.vitals"
           :readonly="vitalsReadOnly"
         />
@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import VisitSelectorSection from '@/features/health-worker/patients/components/VisitSelectorSection.vue'
@@ -218,6 +218,14 @@ onMounted(async () => {
 const goBack = () => {
   router.back()
 }
+
+// Reset vitals only when attaching to an existing visit AND a visit is selected
+watch(existingVisitId, (newVal) => {
+  if (visitMode.value === 'existing' && newVal) {
+    // Clear any previously typed vitals to avoid stale data hanging around
+    formData.value.vitals = {}
+  }
+})
 
 const handleServiceSave = (service) => {
   if (editingServiceIndex.value !== null) {

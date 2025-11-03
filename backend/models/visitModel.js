@@ -39,17 +39,17 @@ const getVisitById = async (id, client) => {
 
 const updateVisitById = async (id, updatePayload, client) => {
   const supabase = withClient(client);
-  
+
   // Sanitize the payload: convert empty strings to null for bigint fields
   const sanitizedPayload = { ...updatePayload };
   const bigintFields = ['recorded_by', 'created_by', 'updated_by'];
-  
   for (const field of bigintFields) {
     if (sanitizedPayload[field] === '') {
       sanitizedPayload[field] = null;
     }
   }
-  
+
+  // No duplicate-per-day guard on updates to allow editing legacy data.
   const { data, error } = await supabase
     .from('visits')
     .update(sanitizedPayload)
@@ -95,6 +95,34 @@ const ensureVisitForDate = async (patient_id, visit_date, recorded_by = null, cl
   const { data: viewRow, error: vErr } = await supabase.from('visits_view').select('*').eq('visit_id', created.visit_id).single();
   if (!vErr) return viewRow;
   return created;
+};
+
+// Helper: find an existing visit for patient within the day window
+const findExistingVisitForDay = async (patient_id, visit_date, exclude_visit_id = null, client) => {
+  const supabase = withClient(client);
+  if (!patient_id) return null;
+  const target = visit_date ? new Date(visit_date) : new Date();
+  const start = new Date(target);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(target);
+  end.setHours(23, 59, 59, 999);
+
+  let query = supabase
+    .from('visits')
+    .select('visit_id, patient_id, visit_date')
+    .eq('patient_id', patient_id)
+    .gte('visit_date', start.toISOString())
+    .lte('visit_date', end.toISOString())
+    .order('visit_id', { ascending: false })
+    .limit(1);
+
+  if (exclude_visit_id) {
+    query = query.neq('visit_id', exclude_visit_id);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
 };
 
 const createVisit = async (visitPayload, client) => {
@@ -150,6 +178,16 @@ const createVisit = async (visitPayload, client) => {
 
   console.log('🔗 [CONCATENATION] Service Rendered:', serviceRendered);
   console.log('🔍 [CONCATENATION] Findings:', findings);
+
+  // Enforce one-visit-per-day per patient (API-level guard; DB not modified)
+  const existingForDay = await findExistingVisitForDay(visitData.patient_id, visitData.visit_date, null, supabase);
+  if (existingForDay) {
+    const err = new Error('Visit already exists for this patient on this date');
+    err.code = 'VISIT_DUPLICATE_PER_DAY';
+    err.status = 409;
+    err.existingVisitId = existingForDay.visit_id;
+    throw err;
+  }
 
   // Insert visit with concatenated data
   console.log('💾 [VISIT_SAVE] Saving visit record...');
@@ -326,4 +364,4 @@ const createVisit = async (visitPayload, client) => {
   return createdVisit || visit;
 };
 
-module.exports = { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById };
+module.exports = { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay };

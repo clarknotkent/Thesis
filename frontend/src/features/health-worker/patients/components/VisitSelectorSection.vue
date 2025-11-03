@@ -13,7 +13,7 @@
             type="radio" 
             :value="'new'" 
             :checked="visitMode === 'new'"
-            @change="$emit('update:visitMode', 'new')"
+            @change="handleNewModeSelect"
           />
           <span>Create new visit</span>
         </label>
@@ -57,6 +57,11 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import api from '@/services/offlineAPI'
+import { addToast } from '@/composables/useToast'
+
 defineProps({
   visitMode: {
     type: String,
@@ -78,6 +83,64 @@ defineProps({
 
 const emit = defineEmits(['update:visitMode', 'update:existingVisitId', 'ensure-visits-loaded'])
 
+const route = useRoute()
+
+// Centralized check: if a visit exists today, auto-correct to existing and toast
+const checkTodayVisitAndCorrect = async () => {
+  const patientId = route.params.patientId || route.params.id
+  if (!patientId) return
+  try {
+    const visitDateIso = new Date().toISOString()
+    const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
+    // Online success path with expected shape
+    if (data && typeof data.exists === 'boolean') {
+      if (data.exists) {
+        addToast({
+          title: 'Visit already exists',
+          message: 'A visit already exists for this patient today. Switched to use existing visit.',
+          type: 'info'
+        })
+        emit('update:visitMode', 'existing')
+        emit('update:existingVisitId', String(data.visit_id || ''))
+        emit('ensure-visits-loaded')
+        return true
+      }
+      return false
+    }
+
+    // Offline fallback: data likely contains cached visits array or store contents
+    const cachedVisits = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+    const sameDay = cachedVisits.find(v => {
+      if (!v || String(v.patient_id) !== String(patientId) || !v.visit_date) return false
+      const vd = new Date(v.visit_date)
+      const cd = new Date(visitDateIso)
+      return vd.getFullYear() === cd.getFullYear() && vd.getMonth() === cd.getMonth() && vd.getDate() === cd.getDate()
+    })
+    if (sameDay) {
+      addToast({
+        title: 'Visit already exists',
+        message: 'A visit already exists for this patient today. Switched to use existing visit.',
+        type: 'info'
+      })
+      emit('update:visitMode', 'existing')
+      emit('update:existingVisitId', String(sameDay.visit_id || ''))
+      emit('ensure-visits-loaded')
+      return true
+    }
+  } catch (err) {
+    // Non-blocking failure: inform but keep current selection
+    addToast({ title: 'Notice', message: 'Unable to check today\'s visit. Please try again.', type: 'warning' })
+  }
+  return false
+}
+
+const handleNewModeSelect = async () => {
+  // Optimistically set to new, then correct if needed
+  emit('update:visitMode', 'new')
+  emit('update:existingVisitId', '')
+  await checkTodayVisitAndCorrect()
+}
+
 const handleExistingModeSelect = () => {
   emit('update:visitMode', 'existing')
   emit('ensure-visits-loaded')
@@ -91,6 +154,11 @@ const formatDate = (dateStr) => {
     day: 'numeric'
   })
 }
+
+// Default is create new visit: run the check immediately on mount and correct if necessary
+onMounted(async () => {
+  await checkTodayVisitAndCorrect()
+})
 </script>
 
 <style scoped>
