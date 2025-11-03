@@ -347,7 +347,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
@@ -358,6 +358,8 @@ import MedicalHistoryCard from '@/features/health-worker/patients/components/Med
 import { usePatientDetails } from '@/features/health-worker/patients/composables'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/offlineAPI'
+import { getUser } from '@/services/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -392,12 +394,69 @@ const {
 const { confirm } = useConfirm()
 const { addToast } = useToast()
 
+// Determine HS type (e.g., BHS) from current user
+const currentUser = ref(getUser())
+const hsType = computed(() => String(currentUser.value?.hs_type || currentUser.value?.type || '').toLowerCase())
+const isBHS = computed(() => hsType.value === 'bhs')
+
 // Navigation functions
 const goBack = () => {
   router.push('/healthworker/patients')
 }
 
-const goToAddImmunization = () => {
+const goToAddImmunization = async () => {
+  // For BHS UI, show a toast instead of navigating
+  if (isBHS.value) {
+    try {
+      const visitDateIso = new Date().toISOString()
+      const { data } = await api.get(`/visits/exists/check`, { params: { patient_id: route.params.id, visit_date: visitDateIso } })
+      // If online endpoint replied with the expected shape
+      if (data && typeof data.exists === 'boolean') {
+        if (data.exists) {
+          addToast({
+            title: 'Visit already exists',
+            message: 'A visit already exists for this patient today. Please use the existing visit to add records.',
+            type: 'info'
+          })
+        } else {
+          addToast({
+            title: 'No visit yet for today',
+            message: 'No visit exists yet for today for this patient.',
+            type: 'info'
+          })
+        }
+        return
+      }
+
+      // Offline fallback: data likely contains cached visits array; compute existence
+      const cachedVisits = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+      const sameDayExists = cachedVisits.some(v => {
+        if (!v || String(v.patient_id) !== String(route.params.id) || !v.visit_date) return false
+        const vd = new Date(v.visit_date)
+        const cd = new Date(visitDateIso)
+        return vd.getFullYear() === cd.getFullYear() && vd.getMonth() === cd.getMonth() && vd.getDate() === cd.getDate()
+      })
+      if (sameDayExists) {
+        addToast({
+          title: 'Visit already exists',
+          message: 'A visit already exists for this patient today. Please use the existing visit to add records.',
+          type: 'info'
+        })
+      } else {
+        addToast({
+          title: 'No visit yet for today',
+          message: 'No visit exists yet for today for this patient.',
+          type: 'info'
+        })
+      }
+    } catch (err) {
+      console.error('Visit existence check failed', err)
+      addToast({ title: 'Notice', message: 'Unable to check today\'s visit. Please try again.', type: 'warning' })
+    }
+    return
+  }
+
+  // Non-BHS: keep existing navigation
   router.push({
     name: 'AddPatientImmunizationRecord',
     params: {

@@ -15,7 +15,7 @@ export default defineConfig({
         short_name: 'ImmunizeMe',
         description: 'Healthcare and vaccination management system',
         theme_color: '#0d6efd',
-        background_color: '#ffffff',
+        background_color: '#0d6efd',
         display: 'standalone',
         scope: '/',
         start_url: '/',
@@ -68,6 +68,63 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
         runtimeCaching: [
           {
+            // Cache API requests to backend while allowing fresh network when available
+            urlPattern: /^\/api\/.*$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'backend-api-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Queue POST requests to /api when offline and replay later
+            urlPattern: /^\/api\/.*$/,
+            handler: 'NetworkOnly',
+            method: 'POST',
+            options: {
+              backgroundSync: {
+                name: 'api-post-queue',
+                options: {
+                  maxRetentionTime: 24 * 60 // minutes
+                }
+              }
+            }
+          },
+          {
+            // Queue PUT requests to /api when offline and replay later
+            urlPattern: /^\/api\/.*$/,
+            handler: 'NetworkOnly',
+            method: 'PUT',
+            options: {
+              backgroundSync: {
+                name: 'api-put-queue',
+                options: {
+                  maxRetentionTime: 24 * 60
+                }
+              }
+            }
+          },
+          {
+            // Queue DELETE requests to /api when offline and replay later
+            urlPattern: /^\/api\/.*$/,
+            handler: 'NetworkOnly',
+            method: 'DELETE',
+            options: {
+              backgroundSync: {
+                name: 'api-delete-queue',
+                options: {
+                  maxRetentionTime: 24 * 60
+                }
+              }
+            }
+          },
+          {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*$/,
             handler: 'NetworkFirst',
             options: {
@@ -118,6 +175,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 2000, // Increase limit to 2MB (default is 500KB)
     rollupOptions: {
       output: {
         manualChunks: undefined

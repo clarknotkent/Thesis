@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout :title="pageTitle">
+  <ParentLayout title="My Schedule">
     <!-- Fixed Header Section -->
     <div class="schedule-details-header-section">
       <div class="header-bar">
@@ -74,7 +74,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import ScheduleCard from '@/components/parent/ScheduleCard.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()
@@ -84,8 +84,17 @@ const error = ref(null)
 const childName = ref('')
 const schedules = ref([])
 
+// Extract short name (first + last name only)
+const shortName = computed(() => {
+  if (!childName.value) return ''
+  const parts = childName.value.trim().split(' ')
+  if (parts.length <= 2) return childName.value // Already short
+  // Return first and last name only
+  return `${parts[0]} ${parts[parts.length - 1]}`
+})
+
 const pageTitle = computed(() => {
-  return childName.value ? `${childName.value}'s Schedule` : 'Schedule'
+  return shortName.value ? `${shortName.value}'s Schedule` : 'Schedule'
 })
 
 const goBack = () => {
@@ -129,6 +138,11 @@ const fetchSchedule = async () => {
     
   } catch (err) {
     console.error('Error fetching schedule:', err)
+    const status = err?.response?.status
+    if (status === 403 || status === 404) {
+      // Child not accessible or missing -> Not Found page
+      return router.replace('/not-found')
+    }
     error.value = 'Failed to load vaccination schedule. Please try again.'
   } finally {
     loading.value = false

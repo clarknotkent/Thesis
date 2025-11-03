@@ -126,7 +126,7 @@
 
 <script>
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import { notificationAPI } from '@/services/api'
+import { notificationAPI } from '@/services/offlineAPI'
 import { usersAPI } from '@/services/users'
 import { useToast } from '@/composables/useToast'
 

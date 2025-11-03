@@ -56,7 +56,7 @@
           </div>
 
           <!-- Dose Records -->
-          <form @submit.prevent="saveAllRecords">
+          <form @submit.prevent="handleSubmit">
             <div v-for="(dose, index) in doseRecords" :key="dose.id" class="dose-card mb-4">
               <div class="dose-header">
                 <div class="d-flex justify-content-between align-items-center">
@@ -223,6 +223,8 @@
       </div>
     </div>
   </AdminLayout>
+  <!-- Approval modal for second approver (admin/staff, not current user, not guardian/BHS) -->
+  <ApprovalModal v-if="showApproval" @approved="onApproverApproved" @cancel="onApproverCancel" />
 </template>
 
 <script setup>
@@ -231,8 +233,9 @@ import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
+import ApprovalModal from '@/components/ApprovalModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -716,7 +719,18 @@ const fetchVaccinationRecords = async () => {
   }
 }
 
-const saveAllRecords = async () => {
+// Approval-gated submit handler
+const showApproval = ref(false)
+const handleSubmit = async () => {
+  if (!isFormValid.value) {
+    addToast({ title: 'Warning', message: 'Please fill in all required fields', type: 'warning' })
+    return
+  }
+  showApproval.value = true
+}
+
+// Perform save after approval
+const actuallySaveAllRecords = async (approver) => {
   try {
     saving.value = true
      // Debug: save start
@@ -757,6 +771,10 @@ const saveAllRecords = async () => {
       const updateData = {
         administered_date: formatDateForAPI(dose.dateAdministered),
         remarks: remarks,
+      }
+      // Attach approver if provided (backend may ignore if not supported)
+      if (approver?.user_id) {
+        updateData.approved_by = approver.user_id
       }
       // Only include inventory_id when changed (to avoid unnecessary writes)
       // For outside records, do NOT update inventory_id even if selected locally
@@ -803,6 +821,15 @@ const saveAllRecords = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const onApproverApproved = async (approver) => {
+  showApproval.value = false
+  await actuallySaveAllRecords(approver)
+}
+
+const onApproverCancel = () => {
+  showApproval.value = false
 }
 
 onMounted(() => {

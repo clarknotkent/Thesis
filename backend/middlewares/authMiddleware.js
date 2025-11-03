@@ -1,6 +1,7 @@
 
 const jwt = require('jsonwebtoken');
 const { verifyToken, getUserMappingByUUID } = require('../models/authModel');
+const { getSupabaseForRequest } = require('../utils/supabaseClient');
 
 // Authenticate request and attach user info
 const authenticateRequest = async (req, res, next) => {
@@ -199,6 +200,62 @@ module.exports = {
   },
   authorizeRole,
   checkUserMapping,
+  // Ensure the current user can read a specific patient's data.
+  // Admin/health roles bypass; guardians/parents must own the patient.
+  authorizePatientReadAccess: async (req, res, next) => {
+    try {
+      const role = normalizeRole(req.user && req.user.role);
+      // System/staff roles: allow
+      const staffRoles = ['admin', 'healthworker', 'healthstaff', 'health_worker', 'health_staff'].map(normalizeRole);
+      if (staffRoles.includes(role)) return next();
+
+      // Only guardians/parents can proceed with ownership checks
+      const isGuardian = role === 'guardian' || role === 'parent' || role === 'guardianparent';
+      if (!isGuardian) {
+        console.warn('[auth] Forbidden: role not allowed to read patient', { role, userId: req.user && (req.user.user_id || req.user.id) });
+        return res.status(403).json({ error: 'Forbidden: role cannot access patient data' });
+      }
+
+      // Ensure we have a mapped user_id
+      if (!req.user.user_id && req.user.uuid) {
+        try {
+          const mapping = await getUserMappingByUUID(req.user.uuid);
+          if (mapping && mapping.user_id) req.user.user_id = mapping.user_id;
+        } catch (_) {}
+      }
+      const userId = req.user && req.user.user_id;
+      if (!userId) {
+        console.warn('[auth] Missing user_id for ownership check');
+        return res.status(401).json({ error: 'Unauthorized: user mapping not found' });
+      }
+
+      const patientId = req.params && req.params.id;
+      if (!patientId) return res.status(400).json({ error: 'Bad request: patient id missing' });
+
+      const supabase = getSupabaseForRequest(req);
+      // Use patients_view to resolve guardian_user_id quickly
+      const { data: row, error } = await supabase
+        .from('patients_view')
+        .select('patient_id, guardian_user_id')
+        .eq('patient_id', patientId)
+        .maybeSingle();
+      if (error) {
+        console.error('[auth] patients_view lookup error', error);
+        return res.status(500).json({ error: 'Internal error validating patient access' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      if (row.guardian_user_id !== userId) {
+        console.warn('[auth] Forbidden: guardian tried to access non-owned patient', { patientId, userId });
+        return res.status(403).json({ error: "Forbidden: you can only view your child's record" });
+      }
+      return next();
+    } catch (e) {
+      console.error('[auth] authorizePatientReadAccess error', e);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
   enforceRLS,
   validateToken,
   validateInput,

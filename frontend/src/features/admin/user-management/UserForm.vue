@@ -200,12 +200,14 @@
         </span>
       </button>
     </div>
+    <QueuedHint class="mt-2" />
   </form>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
+import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
 
 const props = defineProps({
   initialData: {

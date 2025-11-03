@@ -7,6 +7,7 @@ backend/node_modules/
 dist/
 build/
 frontend/dist/
+frontend/dev-dist/
 backend/dist/
 
 # Environment variables
@@ -97,3 +98,7 @@ pnpm-debug.log*
 *git-change-report-*.diff
 *git-change-report-*.patch
 *git-change-report-*.txt
+
+# Documentation folder
+docs/
+

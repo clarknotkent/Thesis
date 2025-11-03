@@ -55,7 +55,7 @@
 
         <!-- Vital Signs -->
         <VitalsFormSection
-          v-if="!hideVitals"
+          v-if="!hideVitals && visitMode === 'new'"
           v-model="formData.vitals"
           :readonly="vitalsReadOnly"
         />
@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import VisitSelectorSection from '@/features/health-worker/patients/components/VisitSelectorSection.vue'
@@ -157,7 +157,7 @@ import VaccineServiceFormModal from '@/features/health-worker/patients/component
 import { usePatientImmunizationForm } from '@/features/health-worker/patients/composables'
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const router = useRouter()
@@ -218,6 +218,14 @@ onMounted(async () => {
 const goBack = () => {
   router.back()
 }
+
+// Reset vitals only when attaching to an existing visit AND a visit is selected
+watch(existingVisitId, (newVal) => {
+  if (visitMode.value === 'existing' && newVal) {
+    // Clear any previously typed vitals to avoid stale data hanging around
+    formData.value.vitals = {}
+  }
+})
 
 const handleServiceSave = (service) => {
   if (editingServiceIndex.value !== null) {
@@ -411,7 +419,7 @@ const handleSubmit = async () => {
   flex: 1;
   overflow-y: auto;
   padding: 1.25rem;
-  padding-bottom: 120px;
+  padding-bottom: 160px; /* Increased to ensure buttons are fully visible */
 }
 
 .loading-state {
@@ -593,12 +601,13 @@ const handleSubmit = async () => {
   padding: 1rem;
   background: white;
   position: sticky;
-  bottom: 0;
+  bottom: 60px; /* Account for bottom navbar on mobile */
   border-top: 1px solid #e5e7eb;
   margin-left: -1.25rem;
   margin-right: -1.25rem;
   margin-bottom: -1.25rem;
   border-radius: 0 0 0.75rem 0.75rem;
+  z-index: 10;
 }
 
 .btn-cancel,

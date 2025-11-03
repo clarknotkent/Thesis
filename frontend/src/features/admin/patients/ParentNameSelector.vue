@@ -27,8 +27,11 @@
         <div>
           <strong>{{ displayName(opt) }}</strong>
           <br>
-          <small class="text-muted">
+          <small class="text-muted d-block">
             <i class="bi bi-telephone me-1"></i>{{ opt.contact_number || 'No contact' }}
+          </small>
+          <small class="text-muted" v-if="opt.occupation">
+            <i class="bi bi-briefcase me-1"></i>{{ opt.occupation }}
           </small>
         </div>
         <span class="badge bg-secondary">Parent</span>

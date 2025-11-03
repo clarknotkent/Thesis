@@ -26,7 +26,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import QRCode from 'qrcode'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const props = defineProps({
   patient: {

@@ -3,8 +3,7 @@
  * Handles user selection and conversation creation
  */
 import { ref, computed } from 'vue'
-import { conversationAPI } from '@/services/api'
-import axios from 'axios'
+import api, { conversationAPI } from '@/services/offlineAPI'
 
 export function useNewConversation() {
   // State
@@ -28,27 +27,30 @@ export function useNewConversation() {
    */
   const loadAvailableUsers = async () => {
     try {
-      // Load both health workers and parents as potential conversation participants
-      const [hwResponse, parentsResponse] = await Promise.all([
-        axios.get('/api/health-workers'),
-        axios.get('/api/parents')
+      // Load both health staff and guardians as potential participants using the offline-aware client
+      const [hwResponse, guardiansResponse] = await Promise.all([
+        api.get('/health-staff'),
+        api.get('/guardians')
       ])
 
-      const healthWorkers = (hwResponse.data?.data || hwResponse.data || []).map(hw => ({
-        user_id: hw.id,
-        name: `${hw.firstname} ${hw.surname}`,
+      const healthWorkersRaw = hwResponse?.data?.data || hwResponse?.data || []
+      const guardiansRaw = guardiansResponse?.data?.data || guardiansResponse?.data || []
+
+      const healthWorkers = (Array.isArray(healthWorkersRaw) ? healthWorkersRaw : []).map(hw => ({
+        user_id: hw.user_id || hw.id,
+        name: hw.full_name || `${hw.firstname || ''} ${hw.surname || ''}`.trim(),
         type: 'Health Worker',
-        role: hw.type || 'Staff'
+        role: hw.role || hw.type || 'staff'
       }))
 
-      const parents = (parentsResponse.data?.data || parentsResponse.data || []).map(parent => ({
-        user_id: parent.id,
-        name: `${parent.firstname} ${parent.surname}`,
+      const guardians = (Array.isArray(guardiansRaw) ? guardiansRaw : []).map(g => ({
+        user_id: g.user_id || g.id,
+        name: g.full_name || `${g.firstname || ''} ${g.surname || ''}`.trim(),
         type: 'Parent/Guardian',
-        role: 'Parent'
+        role: 'parent'
       }))
 
-      availableUsers.value = [...healthWorkers, ...parents]
+      availableUsers.value = [...healthWorkers, ...guardians]
     } catch (error) {
       console.error('Error loading available users:', error)
       availableUsers.value = []

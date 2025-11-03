@@ -3,7 +3,7 @@
  * Handles both creating new visits and attaching to existing visits
  */
 import { ref, watch } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 export function useVisitManagement(formData) {
   // Visit selection state

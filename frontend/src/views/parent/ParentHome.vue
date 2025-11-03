@@ -30,7 +30,7 @@ import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
 import { formatDate, calculateAge } from '@/composables/useDateFormat'
 import { getChildName, getChildDOB, getCompletedCount, getPendingCount } from '@/composables/useParentData'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const { userInfo } = useAuth()
 

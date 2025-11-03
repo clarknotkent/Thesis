@@ -201,7 +201,7 @@
 
 <script setup>
 import { watch, onMounted, onBeforeUnmount } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
 

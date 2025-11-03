@@ -52,7 +52,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccineForm from '@/features/admin/inventory/components/VaccineForm.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()

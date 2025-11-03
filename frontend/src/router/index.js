@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated, getRole } from '@/services/auth'
+import api from '@/services/offlineAPI'
+import offlineSyncService from '@/services/offlineSync'
+import NotFound from '@/views/NotFound.vue'
 
 // Auth Views
 import Login from '@/views/auth/Login.vue'
@@ -66,6 +69,16 @@ const routes = [
     meta: {
       title: 'Patient - ImmunizeMe',
       requiresAuth: true
+    }
+  },
+  // Not Found route
+  {
+    path: '/not-found',
+    name: 'NotFound',
+    component: NotFound,
+    meta: {
+      title: 'Page Not Found',
+      requiresAuth: false
     }
   },
   {
@@ -701,7 +714,7 @@ const routes = [
     name: 'ParentHome',
     component: ParentHome,
     meta: {
-      title: 'My Health Portal - ImmunizeMe',
+      title: 'My Portal - ImmunizeMe',
       requiresAuth: true,
       role: 'parent'
     }
@@ -846,11 +859,10 @@ const routes = [
       role: 'parent'
     }
   },
-  // Catch-all route for 404
+  // Catch-all route for 404 -> NotFound page
   {
     path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    redirect: '/auth/login'
+    redirect: '/not-found'
   }
 ]
 
@@ -859,8 +871,8 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for authentication and role
-router.beforeEach((to, from, next) => {
+// Navigation guard for authentication, role, and parent child-ownership
+router.beforeEach(async (to, from, next) => {
   document.title = to.meta.title || 'ImmunizeMe'
 
   const requiresAuth = to.meta?.requiresAuth
@@ -890,6 +902,161 @@ router.beforeEach((to, from, next) => {
     if (role === 'admin') return next('/admin/dashboard')
     if (normalizedRole === 'healthstaff') return next('/healthworker/dashboard')
     if (role === 'parent' || role === 'guardian') return next('/parent/home')
+  }
+
+  // For guardian/parent role, proactively verify child ownership before entering child-specific routes
+  // If offline, skip remote validations and allow navigation (client-side only)
+  try {
+    const online = typeof offlineSyncService?.checkOnlineStatus === 'function'
+      ? offlineSyncService.checkOnlineStatus()
+      : navigator.onLine
+    if (!online) {
+      return next()
+    }
+  } catch (_) {
+    // If status check fails, default to allowing navigation
+    return next()
+  }
+  
+  // For guardian/parent role, proactively verify child ownership before entering child-specific routes
+  try {
+    if (effectiveRole === 'parent') {
+      // Known parent routes that carry a child/patient id
+      const parentRoutesWithChildId = new Set([
+        'ParentDependentDetails',
+        'ParentVisitSummary',
+        'ParentVaccineRecordDetails',
+        'DependentScheduleDetails',
+        'ChildInfo',
+        'VaccinationSchedule',
+        'PatientRoute', // neutral route; still verify
+      ])
+      const hasChildContext = parentRoutesWithChildId.has(to.name) || ['id','patientId','childId'].some(k => Object.prototype.hasOwnProperty.call((to.params||{}), k))
+      if (hasChildContext) {
+        const childId = to.params.id || to.params.patientId || to.params.childId
+        if (childId) {
+          try {
+            await api.get(`/parent/children/${childId}`)
+          } catch (err) {
+            const status = err?.response?.status
+            if (status === 403 || status === 404) {
+              return next('/not-found')
+            }
+            // For other errors, still fail closed to avoid revealing info
+            return next('/not-found')
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // On guard error, fail closed
+    return next('/not-found')
+  }
+
+  // For health staff and admin, ensure immunization record belongs to the patient in URL before entering edit routes
+  try {
+    const isStaff = normalizedRole === 'healthstaff' || normalizedRole === 'admin'
+    // Both admin and healthworker use the same route name 'EditVaccinationRecord' in this app
+    if (isStaff && to.name === 'EditVaccinationRecord') {
+      const patientId = to.params?.patientId
+      const recordId = to.params?.recordId
+      if (patientId && recordId) {
+        try {
+          const resp = await api.get(`/immunizations/${recordId}`)
+          const rec = resp?.data?.data || resp?.data || {}
+          const recPatientId = rec.patient_id || rec.patientId
+          if (String(recPatientId) !== String(patientId)) {
+            return next('/not-found')
+          }
+        } catch (err) {
+          // If the record cannot be fetched, treat as not found
+          return next('/not-found')
+        }
+      }
+    }
+    // For visit edit route, ensure visit belongs to the patient in URL
+    if (isStaff && to.name === 'EditVisitRecord') {
+      const patientId = to.params?.patientId
+      const visitId = to.params?.visitId
+      if (patientId && visitId) {
+        try {
+          const resp = await api.get(`/visits/${visitId}`)
+          const row = resp?.data?.data || resp?.data || {}
+          const rowPatientId = row.patient_id || row.patientId
+          if (String(rowPatientId) !== String(patientId)) {
+            return next('/not-found')
+          }
+        } catch (_) {
+          return next('/not-found')
+        }
+      }
+    }
+    // Healthworker/BHS visit summary view must match patient -> visit relationship
+    if (isStaff && to.name === 'VisitSummary') {
+      const patientId = to.params?.patientId
+      const visitId = to.params?.visitId
+      if (patientId && visitId) {
+        try {
+          const resp = await api.get(`/visits/${visitId}`)
+          const row = resp?.data?.data || resp?.data || {}
+          const rowPatientId = row.patient_id || row.patientId
+          if (String(rowPatientId) !== String(patientId)) {
+            return next('/not-found')
+          }
+        } catch (_) {
+          return next('/not-found')
+        }
+      }
+    }
+    // Admin visit summary view must also match patient -> visit relationship
+    if (isStaff && to.name === 'AdminVisitSummary') {
+      const patientId = to.params?.patientId
+      const visitId = to.params?.visitId
+      if (patientId && visitId) {
+        try {
+          const resp = await api.get(`/visits/${visitId}`)
+          const row = resp?.data?.data || resp?.data || {}
+          const rowPatientId = row.patient_id || row.patientId
+          if (String(rowPatientId) !== String(patientId)) {
+            return next('/not-found')
+          }
+        } catch (_) {
+          return next('/not-found')
+        }
+      }
+    }
+    // Admin edit stock: ensure inventory item exists
+    if (normalizedRole === 'admin' && to.name === 'EditStock') {
+      const stockId = to.params?.id
+      if (stockId) {
+        try {
+          const resp = await api.get(`/vaccines/inventory/${stockId}`)
+          const row = resp?.data?.data || resp?.data || null
+          if (!row) {
+            return next('/not-found')
+          }
+        } catch (_) {
+          return next('/not-found')
+        }
+      }
+    }
+    // Admin receiving report view: ensure report exists
+    if (normalizedRole === 'admin' && to.name === 'ReceivingReportView') {
+      const reportId = to.params?.id
+      if (reportId) {
+        try {
+          const resp = await api.get(`/receiving-reports/${reportId}`)
+          const row = resp?.data?.data || resp?.data || null
+          if (!row) {
+            return next('/not-found')
+          }
+        } catch (_) {
+          return next('/not-found')
+        }
+      }
+    }
+  } catch (_) {
+    return next('/not-found')
   }
   next()
 })

@@ -38,15 +38,15 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Delivery Date *</label>
-                <DateInput v-model="form.delivery_date" :disabled="isCompleted" />
+                <DateInput v-model="form.delivery_date" :disabled="isReadOnly" />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Delivered By *</label>
-                <input class="form-control" v-model="form.delivered_by" :disabled="isCompleted" required />
+                <input class="form-control" v-model="form.delivered_by" :disabled="isReadOnly" required />
               </div>
               <div class="col-12">
                 <label class="form-label">Supplier Notes</label>
-                <textarea class="form-control" rows="2" v-model="form.supplier_notes" :disabled="isCompleted"></textarea>
+                <textarea class="form-control" rows="2" v-model="form.supplier_notes" :disabled="isReadOnly"></textarea>
               </div>
             </div>
           </form>
@@ -60,7 +60,7 @@
                   ({{ Number(form.total_items || visibleItems.length) }} items · {{ Number(form.total_quantity || visibleItems.reduce((s,i)=> s + (Number(i.quantity_received)||0), 0)) }} total)
                 </small>
               </h6>
-              <button v-if="!isCompleted" class="btn btn-sm btn-outline-primary" @click="addItemRow">
+              <button v-if="form.status === 'DRAFT'" class="btn btn-sm btn-outline-primary" @click="addItemRow">
                 <i class="bi bi-plus"></i> Add Item
               </button>
             </div>
@@ -89,7 +89,7 @@
                           v-model="it.vaccine_search" 
                           @input="onVaccineInput(it)"
                           @focus="openDropdown(it, $event)"
-                          :disabled="isCompleted"
+                          :disabled="isReadOnly"
                           placeholder="Type or select..."
                           autocomplete="off"
                           :ref="el => it.inputRef = el"
@@ -117,24 +117,24 @@
                       </div>
                     </td>
                     <td>
-                      <input class="form-control form-control-sm" v-model="it.antigen_name" :disabled="isCompleted || !!it.vaccine_id" placeholder="e.g., DTP" />
+                      <input class="form-control form-control-sm" v-model="it.antigen_name" :disabled="isReadOnly || !!it.vaccine_id" placeholder="e.g., DTP" />
                     </td>
                     <td>
-                      <input class="form-control form-control-sm" v-model="it.brand_name" :disabled="isCompleted || !!it.vaccine_id" placeholder="Brand" />
+                      <input class="form-control form-control-sm" v-model="it.brand_name" :disabled="isReadOnly || !!it.vaccine_id" placeholder="Brand" />
                     </td>
-                    <td><input class="form-control form-control-sm" v-model="it.manufacturer" :disabled="isCompleted" list="mfgList" /></td>
-                    <td><input class="form-control form-control-sm" v-model="it.lot_number" :disabled="isCompleted" /></td>
-                    <td><DateInput v-model="it.expiration_date" small :disabled="isCompleted" /></td>
+                    <td><input class="form-control form-control-sm" v-model="it.manufacturer" :disabled="isReadOnly" list="mfgList" /></td>
+                    <td><input class="form-control form-control-sm" v-model="it.lot_number" :disabled="isReadOnly" /></td>
+                    <td><DateInput v-model="it.expiration_date" small :disabled="isReadOnly" /></td>
                     <td>
                       <div class="input-group qty-group">
-                        <button class="btn btn-outline-secondary" type="button" title="Decrease" @click="it.quantity_received = Math.max(1, (Number(it.quantity_received)||1) - 1)" :disabled="isCompleted">-</button>
-                        <input type="number" min="1" step="1" inputmode="numeric" aria-label="Quantity" class="form-control text-center qty-input" v-model.number="it.quantity_received" :disabled="isCompleted" />
-                        <button class="btn btn-outline-secondary" type="button" title="Increase" @click="it.quantity_received = (Number(it.quantity_received)||0) + 1" :disabled="isCompleted">+</button>
+                        <button class="btn btn-outline-secondary" type="button" title="Decrease" @click="it.quantity_received = Math.max(1, (Number(it.quantity_received)||1) - 1)" :disabled="isReadOnly">-</button>
+                        <input type="number" min="1" step="1" inputmode="numeric" aria-label="Quantity" class="form-control text-center qty-input" v-model.number="it.quantity_received" :disabled="isReadOnly" />
+                        <button class="btn btn-outline-secondary" type="button" title="Increase" @click="it.quantity_received = (Number(it.quantity_received)||0) + 1" :disabled="isReadOnly">+</button>
                       </div>
                     </td>
-                    <td><input class="form-control form-control-sm" v-model="it.storage_location" :disabled="isCompleted" list="storageList" /></td>
+                    <td><input class="form-control form-control-sm" v-model="it.storage_location" :disabled="isReadOnly" list="storageList" /></td>
                     <td>
-                      <button v-if="!isCompleted" class="btn btn-sm btn-outline-danger" @click="it.is_deleted = true"><i class="bi bi-trash"></i></button>
+                      <button v-if="form.status === 'DRAFT'" class="btn btn-sm btn-outline-danger" @click="it.is_deleted = true"><i class="bi bi-trash"></i></button>
                     </td>
                   </tr>
                   <tr v-if="visibleItems.length===0"><td colspan="9" class="text-center text-muted">No items yet</td></tr>
@@ -151,13 +151,13 @@
 
           <!-- Action Buttons -->
           <div class="d-flex justify-content-end gap-2 mt-3">
-            <button v-if="form.status === 'DRAFT' && !isNew" class="btn btn-outline-secondary" @click="openCancelConfirm">
+            <button v-if="form.status === 'DRAFT' && !isNew" class="btn btn-danger" @click="openCancelConfirm">
               Cancel
             </button>
             <button v-if="form.status === 'DRAFT' && !isNew" class="btn btn-primary" @click="openCompleteConfirm">
               Complete
             </button>
-            <button v-if="!isCompleted" class="btn btn-success" @click="save" :disabled="saving">
+            <button v-if="isNew || form.status === 'DRAFT'" class="btn btn-success" @click="save" :disabled="saving">
               <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
               {{ isNew ? 'Create Report' : 'Save Report' }}
             </button>
@@ -275,7 +275,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { useToast } from '@/composables/useToast'
 
 // Click outside directive
@@ -309,6 +309,7 @@ const manufacturerOptions = ref([])
 const storageOptions = ref(['Cold Room A', 'Cold Room B', 'Refrigerator 1', 'Refrigerator 2', 'Freezer -20C', 'Freezer -80C'])
 
 const isCompleted = computed(() => form.value.status === 'COMPLETED')
+const isReadOnly = computed(() => form.value.status !== 'DRAFT')
 const visibleItems = computed(() => items.value.filter(it => !it.is_deleted))
 
 // Complete/Cancel modals

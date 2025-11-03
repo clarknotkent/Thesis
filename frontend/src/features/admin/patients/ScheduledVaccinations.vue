@@ -118,7 +118,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'

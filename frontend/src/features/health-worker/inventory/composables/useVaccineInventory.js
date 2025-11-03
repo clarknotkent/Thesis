@@ -8,7 +8,7 @@
  */
 
 import { ref, computed } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 export function useVaccineInventory() {
   // State

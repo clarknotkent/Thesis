@@ -22,7 +22,7 @@
       <div class="chat-container">
         <div class="row g-0 h-100">
           <!-- Conversations Sidebar -->
-          <div class="col-lg-4 col-md-5 border-end">
+          <div class="col-lg-4 col-md-5 border-end d-flex flex-column h-100">
             <ConversationsList
               :conversations="filteredConversations"
               :selected-id="selectedConversation?.conversation_id"
@@ -32,7 +32,7 @@
           </div>
 
           <!-- Chat Area -->
-          <div class="col-lg-8 col-md-7 d-flex flex-column">
+          <div class="col-lg-8 col-md-7 d-flex flex-column h-100">
             <!-- Empty State -->
             <div v-if="!selectedConversation" class="empty-chat d-flex align-items-center justify-content-center h-100">
               <div class="text-center">
