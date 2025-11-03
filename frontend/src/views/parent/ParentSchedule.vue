@@ -49,7 +49,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
-import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 
 const router = useRouter()
 
@@ -64,12 +64,11 @@ const fetchChildren = async () => {
     loading.value = true
     error.value = null
     
-    // Use the parent-specific endpoint that handles auth internally
-    const response = await api.get('/parent/children')
-    const patients = response.data?.data || []
+    // Read from local Dexie database (offline-first)
+    const childrenData = await db.children.toArray()
     
-    // The backend already formats the data, so we can use it directly
-    children.value = patients.map(child => ({
+    // The data is already formatted from the backend during sync
+    children.value = childrenData.map(child => ({
       id: child.id || child.patient_id,
       name: child.name || child.full_name,
       age: child.age,

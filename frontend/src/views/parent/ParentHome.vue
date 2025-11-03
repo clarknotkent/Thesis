@@ -30,7 +30,7 @@ import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
 import { formatDate, calculateAge } from '@/composables/useDateFormat'
 import { getChildName, getChildDOB, getCompletedCount, getPendingCount } from '@/composables/useParentData'
-import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 
 const { userInfo } = useAuth()
 
@@ -52,8 +52,9 @@ const parentName = computed(() => {
 const fetchDashboardStats = async () => {
   try {
     loading.value = true
-    const childrenResponse = await api.get('/parent/children')
-    const childrenData = childrenResponse.data?.data || []
+    
+    // Read from local Dexie database (offline-first)
+    const childrenData = await db.children.toArray()
     children.value = childrenData
     stats.value.totalChildren = childrenData.length
     

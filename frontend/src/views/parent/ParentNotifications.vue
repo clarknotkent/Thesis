@@ -47,7 +47,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
-import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 
 const loading = ref(true)
 const notifications = ref([])
@@ -55,15 +55,17 @@ const notifications = ref([])
 const fetchNotifications = async () => {
   try {
     loading.value = true
-    const { data } = await api.get('/notifications', { params: { limit: 50 } })
-    const items = data?.data || data?.items || data || []
+    
+    // Read from local Dexie database (offline-first)
+    const items = await db.notifications.orderBy('created_at').reverse().toArray()
+    
     notifications.value = items.map(n => ({
-      id: n.notification_id || n.id,
-      title: n.title || n.template_code || 'Notification',
-      message: n.message || n.message_body || n.body || '',
-      type: n.related_entity_type || n.type || n.channel || 'info',
-      created_at: n.created_at || n.timestamp || n.createdAt,
-      read: Boolean(n.read || n.read_at)
+      id: n.id,
+      title: n.title || 'Notification',
+      message: n.message || '',
+      type: n.type || 'info',
+      created_at: n.created_at,
+      read: Boolean(n.is_read)
     }))
   } catch (e) {
     console.error('Failed to fetch notifications:', e)
@@ -75,9 +77,14 @@ const fetchNotifications = async () => {
 
 const markAsRead = async (id) => {
   try {
-    await api.put(`/notifications/${id}/read`)
+    // Update local database
+    await db.notifications.update(id, { is_read: true })
+    
     const target = notifications.value.find(n => n.id === id)
     if (target) target.read = true
+    
+    // Note: We keep this read-only for now
+    // In the future, you could add this to pending_uploads for sync
   } catch (e) {
     console.error('Failed to mark notification as read:', e)
   }

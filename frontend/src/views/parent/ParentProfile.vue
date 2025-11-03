@@ -59,7 +59,8 @@ import EditProfileModal from '@/features/parent/profile/components/EditProfileMo
 import ChangePasswordModal from '@/features/parent/profile/components/ChangePasswordModal.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
+import api from '@/services/api'
 
 const router = useRouter()
 const { userInfo, logout: authLogout, updateUserInfo } = useAuth()
@@ -120,8 +121,9 @@ const guardianRole = computed(() => guardian.value?.relationship_type || 'Parent
 // Methods
 const loadGuardian = async () => {
   try {
-    const { data } = await api.get('/parent/profile')
-    guardian.value = data?.data || data || null
+    // Read from local Dexie database (offline-first)
+    const profile = await db.guardian_profile.get(1)
+    guardian.value = profile || null
   } catch (e) {
     console.warn('Failed to load guardian profile:', e?.message || e)
   }

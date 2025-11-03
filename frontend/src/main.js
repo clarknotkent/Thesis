@@ -11,7 +11,7 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { Dropdown } from 'bootstrap'
 
 // Import offline functionality
-import { initializeOffline } from './offlineInit'
+import { initializeOffline } from './services/offline'
 
 const app = createApp(App)
 const pinia = createPinia()

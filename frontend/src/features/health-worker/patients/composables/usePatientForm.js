@@ -1,9 +1,13 @@
 /**
  * Composable for managing patient registration form
  * Handles form state, guardian selection, parent autofill, and validation
+ * 
+ * OFFLINE-FIRST ARCHITECTURE:
+ * All patient saves go to local Dexie database first, then sync to Supabase via syncService
  */
 import { ref, computed, reactive, watch } from 'vue'
 import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 
 export function usePatientForm() {
   // State
@@ -150,6 +154,7 @@ export function usePatientForm() {
 
   /**
    * Fetch and autofill co-parent information
+   * OFFLINE-FIRST: Query local Dexie database for co-parent suggestions
    */
   const fetchCoParentAndFill = async (type) => {
     try {
@@ -159,24 +164,29 @@ export function usePatientForm() {
       const chosenName = normalizeName(chosenNameRaw)
       if (!chosenName) return
 
-      const res = await api.get('/patients/parents/coparent', {
-        params: {
-          type: isMother ? 'mother' : 'father',
-          name: chosenName
-        }
-      })
+      // Query local patients table for co-parent
+      const allPatients = await db.patients.toArray()
+      const parentField = isMother ? 'mother_name' : 'father_name'
+      const coParentField = isMother ? 'father_name' : 'mother_name'
+      const coParentContactField = isMother ? 'father_contact_number' : 'mother_contact_number'
+      const coParentOccupationField = isMother ? 'father_occupation' : 'mother_occupation'
+      
+      // Find a patient record with matching parent name
+      const matchingPatient = allPatients.find(p => 
+        normalizeName(p[parentField]) === chosenName.toLowerCase()
+      )
 
-      const suggestion = res.data?.data?.name
-      const suggestedContact = res.data?.data?.contact_number
-      const suggestedOccupation = res.data?.data?.occupation
+      const suggestion = matchingPatient?.[coParentField] || null
+      const suggestedContact = matchingPatient?.[coParentContactField] || null
+      const suggestedOccupation = matchingPatient?.[coParentOccupationField] || null
       const target = isMother ? 'father' : 'mother'
 
       if (suggestion && !formData.value[`${target}_name`]) {
         formData.value[`${target}_name`] = suggestion
         
-        const fromApi = suggestedContact || null
+        const fromLocal = suggestedContact || null
         const fromOptions = getContactForName(suggestion, target)
-        const finalContact = fromApi || fromOptions || null
+        const finalContact = fromLocal || fromOptions || null
         
         if (finalContact && !formData.value[`${target}_contact_number`]) {
           formData.value[`${target}_contact_number`] = finalContact
@@ -192,7 +202,6 @@ export function usePatientForm() {
       const targetNameEmpty = !formData.value[`${target}_name`]
       if (!suggestion || targetNameEmpty || missingContact || missingOcc) {
         if (target === 'father') {
-          // Prepare and show father suggestions
           filterFatherOptions()
           showFatherDropdown.value = true
         } else {
@@ -268,19 +277,20 @@ export function usePatientForm() {
 
   /**
    * Fetch guardian details to get occupation/contact if not present in the dropdown payload
+   * OFFLINE-FIRST: Query local Dexie database
    */
   const loadGuardianDetails = async (guardianId) => {
     try {
-      const res = await api.get(`/guardians/${guardianId}`)
-      const g = res.data?.data || res.data || null
+      // Query Dexie guardians table by ID
+      const g = await db.guardians.get(guardianId)
       if (g) {
         selectedGuardian.value = {
           ...(selectedGuardian.value || {}),
           occupation: g.occupation || selectedGuardian.value?.occupation,
           contact_number: selectedGuardian.value?.contact_number || g.contact_number
         }
-  // Re-apply autofill now that we have occupation
-  applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
+        // Re-apply autofill now that we have occupation
+        applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
       }
     } catch (e) {
       console.warn('Failed to load guardian details (non-blocking):', e?.message || e)
@@ -362,12 +372,15 @@ export function usePatientForm() {
 
   /**
    * Fetch guardians list
+   * OFFLINE-FIRST: Read from local Dexie database
    */
   const fetchGuardians = async () => {
     try {
       loadingGuardians.value = true
-      const response = await api.get('/guardians')
-      guardians.value = response.data.data || response.data || []
+      // Read from local Dexie guardians table
+      const localGuardians = await db.guardians.toArray()
+      guardians.value = localGuardians || []
+      console.log('✅ Loaded guardians from Dexie:', localGuardians.length)
     } catch (error) {
       console.error('Error fetching guardians:', error)
       throw error
@@ -378,15 +391,50 @@ export function usePatientForm() {
 
   /**
    * Fetch parent suggestions for autofill
+   * OFFLINE-FIRST: Extract unique parent names from local patients table
    */
   const fetchParentSuggestions = async () => {
     try {
-      const [momsRes, dadsRes] = await Promise.all([
-        api.get('/patients/parents/suggestions', { params: { type: 'mother' } }),
-        api.get('/patients/parents/suggestions', { params: { type: 'father' } })
-      ])
-      motherSuggestions.value = momsRes.data?.data || []
-      fatherSuggestions.value = dadsRes.data?.data || []
+      // Read all patients from Dexie
+      const allPatients = await db.patients.toArray()
+      
+      // Extract unique mothers
+      const mothersMap = new Map()
+      allPatients.forEach(patient => {
+        if (patient.mother_name) {
+          const key = patient.mother_name.trim().toLowerCase()
+          if (!mothersMap.has(key)) {
+            mothersMap.set(key, {
+              full_name: patient.mother_name,
+              contact_number: patient.mother_contact_number || null,
+              occupation: patient.mother_occupation || null
+            })
+          }
+        }
+      })
+      
+      // Extract unique fathers
+      const fathersMap = new Map()
+      allPatients.forEach(patient => {
+        if (patient.father_name) {
+          const key = patient.father_name.trim().toLowerCase()
+          if (!fathersMap.has(key)) {
+            fathersMap.set(key, {
+              full_name: patient.father_name,
+              contact_number: patient.father_contact_number || null,
+              occupation: patient.father_occupation || null
+            })
+          }
+        }
+      })
+      
+      motherSuggestions.value = Array.from(mothersMap.values())
+      fatherSuggestions.value = Array.from(fathersMap.values())
+      
+      console.log('✅ Loaded parent suggestions from Dexie:', {
+        mothers: motherSuggestions.value.length,
+        fathers: fatherSuggestions.value.length
+      })
     } catch (error) {
       console.warn('Failed to fetch parent suggestions (non-blocking):', error?.message || error)
     }
@@ -463,6 +511,7 @@ export function usePatientForm() {
 
   /**
    * Submit patient form
+   * OFFLINE-FIRST: Writes to Dexie (local IndexedDB) and queues for sync
    */
   const submitPatient = async () => {
     try {
@@ -474,9 +523,37 @@ export function usePatientForm() {
       }
 
       const patientData = preparePatientData()
-      const response = await api.post('/patients', patientData)
       
-      return response.data?.data || response.data
+      // Generate a temporary UUID for the patient (will be replaced by Supabase UUID on sync)
+      const tempId = `temp_patient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Add metadata for offline-first
+      const localPatientRecord = {
+        id: tempId,
+        ...patientData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        _pending: true, // Flag to indicate this hasn't been synced yet
+        _temp_id: tempId // Keep track of temp ID for later reference
+      }
+
+      // STEP 1: Save to local Dexie database (patients table)
+      await db.patients.add(localPatientRecord)
+      console.log('✅ Patient saved to local Dexie database:', tempId)
+
+      // STEP 2: Add task to pending_uploads (Outbox Pattern)
+      await db.pending_uploads.add({
+        type: 'patient',
+        operation: 'create',
+        data: patientData,
+        local_id: tempId,
+        created_at: new Date().toISOString(),
+        status: 'pending'
+      })
+      console.log('✅ Patient queued for sync in pending_uploads')
+
+      // Return the local record so the UI can use it immediately
+      return localPatientRecord
     } catch (error) {
       console.error('Error submitting patient:', error)
       throw error
