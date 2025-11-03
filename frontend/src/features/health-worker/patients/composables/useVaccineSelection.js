@@ -3,7 +3,7 @@
  * Handles inventory-based vaccines (in-facility) and catalog vaccines (outside facility)
  */
 import { ref, computed, watch } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 export function useVaccineSelection() {
   // Vaccine sources

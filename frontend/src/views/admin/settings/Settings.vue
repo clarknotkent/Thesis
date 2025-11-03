@@ -615,7 +615,7 @@ import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 // Reactive data
 const loading = ref(true)

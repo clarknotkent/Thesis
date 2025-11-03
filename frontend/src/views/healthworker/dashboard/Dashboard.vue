@@ -58,7 +58,7 @@
 import { ref, onMounted } from 'vue'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { StatsCard } from '@/features/health-worker/dashboard'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const loading = ref(true)
 const stats = ref({

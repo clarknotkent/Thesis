@@ -59,7 +59,7 @@ import EditProfileModal from '@/features/parent/profile/components/EditProfileMo
 import ChangePasswordModal from '@/features/parent/profile/components/ChangePasswordModal.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const { userInfo, logout: authLogout, updateUserInfo } = useAuth()

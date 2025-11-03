@@ -65,7 +65,7 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import VaccineInfoCard from './components/VaccineInfoCard.vue'
 import DoseCard from './components/DoseCard.vue'
 import { formatDate as formatDateUtil } from '@/composables/useDateFormat'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()

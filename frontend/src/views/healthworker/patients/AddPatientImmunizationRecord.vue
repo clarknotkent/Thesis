@@ -157,7 +157,7 @@ import VaccineServiceFormModal from '@/features/health-worker/patients/component
 import { usePatientImmunizationForm } from '@/features/health-worker/patients/composables'
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const router = useRouter()

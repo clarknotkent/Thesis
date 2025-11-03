@@ -47,7 +47,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const loading = ref(true)
 const notifications = ref([])

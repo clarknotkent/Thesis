@@ -68,7 +68,7 @@ import VisitInfoCard from './components/VisitInfoCard.vue'
 import ServicesProvidedCard from './components/ServicesProvidedCard.vue'
 import VitalSignsCard from './components/VitalSignsCard.vue'
 import { formatDate } from '@/composables/useDateFormat'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()

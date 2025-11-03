@@ -66,11 +66,10 @@ import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vu
 import ConversationsListSection from '@/features/health-worker/messages/components/ConversationsListSection.vue'
 import ChatViewSection from '@/features/health-worker/messages/components/ChatViewSection.vue'
 import NewConversationModal from '@/features/health-worker/messages/components/NewConversationModal.vue'
-import { conversationAPI, messageAPI } from '@/services/api'
-import api from '@/services/api'
+import { conversationAPI, messageAPI } from '@/services/offlineAPI'
+import api from '@/services/offlineAPI'
 import { getUserId } from '@/services/auth'
 import { useToast } from '@/composables/useToast'
-import axios from 'axios'
 
 const router = useRouter()
 const { addToast } = useToast()

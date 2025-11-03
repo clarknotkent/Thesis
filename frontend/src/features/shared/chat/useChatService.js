@@ -1,4 +1,4 @@
-import api from '@/services/api';
+import api from '@/services/offlineAPI';
 import { getUserId } from '@/services/auth';
 
 // Helper to normalize user ID

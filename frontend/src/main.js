@@ -67,9 +67,19 @@ app.mount('#app')
 // Initial hydration
 nextTick(() => initDropdowns())
 
-// Initialize offline functionality (IndexedDB + sync)
-initializeOffline().then(() => {
-	console.log('🚀 App ready with offline support')
-}).catch((error) => {
-	console.error('Failed to initialize offline support:', error)
-})
+// Initialize offline functionality (IndexedDB + sync) with feature flag
+try {
+	const offlineEnabled = (import.meta.env && import.meta.env.VITE_OFFLINE_ENABLED) ? `${import.meta.env.VITE_OFFLINE_ENABLED}` !== 'false' : true
+	if (offlineEnabled) {
+		initializeOffline().then(() => {
+			console.log('🚀 App ready with offline support')
+		}).catch((error) => {
+			console.error('Failed to initialize offline support:', error)
+		})
+	} else {
+		console.log('⚙️ Offline support disabled via VITE_OFFLINE_ENABLED=false')
+	}
+} catch (e) {
+	// Fallback: attempt to initialize
+	initializeOffline().catch(() => {})
+}

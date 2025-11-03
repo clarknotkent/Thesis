@@ -36,7 +36,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { notificationAPI, conversationAPI } from '@/services/api'
+import { notificationAPI, conversationAPI } from '@/services/offlineAPI'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 
 defineProps({

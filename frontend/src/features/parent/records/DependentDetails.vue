@@ -56,7 +56,7 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import PatientInfoTab from './components/PatientInfoTab.vue'
 import VaccinationHistoryTab from './components/VaccinationHistoryTab.vue'
 import MedicalHistoryTab from './components/MedicalHistoryTab.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()

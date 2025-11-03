@@ -48,7 +48,7 @@
 import { ref, onMounted } from 'vue'
 import { getUser } from '@/services/auth'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const loading = ref(true)
 const profile = ref({})

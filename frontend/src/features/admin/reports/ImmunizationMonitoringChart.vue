@@ -204,7 +204,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 import { nowPH } from '@/utils/dateUtils'
 
 // Filters and constants

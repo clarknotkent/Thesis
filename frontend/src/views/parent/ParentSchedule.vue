@@ -49,7 +49,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 

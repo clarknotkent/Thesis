@@ -353,6 +353,8 @@
           Save Record
         </button>
     </div>
+    <!-- Inline offline queued hint under actions -->
+    <QueuedHint class="mt-2" />
   </form>
 </template>
 
@@ -362,7 +364,8 @@ import GuardianSelector from './GuardianSelector.vue'
 import ParentNameSelector from './ParentNameSelector.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
+import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
 
 const props = defineProps({
   initialData: {

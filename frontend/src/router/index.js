@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated, getRole } from '@/services/auth'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
+import offlineSyncService from '@/services/offlineSync'
 import NotFound from '@/views/NotFound.vue'
 
 // Auth Views
@@ -903,6 +904,20 @@ router.beforeEach(async (to, from, next) => {
     if (role === 'parent' || role === 'guardian') return next('/parent/home')
   }
 
+  // For guardian/parent role, proactively verify child ownership before entering child-specific routes
+  // If offline, skip remote validations and allow navigation (client-side only)
+  try {
+    const online = typeof offlineSyncService?.checkOnlineStatus === 'function'
+      ? offlineSyncService.checkOnlineStatus()
+      : navigator.onLine
+    if (!online) {
+      return next()
+    }
+  } catch (_) {
+    // If status check fails, default to allowing navigation
+    return next()
+  }
+  
   // For guardian/parent role, proactively verify child ownership before entering child-specific routes
   try {
     if (effectiveRole === 'parent') {

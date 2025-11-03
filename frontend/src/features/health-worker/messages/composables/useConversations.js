@@ -3,7 +3,7 @@
  * Handles conversation loading, searching, and selection
  */
 import { ref, computed } from 'vue'
-import { conversationAPI } from '@/services/api'
+import { conversationAPI } from '@/services/offlineAPI'
 import { getUserId } from '@/services/auth'
 
 export function useConversations() {

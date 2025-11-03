@@ -74,7 +74,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import ScheduleCard from '@/components/parent/ScheduleCard.vue'
-import api from '@/services/api'
+import api from '@/services/offlineAPI'
 
 const router = useRouter()
 const route = useRoute()

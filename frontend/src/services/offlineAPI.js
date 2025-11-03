@@ -207,6 +207,11 @@ class OfflineAPI {
         if (operation === 'create' && !this.hasId(storeName, data)) {
           data._tempId = `temp_${Date.now()}_${Math.random()}`;
           data._pending = true;
+          // Ensure record has a primary key to satisfy IndexedDB keyPath
+          const idField = this.getIdField(storeName);
+          if (idField) {
+            data[idField] = data._tempId;
+          }
         }
         
         await indexedDBService.put(storeName, data);
@@ -240,7 +245,7 @@ class OfflineAPI {
     
     if (!storeName) return;
 
-    await indexedDBService.addToPendingSync(operation, storeName, data);
+    await indexedDBService.addToPendingSync(operation, storeName, data, endpoint);
     console.log(`✅ Operation queued for sync: ${operation} on ${storeName}`);
   }
 
@@ -250,7 +255,17 @@ class OfflineAPI {
   getStoreFromEndpoint(endpoint) {
     // Remove leading slash and query parameters
     const path = endpoint.split('?')[0].replace(/^\//, '');
-    
+    // More specific routes first
+    if (path.startsWith('vaccines/schedules')) return STORES.vaccineSchedules;
+    if (path.startsWith('vaccines/transactions')) return STORES.vaccineTransactions;
+    if (path.startsWith('receiving-reports')) return STORES.receivingReports;
+    if (path.startsWith('activity-logs')) return STORES.activityLogs;
+    if (path.startsWith('faqs')) return STORES.faqs;
+    if (path.startsWith('reports')) return STORES.reports;
+    if (path.startsWith('deworming')) return STORES.deworming;
+    if (path.startsWith('vitamina')) return STORES.vitamina;
+    if (path.startsWith('vitals')) return STORES.vitals;
+
     if (path.startsWith('patients')) return STORES.patients;
     if (path.startsWith('immunizations')) return STORES.immunizations;
     if (path.startsWith('vaccines')) return STORES.vaccines;
@@ -261,7 +276,7 @@ class OfflineAPI {
     if (path.startsWith('visits')) return STORES.visits;
     if (path.startsWith('inventory')) return STORES.inventory;
     if (path.startsWith('messages')) return STORES.messages;
-    if (path.startsWith('conversations')) return STORES.messages; // Conversations use messages store
+    if (path.startsWith('conversations')) return STORES.conversations;
     if (path.startsWith('notifications')) return STORES.notifications;
     if (path.startsWith('activity')) return STORES.activityLogs;
     if (path.startsWith('sms')) return STORES.smsLogs;
@@ -298,6 +313,25 @@ class OfflineAPI {
 
     const idField = idFields[storeName];
     return data && data[idField];
+  }
+
+  /**
+   * Get ID field name for a given store
+   */
+  getIdField(storeName) {
+    const idFields = {
+      [STORES.patients]: 'patient_id',
+      [STORES.immunizations]: 'immunization_id',
+      [STORES.vaccines]: 'vaccine_id',
+      [STORES.users]: 'user_id',
+      [STORES.guardians]: 'guardian_id',
+      [STORES.schedules]: 'schedule_id',
+      [STORES.visits]: 'visit_id',
+      [STORES.inventory]: 'inventory_id',
+      [STORES.messages]: 'message_id',
+      [STORES.notifications]: 'notification_id',
+    };
+    return idFields[storeName] || null;
   }
 }
 
