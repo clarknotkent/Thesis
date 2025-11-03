@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { syncAfterLogin } from '@/offlineInit'
+import { syncAfterLogin } from '@/services/offline'
 
 const authToken = ref(localStorage.getItem('authToken'))
 const userRole = ref(localStorage.getItem('userRole'))
@@ -33,8 +33,8 @@ export const useAuth = () => {
       localStorage.setItem('authUser', JSON.stringify(info)) // For compatibility
     }
 
-    // Trigger offline sync after successful login
-    syncAfterLogin().catch(err => {
+    // Trigger offline sync after successful login (pass role for appropriate sync strategy)
+    syncAfterLogin(role).catch(err => {
       console.error('Failed to sync data after login:', err)
     })
   }
@@ -50,7 +50,7 @@ export const useAuth = () => {
     localStorage.removeItem('authUser') // Remove both keys
 
     // Clear offline data on logout
-    const { clearOfflineDataOnLogout } = await import('@/offlineInit')
+    const { clearOfflineDataOnLogout } = await import('@/services/offline')
     await clearOfflineDataOnLogout()
   }
 

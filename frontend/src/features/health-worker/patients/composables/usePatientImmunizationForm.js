@@ -1,9 +1,13 @@
 /**
  * Composable for managing patient immunization record form data
  * Handles form state, patient loading, and service management
+ * 
+ * OFFLINE-FIRST ARCHITECTURE:
+ * All immunization saves go to local Dexie database first, then sync to Supabase via syncService
  */
 import { ref, computed } from 'vue'
 import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 import { getCurrentPHDate } from '@/utils/dateUtils'
 import { getUser, getUserId, getRole } from '@/services/auth'
 
@@ -45,17 +49,21 @@ export function usePatientImmunizationForm(patientId) {
 
   /**
    * Fetch all patients
+   * OFFLINE-FIRST: Read from local Dexie database
    */
   const fetchPatients = async () => {
     try {
       loading.value = true
-      const response = await api.get('/patients')
-      patients.value = response.data.data || response.data || []
+      // Read from Dexie patients table
+      const localPatients = await db.patients.toArray()
+      patients.value = localPatients || []
       
       // Find and set the current patient
       if (formData.value.patient_id) {
         currentPatient.value = patients.value.find(p => p.id === formData.value.patient_id)
       }
+      
+      console.log('✅ Loaded patients from Dexie:', patients.value.length)
     } catch (error) {
       console.error('Error fetching patients:', error)
       throw new Error('Failed to load patients. Please refresh the page.')
@@ -66,14 +74,22 @@ export function usePatientImmunizationForm(patientId) {
 
   /**
    * Fetch current patient by ID
+   * OFFLINE-FIRST: Read from local Dexie database
    */
   const fetchCurrentPatient = async () => {
     if (!formData.value.patient_id) return
     
     try {
       loading.value = true
-      const response = await api.get(`/patients/${formData.value.patient_id}`)
-      currentPatient.value = response.data.data || response.data
+      // Query Dexie patients table by ID
+      const patient = await db.patients.get(formData.value.patient_id)
+      currentPatient.value = patient || null
+      
+      if (!patient) {
+        throw new Error('Patient not found in local database')
+      }
+      
+      console.log('✅ Loaded patient from Dexie:', patient.id)
     } catch (error) {
       console.error('Error fetching patient:', error)
       throw new Error('Failed to load patient information.')

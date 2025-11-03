@@ -158,6 +158,7 @@ import { usePatientImmunizationForm } from '@/features/health-worker/patients/co
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
 import api from '@/services/offlineAPI'
+import db from '@/services/offline/db'
 import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const router = useRouter()
@@ -289,62 +290,69 @@ const handleSubmit = async () => {
   try {
     submitting.value = true
     
-    // Create or attach to visit based on mode
-    let visitId = null
+    // OFFLINE-FIRST: Save immunizations directly to Dexie (local IndexedDB)
+    const submissionData = prepareSubmissionData(null)
     
-  if (isNurseOrNutritionist.value && visitMode.value === 'existing') {
-      // Use existing visit
-      visitId = existingVisitId.value
-      if (!visitId) {
-        throw new Error('Please select an existing visit')
-      }
-    } else if (isBHS.value || visitMode.value === 'new') {
-      // Create new visit
-      // Build visit payload matching faith flow; include collectedVaccinations so backend creates immunizations
-      const submissionData = prepareSubmissionData(null)
-      const visitPayload = {
-        patient_id: formData.value.patient_id,
-        visit_date: getCurrentPHDate(),
-  recorded_by: currentUserId.value, // mirror faith: attribute visit to current user
-        vitals: formData.value.vitals,
-        findings: formData.value.findings,
-        service_rendered: formData.value.service_rendered,
-        collectedVaccinations: submissionData.services
-      }
+    // Generate temporary IDs for each immunization
+    const immunizationRecords = submissionData.services.map(service => {
+      const tempId = `temp_immunization_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
-      const visitResponse = await api.post('/visits', visitPayload)
-      visitId = visitResponse.data.visit_id || visitResponse.data.data?.visit_id
-      
-      if (!visitId) {
-        throw new Error('Failed to create visit')
-      }
-    }
-
-  // Submit immunization records only when attaching to an existing visit
-  const submissionData = prepareSubmissionData(visitId)
-
-    // Log payload for debugging when saving fails
-    console.debug('Submitting immunization data:', submissionData)
-
-    // Submit each service as immunization record
-  const immunizationPromises = (visitMode.value === 'existing') ? submissionData.services.map(async (service) => {
-      const immunizationPayload = {
+      return {
+        id: tempId,
         patient_id: submissionData.patient_id,
-        visit_id: visitId,
-        ...service
+        vaccine_id: service.vaccine_id,
+        vaccine_name: service.vaccine_name,
+        disease_prevented: service.disease_prevented,
+        dose_number: service.dose_number,
+        administered_date: service.administered_date,
+        age_at_administration: service.age_at_administration,
+        manufacturer: service.manufacturer,
+        lot_number: service.lot_number,
+        site: service.site,
+        administered_by: service.administered_by,
+        facility_name: service.facility_name,
+        outside: service.outside,
+        remarks: service.remarks,
+        inventory_id: service.inventory_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        _pending: true, // Flag to indicate not synced yet
+        _temp_id: tempId
       }
+    })
 
-      try {
-        return await api.post('/immunizations', immunizationPayload)
-      } catch (postErr) {
-        console.error('Immunization post failed for payload:', immunizationPayload, postErr?.response?.data || postErr.message || postErr)
-        throw postErr
-      }
-    }) : []
+    // STEP 1: Save all immunizations to local Dexie database
+    await db.immunizations.bulkAdd(immunizationRecords)
+    console.log('✅ Immunizations saved to Dexie:', immunizationRecords.length)
 
-    if (immunizationPromises.length) {
-      await Promise.all(immunizationPromises)
-    }
+    // STEP 2: Add each immunization to pending_uploads (Outbox Pattern)
+    const uploadTasks = immunizationRecords.map(record => ({
+      type: 'immunization',
+      operation: 'create',
+      data: {
+        patient_id: record.patient_id,
+        vaccine_id: record.vaccine_id,
+        vaccine_name: record.vaccine_name,
+        disease_prevented: record.disease_prevented,
+        dose_number: record.dose_number,
+        administered_date: record.administered_date,
+        age_at_administration: record.age_at_administration,
+        manufacturer: record.manufacturer,
+        lot_number: record.lot_number,
+        site: record.site,
+        administered_by: record.administered_by,
+        facility_name: record.facility_name,
+        outside: record.outside,
+        remarks: record.remarks,
+        inventory_id: record.inventory_id
+      },
+      local_id: record.id,
+      created_at: new Date().toISOString(),
+      status: 'pending'
+    }))
+
+    await db.pending_uploads.bulkAdd(uploadTasks)
+    console.log('✅ Immunizations queued for sync in pending_uploads')
 
     addToast({ 
       title: 'Success', 
