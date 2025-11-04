@@ -6,9 +6,6 @@
           <h1 class="h3 mb-0 text-gray-800">User Accounts</h1>
           <p class="text-muted mb-0">Manage system users and permissions</p>
         </div>
-        <router-link to="/admin/users/add" class="btn btn-primary">
-          <i class="bi bi-plus-circle me-2"></i>Add New User
-        </router-link>
       </div>
 
       <!-- User Stats -->
@@ -89,9 +86,21 @@
       <!-- User Management -->
       <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary me-4">User List</h6>
-            <div class="btn-group btn-group-sm me-3">
+          <h6 class="m-0 fw-bold text-primary">User List</h6>
+          <div class="d-flex gap-2 align-items-center">
+            <div class="input-group" style="width: 250px;">
+              <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Search users..."
+                v-model="searchQuery"
+                @input="handleSearch"
+              >
+              <button class="btn btn-outline-primary" type="button">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+            <div class="btn-group btn-group-sm ms-2">
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'all' }"
@@ -113,66 +122,58 @@
                 @click="setFilter('parent')"
               >Parents</button>
             </div>
-            <div class="form-check form-switch">
+            <div class="form-check form-switch ms-2">
               <input class="form-check-input" type="checkbox" id="showDeletedSwitch" v-model="showDeleted" @change="fetchUsers">
               <label class="form-check-label small" for="showDeletedSwitch">Show Deleted</label>
             </div>
-          </div>
-          <div class="input-group w-25">
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="Search users..."
-              v-model="searchQuery"
-              @input="handleSearch"
-            >
-            <button class="btn btn-primary" type="button">
-              <i class="bi bi-search"></i>
-            </button>
+            <router-link to="/admin/users/add" class="btn btn-primary ms-2">
+              <i class="bi bi-plus-circle me-2"></i>Add New User
+            </router-link>
           </div>
         </div>
         <div class="card-body">
           <AppSpinner v-if="loading" />
           <div v-else class="table-responsive">
-            <table class="table table-hover">
-              <thead>
+            <table class="table table-hover table-bordered">
+              <thead class="table-light">
                 <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last Login</th>
-                  <th>Actions</th>
+                  <th class="text-center">ID</th>
+                  <th class="text-center">Name</th>
+                  <th class="text-center">Email</th>
+                  <th class="text-center">Role</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Last Login</th>
+                  <th class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in users" :key="user.id">
-                  <td>{{ user.id }}</td>
-                  <td>{{ user.name }}</td>
-                  <td>{{ user.email }}</td>
-                  <td>
+                <tr v-for="user in users" :key="user.id" :class="{ 'table-secondary': user.status === 'inactive' }">
+                  <td class="text-center align-middle fw-semibold text-primary">{{ user.id }}</td>
+                  <td class="text-center align-middle fw-semibold">{{ user.name }}</td>
+                  <td class="text-center align-middle">{{ user.email }}</td>
+                  <td class="text-center align-middle">
                     <span class="badge role-badge" :class="getRoleBadgeClass(user.role)">
                       {{ getRoleDisplayName(user.role) }}
                     </span>
                   </td>
-                  <td>
+                  <td class="text-center align-middle">
                     <span class="badge" :class="statusBadgeClass(user.status)">
                       {{ user.status }}
                     </span>
                   </td>
-                  <td>{{ user.lastLoginDisplay }}</td>
-                  <td>
-                    <div class="d-flex gap-2">
+                  <td class="text-center align-middle">{{ user.lastLoginDisplay }}</td>
+                  <td class="text-center align-middle">
+                    <div class="d-flex gap-2 justify-content-center">
                       <router-link 
                         :to="`/admin/users/view/${user.id}`"
-                        class="btn btn-sm btn-primary"
+                        class="btn btn-sm btn-outline-primary"
+                        title="View Details"
                       >
                         <i class="bi bi-eye me-1"></i>View
                       </router-link>
                       <button 
                         v-if="user.status !== 'archived'"
-                        class="btn btn-sm btn-danger" 
+                        class="btn btn-sm btn-outline-danger" 
                         @click="confirmDeleteUser(user)"
                         :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : ''"
                       >
@@ -180,8 +181,9 @@
                       </button>
                       <button
                         v-else-if="user.status === 'archived'"
-                        class="btn btn-sm btn-success"
+                        class="btn btn-sm btn-outline-success"
                         @click="openRestoreModal(user)"
+                        title="Restore User"
                       >
                         <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                       </button>

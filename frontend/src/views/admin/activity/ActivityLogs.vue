@@ -6,14 +6,9 @@
           <h1 class="h3 mb-0 text-gray-800">Activity Logs</h1>
           <p class="text-muted mb-0">Monitor system activity and user actions</p>
         </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" @click="exportLogs">
-            <i class="bi bi-download me-2"></i>Export Logs
-          </button>
-          <button class="btn btn-outline-danger" @click="showClearModal = true">
-            <i class="bi bi-trash me-2"></i>Clear Old Logs
-          </button>
-        </div>
+        <button class="btn btn-outline-danger" @click="showClearModal = true">
+          <i class="bi bi-trash me-2"></i>Clear Old Logs
+        </button>
       </div>
 
       <!-- Activity Stats -->
@@ -113,43 +108,6 @@
               <label class="form-label">To Date:</label>
               <DateInput v-model="filters.toDate" />
             </div>
-            <div class="col-md-3">
-              <label class="form-label">Action Type:</label>
-              <select class="form-select" v-model="filters.actionType" @change="applyFilters">
-                <option value="">All Actions</option>
-                <option value="login">Login</option>
-                <option value="logout">Logout</option>
-                <option value="create">Create</option>
-                <option value="update">Update</option>
-                <option value="delete">Delete</option>
-                <option value="view">View</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">User Role:</label>
-              <select class="form-select" v-model="filters.userRole" @change="applyFilters">
-                <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="health_staff">Health Staff</option>
-                <option value="parent">Parent</option>
-                <option value="System">System</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Search:</label>
-              <div class="input-group">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  placeholder="Search by user, action, or IP address..."
-                  v-model="searchQuery"
-                  @input="debouncedSearch"
-                >
-                <button class="btn btn-outline-primary" type="button">
-                  <i class="bi bi-search"></i>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -158,15 +116,40 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 fw-bold text-primary">Activity History</h6>
-          <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">
-              {{ totalItems }} total logs 
-              <span v-if="totalPages > 1">
-                (Page {{ currentPage }} of {{ totalPages }})
-              </span>
-            </small>
-            <button class="btn btn-outline-primary btn-sm" @click="refreshLogs" title="Refresh">
+          <div class="d-flex gap-2 align-items-center">
+            <div class="input-group" style="width: 300px;">
+              <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Search by user, action, or IP address..."
+                v-model="searchQuery"
+                @input="debouncedSearch"
+              >
+              <button class="btn btn-outline-primary" type="button">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+            <select class="form-select" style="width: 150px;" v-model="filters.actionType" @change="applyFilters">
+              <option value="">All Actions</option>
+              <option value="login">Login</option>
+              <option value="logout">Logout</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+              <option value="view">View</option>
+            </select>
+            <select class="form-select" style="width: 150px;" v-model="filters.userRole" @change="applyFilters">
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="health_staff">Health Staff</option>
+              <option value="parent">Parent</option>
+              <option value="System">System</option>
+            </select>
+            <button class="btn btn-outline-primary" @click="refreshLogs" title="Refresh">
               <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-outline-secondary" @click="exportLogs">
+              <i class="bi bi-download me-1"></i>Export
             </button>
           </div>
         </div>
@@ -177,19 +160,19 @@
             </div>
           </div>
           <div v-else class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover table-bordered">
               <thead class="table-light">
                 <tr>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Details</th>
+                  <th class="text-center">User</th>
+                  <th class="text-center">Action</th>
+                  <th class="text-center">Date</th>
+                  <th class="text-center">Time</th>
+                  <th class="text-center">Details</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="log in logs" :key="log.id">
-                  <td>
+                  <td class="align-middle">
                     <div class="d-flex align-items-center">
                       <div class="me-2">
                         <i :class="getRoleIcon(log.userRole)" :style="{ color: getRoleColor(log.userRole) }"></i>
@@ -200,27 +183,28 @@
                       </div>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center align-middle">
                     <span class="badge" :class="getActionBadgeClass(log.actionType)">
                       {{ log.displayAction }}
                     </span>
                   </td>
-                  <td>{{ formatDateOnly(log.timestamp) }}</td>
-                  <td>{{ formatTimeOnly(log.timestamp) }}</td>
-                  <td>
+                  <td class="text-center align-middle">{{ formatDateOnly(log.timestamp) }}</td>
+                  <td class="text-center align-middle">{{ formatTimeOnly(log.timestamp) }}</td>
+                  <td class="text-center align-middle">
                     <router-link 
-                      class="btn btn-outline-info btn-sm"
+                      class="btn btn-sm btn-outline-primary"
                       :to="{ name: 'ActivityLogDetails', params: { id: log.id } }"
                       title="View Details"
                       @click="prefetchDetails(log)"
                     >
-                      <i class="bi bi-eye"></i>
+                      <i class="bi bi-eye me-1"></i>View
                     </router-link>
                   </td>
                 </tr>
                 <tr v-if="logs.length === 0">
                   <td colspan="5" class="text-center text-muted py-4">
-                    No activity logs found
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mb-0 mt-2">No activity logs found</p>
                   </td>
                 </tr>
               </tbody>
