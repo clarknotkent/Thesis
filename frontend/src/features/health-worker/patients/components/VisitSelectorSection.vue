@@ -59,7 +59,7 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 
 defineProps({

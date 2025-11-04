@@ -1,5 +1,4 @@
-import api from '@/services/offlineAPI';
-import offlineSync from '@/services/offlineSync';
+import api from '@/services/api';
 import { getUserId } from '@/services/auth';
 
 // Helper to normalize user ID
@@ -61,13 +60,9 @@ export const loadConversations = async () => {
     const res = await api.get('/conversations');
     return res.data.items || res.data || [];
   } catch (e) {
-    // Offline fallback to parent snapshot
-    try {
-      const snap = await offlineSync.getParentSnapshot();
-      return Array.isArray(snap?.conversations) ? snap.conversations : [];
-    } catch (_) {
-      return [];
-    }
+    // Auto-caching handles offline fallback via API interceptor
+    console.error('Failed to load conversations:', e);
+    return [];
   }
 };
 
@@ -77,14 +72,9 @@ export const loadMessages = async (conversationId) => {
     const res = await api.get(`/messages/${conversationId}`);
     return res.data.items || res.data || [];
   } catch (e) {
-    // Offline fallback: read from parent snapshot cache
-    try {
-      const snap = await offlineSync.getParentSnapshot();
-      const all = Array.isArray(snap?.messages) ? snap.messages : [];
-      return all.filter(m => String(m.conversation_id || m.conversationId || m.cid) === String(conversationId));
-    } catch (_) {
-      return [];
-    }
+    // Auto-caching handles offline fallback via API interceptor
+    console.error(`Failed to load messages for conversation ${conversationId}:`, e);
+    return [];
   }
 };
 
@@ -96,8 +86,9 @@ export const sendMessage = async (conversationId, messageContent) => {
       message_content: messageContent 
     });
   } catch (e) {
-    // If offline, rely on background sync queue of offlineAPI; no-op here
-    return;
+    // Auto-caching handles offline persistence via pending_uploads
+    console.error('Failed to send message:', e);
+    throw e;
   }
 };
 

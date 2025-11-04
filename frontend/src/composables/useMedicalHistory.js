@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 /**
  * Composable for managing medical history data and operations

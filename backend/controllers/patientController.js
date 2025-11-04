@@ -433,8 +433,14 @@ const getPatientById = async (req, res) => {
     // Fetch birth history and attach as medical_history for backward compatibility with frontend
     try {
   const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req)).catch(() => null);
+      console.log('🔍 Birth history fetched for patient', id, ':', birthHistory);
       const payload = { ...patient };
-      if (birthHistory) payload.medical_history = birthHistory;
+      if (birthHistory) {
+        payload.medical_history = birthHistory;
+        console.log('✅ Attached medical_history to payload');
+      } else {
+        console.warn('⚠️ No birth history found for patient', id);
+      }
       
       // Fetch vaccination history
       const immunizationModel = require('../models/immunizationModel');

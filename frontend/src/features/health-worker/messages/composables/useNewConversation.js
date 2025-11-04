@@ -3,7 +3,7 @@
  * Handles user selection and conversation creation
  */
 import { ref, computed } from 'vue'
-import api, { conversationAPI } from '@/services/offlineAPI'
+import api, { conversationAPI } from '@/services/api'
 
 export function useNewConversation() {
   // State

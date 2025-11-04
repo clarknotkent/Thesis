@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline System Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f9fafb;
+      border-left: 4px solid #2563eb;
+      border-radius: 4px;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #1f2937;
+    }
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 12px;
+      margin: 8px 0;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+    }
+    .checklist li input[type="checkbox"] {
+      margin-right: 12px;
+      width: 20px;
+      height: 20px;
+    }
+    .checklist li:has(input:checked) {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+    }
+    .code-block {
+      background: #1f2937;
+      color: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status.online {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.offline {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    .btn:hover {
+      background: #1d4ed8;
+    }
+    .btn.danger {
+      background: #dc2626;
+    }
+    .btn.danger:hover {
+      background: #b91c1c;
+    }
+    #status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    #status-indicator.online {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    #status-indicator.offline {
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .info-box strong {
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Offline System Test Console</h1>
+    <p class="subtitle">Comprehensive testing guide for the refactored offline architecture</p>
+    
+    <div style="margin: 20px 0; padding: 15px; background: #f0fdf4; border-radius: 6px;">
+      <strong>Network Status:</strong>
+      <span id="status-indicator" class="offline"></span>
+      <span id="network-status" class="status offline">OFFLINE</span>
+    </div>
+
+    <!-- Test 1: Database Verification -->
+    <div class="test-section">
+      <h3>✅ Test 1: Database Structure</h3>
+      <p>Verify new IndexedDB database is created with correct schema</p>
+      <ul class="checklist">
+        <li>
+          <input type="checkbox" id="check1-1">
+          <label for="check1-1">Open DevTools → Application tab → IndexedDB</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check1-2">
+          <label for="check1-2">Find <strong>ParentPortalOfflineDB</strong> database</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check1-3">
+          <label for="check1-3">Verify 9 tables exist: patients, guardians, birthhistory, immunizations, visits, vitalsigns, patientschedule, notifications, vaccinemaster</label>
+        </li>
+      </ul>
+      
+      <button class="btn" onclick="checkDatabase()">Run Database Check</button>
+      <div id="db-result" class="code-block" style="display:none; margin-top: 15px;"></div>
+    </div>
+
+    <!-- Test 2: Online Caching -->
+    <div class="test-section">
+      <h3>🌐 Test 2: Online Data Caching</h3>
+      <p>Verify API responses are automatically cached to IndexedDB</p>
+      <ul class="checklist">
+        <li>
+          <input type="checkbox" id="check2-1">
+          <label for="check2-1">Login to parent portal (while online)</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check2-2">
+          <label for="check2-2">Navigate to child details page</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check2-3">
+          <label for="check2-3">Open Console - verify logs: "💾 Caching patient details", "✅ Cached patient with related data"</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check2-4">
+          <label for="check2-4">Click "Vaccination History" tab</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check2-5">
+          <label for="check2-5">Console shows: "💉 Caching X immunizations"</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check2-6">
+          <label for="check2-6">Check IndexedDB tables have data (patients, immunizations, guardians, birthhistory)</label>
+        </li>
+      </ul>
+      
+      <div class="info-box">
+        <strong>Expected Console Output:</strong>
+        <pre style="margin: 10px 0; font-size: 12px;">
+📤 API Request: GET /patients/123
+✅ API Response: GET /patients/123
+💾 Caching patient details: 123
+✅ Cached patient 123 with related data
+💉 Caching 5 immunizations from patient details
+✅ Cached 5 immunizations</pre>
+      </div>
+    </div>
+
+    <!-- Test 3: Offline Loading -->
+    <div class="test-section">
+      <h3>📴 Test 3: Offline Data Loading</h3>
+      <p>Verify cached data loads correctly when offline</p>
+      <ul class="checklist">
+        <li>
+          <input type="checkbox" id="check3-1">
+          <label for="check3-1">While on child details page, toggle DevTools → Network → "Offline"</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-2">
+          <label for="check3-2">Refresh the page (F5)</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-3">
+          <label for="check3-3">Console shows: "📴 Loading patient 123 from cache"</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-4">
+          <label for="check3-4">Verify child information displays: Name, DOB, Address, Sex</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-5">
+          <label for="check3-5">Verify guardian info displays: Name, Contact, Occupation</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-6">
+          <label for="check3-6">Verify birth history displays: Weight, Length, Place of Birth</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-7">
+          <label for="check3-7">Verify vaccination history displays (list of vaccines)</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check3-8">
+          <label for="check3-8">Verify medical history displays (list of visits)</label>
+        </li>
+      </ul>
+      
+      <button class="btn" onclick="testOfflineMode()">Simulate Offline Test</button>
+    </div>
+
+    <!-- Test 4: Cache Management -->
+    <div class="test-section">
+      <h3>🗄️ Test 4: Cache Management</h3>
+      <p>Test cache statistics and clearing functions</p>
+      
+      <button class="btn" onclick="getCacheStats()">Get Cache Statistics</button>
+      <button class="btn danger" onclick="clearCacheData()">Clear Cache</button>
+      
+      <div id="cache-stats" class="code-block" style="display:none; margin-top: 15px;"></div>
+    </div>
+
+    <!-- Test 5: Component Integration -->
+    <div class="test-section">
+      <h3>🔧 Test 5: Component Integration</h3>
+      <p>Verify all parent portal pages work with new system</p>
+      <ul class="checklist">
+        <li>
+          <input type="checkbox" id="check5-1">
+          <label for="check5-1"><strong>ParentHome.vue</strong> - Child list displays</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-2">
+          <label for="check5-2"><strong>ParentRecords.vue</strong> - Records page loads</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-3">
+          <label for="check5-3"><strong>DependentDetails.vue</strong> - Child details complete (online & offline)</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-4">
+          <label for="check5-4"><strong>ParentSchedule.vue</strong> - Schedule displays</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-5">
+          <label for="check5-5"><strong>ScheduleDetails.vue</strong> - Individual schedule loads</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-6">
+          <label for="check5-6"><strong>ParentNotifications.vue</strong> - Notifications display</label>
+        </li>
+        <li>
+          <input type="checkbox" id="check5-7">
+          <label for="check5-7"><strong>ParentProfile.vue</strong> - Profile page works</label>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Quick Reference -->
+    <div class="test-section">
+      <h3>📚 Quick Console Commands</h3>
+      <p>Run these commands in DevTools Console for debugging:</p>
+      
+      <div class="code-block">
+// Import utilities
+const offlineUtils = await import('/src/services/offline/offlineUtils.js')
+
+// Check cache stats
+await offlineUtils.getCacheStats()
+
+// Get patient details (force from cache)
+await offlineUtils.getPatientDetails(123, true)
+
+// Get vaccination history
+await offlineUtils.getVaccinationHistory(123)
+
+// Clear all cache
+await offlineUtils.clearCache()
+
+// Check if online
+offlineUtils.isOnline()
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Update network status indicator
+    function updateNetworkStatus() {
+      const isOnline = navigator.onLine
+      const indicator = document.getElementById('status-indicator')
+      const status = document.getElementById('network-status')
+      
+      if (isOnline) {
+        indicator.className = 'online'
+        status.className = 'status online'
+        status.textContent = 'ONLINE'
+      } else {
+        indicator.className = 'offline'
+        status.className = 'status offline'
+        status.textContent = 'OFFLINE'
+      }
+    }
+
+    window.addEventListener('online', updateNetworkStatus)
+    window.addEventListener('offline', updateNetworkStatus)
+    updateNetworkStatus()
+
+    // Database check
+    async function checkDatabase() {
+      const resultDiv = document.getElementById('db-result')
+      resultDiv.style.display = 'block'
+      resultDiv.textContent = 'Checking database...'
+      
+      try {
+        const databases = await indexedDB.databases()
+        const parentDB = databases.find(db => db.name === 'ParentPortalOfflineDB')
+        
+        if (parentDB) {
+          resultDiv.innerHTML = `✅ <strong>ParentPortalOfflineDB</strong> found!
+Version: ${parentDB.version}
+
+Opening database to check tables...`
+          
+          const request = indexedDB.open('ParentPortalOfflineDB')
+          request.onsuccess = () => {
+            const db = request.result
+            const tables = Array.from(db.objectStoreNames)
+            
+            resultDiv.innerHTML += `
+
+📋 Tables (${tables.length}):
+${tables.map(t => `  - ${t}`).join('\n')}
+
+Expected tables: patients, guardians, birthhistory, immunizations, visits, vitalsigns, patientschedule, notifications, vaccinemaster
+
+✅ Database structure looks good!`
+            db.close()
+          }
+        } else {
+          resultDiv.innerHTML = `❌ <strong>ParentPortalOfflineDB</strong> not found!
+
+Available databases:
+${databases.map(db => `  - ${db.name}`).join('\n') || '  (none)'}
+
+⚠️ The database will be created when you first navigate to a parent portal page.`
+        }
+      } catch (error) {
+        resultDiv.textContent = `❌ Error: ${error.message}`
+      }
+    }
+
+    // Get cache statistics
+    async function getCacheStats() {
+      const statsDiv = document.getElementById('cache-stats')
+      statsDiv.style.display = 'block'
+      statsDiv.textContent = 'Loading cache statistics...'
+      
+      try {
+        const request = indexedDB.open('ParentPortalOfflineDB')
+        request.onsuccess = async () => {
+          const db = request.result
+          const stats = {}
+          
+          for (const tableName of db.objectStoreNames) {
+            const transaction = db.transaction(tableName, 'readonly')
+            const store = transaction.objectStore(tableName)
+            const count = await new Promise((resolve, reject) => {
+              const countRequest = store.count()
+              countRequest.onsuccess = () => resolve(countRequest.result)
+              countRequest.onerror = () => reject(countRequest.error)
+            })
+            stats[tableName] = count
+          }
+          
+          statsDiv.innerHTML = `📊 <strong>Cache Statistics</strong>
+
+Database: ParentPortalOfflineDB
+Version: ${db.version}
+
+Table Record Counts:
+${Object.entries(stats).map(([table, count]) => `  ${table.padEnd(20)} ${count.toString().padStart(5)} records`).join('\n')}
+
+Total Records: ${Object.values(stats).reduce((a, b) => a + b, 0)}`
+          
+          db.close()
+        }
+        request.onerror = () => {
+          statsDiv.textContent = '❌ Database not found. Navigate to a parent portal page first.'
+        }
+      } catch (error) {
+        statsDiv.textContent = `❌ Error: ${error.message}`
+      }
+    }
+
+    // Clear cache
+    async function clearCacheData() {
+      if (!confirm('Are you sure you want to clear ALL cached data? You will need to go online and re-navigate pages to re-cache.')) {
+        return
+      }
+      
+      const statsDiv = document.getElementById('cache-stats')
+      statsDiv.style.display = 'block'
+      statsDiv.textContent = 'Clearing cache...'
+      
+      try {
+        await indexedDB.deleteDatabase('ParentPortalOfflineDB')
+        statsDiv.innerHTML = '✅ Cache cleared successfully!\n\nThe database will be recreated when you navigate to a parent portal page.'
+      } catch (error) {
+        statsDiv.textContent = `❌ Error: ${error.message}`
+      }
+    }
+
+    // Test offline mode
+    function testOfflineMode() {
+      alert('To test offline mode:\n\n1. Make sure you\'ve navigated to child details while ONLINE first\n2. Open DevTools → Network tab\n3. Check "Offline" checkbox\n4. Refresh the page (F5)\n5. Check console for "📴 Loading patient from cache" messages\n6. Verify all data displays correctly')
+    }
+  </script>
+</body>
+</html>

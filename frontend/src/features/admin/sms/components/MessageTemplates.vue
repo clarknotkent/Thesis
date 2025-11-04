@@ -283,7 +283,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
 import { useToast } from '@/composables/useToast'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 const { addToast } = useToast()
 

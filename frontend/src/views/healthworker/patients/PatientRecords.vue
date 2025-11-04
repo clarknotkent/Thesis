@@ -71,7 +71,7 @@ import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vu
 import FilterSheet from '@/features/health-worker/patients/components/FilterSheet.vue'
 import PatientListCard from '@/features/health-worker/patients/components/PatientListCard.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 

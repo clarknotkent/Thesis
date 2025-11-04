@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated, getRole } from '@/services/auth'
-import api from '@/services/offlineAPI'
-import offlineSyncService from '@/services/offlineSync'
+import api from '@/services/api'
 import NotFound from '@/views/NotFound.vue'
 
 // Auth Views
@@ -907,9 +906,7 @@ router.beforeEach(async (to, from, next) => {
   // For guardian/parent role, proactively verify child ownership before entering child-specific routes
   // If offline, skip remote validations and allow navigation (client-side only)
   try {
-    const online = typeof offlineSyncService?.checkOnlineStatus === 'function'
-      ? offlineSyncService.checkOnlineStatus()
-      : navigator.onLine
+    const online = navigator.onLine
     if (!online) {
       return next()
     }
@@ -1059,6 +1056,28 @@ router.beforeEach(async (to, from, next) => {
     return next('/not-found')
   }
   next()
+})
+
+// Global error handler for failed dynamic imports (offline navigation)
+router.onError((error) => {
+  console.error('🚫 Router error:', error)
+  
+  // Check if it's a failed dynamic import (common when offline)
+  if (error.message.includes('Failed to fetch dynamically imported module')) {
+    console.warn('⚠️ Failed to load route component - likely offline')
+    console.log('💡 This route needs to be visited while online first to be cached')
+    
+    // Show user-friendly error message
+    if (window.__showOfflineRouteError) {
+      window.__showOfflineRouteError()
+    }
+    
+    // Don't crash the app - stay on current route
+    return false
+  }
+  
+  // For other errors, let Vue Router handle them
+  throw error
 })
 
 export default router

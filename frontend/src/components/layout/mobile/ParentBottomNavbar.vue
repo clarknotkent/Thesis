@@ -63,15 +63,19 @@ const isActiveRoute = (path) => {
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 0;
-  z-index: 1000;
+  z-index: 1020;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
+  height: 70px;
+  min-height: 70px;
+  max-height: 70px;
 }
 
 .bottom-nav-container {
   display: flex;
   justify-content: space-around;
   align-items: center;
+  height: 100%;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom));
   max-width: 100%;
   margin: 0 auto;
@@ -81,6 +85,7 @@ const isActiveRoute = (path) => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-decoration: none;
   color: #6b7280;
   transition: all 0.2s ease;
@@ -89,6 +94,7 @@ const isActiveRoute = (path) => {
   min-width: 60px;
   flex: 1;
   max-width: 100px;
+  height: 54px;
 }
 
 .bottom-nav-item:hover {
@@ -106,6 +112,7 @@ const isActiveRoute = (path) => {
   font-size: 22px;
   margin-bottom: 4px;
   transition: transform 0.2s ease;
+  line-height: 1;
 }
 
 .bottom-nav-item.active .nav-icon {

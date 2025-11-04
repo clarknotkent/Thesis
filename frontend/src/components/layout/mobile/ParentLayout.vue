@@ -4,8 +4,8 @@
     <ParentTopBar :title="title" />
 
     <!-- Scrollable Content Area -->
-    <main class="main-content mobile-main">
-      <div class="parent-content mobile-content">
+    <main class="parent-main-wrapper">
+      <div class="parent-main-content">
         <slot />
       </div>
     </main>
@@ -36,45 +36,32 @@ defineProps({
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100vw;
   background-color: #f8f9fa;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
-.mobile-main {
-  flex-grow: 1;
+.parent-main-wrapper {
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  padding: 0 8px;
-  /* Padding bottom to prevent content from being hidden behind bottom navbar */
-  padding-bottom: 70px;
-}
-
-.mobile-content {
   padding: 0;
+  margin: 0;
+  -webkit-overflow-scrolling: touch;
+  background-color: #f8f9fa;
+}
+
+.parent-main-content {
+  padding: 0;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
-  min-height: 100%;
-  background: #ffffff;
-}
-
-/* Tablets */
-@media (min-width: 768px) {
-  .mobile-content {
-    max-width: 1200px;
-  }
-}
-
-/* Desktop */
-@media (min-width: 992px) {
-  .mobile-content {
-    max-width: 1400px;
-  }
-}
-
-/* Large Desktop */
-@media (min-width: 1400px) {
-  .mobile-content {
-    max-width: 1600px;
-  }
+  margin: 0;
+  min-height: calc(100vh - 56px - 70px);
+  background: transparent;
+  /* Add bottom padding for comfortable scrolling */
+  padding-bottom: 80px;
 }
 </style>

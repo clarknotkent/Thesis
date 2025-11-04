@@ -1,6 +1,15 @@
 <template>
   <ParentLayout>
     <div class="notifications-container">
+      <!-- Offline Warning -->
+      <div v-if="!isOnline" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+        <i class="bi bi-wifi-off me-2"></i>
+        <div>
+          <strong>Offline Mode</strong><br>
+          <small>Showing cached notifications. New notifications will appear when you're back online.</small>
+        </div>
+      </div>
+
       <div class="section-header">
         <h5 class="section-title">Notifications</h5>
       </div>
@@ -47,8 +56,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
-import db from '@/services/offline/db'
+import db from '@/services/offline/db-parent-portal'
+import api from '@/services/api'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
+const { isOnline } = useOnlineStatus()
 const loading = ref(true)
 const notifications = ref([])
 
@@ -56,17 +68,50 @@ const fetchNotifications = async () => {
   try {
     loading.value = true
     
-    // Read from local Dexie database (offline-first)
-    const items = await db.notifications.orderBy('created_at').reverse().toArray()
+    // NETWORK-FIRST: If online, fetch from API directly (fast)
+    if (navigator.onLine) {
+      console.log('🌐 Fetching notifications from API (online)')
+      try {
+        const response = await api.get('/notifications')
+        const items = response.data?.data || response.data || []
+        
+        notifications.value = items.map(n => ({
+          id: n.notification_id || n.id,
+          title: n.title || 'Notification',
+          message: n.message || '',
+          type: n.type || 'info',
+          created_at: n.created_at,
+          read: Boolean(n.is_read)
+        }))
+        
+        console.log('✅ Notifications updated with fresh data')
+      } catch (apiError) {
+        console.error('Failed to fetch notifications from API:', apiError)
+        // Fall through to offline fallback
+      }
+    }
     
-    notifications.value = items.map(n => ({
-      id: n.id,
-      title: n.title || 'Notification',
-      message: n.message || '',
-      type: n.type || 'info',
-      created_at: n.created_at,
-      read: Boolean(n.is_read)
-    }))
+    // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
+    if (!navigator.onLine || notifications.value.length === 0) {
+      console.log('📴 Loading notifications from IndexedDB cache')
+      try {
+        const items = await db.notifications.orderBy('created_at').reverse().toArray()
+        
+        notifications.value = items.map(n => ({
+          id: n.id,
+          title: n.title || 'Notification',
+          message: n.message || '',
+          type: n.type || 'info',
+          created_at: n.created_at,
+          read: Boolean(n.is_read)
+        }))
+      } catch (dbError) {
+        console.error('Failed to fetch notifications from IndexedDB:', dbError)
+        if (!navigator.onLine) {
+          throw new Error('Unable to load notifications offline. Please connect to the internet.')
+        }
+      }
+    }
   } catch (e) {
     console.error('Failed to fetch notifications:', e)
     notifications.value = []

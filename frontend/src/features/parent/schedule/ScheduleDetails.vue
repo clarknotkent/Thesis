@@ -74,7 +74,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import ScheduleCard from '@/components/parent/ScheduleCard.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -113,28 +113,77 @@ const fetchSchedule = async () => {
       return
     }
     
-    // Fetch the child's vaccination schedule
-    const response = await api.get(`/parent/children/${childId}/schedule`)
-    const data = response.data?.data || {}
-    
-    childName.value = data.childName || 'Child'
-    
-    const scheduleData = data.schedule || []
-    
-    // Format and sort schedules
-    schedules.value = scheduleData.map(item => ({
-      id: item.id || item.patient_schedule_id,
-      vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
-      dose: item.doseNumber || item.dose_number || 1,
-      scheduledDate: item.scheduledDate || item.scheduled_date,
-      status: item.status || 'upcoming',
-      recommendedAge: item.recommendedAge || ''
-    })).sort((a, b) => {
-      // Sort by date (soonest first)
-      const dateA = new Date(a.scheduledDate)
-      const dateB = new Date(b.scheduledDate)
-      return dateA - dateB
-    })
+    try {
+      // NETWORK-FIRST: Try API if online
+      if (navigator.onLine) {
+        console.log('🌐 Fetching schedule from API (online)')
+        const response = await api.get(`/parent/children/${childId}/schedule`)
+        const data = response.data?.data || {}
+        
+        childName.value = data.childName || 'Child'
+        
+        const scheduleData = data.schedule || []
+        
+        // Format and sort schedules
+        schedules.value = scheduleData.map(item => ({
+          id: item.id || item.patient_schedule_id,
+          vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
+          dose: item.doseNumber || item.dose_number || 1,
+          scheduledDate: item.scheduledDate || item.scheduled_date,
+          status: item.status || 'upcoming',
+          recommendedAge: item.recommendedAge || ''
+        })).sort((a, b) => {
+          // Sort by date (soonest first)
+          const dateA = new Date(a.scheduledDate)
+          const dateB = new Date(b.scheduledDate)
+          return dateA - dateB
+        })
+        
+        console.log(`✅ Loaded ${schedules.value.length} schedule items`)
+      } else {
+        throw new Error('Offline - will use cache')
+      }
+    } catch (apiError) {
+      // OFFLINE FALLBACK: Load from IndexedDB
+      console.log('📴 Offline or API failed - loading from IndexedDB')
+      try {
+        const db = (await import('@/services/offline/db')).default
+        
+        // Get patient info
+        const patient = await db.patients.get(Number(childId))
+        if (patient) {
+          childName.value = patient.full_name || patient.name || 'Child'
+        }
+        
+        // Get schedules from patientschedule table
+        const cachedSchedules = await db.patientschedule
+          .where('patient_id')
+          .equals(Number(childId))
+          .toArray()
+        
+        console.log(`📦 Found ${cachedSchedules.length} cached schedules`)
+        
+        if (cachedSchedules.length > 0) {
+          schedules.value = cachedSchedules.map(item => ({
+            id: item.patient_schedule_id || item.id,
+            vaccineName: item.vaccine_name || 'Unknown Vaccine',
+            dose: item.dose_number || 1,
+            scheduledDate: item.scheduled_date,
+            status: item.status || 'upcoming',
+            recommendedAge: ''
+          })).sort((a, b) => {
+            const dateA = new Date(a.scheduledDate)
+            const dateB = new Date(b.scheduledDate)
+            return dateA - dateB
+          })
+        } else {
+          error.value = 'No vaccination schedule found offline'
+        }
+      } catch (dbError) {
+        console.error('Failed to load from cache:', dbError)
+        error.value = 'No vaccination schedule available offline'
+      }
+    }
     
   } catch (err) {
     console.error('Error fetching schedule:', err)

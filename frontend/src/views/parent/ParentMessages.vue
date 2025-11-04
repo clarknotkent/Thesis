@@ -1,9 +1,23 @@
 <template>
   <ParentLayout>
     <div class="messages-container">
+      <!-- Offline Warning -->
+      <div v-if="!isOnline" class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+        <i class="bi bi-wifi-off me-2"></i>
+        <div>
+          <strong>Offline Mode</strong><br>
+          <small>Messaging is unavailable while offline. Showing cached conversations.</small>
+        </div>
+      </div>
+
       <div class="section-header d-flex justify-content-between align-items-center">
         <h5 class="section-title mb-0">Messages</h5>
-        <button class="btn btn-primary btn-sm" @click="openNewChat">
+        <button 
+          class="btn btn-primary btn-sm" 
+          @click="openNewChat"
+          :disabled="!isOnline"
+          :title="!isOnline ? 'Not available offline' : 'Start new chat'"
+        >
           <i class="bi bi-plus-circle me-1"></i>
           New Chat
         </button>
@@ -83,12 +97,14 @@ import { ref, onMounted, computed } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
 import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { getFaqs as apiGetFaqs } from '@/services/faqService'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
+const { isOnline } = useOnlineStatus()
 const loading = ref(true)
 const messages = ref([])
 const router = useRouter()
@@ -214,6 +230,10 @@ const selectFaq = (faq) => {
 }
 
 const openNewChat = async () => {
+  if (!isOnline.value) {
+    addToast({ title: 'Offline', message: 'Cannot start new conversations while offline.', type: 'warning' })
+    return
+  }
   showNewModal.value = true
   if (staffOptions.value.length === 0) {
     try {

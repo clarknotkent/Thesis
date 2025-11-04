@@ -1,80 +1,59 @@
 /**
  * Initialize offline functionality
- * Call this from main.js to set up PWA offline features
+ * NEW ARCHITECTURE: Auto-caching API interceptor with offline utility functions
  * 
- * OFFLINE-FIRST ARCHITECTURE:
- * Uses Dexie.js for local database and syncService for background sync
+ * The offline system now works via:
+ * 1. API interceptor automatically caches responses to IndexedDB
+ * 2. Offline utilities provide seamless online/offline data access
+ * 3. No manual prefetch needed - cache populates as users navigate
  */
 
-import db from './db'
-import syncService from './syncService'
+import db from './db-parent-portal'
 
 /**
  * Initialize the offline system
  */
 export async function initializeOffline() {
   try {
-    console.log('🔄 Initializing offline-first functionality...')
+    console.log('🔄 Initializing offline cache system...')
 
-    // Dexie is automatically initialized when imported
-    // Verify database is accessible
+    // Database initializes automatically on first access
+    // Just verify it's accessible
     await db.open()
-    console.log('✅ Dexie database initialized')
+    console.log('✅ ParentPortalOfflineDB ready')
+    console.log('💡 Cache will auto-populate as you navigate (no manual sync needed)')
 
-    // Initialize and start the sync service
-    await syncService.initialize()
-    console.log('✅ Sync service initialized')
-
-    console.log('✅ Offline-first functionality initialized successfully')
-    
     return true
   } catch (error) {
-    console.error('❌ Failed to initialize offline functionality:', error)
+    console.error('❌ Failed to initialize offline system:', error)
     return false
   }
 }
 
 /**
- * Sync data after login
- * Triggers appropriate sync based on user role
+ * Called after login - inform user about auto-caching
  */
 export async function syncAfterLogin(userRole = null) {
-  if (navigator.onLine) {
-    console.log('🔄 Syncing data after login...')
-    
-    // For Guardian/Parent role, download read-only data
-    if (userRole === 'Guardian' || userRole === 'Parent') {
-      console.log('👪 User is Parent/Guardian - downloading parent data')
-      await syncService.downloadParentData()
-    } else {
-      // For Health Worker and Admin, trigger regular sync (upload pending changes)
-      await syncService.triggerSync()
-    }
+  if (userRole === 'Guardian' || userRole === 'Parent') {
+    console.log('👪 Parent user logged in')
+    console.log('💾 Cache will auto-populate as you navigate')
+    console.log('💡 Visit child details pages while online to cache data for offline use')
   }
 }
 
 /**
  * Clear offline data on logout
- * Clears all cached data based on user role
  */
 export async function clearOfflineDataOnLogout() {
   try {
-    console.log('🗑️ Clearing offline data on logout...')
+    console.log('🗑️ Clearing offline cache on logout...')
     
-    // Clear all Dexie tables
-    await db.patients.clear()
-    await db.immunizations.clear()
-    await db.pending_uploads.clear()
+    const { clearCache } = await import('./offlineUtils')
+    await clearCache()
     
-    // Clear parent/guardian tables
-    await db.children.clear()
-    await db.schedules.clear()
-    await db.notifications.clear()
-    await db.guardian_profile.clear()
-    
-    console.log('✅ Offline data cleared')
+    console.log('✅ Offline cache cleared')
   } catch (error) {
-    console.error('❌ Failed to clear offline data:', error)
+    console.error('❌ Failed to clear offline cache:', error)
   }
 }
 

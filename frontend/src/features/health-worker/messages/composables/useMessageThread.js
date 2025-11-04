@@ -3,7 +3,7 @@
  * Handles message loading, sending, and real-time updates
  */
 import { ref, nextTick } from 'vue'
-import { messageAPI } from '@/services/offlineAPI'
+import { messageAPI } from '@/services/api'
 import { getUserId } from '@/services/auth'
 
 export function useMessageThread() {

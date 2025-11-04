@@ -199,7 +199,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import BarChart from '@/features/admin/analytics/BarChart.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 // Reactive data
 const loading = ref(true)

@@ -338,7 +338,7 @@ import { useToast } from '@/composables/useToast'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import AppCard from '@/components/ui/base/AppCard.vue'
 import AppButton from '@/components/ui/base/AppButton.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { formatPHDate } from '@/utils/dateUtils'
 
 // Reactive data

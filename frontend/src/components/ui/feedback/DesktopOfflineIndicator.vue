@@ -5,27 +5,16 @@
     <div class="status-bar" @click="toggleDetails">
       <i :class="statusIcon"></i>
       <span class="status-text">{{ connectionStatus }}</span>
-      <span v-if="pendingSyncCount > 0" class="badge bg-warning ms-2">
-        {{ pendingSyncCount }} pending
-      </span>
       <i class="bi bi-chevron-down ms-auto"></i>
     </div>
 
     <!-- Expandable details -->
     <transition name="slide-down">
       <div v-if="showDetails" class="details-panel">
-        <!-- Sync info -->
+        <!-- Info message -->
         <div class="detail-row">
-          <i class="bi bi-clock-history"></i>
-          <span>Last sync: {{ formattedLastSyncTime }}</span>
-        </div>
-
-        <!-- Sync progress -->
-        <div v-if="isSyncing" class="detail-row">
-          <div class="spinner-border spinner-border-sm me-2" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          <span>{{ syncProgress }}</span>
+          <i class="bi bi-info-circle"></i>
+          <span>Data caches automatically as you navigate</span>
         </div>
 
         <!-- Storage stats -->
@@ -36,15 +25,6 @@
 
         <!-- Actions -->
         <div class="actions">
-          <button 
-            class="btn btn-sm btn-outline-primary" 
-            @click="handleSync"
-            :disabled="!isOnline || isSyncing"
-          >
-            <i class="bi bi-arrow-repeat"></i>
-            Sync Now
-          </button>
-          
           <button 
             class="btn btn-sm btn-outline-secondary" 
             @click="showStorageDetails = !showStorageDetails"
@@ -84,12 +64,7 @@ import { useOffline } from '@/composables/useOffline'
 
 const {
   isOnline,
-  isSyncing,
-  syncProgress,
-  pendingSyncCount,
-  formattedLastSyncTime,
   connectionStatus,
-  syncData,
   clearOfflineData,
   getStorageStats,
 } = useOffline()
@@ -101,12 +76,9 @@ const storageStats = ref(null)
 const indicatorClass = computed(() => ({
   'online': isOnline.value,
   'offline': !isOnline.value,
-  'syncing': isSyncing.value,
-  'has-pending': pendingSyncCount.value > 0,
 }))
 
 const statusIcon = computed(() => {
-  if (isSyncing.value) return 'bi bi-arrow-repeat spinner'
   if (isOnline.value) return 'bi bi-wifi'
   return 'bi bi-wifi-off'
 })
@@ -120,16 +92,6 @@ const toggleDetails = () => {
   showDetails.value = !showDetails.value
   if (showDetails.value && !storageStats.value) {
     loadStorageStats()
-  }
-}
-
-const handleSync = async () => {
-  try {
-    await syncData()
-    await loadStorageStats()
-  } catch (error) {
-    console.error('Sync failed:', error)
-    alert('Sync failed. Please try again.')
   }
 }
 
@@ -188,10 +150,6 @@ onMounted(() => {
 
 .desktop-offline-indicator.offline {
   border-left: 4px solid #dc3545;
-}
-
-.desktop-offline-indicator.syncing {
-  border-left: 4px solid #ffc107;
 }
 
 .status-bar {

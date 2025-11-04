@@ -66,31 +66,57 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
-        navigateFallback: '/',
-        navigateFallbackAllowlist: [
-          /^\/$/,
-          /^\/parent\//,
-          /^\/admin\//,
-          /^\/bhs\//
-        ],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /\.(vue|ts|jsx|tsx)$/], // Don't fallback for API calls or source files
         runtimeCaching: [
           {
-            // Cache route modules served by Vite dev server (enables better offline during dev)
-            // Note: In production, chunks are precached automatically.
-            urlPattern: /^(?:\/src\/).+\.(?:js|ts|vue|css)$/,
-            handler: 'CacheFirst',
+            // Cache route modules served by Vite dev server
+            // Use StaleWhileRevalidate to always try network first in dev
+            urlPattern: ({ url }) => {
+              return url.pathname.startsWith('/src/') && 
+                     /\.(js|ts|vue|css|jsx|tsx)$/.test(url.pathname)
+            },
+            handler: 'NetworkFirst', // Changed from CacheFirst to NetworkFirst
             options: {
               cacheName: 'dev-src-modules',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] }
+              networkTimeoutSeconds: 3, // Quick fallback to cache if network slow
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 days
+              cacheableResponse: { statuses: [0, 200] },
+              // Custom plugin to strip Vite's timestamp query params before caching
+              plugins: [
+                {
+                  cacheKeyWillBeUsed: async ({ request }) => {
+                    const url = new URL(request.url)
+                    // Remove Vite's timestamp parameter (t=xxx)
+                    url.searchParams.delete('t')
+                    url.searchParams.delete('import')
+                    return url.toString()
+                  }
+                }
+              ]
             }
           },
           {
             // Cache Vite HMR client and helper modules best-effort (dev only)
-            urlPattern: /^\/@vite\/.*/,
+            urlPattern: ({ url }) => {
+              return url.pathname.startsWith('/@vite/') || 
+                     url.pathname.startsWith('/@fs/') ||
+                     url.pathname.startsWith('/@id/')
+            },
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'vite-internals',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            // Cache compiled assets (chunks, CSS) from /assets/ in dev and prod
+            urlPattern: ({ url }) => url.pathname.startsWith('/assets/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'compiled-assets',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30 days
               cacheableResponse: { statuses: [0, 200] }
             }
           },
