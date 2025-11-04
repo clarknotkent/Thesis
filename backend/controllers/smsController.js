@@ -462,7 +462,10 @@ const toggleGuardianAutoSend = async (req, res) => {
     
     const { data, error } = await supabase
       .from('guardian_auto_send_settings')
-      .upsert({ guardian_id: Number(guardianId), auto_send_enabled })
+      .upsert(
+        { guardian_id: Number(guardianId), auto_send_enabled },
+        { onConflict: 'guardian_id', ignoreDuplicates: false }
+      )
       .select()
       .single();
     if (error) throw error;
@@ -482,26 +485,56 @@ const bulkToggleAutoSend = async (req, res) => {
   try {
     const { guardianIds, auto_send_enabled } = req.body;
     
+    console.log('bulkToggleAutoSend received:', { guardianIds, auto_send_enabled, type: typeof auto_send_enabled });
+    
     if (!Array.isArray(guardianIds) || guardianIds.length === 0) {
       return res.status(400).json({ success: false, message: 'Guardian IDs array is required' });
     }
+    
+    if (typeof auto_send_enabled !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'auto_send_enabled must be a boolean' });
+    }
+    
     // Only include guardians that are not deleted
     const { data: activeGuardians, error: gErr } = await supabase
       .from('guardians')
       .select('guardian_id')
       .in('guardian_id', guardianIds.map(Number))
       .eq('is_deleted', false);
-    if (gErr) throw gErr;
+    if (gErr) {
+      console.error('Error fetching active guardians:', gErr);
+      throw gErr;
+    }
+    
     const validIds = (activeGuardians || []).map(g => g.guardian_id);
+    console.log('Valid guardian IDs:', validIds);
+    
     if (validIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No active guardians found for provided IDs' });
     }
 
-    const payload = validIds.map(id => ({ guardian_id: Number(id), auto_send_enabled }));
-    const { error } = await supabase
+    const payload = validIds.map(id => ({ 
+      guardian_id: Number(id), 
+      auto_send_enabled: Boolean(auto_send_enabled)
+    }));
+    
+    console.log('Upserting payload:', payload);
+    
+    // Use upsert with ignoreDuplicates:false (default) to update existing records
+    const { data, error } = await supabase
       .from('guardian_auto_send_settings')
-      .upsert(payload);
-    if (error) throw error;
+      .upsert(payload, { 
+        onConflict: 'guardian_id',
+        ignoreDuplicates: false 
+      })
+      .select();
+      
+    if (error) {
+      console.error('Supabase upsert error:', error);
+      throw error;
+    }
+    
+    console.log('Bulk toggle successful:', data);
     
     res.json({ 
       success: true, 

@@ -425,7 +425,7 @@ const fetchExistingVaccines = async () => {
       : []
   } catch (e) {
     console.error('Error fetching vaccines', e)
-    addToast('Error loading vaccines', 'error')
+    addToast({ message: 'Error loading vaccines', type: 'error' })
   }
 }
 
@@ -571,11 +571,11 @@ const handleSubmit = async () => {
   try {
     const payload = buildPayload()
     await api.post(`/vaccines/${selectedVaccine.value}/schedule`, payload)
-    addToast('Schedule created successfully!', 'success')
+    addToast({ message: 'Schedule created successfully!', type: 'success' })
     router.push('/admin/vaccines')
   } catch (error) {
     console.error('Error creating schedule:', error)
-    addToast(error.response?.data?.message || 'Error creating schedule', 'error')
+    addToast({ message: error.response?.data?.message || 'Error creating schedule', type: 'error' })
   } finally {
     submitting.value = false
   }

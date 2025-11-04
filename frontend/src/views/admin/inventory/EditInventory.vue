@@ -323,7 +323,7 @@ const fetchInventoryData = async () => {
     }
   } catch (error) {
     console.error('Error fetching inventory data:', error)
-    addToast('Error loading inventory data', 'error')
+    addToast({ message: 'Error loading inventory data', type: 'error' })
   } finally {
     loading.value = false
   }
@@ -341,14 +341,14 @@ const updateVaccineDetails = async () => {
     }
     
     await api.put(`/vaccines/inventory/${id}`, payload)
-    addToast('Vaccine details updated successfully!', 'success')
+    addToast({ message: 'Vaccine details updated successfully!', type: 'success' })
     
     // Refresh data
     await fetchInventoryData()
   } catch (error) {
     console.error('Error updating details:', error)
     const errorMessage = error.response?.data?.message || 'Error updating details. Please try again.'
-    addToast(errorMessage, 'error')
+    addToast({ message: errorMessage, type: 'error' })
   } finally {
     submittingDetails.value = false
   }
@@ -356,7 +356,7 @@ const updateVaccineDetails = async () => {
 
 const handleAdjustStock = async () => {
   if (!adjustForm.value.type || adjustForm.value.quantity === 0) {
-    addToast('Please select transaction type and enter quantity', 'warning')
+    addToast({ message: 'Please select transaction type and enter quantity', type: 'warning' })
     return
   }
 
@@ -372,7 +372,7 @@ const handleAdjustStock = async () => {
   try {
     const id = route.params.id
     await api.post(`/vaccines/inventory/${id}/adjust`, adjustForm.value)
-    addToast('Stock adjusted successfully!', 'success')
+    addToast({ message: 'Stock adjusted successfully!', type: 'success' })
     
     // Reset form
     adjustForm.value = {
@@ -386,7 +386,7 @@ const handleAdjustStock = async () => {
   } catch (error) {
     console.error('Error adjusting stock:', error)
     const errorMessage = error.response?.data?.message || 'Error adjusting stock. Please try again.'
-    addToast(errorMessage, 'error')
+    addToast({ message: errorMessage, type: 'error' })
   } finally {
     submittingAdjust.value = false
   }

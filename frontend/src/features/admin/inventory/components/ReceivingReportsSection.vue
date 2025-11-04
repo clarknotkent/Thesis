@@ -257,7 +257,7 @@ const loadReports = async () => {
     console.log('Mapped reports:', reports.value)
   } catch (error) {
     console.error('Error loading receiving reports:', error)
-    addToast('Failed to load receiving reports', 'error')
+    addToast({ message: 'Failed to load receiving reports', type: 'error' })
     reports.value = []
   } finally {
     loading.value = false

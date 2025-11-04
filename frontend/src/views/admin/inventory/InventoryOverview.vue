@@ -271,7 +271,7 @@ const loadInventoryData = async () => {
   } catch (err) {
     console.error('Error loading inventory data:', err)
     error.value = 'Failed to load inventory data. Please try again.'
-    addToast('Error loading inventory data', 'error')
+    addToast({ message: 'Error loading inventory data', type: 'error' })
     stats.value = { totalTypes: 0, totalDoses: 0, lowStock: 0, expiringSoon: 0 }
   } finally {
     loading.value = false

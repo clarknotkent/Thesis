@@ -361,7 +361,7 @@ const loadInventory = async () => {
     console.debug('[VaccineStockSection] fetched', items.length, 'inventory items, mapped', inventory.value.length, 'for table')
   } catch (error) {
     console.error('Error loading inventory:', error)
-    addToast('Failed to load vaccine stock', 'error')
+    addToast({ message: 'Failed to load vaccine stock', type: 'error' })
   } finally {
     loading.value = false
   }

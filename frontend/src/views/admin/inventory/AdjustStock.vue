@@ -204,7 +204,7 @@ const fetchInventoryData = async () => {
     }
   } catch (error) {
     console.error('Error fetching inventory data:', error)
-    addToast('Error loading inventory data', 'error')
+    addToast({ message: 'Error loading inventory data', type: 'error' })
   } finally {
     loading.value = false
   }
@@ -212,7 +212,7 @@ const fetchInventoryData = async () => {
 
 const handleSubmit = async () => {
   if (!adjustForm.value.type || adjustForm.value.quantity === 0) {
-    addToast('Please select transaction type and enter quantity', 'warning')
+    addToast({ message: 'Please select transaction type and enter quantity', type: 'warning' })
     return
   }
 
@@ -228,12 +228,12 @@ const handleSubmit = async () => {
   try {
     const id = route.params.id
     await api.post(`/vaccines/inventory/${id}/adjust`, adjustForm.value)
-    addToast('Stock adjusted successfully!', 'success')
+    addToast({ message: 'Stock adjusted successfully!', type: 'success' })
     router.push('/admin/vaccines')
   } catch (error) {
     console.error('Error adjusting stock:', error)
     const errorMessage = error.response?.data?.message || 'Error adjusting stock. Please try again.'
-    addToast(errorMessage, 'error')
+    addToast({ message: errorMessage, type: 'error' })
   } finally {
     submitting.value = false
   }
