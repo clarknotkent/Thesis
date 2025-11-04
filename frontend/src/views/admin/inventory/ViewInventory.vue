@@ -359,7 +359,7 @@ const fetchInventoryData = async () => {
     }
   } catch (error) {
     console.error('Error fetching inventory data:', error)
-    addToast('Error loading inventory data', 'error')
+    addToast({ message: 'Error loading inventory data', type: 'error' })
   } finally {
     loading.value = false
   }

@@ -464,10 +464,10 @@ const deleteTemplate = async (template) => {
   try {
     await api.delete(`/sms/templates/${template.id}`)
     templates.value = templates.value.filter(t => t.id !== template.id)
-    addToast('Template deleted successfully', 'success')
+    addToast({ message: 'Template deleted successfully', type: 'success' })
   } catch (err) {
     console.error('Failed to delete template', err)
-    addToast('Failed to delete template', 'danger')
+    addToast({ message: 'Failed to delete template', type: 'danger' })
   }
 }
 
@@ -487,7 +487,7 @@ const saveTemplate = async () => {
         const idx = templates.value.findIndex(t => t.id === updated.id)
         if (idx > -1) templates.value[idx] = updated
       }
-      addToast('Template updated successfully', 'success')
+      addToast({ message: 'Template updated successfully', type: 'success' })
     } else {
       // Create new
       const { data } = await api.post('/sms/templates', {
@@ -499,11 +499,11 @@ const saveTemplate = async () => {
       })
       const created = data?.data
       if (created) templates.value.unshift(created)
-      addToast('Template created successfully', 'success')
+      addToast({ message: 'Template created successfully', type: 'success' })
     }
   } catch (err) {
     console.error('Failed to save template', err)
-    addToast('Failed to save template', 'danger')
+    addToast({ message: 'Failed to save template', type: 'danger' })
   } finally {
     hideModal()
   }
@@ -512,11 +512,11 @@ const saveTemplate = async () => {
 const toggleTemplateStatus = async (template) => {
   try {
     await api.put(`/sms/templates/${template.id}`, { ...template })
-    addToast(`Template ${template.is_active ? 'activated' : 'deactivated'}`, 'success')
+    addToast({ message: `Template ${template.is_active ? 'activated' : 'deactivated'}`, type: 'success' })
   } catch (err) {
     console.error('Failed to toggle template status', err)
     template.is_active = !template.is_active // revert
-    addToast('Failed to update status', 'danger')
+    addToast({ message: 'Failed to update status', type: 'danger' })
   }
 }
 

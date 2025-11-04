@@ -68,12 +68,12 @@ const handleSubmit = async (formData) => {
   submitting.value = true
   try {
     await api.post('/vaccines', formData)
-    addToast('Vaccine type added successfully!', 'success')
+    addToast({ message: 'Vaccine type added successfully!', type: 'success' })
     router.push('/admin/vaccines')
   } catch (error) {
     console.error('Error adding vaccine type:', error)
     const errorMessage = error.response?.data?.message || 'Error adding vaccine type. Please try again.'
-    addToast(errorMessage, 'error')
+    addToast({ message: errorMessage, type: 'error' })
   } finally {
     submitting.value = false
   }

@@ -113,7 +113,7 @@ const fetchSchedules = async () => {
   } catch (e) {
     console.error('Error fetching schedules', e)
     schedules.value = []
-    addToast('Failed to load vaccine schedules', 'error')
+    addToast({ message: 'Failed to load vaccine schedules', type: 'error' })
   } finally {
     loading.value = false
   }

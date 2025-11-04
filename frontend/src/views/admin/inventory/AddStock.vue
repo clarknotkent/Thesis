@@ -85,11 +85,11 @@ const fetchVaccines = async () => {
     } else {
       console.error('Unexpected vaccines data structure:', vaccineData)
       vaccines.value = []
-      addToast('Error loading vaccines: unexpected data format', 'error')
+      addToast({ message: 'Error loading vaccines: unexpected data format', type: 'error' })
     }
   } catch (error) {
     console.error('Error fetching vaccines:', error)
-    addToast('Error loading vaccines', 'error')
+    addToast({ message: 'Error loading vaccines', type: 'error' })
     vaccines.value = [] // Ensure it's always an array
   }
 }
@@ -98,12 +98,12 @@ const handleSubmit = async (formData) => {
   submitting.value = true
   try {
     await api.post('/vaccines/inventory', formData)
-    addToast('Stock added successfully!', 'success')
+    addToast({ message: 'Stock added successfully!', type: 'success' })
     router.push('/admin/vaccines')
   } catch (error) {
     console.error('Error adding stock:', error)
     const errorMessage = error.response?.data?.message || 'Error adding stock. Please try again.'
-    addToast(errorMessage, 'error')
+    addToast({ message: errorMessage, type: 'error' })
   } finally {
     submitting.value = false
   }

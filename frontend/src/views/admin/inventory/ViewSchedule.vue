@@ -197,7 +197,7 @@ const fetchSchedule = async () => {
     scheduleData.value = res.data?.data || res.data
   } catch (error) {
     console.error('Error fetching schedule:', error)
-    addToast('Error loading schedule data', 'error')
+    addToast({ message: 'Error loading schedule data', type: 'error' })
   } finally {
     loading.value = false
   }

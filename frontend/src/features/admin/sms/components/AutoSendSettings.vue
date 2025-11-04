@@ -278,7 +278,6 @@
                       :id="`auto-${guardian.id}`"
                       v-model="guardian.auto_send_enabled"
                       @change="toggleGuardianAutoSend(guardian)"
-                      :disabled="!globalSettings.enabled"
                     >
                     <label class="form-check-label" :for="`auto-${guardian.id}`">
                       <small :class="guardian.auto_send_enabled ? 'text-success fw-semibold' : 'text-muted'">
@@ -332,6 +331,145 @@
           Showing {{ startIndex + 1 }} to {{ endIndex }} of {{ filteredGuardians.length }} entries
         </div>
   </div>
+
+  <!-- Guardian Details Modal -->
+  <div 
+    class="modal fade" 
+    :class="{ show: showDetailsModal }" 
+    :style="{ display: showDetailsModal ? 'block' : 'none' }" 
+    tabindex="-1"
+  >
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-person-circle me-2"></i>Guardian Details
+          </h5>
+          <button type="button" class="btn-close" @click="showDetailsModal = false"></button>
+        </div>
+        <div class="modal-body" v-if="selectedGuardian">
+          <div class="row g-3">
+            <!-- Basic Info -->
+            <div class="col-12">
+              <h6 class="text-primary mb-3">
+                <i class="bi bi-info-circle me-2"></i>Basic Information
+              </h6>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small text-muted">Name</label>
+              <div class="fs-6">{{ selectedGuardian.name || '—' }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small text-muted">Phone Number</label>
+              <div class="fs-6">{{ selectedGuardian.phone || '—' }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small text-muted">Number of Children</label>
+              <div class="fs-6">
+                <span class="badge bg-primary">{{ selectedGuardian.children_count || 0 }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small text-muted">Auto-Send Status</label>
+              <div class="fs-6">
+                <span 
+                  class="badge" 
+                  :class="selectedGuardian.auto_send_enabled ? 'bg-success' : 'bg-secondary'"
+                >
+                  {{ selectedGuardian.auto_send_enabled ? 'Enabled' : 'Disabled' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- SMS History Summary -->
+            <div class="col-12 mt-4">
+              <h6 class="text-primary mb-3">
+                <i class="bi bi-clock-history me-2"></i>SMS Activity
+              </h6>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light border-0">
+                <div class="card-body text-center py-2">
+                  <div class="text-muted small">Total Sent</div>
+                  <div class="fs-4 fw-bold text-primary">{{ guardianSMSHistory.total || 0 }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light border-0">
+                <div class="card-body text-center py-2">
+                  <div class="text-muted small">This Month</div>
+                  <div class="fs-4 fw-bold text-info">{{ guardianSMSHistory.thisMonth || 0 }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light border-0">
+                <div class="card-body text-center py-2">
+                  <div class="text-muted small">Failed</div>
+                  <div class="fs-4 fw-bold text-danger">{{ guardianSMSHistory.failed || 0 }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Messages -->
+            <div class="col-12 mt-4" v-if="guardianSMSHistory.recent && guardianSMSHistory.recent.length > 0">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="text-primary mb-0">
+                  <i class="bi bi-chat-left-text me-2"></i>Recent Messages
+                </h6>
+                <small class="text-muted">Showing last 5 messages</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr>
+                      <th style="width: 180px;">Date</th>
+                      <th>Message</th>
+                      <th style="width: 100px;" class="text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(msg, index) in guardianSMSHistory.recent.slice(0, 5)" :key="msg.id">
+                      <td class="small">{{ formatDateTime(msg.sent_at) }}</td>
+                      <td>
+                        <div class="text-truncate" style="max-width: 350px;" :title="msg.message">
+                          {{ msg.message }}
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        <span 
+                          class="badge" 
+                          :class="{
+                            'bg-success': msg.status === 'sent',
+                            'bg-warning text-dark': msg.status === 'pending',
+                            'bg-danger': msg.status === 'failed'
+                          }"
+                        >
+                          {{ msg.status }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-12 mt-3" v-else>
+              <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>No SMS history available for this guardian.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="showDetailsModal = false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Backdrop -->
+  <div v-if="showDetailsModal" class="modal-backdrop fade show" @click="showDetailsModal = false"></div>
 </template>
 
 <script setup>
@@ -348,6 +486,14 @@ const filterStatus = ref('')
 const selectAll = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
+const showDetailsModal = ref(false)
+const selectedGuardian = ref(null)
+const guardianSMSHistory = ref({
+  total: 0,
+  thisMonth: 0,
+  failed: 0,
+  recent: []
+})
 
 const globalSettings = ref({
   enabled: false,
@@ -397,9 +543,9 @@ const paginatedGuardians = computed(() => {
 // Methods
 const toggleGlobalAutoSend = () => {
   if (globalSettings.value.enabled) {
-    addToast('Global auto-send enabled. Configure individual guardians below.', 'success')
+    addToast({ message: 'Global auto-send enabled. Configure individual guardians below.', type: 'success' })
   } else {
-    addToast('Global auto-send disabled. All automated messages stopped.', 'warning')
+    addToast({ message: 'Global auto-send disabled. All automated messages stopped.', type: 'warning' })
   }
   updateStats()
 }
@@ -407,18 +553,33 @@ const toggleGlobalAutoSend = () => {
 const toggleGuardianAutoSend = async (guardian) => {
   try {
     await api.put(`/sms/guardians/${guardian.id}`, { auto_send_enabled: guardian.auto_send_enabled })
-    addToast(`Auto-send ${guardian.auto_send_enabled ? 'enabled' : 'disabled'} for ${guardian.name}`, 'success')
+    
+    // Update the modal if it's showing the same guardian
+    if (selectedGuardian.value && selectedGuardian.value.id === guardian.id) {
+      selectedGuardian.value.auto_send_enabled = guardian.auto_send_enabled
+    }
+    
+    addToast({ 
+      message: `Auto-send ${guardian.auto_send_enabled ? 'enabled' : 'disabled'} for ${guardian.name}`, 
+      type: 'success' 
+    })
     updateStats()
   } catch (err) {
     console.error('Failed to toggle guardian auto-send', err)
     guardian.auto_send_enabled = !guardian.auto_send_enabled // revert
-    addToast('Failed to update guardian setting', 'danger')
+    
+    // Also revert in modal if open
+    if (selectedGuardian.value && selectedGuardian.value.id === guardian.id) {
+      selectedGuardian.value.auto_send_enabled = guardian.auto_send_enabled
+    }
+    
+    addToast({ message: 'Failed to update guardian setting', type: 'danger' })
   }
 }
 
 const bulkToggle = async (enable) => {
   if (enable && !globalSettings.value.enabled) {
-    addToast('Please enable global auto-send first', 'warning')
+    addToast({ message: 'Please enable global auto-send first', type: 'warning' })
     return
   }
 
@@ -431,11 +592,14 @@ const bulkToggle = async (enable) => {
       const ids = guardians.value.map(g => g.id)
       await api.post('/sms/guardians/bulk-toggle', { guardianIds: ids, auto_send_enabled: enable })
       guardians.value.forEach(g => { g.auto_send_enabled = enable })
-      addToast(`Auto-send ${enable ? 'enabled' : 'disabled'} for all guardians`, 'success')
+      addToast({ 
+        message: `Auto-send ${enable ? 'enabled' : 'disabled'} for all guardians`, 
+        type: 'success' 
+      })
       updateStats()
     } catch (err) {
       console.error('Failed bulk toggle', err)
-      addToast('Failed to update all guardians', 'danger')
+      addToast({ message: 'Failed to update all guardians', type: 'danger' })
     }
   }
 }
@@ -452,14 +616,40 @@ const clearFilters = () => {
   fetchGuardians()
 }
 
-const viewGuardianDetails = (guardian) => {
-  // NOTE: Guardian details view feature planned for future implementation
-  // This will either:
-  // 1. Navigate to /admin/guardians/:id details page (when route is created)
-  // 2. Open a modal with guardian information and contact history
-  // 3. Show related patients and SMS history
-  // For now, log the action for debugging
-  console.log('View details for:', guardian)
+const viewGuardianDetails = async (guardian) => {
+  selectedGuardian.value = guardian
+  showDetailsModal.value = true
+  
+  // Fetch SMS history for this guardian
+  try {
+    const { data } = await api.get('/sms/history', {
+      params: {
+        guardianId: guardian.id,
+        limit: 5
+      }
+    })
+    
+    const history = data?.data || []
+    
+    // Calculate statistics
+    const now = new Date()
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    
+    guardianSMSHistory.value = {
+      total: history.length,
+      thisMonth: history.filter(h => new Date(h.sent_at) >= thisMonthStart).length,
+      failed: history.filter(h => h.status === 'failed').length,
+      recent: history.slice(0, 5)
+    }
+  } catch (err) {
+    console.error('Failed to load guardian SMS history', err)
+    guardianSMSHistory.value = {
+      total: 0,
+      thisMonth: 0,
+      failed: 0,
+      recent: []
+    }
+  }
 }
 
 const updateStats = () => {
@@ -477,6 +667,23 @@ const fetchStats = async () => {
     stats.value.pending_messages = Number(s.sms?.pending_count || 0)
   } catch (err) {
     console.error('Failed to load stats', err)
+  }
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return '—'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-PH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Manila'
+    })
+  } catch {
+    return dateString
   }
 }
 
@@ -516,6 +723,15 @@ onMounted(() => {
 .font-monospace {
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
+}
+
+/* Modal Styling */
+.modal.show {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 /* Table Styling */
