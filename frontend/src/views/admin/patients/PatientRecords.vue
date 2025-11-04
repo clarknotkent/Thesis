@@ -163,7 +163,7 @@
                               @click="restorePatient(patient)"
                               title="Restore Patient"
                             >
-                              <i class="bi bi-arrow-counterclockwise"></i>
+                              <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                             </button>
                             <template v-else>
                               <button 
@@ -172,22 +172,22 @@
                                 @click="setPatientStatus(patient, 'inactive')"
                                 title="Deactivate"
                               >
-                                <i class="bi bi-slash-circle"></i>
+                                <i class="bi bi-slash-circle me-1"></i>Deactivate
                               </button>
                               <button 
                                 class="btn btn-sm btn-outline-success" 
                                 v-else
                                 @click="setPatientStatus(patient, 'active')"
-                                title="Set Active"
+                                title="Activate"
                               >
-                                <i class="bi bi-check-circle"></i>
+                                <i class="bi bi-check-circle me-1"></i>Activate
                               </button>
                               <button 
                                 class="btn btn-sm btn-outline-danger" 
                                 @click="deletePatient(patient)"
                                 title="Delete Patient"
                               >
-                                <i class="bi bi-trash"></i>
+                                <i class="bi bi-trash me-1"></i>Delete
                               </button>
                             </template>
                           </div>
