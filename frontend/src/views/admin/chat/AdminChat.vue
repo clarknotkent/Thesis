@@ -98,7 +98,7 @@ import ChatHeader from '@/features/shared/chat/components/ChatHeader.vue';
 import MessagesList from '@/features/shared/chat/components/MessagesList.vue';
 import MessageComposer from '@/features/shared/chat/components/MessageComposer.vue';
 import NewConversationModal from '@/features/shared/chat/NewConversationModal.vue';
-import { getUsers } from '@/services/userService';
+import { listUsers as getUsers } from '@/services/users';
 import { useToast } from '@/composables/useToast';
 import { getUserId } from '@/services/auth';
 import {

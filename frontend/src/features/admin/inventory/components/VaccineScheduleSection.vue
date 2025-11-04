@@ -87,7 +87,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
 const { addToast } = useToast()

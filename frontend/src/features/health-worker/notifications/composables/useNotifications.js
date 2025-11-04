@@ -8,7 +8,7 @@
  */
 
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { notificationAPI } from '@/services/offlineAPI'
+import { notificationAPI } from '@/services/api'
 
 export function useNotifications() {
   // State

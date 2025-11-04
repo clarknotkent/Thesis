@@ -8,7 +8,7 @@
 
     <!-- Patient Information Card -->
     <CollapsibleCard
-      title="Patient Information"
+      title="Child Information"
       icon="person-fill"
       :is-expanded="expandedCards.patientInfo"
       @toggle="expandedCards.patientInfo = !expandedCards.patientInfo"

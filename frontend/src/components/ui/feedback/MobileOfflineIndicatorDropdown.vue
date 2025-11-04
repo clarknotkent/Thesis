@@ -16,9 +16,6 @@
         <i :class="statusIcon" :style="{ color: statusColor }" class="fs-5"></i>
         <span class="last-sync-badge d-none d-sm-inline small text-white-50"></span>
       </div>
-      <span v-if="pendingSyncCount > 0" class="badge bg-warning position-absolute top-0 start-100 translate-middle">
-        {{ pendingSyncCount > 99 ? '99+' : pendingSyncCount }}
-      </span>
     </button>
     
     <ul class="dropdown-menu dropdown-menu-end offline-dropdown" aria-labelledby="mobileOfflineDropdown" data-bs-display="static">
@@ -28,28 +25,10 @@
       
       <li><hr class="dropdown-divider"></li>
       
-      <li><div class="dropdown-item-text small">
-        <i class="bi bi-clock-history me-2"></i>
-        Last sync: {{ formattedLastSyncTime }}
+      <li><div class="dropdown-item-text small text-muted">
+        <i class="bi bi-info-circle me-2"></i>
+        Data caches automatically as you navigate
       </div></li>
-      
-      <li v-if="isSyncing"><div class="dropdown-item-text small">
-        <div class="spinner-border spinner-border-sm me-2" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        {{ syncProgress }}
-      </div></li>
-      
-      <li><hr class="dropdown-divider"></li>
-      
-      <li><button 
-        class="dropdown-item text-primary"
-        @click="handleSync"
-        :disabled="!isOnline || isSyncing"
-      >
-        <i class="bi bi-arrow-repeat me-2"></i>
-        Sync Now
-      </button></li>
     </ul>
   </div>
 </template>
@@ -57,38 +36,25 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useOffline } from '@/composables/useOffline'
+import { Dropdown } from 'bootstrap'
 
 const dropdownButton = ref(null)
 let dropdownInstance = null
 
 const {
   isOnline,
-  isSyncing,
-  syncProgress,
-  pendingSyncCount,
-  formattedLastSyncTime,
   connectionStatus,
-  syncData,
 } = useOffline()
 
 const statusIcon = computed(() => {
-  if (isSyncing.value) return 'bi bi-arrow-repeat spinner'
   if (isOnline.value) return 'bi bi-wifi'
   return 'bi bi-wifi-off'
 })
 
 const statusColor = computed(() => {
-  // Always white for header visibility
-  return '#ffffff'
+  if (isOnline.value) return '#ffffff' // White when online
+  return '#dc3545' // Red when offline
 })
-
-const handleSync = async () => {
-  try {
-    await syncData()
-  } catch (error) {
-    console.error('Sync failed:', error)
-  }
-}
 
 const toggleDropdown = () => {
   if (dropdownInstance) {
@@ -102,7 +68,6 @@ onMounted(async () => {
   await new Promise(resolve => setTimeout(resolve, 200))
   
   try {
-    const { Dropdown } = await import('bootstrap')
     if (dropdownButton.value) {
       dropdownInstance = new Dropdown(dropdownButton.value, {
         popperConfig: null, // Disable Popper.js positioning

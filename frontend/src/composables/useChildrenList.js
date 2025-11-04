@@ -5,7 +5,7 @@
  */
 
 import { ref } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { normalizeChildData } from './useParentData'
 
 export function useChildrenList() {

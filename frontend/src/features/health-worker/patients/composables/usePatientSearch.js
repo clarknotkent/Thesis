@@ -3,7 +3,7 @@
  * Handles search query, filter state, and guardian lookup
  */
 import { ref, computed } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 export function usePatientSearch() {
   // Search state

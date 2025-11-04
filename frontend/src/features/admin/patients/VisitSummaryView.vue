@@ -194,7 +194,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
 
 const route = useRoute()

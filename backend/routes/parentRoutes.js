@@ -7,6 +7,7 @@ const {
   getChildDetails,
   getChildVaccinationSchedule,
   getChildImmunizationDetails,
+  getChildVisitHistory,
   updateParentProfile,
   changeParentPassword,
 } = require('../controllers/parentController');
@@ -32,6 +33,9 @@ router.get('/children/:childId', getChildDetails);
 
 // GET /api/parent/children/:childId/schedule - Get child's vaccination schedule
 router.get('/children/:childId/schedule', getChildVaccinationSchedule);
+
+// GET /api/parent/children/:childId/visits - Get child's visit history
+router.get('/children/:childId/visits', getChildVisitHistory);
 
 // GET /api/parent/children/:childId/immunizations/:immunizationId - Get immunization details
 router.get('/children/:childId/immunizations/:immunizationId', getChildImmunizationDetails);

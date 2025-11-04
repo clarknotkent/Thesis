@@ -1,5 +1,6 @@
 const supabase = require('../db');
 const guardianModel = require('../models/guardianModel');
+const visitModel = require('../models/visitModel');
 const { verifyPassword, changePassword } = require('../models/authModel');
 
 // Get parent profile and basic information
@@ -467,12 +468,73 @@ const getChildImmunizationDetails = async (req, res) => {
   }
 };
 
+// Get child's visit history
+const getChildVisitHistory = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { childId } = req.params;
+
+    // Verify guardian owns this child
+    const { data: guardian, error: guardianError } = await supabase
+      .from('guardians')
+      .select('guardian_id')
+      .eq('user_id', userId)
+      .eq('is_deleted', false)
+      .single();
+
+    if (guardianError || !guardian) {
+      return res.status(404).json({
+        success: false,
+        message: 'Guardian profile not found'
+      });
+    }
+
+    // Verify child belongs to guardian
+    const { data: child, error: childError } = await supabase
+      .from('patients')
+      .select('patient_id, guardian_id')
+      .eq('patient_id', childId)
+      .eq('guardian_id', guardian.guardian_id)
+      .eq('is_deleted', false)
+      .single();
+
+    if (childError || !child) {
+      return res.status(404).json({
+        success: false,
+        message: 'Child not found or access denied'
+      });
+    }
+
+    // Fetch visit history for this child
+    const visits = await visitModel.listVisits(
+      { patient_id: childId },
+      1,
+      100, // Get up to 100 visits
+      supabase
+    );
+
+    res.json({
+      success: true,
+      data: visits.items || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching child visit history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching visit history',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getParentProfile,
   getParentChildren,
   getChildDetails,
   getChildVaccinationSchedule,
   getChildImmunizationDetails,
+  getChildVisitHistory,
   // Added below
   updateParentProfile: async (req, res) => {
     try {

@@ -364,7 +364,7 @@ import GuardianSelector from './GuardianSelector.vue'
 import ParentNameSelector from './ParentNameSelector.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
 
 const props = defineProps({

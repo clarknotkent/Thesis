@@ -40,7 +40,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { notificationAPI, conversationAPI } from '@/services/offlineAPI'
+import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 
 defineProps({
@@ -57,6 +57,12 @@ let pollInterval = null
 
 const fetchCounts = async () => {
   try {
+    // Skip API calls if offline (will use cached badge counts if available)
+    if (!navigator.onLine) {
+      console.log('📴 Offline - skipping notification/message count fetch')
+      return
+    }
+    
     // Notifications
     try {
       const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
@@ -96,19 +102,52 @@ onBeforeUnmount(() => {
   background-color: #007bff !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   height: 56px;
-  padding: 0.5rem 0;
-  position: relative;
+  min-height: 56px;
+  max-height: 56px;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 1030;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.mobile-top-bar .container-fluid {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
 
 .navbar-brand {
   font-size: 1.1rem;
   font-weight: 600;
   color: white !important;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  line-height: 56px;
 }
 
 .navbar-brand i {
   font-size: 1.2rem;
+  line-height: 1;
+}
+
+.navbar-nav {
+  height: 56px;
+  display: flex;
+  align-items: center;
 }
 
 .nav-link {
@@ -117,6 +156,10 @@ onBeforeUnmount(() => {
   padding: 0.5rem 0.75rem !important;
   border-radius: 0.375rem;
   transition: all 0.2s ease;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-link:hover {
@@ -126,6 +169,7 @@ onBeforeUnmount(() => {
 
 .nav-link i {
   font-size: 1.2rem;
+  line-height: 1;
 }
 
 .badge {

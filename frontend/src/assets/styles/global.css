@@ -1,8 +1,24 @@
 /* Global Application Styles */
 
 /* Body and App Container */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -12,6 +28,41 @@ body {
 
 #app {
   min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Fix Bootstrap container-fluid padding for mobile layouts */
+.parent-layout .container-fluid,
+.mobile-first .container-fluid {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: 100%;
+}
+
+/* Override layout.css .main-content for parent portal */
+.parent-layout .parent-main-wrapper,
+.parent-layout .parent-main-content,
+.mobile-first .parent-main-wrapper,
+.mobile-first .parent-main-content {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Override any .main-content or .mobile-main styles for parent layout */
+.parent-layout main,
+.parent-layout .main-content,
+.parent-layout .mobile-main {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
 }
 
 /* Additional CSS variables for branding (extends tokens.css) */

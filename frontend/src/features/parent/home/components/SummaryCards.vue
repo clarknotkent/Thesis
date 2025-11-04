@@ -50,9 +50,14 @@ defineProps({
 <style scoped>
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #e0f2fe;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+  box-sizing: border-box;
 }
 
 .summary-card {
@@ -113,9 +118,63 @@ defineProps({
   font-weight: 500;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 576px) {
   .summary-cards {
     grid-template-columns: 1fr;
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+  
+  .card-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .summary-cards {
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+  
+  .summary-card {
+    padding: 1.25rem;
+  }
+  
+  .card-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.75rem;
+  }
+  
+  .card-value {
+    font-size: 2rem;
+  }
+  
+  .card-label {
+    font-size: 0.9375rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .summary-cards {
+    padding: 2rem 3rem;
+    gap: 1.5rem;
+  }
+  
+  .summary-card {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .summary-cards {
+    padding: 2rem 4rem;
   }
 }
 </style>

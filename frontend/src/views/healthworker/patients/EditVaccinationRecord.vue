@@ -234,7 +234,7 @@ import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { useVaccinationRecordEditor } from '@/features/health-worker/patients/composables'
 import ApprovalModal from '@/components/ApprovalModal.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()

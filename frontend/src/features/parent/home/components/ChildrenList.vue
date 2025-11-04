@@ -55,7 +55,11 @@ defineProps({
 
 <style scoped>
 .children-section {
-  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  width: 100%;
+  margin: 0 !important;
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -209,5 +213,61 @@ defineProps({
 
 .text-success {
   color: #10b981;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .children-section {
+    padding: 1.5rem;
+  }
+  
+  .section-title {
+    font-size: 1.25rem;
+  }
+  
+  .child-header {
+    padding: 1.5rem;
+  }
+  
+  .child-avatar {
+    font-size: 3.5rem;
+  }
+  
+  .child-name {
+    font-size: 1.25rem;
+  }
+  
+  .child-stats {
+    gap: 1.5rem;
+    padding: 1.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.8125rem;
+  }
+  
+  .stat-value {
+    font-size: 1.75rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .children-section {
+    padding: 2rem 3rem;
+  }
+  
+  .section-title {
+    font-size: 1.375rem;
+  }
+  
+  .children-list {
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .children-section {
+    padding: 2rem 4rem;
+  }
 }
 </style>

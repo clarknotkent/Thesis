@@ -103,35 +103,18 @@ const userRole = computed(() => {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  padding: 0 8px;
+  padding: 0;
+  margin: 0;
 }
 
 .mobile-content {
   padding: 0;
   max-width: 100%;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   min-height: 100%;
   background: #ffffff;
-}
-
-/* Tablets */
-@media (min-width: 768px) {
-  .mobile-content {
-    max-width: 1200px;
-  }
-}
-
-/* Desktop */
-@media (min-width: 992px) {
-  .mobile-content {
-    max-width: 1400px;
-  }
-}
-
-/* Large Desktop */
-@media (min-width: 1400px) {
-  .mobile-content {
-    max-width: 1600px;
-  }
+  /* Add bottom padding for comfortable scrolling */
+  padding-bottom: 80px;
 }
 </style>

@@ -53,12 +53,12 @@
         
         <div v-if="showOfflineDetails" class="offline-details">
           <div class="detail-item">
-            <small class="text-muted">Last Sync</small>
-            <small class="fw-bold">{{ formattedLastSyncTime }}</small>
+            <small class="text-muted">Status</small>
+            <small class="fw-bold">{{ connectionStatus }}</small>
           </div>
-          <div class="detail-item" v-if="pendingSyncCount > 0">
-            <small class="text-muted">Pending</small>
-            <small class="fw-bold text-warning">{{ pendingSyncCount }} changes</small>
+          <div class="detail-item">
+            <small class="text-muted">Info</small>
+            <small class="fw-bold">Auto-caching enabled</small>
           </div>
           
           <!-- Storage Stats -->
@@ -72,14 +72,6 @@
             </div>
           </div>
           
-          <button 
-            class="btn btn-sm btn-primary w-100 mt-2" 
-            @click="handleSync"
-            :disabled="isSyncing || !isOnline"
-          >
-            <i class="bi bi-arrow-repeat me-1" :class="{ 'spin': isSyncing }"></i>
-            {{ isSyncing ? 'Syncing...' : 'Sync Now' }}
-          </button>
           <button 
             class="btn btn-sm btn-outline-danger w-100 mt-2" 
             @click="handleClearData"
@@ -111,12 +103,7 @@ const props = defineProps({
 // Offline sync composable (only for admin)
 const {
   isOnline,
-  isSyncing,
   connectionStatus,
-  formattedLastSyncTime,
-  pendingSyncCount,
-  connectionStatusColor,
-  syncData,
   clearOfflineData,
   getStorageStats
 } = props.userRole === 'admin' ? useOffline() : {}
@@ -128,14 +115,6 @@ const toggleOfflineDetails = async () => {
   showOfflineDetails.value = !showOfflineDetails.value
   
   // Load storage stats when opening
-  if (showOfflineDetails.value && getStorageStats) {
-    storageStats.value = await getStorageStats()
-  }
-}
-
-const handleSync = async () => {
-  await syncData()
-  // Refresh stats after sync
   if (showOfflineDetails.value && getStorageStats) {
     storageStats.value = await getStorageStats()
   }
@@ -167,14 +146,11 @@ const formatStoreName = (store) => {
 
 const statusIcon = computed(() => {
   if (!isOnline || !isOnline.value) return 'bi bi-wifi-off'
-  if (isSyncing && isSyncing.value) return 'bi bi-arrow-repeat spin'
   return 'bi bi-wifi'
 })
 
 const statusColor = computed(() => {
   if (!isOnline || !isOnline.value) return '#dc3545'
-  if (isSyncing && isSyncing.value) return '#ffc107'
-  if (pendingSyncCount && pendingSyncCount.value > 0) return '#0dcaf0'
   return '#198754'
 })
 

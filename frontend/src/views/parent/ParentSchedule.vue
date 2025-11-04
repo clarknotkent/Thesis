@@ -49,7 +49,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
-import db from '@/services/offline/db'
+import db from '@/services/offline/db-parent-portal'
+import api from '@/services/api'
 
 const router = useRouter()
 
@@ -64,17 +65,95 @@ const fetchChildren = async () => {
     loading.value = true
     error.value = null
     
-    // Read from local Dexie database (offline-first)
-    const childrenData = await db.children.toArray()
+    // Calculate numeric age from date_of_birth (for DependentCard component)
+    const calculateNumericAge = (birthDate) => {
+      if (!birthDate) return 0
+      
+      const birth = new Date(birthDate)
+      const now = new Date()
+      
+      if (isNaN(birth.getTime())) return 0
+      
+      let years = now.getFullYear() - birth.getFullYear()
+      let months = now.getMonth() - birth.getMonth()
+      
+      // Adjust if the day hasn't occurred yet this month
+      if (now.getDate() < birth.getDate()) {
+        months--
+      }
+      
+      if (months < 0) {
+        years--
+        months += 12
+      }
+      
+      // Return fractional age for infants (e.g., 0.5 for 6 months)
+      if (years === 0) {
+        return months / 12
+      }
+      
+      return years
+    }
     
-    // The data is already formatted from the backend during sync
-    children.value = childrenData.map(child => ({
-      id: child.id || child.patient_id,
-      name: child.name || child.full_name,
-      age: child.age,
-      status: child.nextVaccine || 'No upcoming vaccines',
-      raw: child // Keep raw data for debugging
-    }))
+    // NETWORK-FIRST: If online, fetch from API directly (fast)
+    if (navigator.onLine) {
+      console.log('🌐 Fetching fresh children data from API (online)')
+      try {
+        const response = await api.get('/parent/children')
+        const freshChildren = response.data?.data || response.data || []
+        
+        // Update UI with fresh data
+        children.value = freshChildren.map(child => {
+          const birthDate = child.dateOfBirth || child.date_of_birth || child.birthDate
+          const calculatedAge = child.age !== undefined ? child.age : calculateNumericAge(birthDate)
+          
+          return {
+            id: child.id || child.patient_id,
+            name: child.name || child.full_name,
+            age: calculatedAge,
+            status: child.nextVaccine || 'No upcoming vaccines',
+            raw: child
+          }
+        })
+        
+        console.log('✅ Schedule updated with fresh data')
+      } catch (apiError) {
+        console.error('Failed to fetch from API:', apiError)
+        // Fall through to offline fallback
+      }
+    }
+    
+    // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
+    if (!navigator.onLine || children.value.length === 0) {
+      console.log('📴 Loading from IndexedDB cache')
+      try {
+        let cachedChildren = await db.patients.toArray()
+        
+        if (cachedChildren.length > 0) {
+          console.log('📦 Found children in IndexedDB cache')
+          
+          children.value = cachedChildren.map(child => {
+            const birthDate = child.date_of_birth || child.birthDate
+            const calculatedAge = calculateNumericAge(birthDate)
+            
+            return {
+              id: child.id || child.patient_id,
+              name: child.name || child.full_name,
+              age: calculatedAge,
+              status: child.nextVaccine || 'No upcoming vaccines',
+              raw: child
+            }
+          })
+        } else {
+          throw new Error('No cached children found')
+        }
+      } catch (dbError) {
+        console.error('Failed to read from IndexedDB:', dbError)
+        if (!navigator.onLine) {
+          error.value = 'Unable to load schedule offline. Please connect to the internet.'
+        }
+      }
+    }
   } catch (err) {
     console.error('Error fetching children:', err)
     error.value = 'Failed to load children. Please try again later.'

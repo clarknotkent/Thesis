@@ -358,7 +358,7 @@ import MedicalHistoryCard from '@/features/health-worker/patients/components/Med
 import { usePatientDetails } from '@/features/health-worker/patients/composables'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { getUser } from '@/services/auth'
 
 const router = useRouter()

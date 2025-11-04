@@ -406,7 +406,7 @@
 import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import DateInput from '@/components/ui/form/DateInput.vue'
 
 // Reactive data

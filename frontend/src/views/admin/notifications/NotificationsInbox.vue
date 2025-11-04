@@ -152,7 +152,7 @@
 
 <script>
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import { notificationAPI } from '@/services/offlineAPI'
+import { notificationAPI } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
 export default {

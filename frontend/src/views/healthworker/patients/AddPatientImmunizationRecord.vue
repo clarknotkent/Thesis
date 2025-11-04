@@ -157,7 +157,7 @@ import VaccineServiceFormModal from '@/features/health-worker/patients/component
 import { usePatientImmunizationForm } from '@/features/health-worker/patients/composables'
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import db from '@/services/offline/db'
 import { getCurrentPHDate } from '@/utils/dateUtils'
 

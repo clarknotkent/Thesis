@@ -6,7 +6,7 @@
  * All patient saves go to local Dexie database first, then sync to Supabase via syncService
  */
 import { ref, computed, reactive, watch } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import db from '@/services/offline/db'
 
 export function usePatientForm() {

@@ -47,7 +47,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 const items = ref([])
 const loading = ref(true)

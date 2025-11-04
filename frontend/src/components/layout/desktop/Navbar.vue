@@ -73,16 +73,7 @@ const props = defineProps({
 const emit = defineEmits(['toggle-sidebar'])
 const router = useRouter()
 const dropdownOpen = ref(false)
-const { isOnline, isSyncing, pendingSyncCount, formattedLastSyncTime } = useOffline()
-const statusIcon = computed(() => {
-  if (isSyncing.value) return 'bi bi-arrow-repeat spinner'
-  if (isOnline.value) return 'bi bi-wifi'
-  return 'bi bi-wifi-off'
-})
-const pendingClamped = computed(() => {
-  const n = Number(pendingSyncCount.value || 0)
-  return n > 99 ? '99+' : `${n}`
-})
+const { isOnline } = useOffline()
 
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value

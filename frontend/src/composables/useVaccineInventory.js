@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { usePagination } from '@/composables/usePagination'
 

@@ -186,7 +186,7 @@ import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()

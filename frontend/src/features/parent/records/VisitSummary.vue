@@ -1,5 +1,5 @@
 <template>
-  <ParentLayout title="Visit Summary">
+  <ParentLayout title="Visit">
     <!-- Fixed Header Section -->
     <div class="visit-summary-header-section">
       <div class="header-bar">
@@ -68,7 +68,8 @@ import VisitInfoCard from './components/VisitInfoCard.vue'
 import ServicesProvidedCard from './components/ServicesProvidedCard.vue'
 import VitalSignsCard from './components/VitalSignsCard.vue'
 import { formatDate } from '@/composables/useDateFormat'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
+import db from '@/services/offline/db-parent-portal'
 
 const router = useRouter()
 const route = useRoute()
@@ -157,19 +158,74 @@ const fetchVisitData = async () => {
     const visitId = route.params.visitId
     const patientId = route.params.patientId
     
-    // Fetch visit details
-    const visitResponse = await api.get(`/visits/${visitId}`)
-    const visitDataRaw = visitResponse.data?.data || visitResponse.data || {}
+    let visitDataRaw = null
+    let patientDataRaw = null
+    
+    // NETWORK-FIRST for visit data
+    if (navigator.onLine) {
+      try {
+        console.log('🌐 Fetching visit from API (online)')
+        const visitResponse = await api.get(`/visits/${visitId}`)
+        visitDataRaw = visitResponse.data?.data || visitResponse.data || {}
+        console.log('✅ Fetched visit from API')
+      } catch (apiError) {
+        console.error('⚠️ Visit API failed while online:', apiError.message)
+      }
+    }
+    
+    // OFFLINE FALLBACK for visit
+    if (!visitDataRaw) {
+      console.log('📴 Loading visit from IndexedDB cache')
+      try {
+        const cachedVisit = await db.visits.get(parseInt(visitId))
+        if (cachedVisit) {
+          visitDataRaw = cachedVisit
+          console.log('✅ Loaded visit from IndexedDB cache')
+        } else {
+          throw new Error('Visit not found in cache')
+        }
+      } catch (dbError) {
+        console.error('❌ Failed to load visit from IndexedDB:', dbError)
+        throw new Error('Unable to load visit data. Please connect to the internet.')
+      }
+    }
+    
     visit.value = visitDataRaw
     
-    // Fetch patient details for accurate name
+    // NETWORK-FIRST for patient details
     if (patientId) {
-      try {
-        const patientResponse = await api.get(`/patients/${patientId}`)
-        patientData.value = patientResponse.data?.data || patientResponse.data || {}
-      } catch (err) {
-        console.warn('Could not fetch patient details:', err)
+      if (navigator.onLine) {
+        try {
+          console.log('🌐 Fetching patient from API (online)')
+          const patientResponse = await api.get(`/patients/${patientId}`)
+          patientDataRaw = patientResponse.data?.data || patientResponse.data || {}
+          console.log('✅ Fetched patient from API')
+        } catch (patientError) {
+          console.error('⚠️ Patient API failed while online:', patientError.message)
+        }
       }
+      
+      // OFFLINE FALLBACK for patient
+      if (!patientDataRaw) {
+        console.log('📴 Loading patient from IndexedDB cache')
+        try {
+          const cachedPatient = await db.patients.get(parseInt(patientId))
+          if (!cachedPatient) {
+            const cachedChild = await db.patients.get(parseInt(patientId))
+            if (cachedChild) {
+              patientDataRaw = cachedChild
+              console.log('✅ Loaded patient from db.children cache')
+            }
+          } else {
+            patientDataRaw = cachedPatient
+            console.log('✅ Loaded patient from db.patients cache')
+          }
+        } catch (dbError) {
+          console.warn('Could not load patient from cache:', dbError)
+        }
+      }
+      
+      patientData.value = patientDataRaw
     }
     
   } catch (error) {

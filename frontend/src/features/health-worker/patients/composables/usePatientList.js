@@ -3,7 +3,7 @@
  * Handles patient data fetching and transformation
  */
 import { ref, computed } from 'vue'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 export function usePatientList() {
   // State

@@ -30,7 +30,8 @@ import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
 import { formatDate, calculateAge } from '@/composables/useDateFormat'
 import { getChildName, getChildDOB, getCompletedCount, getPendingCount } from '@/composables/useParentData'
-import db from '@/services/offline/db'
+import db from '@/services/offline/db-parent-portal'
+import api from '@/services/api'
 
 const { userInfo } = useAuth()
 
@@ -53,28 +54,83 @@ const fetchDashboardStats = async () => {
   try {
     loading.value = true
     
-    // Read from local Dexie database (offline-first)
-    const childrenData = await db.children.toArray()
-    children.value = childrenData
-    stats.value.totalChildren = childrenData.length
+    console.log('🚀 Starting fetchDashboardStats')
+    console.log('🔐 User info:', userInfo.value)
+    console.log('🌐 Navigator online:', navigator.onLine)
     
-    let dueCount = 0
-    let completedCount = 0
-    
-    childrenData.forEach(child => {
-      if (child.vaccinationSummary) {
-        completedCount += child.vaccinationSummary.completed || 0
-        const pending = (child.vaccinationSummary.total || 0) - (child.vaccinationSummary.completed || 0)
-        dueCount += pending > 0 ? pending : 0
+    // NETWORK-FIRST: If online, fetch from API directly (fast)
+    if (navigator.onLine) {
+      console.log('🌐 Fetching fresh data from API (online)')
+      try {
+        const response = await api.get('/parent/children')
+        const freshChildren = response.data?.data || response.data || []
+        
+        // Update UI with fresh data
+        children.value = freshChildren
+        stats.value.totalChildren = freshChildren.length
+        
+        let dueCount = 0
+        let completedCount = 0
+        
+        freshChildren.forEach(child => {
+          if (child.vaccinationSummary) {
+            completedCount += child.vaccinationSummary.completed || 0
+            const pending = (child.vaccinationSummary.total || 0) - (child.vaccinationSummary.completed || 0)
+            dueCount += pending > 0 ? pending : 0
+          }
+        })
+        
+        stats.value.dueVaccines = dueCount
+        stats.value.completedVaccines = completedCount
+        
+        console.log('✅ Dashboard updated with fresh data')
+      } catch (apiError) {
+        console.error('❌ Failed to fetch from API:', apiError)
+        // Fall through to offline fallback
       }
-    })
+    }
     
-    stats.value.dueVaccines = dueCount
-    stats.value.completedVaccines = completedCount
+    // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
+    if (!navigator.onLine || children.value.length === 0) {
+      console.log('📴 Loading from IndexedDB cache')
+      try {
+        let cachedChildren = await db.patients.toArray()
+        console.log('� IndexedDB check - found', cachedChildren.length, 'children')
+        
+        if (cachedChildren.length > 0) {
+          console.log('� Using cached children')
+          children.value = cachedChildren
+          stats.value.totalChildren = cachedChildren.length
+          
+          // Calculate stats from cached data
+          let dueCount = 0
+          let completedCount = 0
+          
+          cachedChildren.forEach(child => {
+            if (child.vaccinationSummary) {
+              completedCount += child.vaccinationSummary.completed || 0
+              const pending = (child.vaccinationSummary.total || 0) - (child.vaccinationSummary.completed || 0)
+              dueCount += pending > 0 ? pending : 0
+            }
+          })
+          
+          stats.value.dueVaccines = dueCount
+          stats.value.completedVaccines = completedCount
+        } else {
+          throw new Error('No cached children found')
+        }
+      } catch (dbError) {
+        console.error('Failed to read from IndexedDB:', dbError)
+        if (!navigator.onLine) {
+          throw new Error('Unable to load data offline. Please connect to the internet.')
+        }
+      }
+    }
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
+    console.error('💥 Error in fetchDashboardStats:', error)
   } finally {
     loading.value = false
+    console.log('🏁 Finished fetchDashboardStats - loading:', loading.value, 'children count:', children.value.length)
   }
 }
 
@@ -87,6 +143,9 @@ onMounted(() => {
 .dashboard-container {
   background-color: #f8f9fa;
   min-height: calc(100vh - 56px - 70px);
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .welcome-header {
@@ -94,6 +153,8 @@ onMounted(() => {
   color: white;
   padding: 1.5rem 1rem;
   text-align: left;
+  width: 100%;
+  margin: 0 !important;
 }
 
 .welcome-title {

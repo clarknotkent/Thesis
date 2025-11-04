@@ -368,7 +368,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
-import api from '@/services/offlineAPI'
+import api from '@/services/api'
 
 // State
 const loading = ref(false)
