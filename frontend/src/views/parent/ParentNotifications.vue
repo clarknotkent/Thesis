@@ -2,11 +2,11 @@
   <ParentLayout>
     <div class="notifications-container">
       <!-- Offline Warning -->
-      <div v-if="!isOnline" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+      <div v-if="!isOnline" class="alert alert-warning d-flex align-items-center mb-3" role="alert">
         <i class="bi bi-wifi-off me-2"></i>
         <div>
-          <strong>Offline Mode</strong><br>
-          <small>Showing cached notifications. New notifications will appear when you're back online.</small>
+          <strong>Offline Mode - Notifications Disabled</strong><br>
+          <small>You must be online to view notifications. Connect to the internet to access this feature.</small>
         </div>
       </div>
 
@@ -22,16 +22,16 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="notifications.length === 0" class="empty-state">
+      <div v-else-if="notifications.length === 0 || !isOnline" class="empty-state">
         <div class="empty-state-icon">
-          <i class="bi bi-bell"></i>
+          <i :class="!isOnline ? 'bi bi-wifi-off' : 'bi bi-bell'"></i>
         </div>
-        <h6 class="empty-state-title">No Notifications</h6>
-        <p class="empty-state-text">You're all caught up!</p>
+        <h6 class="empty-state-title">{{ !isOnline ? 'Not Available Offline' : 'No Notifications' }}</h6>
+        <p class="empty-state-text">{{ !isOnline ? 'Connect to the internet to view notifications.' : "You're all caught up!" }}</p>
       </div>
 
       <!-- Notifications List -->
-      <div v-else class="notifications-list">
+      <div v-else-if="isOnline" class="notifications-list">
         <div 
           v-for="notification in notifications" 
           :key="notification.id"
@@ -68,46 +68,31 @@ const fetchNotifications = async () => {
   try {
     loading.value = true
     
-    // NETWORK-FIRST: If online, fetch from API directly (fast)
-    if (navigator.onLine) {
-      try {
-        const response = await api.get('/notifications')
-        const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
-        
-        notifications.value = items.map(n => ({
-          id: n.notification_id || n.id,
-          title: n.title || n.template_code || 'Notification',
-          message: n.message || n.message_body || '',
-          type: n.type || n.related_entity_type || n.channel || 'info',
-          created_at: n.created_at || n.sent_at || n.scheduled_at,
-          read: Boolean(n.read_at || n.is_read)
-        }))
-        
-      } catch (apiError) {
-        console.error('Failed to fetch notifications from API:', apiError)
-        // Fall through to offline fallback
-      }
+    // Don't fetch if offline - notifications require internet connection
+    if (!navigator.onLine) {
+      console.log('📴 Offline - notifications disabled')
+      notifications.value = []
+      loading.value = false
+      return
     }
     
-    // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
-    if (!navigator.onLine || notifications.value.length === 0) {
-      try {
-        const items = await db.notifications.orderBy('created_at').reverse().toArray()
-        
-        notifications.value = items.map(n => ({
-          id: n.notification_id || n.id,
-          title: n.title || n.template_code || 'Notification',
-          message: n.message || n.message_body || '',
-          type: n.type || n.related_entity_type || n.channel || 'info',
-          created_at: n.created_at || n.sent_at || n.scheduled_at,
-          read: Boolean(n.read_at || n.is_read)
-        }))
-      } catch (dbError) {
-        console.error('Failed to fetch notifications from IndexedDB:', dbError)
-        if (!navigator.onLine) {
-          throw new Error('Unable to load notifications offline. Please connect to the internet.')
-        }
-      }
+    // Fetch from API when online
+    try {
+      const response = await api.get('/notifications')
+      const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+      
+      notifications.value = items.map(n => ({
+        id: n.notification_id || n.id,
+        title: n.title || n.template_code || 'Notification',
+        message: n.message || n.message_body || '',
+        type: n.type || n.related_entity_type || n.channel || 'info',
+        created_at: n.created_at || n.sent_at || n.scheduled_at,
+        read: Boolean(n.read_at || n.is_read)
+      }))
+      
+    } catch (apiError) {
+      console.error('Failed to fetch notifications from API:', apiError)
+      notifications.value = []
     }
   } catch (e) {
     console.error('Failed to fetch notifications:', e)
@@ -133,6 +118,9 @@ const markAsRead = async (id) => {
 }
 
 const handleClick = (notification) => {
+  if (!isOnline.value) {
+    return // Don't do anything when offline
+  }
   if (!notification.read && notification.id) {
     markAsRead(notification.id)
   }

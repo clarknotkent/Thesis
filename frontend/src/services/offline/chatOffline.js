@@ -6,7 +6,9 @@ import api from '@/services/api'
  */
 export async function getConversationsOffline() {
   try {
+    console.log('🔍 Querying offline conversations...')
     const rows = await db.conversations.orderBy('updated_at').reverse().toArray()
+    console.log(`📦 Found ${rows?.length || 0} conversation rows`)
     if (!rows || rows.length === 0) return []
     // Enrich with last message preview/time from messages table so the list shows something offline
     const enriched = []
@@ -25,8 +27,10 @@ export async function getConversationsOffline() {
         latest_message,
       })
     }
+    console.log(`✅ Enriched ${enriched.length} conversations with last messages`)
     return enriched
-  } catch (_) {
+  } catch (error) {
+    console.error('❌ Error loading offline conversations:', error)
     return []
   }
 }
@@ -36,14 +40,18 @@ export async function getConversationsOffline() {
  */
 export async function getMessagesOffline(conversationId) {
   try {
-    const rows = await db.messages.where('conversation_id').equals(Number(conversationId)).sortBy('created_at')
+    const convId = Number(conversationId)
+    console.log(`🔍 Querying offline messages for conversation ${convId}`)
+    const rows = await db.messages.where('conversation_id').equals(convId).sortBy('created_at')
+    console.log(`📦 Found ${rows?.length || 0} raw message rows`)
     const mapped = (rows || []).map(r => ({
       ...r,
       message_content: r.message_content || r.content,
     }))
     console.log(`📴 Loaded ${mapped.length} messages from offline cache for conversation ${conversationId}`)
     return mapped
-  } catch (_) {
+  } catch (error) {
+    console.error(`❌ Error loading offline messages for conversation ${conversationId}:`, error)
     return []
   }
 }

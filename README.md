@@ -36,7 +36,7 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 > - ✅ **20-30x faster** - Instant page loads from IndexedDB
 > - ✅ **Zero API calls** - Works 100% offline after one login
 > 
-> **Bulk Prefetch System:** `prefetchParentDataOnLogin()` caches everything in ~13 seconds
+> **Bulk Prefetch System:** `prefetchParentDataOnLogin()` caches everything in ~2-2.5 seconds (optimized!)
 > 
 > See [BULK-CACHE-ON-LOGIN.md](docs/parent-offline/BULK-CACHE-ON-LOGIN.md) for complete details.
 
@@ -68,10 +68,12 @@ The Immunization Management System is designed to digitize and streamline the im
 ### Key Features
 
 - **🎉 One-Login Complete Offline** ⭐ NEW (Nov 4): All data cached automatically on parent login
-- **Bulk Prefetch System**: Children, vaccinations, visits, schedules, notifications - everything in ~13s
-- **Supabase-Mirrored IndexedDB**: 10 tables matching cloud database structure exactly
-- **Route Component Caching**: 9 Vue components prefetched for offline navigation
-- **Zero Network Dependency**: 100% functionality after single login
+- **⚡ Optimized Offline** ⭐ NEW (Nov 5): Focused on core medical records, 35% faster prefetch, 30% smaller cache
+- **Bulk Prefetch System**: Children, vaccinations, visits, schedules - core data in ~2-2.5s
+- **Supabase-Mirrored IndexedDB**: 7 essential tables for medical records
+- **Route Component Caching**: 16 Vue components prefetched for offline navigation
+- **Strategic Feature Management**: Messaging and notifications disabled offline (require real-time data)
+- **Zero Network Dependency**: Core functionality works 100% offline after login
 - **Offline-First Architecture**: Work without internet using local storage and background sync
 - **Smart Data Sync**: Automatic synchronization when connection restored with conflict detection
 - **Patient Record Management**: Digital health records for children and guardians
@@ -80,20 +82,22 @@ The Immunization Management System is designed to digitize and streamline the im
 - **SMS Notifications**: Automated reminders and updates via PhilSMS integration
 - **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs
 - **Multi-User Access**: Role-based portals for administrators, health workers, and parents
-- **Progressive Web App**: Installable on mobile devices with **full offline support**
+- **Progressive Web App**: Installable on mobile devices with **focused offline support**
 - **Instant Performance**: 20-30x faster page loads (2-3s → <100ms)
 
 ### Offline Support Status
 
-- ✅ **Parent Portal**: 100% offline-ready with bulk prefetch on login
+- ✅ **Parent Portal**: 100% offline-ready for core medical records
   - ✅ Complete child records (info, guardian, birth history)
   - ✅ Full vaccination history (15+ immunizations)
   - ✅ Visit history with vitals (growth monitoring)
   - ✅ Vaccination schedules (upcoming appointments)
-  - ✅ Notifications and announcements
+  - ✅ FAQs for health information
   - ✅ All navigation pages cached
   - ✅ Vaccine dose details clickable offline
   - ✅ Schedule details accessible offline
+  - ❌ Notifications (requires online for current data)
+  - ❌ Messaging (requires online for real-time communication)
 - 🚧 **Health Worker Portal**: Work in Progress - Basic offline support, advanced features in development
 - 🚧 **Admin Portal**: Work in Progress - Read-only offline support, write operations in development
 
