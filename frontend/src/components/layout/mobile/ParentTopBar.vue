@@ -10,8 +10,9 @@
         <!-- Connection Status Dropdown -->
         <MobileOfflineIndicatorDropdown class="me-2" />
 
-        <!-- Notifications -->
+        <!-- Notifications (disabled when offline) -->
         <router-link 
+          v-if="isOnline"
           to="/parent/notifications" 
           class="nav-link position-relative me-3"
           aria-label="Notifications"
@@ -21,9 +22,18 @@
             {{ notificationCount }}
           </span>
         </router-link>
+        <span 
+          v-else
+          class="nav-link position-relative me-3 text-muted"
+          style="cursor: not-allowed; opacity: 0.5;"
+          title="Notifications not available offline"
+        >
+          <i class="bi bi-bell"></i>
+        </span>
 
-        <!-- Messages -->
+        <!-- Messages (disabled when offline) -->
         <router-link 
+          v-if="isOnline"
           to="/parent/messages" 
           class="nav-link position-relative"
           aria-label="Messages"
@@ -33,6 +43,14 @@
             {{ messageCount }}
           </span>
         </router-link>
+        <span 
+          v-else
+          class="nav-link position-relative text-muted"
+          style="cursor: not-allowed; opacity: 0.5;"
+          title="Messaging not available offline"
+        >
+          <i class="bi bi-chat-dots"></i>
+        </span>
       </div>
     </div>
   </nav>
@@ -42,6 +60,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
 defineProps({
   title: {
@@ -50,6 +69,7 @@ defineProps({
   }
 })
 
+const { isOnline } = useOnlineStatus()
 const notificationCount = ref(0)
 const messageCount = ref(0)
 

@@ -5,8 +5,8 @@
       <div v-if="!isOnline" class="alert alert-warning d-flex align-items-center mb-3" role="alert">
         <i class="bi bi-wifi-off me-2"></i>
         <div>
-          <strong>Offline Mode</strong><br>
-          <small>Messaging is unavailable while offline. Showing cached conversations.</small>
+          <strong>Offline Mode - Messaging Disabled</strong><br>
+          <small>You must be online to send or view messages. Connect to the internet to access messaging features.</small>
         </div>
       </div>
 
@@ -45,8 +45,9 @@
           v-for="message in messages" 
           :key="message.id"
           class="message-item"
-          :class="{ unread: !message.read }"
+          :class="{ unread: !message.read, 'disabled-offline': !isOnline }"
           @click="openConversation(message)"
+          :style="{ cursor: isOnline ? 'pointer' : 'not-allowed', opacity: isOnline ? 1 : 0.6 }"
         >
           <div class="message-avatar">
             <i class="bi bi-person-circle"></i>
@@ -60,6 +61,7 @@
               <span class="message-time">{{ formatTimePH(message.created_at) }}</span>
             </div>
             <p class="message-text">{{ message.text }}</p>
+            <small v-if="!isOnline" class="text-muted"><i class="bi bi-wifi-off me-1"></i>View online to open</small>
           </div>
         </div>
       </div>
@@ -225,6 +227,10 @@ onMounted(() => {
 })
 
 const openConversation = (msg) => {
+  if (!isOnline.value) {
+    addToast({ message: 'Messaging is not available offline. Please connect to the internet to view conversations.', type: 'warning' })
+    return
+  }
   const id = msg?.id
   if (!id) return
   router.push({ name: 'ParentChat', params: { conversationId: id } })

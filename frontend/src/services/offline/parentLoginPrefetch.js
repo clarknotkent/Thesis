@@ -29,12 +29,18 @@ async function prefetchParentRouteComponents() {
       import('@/views/parent/ParentRecords.vue'),
       import('@/views/parent/ParentNotifications.vue'),
       import('@/views/parent/ParentProfile.vue'),
+      import('@/views/parent/ParentMessages.vue'),
+      import('@/views/parent/ParentFAQs.vue'),
       import('@/features/parent/records/DependentDetails.vue'),
       import('@/features/parent/records/VisitSummary.vue'),
       import('@/features/parent/records/VaccineRecordDetails.vue'),
       import('@/features/parent/schedule/ScheduleDetails.vue'),
+      import('@/features/parent/messaging/Chat.vue'),
+      import('@/features/parent/messaging/components/FaqPanel.vue'),
+      import('@/features/parent/messaging/components/NewChatModal.vue'),
       // Also prefetch shared components used by parent views
-      import('@/components/parent/DependentCard.vue')
+      import('@/components/parent/DependentCard.vue'),
+      import('@/components/FAQList.vue')
     ])
     
     const successful = components.filter(c => c.status === 'fulfilled').length
@@ -70,11 +76,8 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
     visits: 0,
     vitals: 0,
     schedules: 0,
-    notifications: 0,
     vaccines: 0,
-    faqs: 0,
-    conversations: 0,
-    messages: 0
+    faqs: 0
   }
 
   try {
@@ -190,14 +193,10 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
           if (navigator.onLine) {
             for (const vr of visitRows) {
               try {
-                let vitals
-                try {
-                  const vitalsRes1 = await api.get(`/vitalsigns/${vr.visit_id}`)
-                  vitals = vitalsRes1.data?.data ?? vitalsRes1.data
-                } catch (_) {
-                  const vitalsRes2 = await api.get(`/vitals/${vr.visit_id}`)
-                  vitals = vitalsRes2.data?.data ?? vitalsRes2.data
-                }
+                // Use correct endpoint: /vitals/:visitId
+                const vitalsRes = await api.get(`/vitals/${vr.visit_id}`)
+                const vitals = vitalsRes.data?.data ?? vitalsRes.data
+                
                 if (Array.isArray(vitals)) {
                   vitals.forEach(v => {
                     vitalRows.push({
@@ -288,25 +287,8 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
       stats.schedules += localCounts.schedules || 0
     }
 
-    // Step 3 & 4: Fetch notifications, vaccine master, FAQs, and conversations SEQUENTIALLY
-    // 3.1 Notifications
-    try {
-      console.log('📬 Fetching notifications...')
-      const notificationsResponse = await api.get(`/notifications`, { params: { user_id: userId } })
-      const notifications = Array.isArray(notificationsResponse.data)
-        ? notificationsResponse.data
-        : notificationsResponse.data.data || []
-      if (notifications.length > 0) {
-        await db.transaction('rw', db.notifications, async () => {
-          await db.notifications.bulkPut(notifications)
-        })
-        stats.notifications = notifications.length
-      }
-    } catch (err) {
-      console.warn('⚠️ Failed to fetch notifications:', err.message)
-    }
-
-    // 3.2 Vaccine catalog
+    // Step 3: Fetch vaccine master and FAQs SEQUENTIALLY
+    // 3.1 Vaccine catalog
     try {
       console.log('💉 Fetching vaccine catalog...')
       const vaccinesResponse = await api.get(`/vaccines`)
@@ -323,7 +305,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
       console.warn('⚠️ Failed to fetch vaccines:', err.message)
     }
 
-    // 3.3 FAQs
+    // 3.2 FAQs
     try {
       console.log('❓ Fetching FAQs...')
       const faqsResponse = await api.get(`/faqs`)
@@ -346,71 +328,14 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
       console.warn('⚠️ Failed to fetch FAQs:', err.message)
     }
 
-    // 3.4 Conversations & messages (sequential per conversation)
-    try {
-      console.log('💬 Fetching conversations...')
-      const convRes = await api.get(`/conversations`, { params: { user_id: userId, limit: 100 } })
-      const convs = Array.isArray(convRes.data?.items) ? convRes.data.items : (Array.isArray(convRes.data) ? convRes.data : [])
-      if (convs.length > 0) {
-        const rows = convs.map(c => ({
-          conversation_id: c.conversation_id || c.id,
-          subject: c.subject || c.title || 'Conversation',
-          updated_at: c.updated_at || c.last_message_at || c.created_at,
-          unread_count: c.unread_count || 0,
-          participants: c.participants || [],
-        }))
-        await db.transaction('rw', db.conversations, async () => {
-          await db.conversations.bulkPut(rows)
-        })
-        stats.conversations = rows.length
+    // NOTE: Notifications and Messages are NOT cached offline to reduce load
+    // These features require online connectivity
 
-        let totalMsgs = 0
-        for (const r of rows) {
-          try {
-            const mRes = await api.get(`/messages/${r.conversation_id}`, { params: { limit: 200 } })
-            const list = Array.isArray(mRes.data?.items) ? mRes.data.items : (Array.isArray(mRes.data) ? mRes.data : [])
-            if (list.length) {
-              const msgs = list.map(m => ({
-                message_id: m.message_id || m.id,
-                conversation_id: m.conversation_id || r.conversation_id,
-                sender_id: m.sender_id || m.user_id,
-                content: m.message_content || m.content || m.text,
-                created_at: m.created_at || m.timestamp,
-                pending: false,
-              }))
-              await db.transaction('rw', db.messages, async () => {
-                await db.messages.bulkPut(msgs)
-              })
-              totalMsgs += msgs.length
-            }
-          } catch (_) { /* ignore per-conv errors */ }
-        }
-        stats.messages = totalMsgs
-      }
-    } catch (err) {
-      console.warn('⚠️ Failed to fetch conversations/messages:', err.message)
-    }
-
-    // Step 3 & 4: Fetch notifications, vaccine master, FAQs, and conversations in parallel
+    // Step 4: Fetch vaccine master and FAQs in parallel
     const results = await Promise.allSettled([
       (async () => {
         try {
-          console.log('📬 Fetching notifications...')
-          const notificationsResponse = await api.get(`/notifications`, { params: { user_id: userId } })
-          const notifications = Array.isArray(notificationsResponse.data)
-            ? notificationsResponse.data
-            : notificationsResponse.data.data || []
-          if (notifications.length > 0) {
-            await db.notifications.bulkPut(notifications)
-            stats.notifications = notifications.length
-          }
-        } catch (err) {
-          console.warn('⚠️ Failed to fetch notifications:', err.message)
-        }
-      })(),
-      (async () => {
-        try {
-          console.log('💉 Fetching vaccine catalog...')
+          console.log('� Fetching vaccine catalog (parallel)...')
           const vaccinesResponse = await api.get(`/vaccines`)
           const vaccines = Array.isArray(vaccinesResponse.data)
             ? vaccinesResponse.data
@@ -425,7 +350,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
       })(),
       (async () => {
         try {
-          console.log('❓ Fetching FAQs...')
+          console.log('❓ Fetching FAQs (parallel)...')
           const faqsResponse = await api.get(`/faqs`)
           const faqs = Array.isArray(faqsResponse.data?.items)
             ? faqsResponse.data.items
@@ -444,51 +369,6 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
         } catch (err) {
           console.warn('⚠️ Failed to fetch FAQs:', err.message)
         }
-      })(),
-      (async () => {
-        try {
-          console.log('💬 Fetching conversations...')
-          const convRes = await api.get(`/conversations`, { params: { user_id: userId, limit: 100 } })
-          const convs = Array.isArray(convRes.data?.items) ? convRes.data.items : (Array.isArray(convRes.data) ? convRes.data : [])
-          if (convs.length > 0) {
-            // Save conversations
-            const rows = convs.map(c => ({
-              conversation_id: c.conversation_id || c.id,
-              subject: c.subject || c.title || 'Conversation',
-              updated_at: c.updated_at || c.last_message_at || c.created_at,
-              unread_count: c.unread_count || 0,
-              participants: c.participants || [],
-            }))
-            await db.conversations.bulkPut(rows)
-            stats.conversations = rows.length
-
-            // Fetch messages for each conversation (best-effort, limit per conv)
-            const perConv = await Promise.allSettled(rows.map(async (r) => {
-              try {
-                const mRes = await api.get(`/messages/${r.conversation_id}`, { params: { limit: 200 } })
-                const list = Array.isArray(mRes.data?.items) ? mRes.data.items : (Array.isArray(mRes.data) ? mRes.data : [])
-                if (list.length) {
-                  const msgs = list.map(m => ({
-                    message_id: m.message_id || m.id,
-                    conversation_id: m.conversation_id || r.conversation_id,
-                    sender_id: m.sender_id || m.user_id,
-                    content: m.message_content || m.content || m.text,
-                    created_at: m.created_at || m.timestamp,
-                    pending: false,
-                  }))
-                  await db.messages.bulkPut(msgs)
-                  return msgs.length
-                }
-                return 0
-              } catch (_) {
-                return 0
-              }
-            }))
-            perConv.forEach(x => { if (x.status === 'fulfilled') stats.messages += (x.value || 0) })
-          }
-        } catch (err) {
-          console.warn('⚠️ Failed to fetch conversations/messages:', err.message)
-        }
       })()
     ])
 
@@ -505,10 +385,11 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
     console.log(`   • ${stats.visits} visits`)
     console.log(`   • ${stats.vitals} vital signs`)
     console.log(`   • ${stats.schedules} scheduled appointments`)
-    console.log(`   • ${stats.notifications} notifications`)
     console.log(`   • ${stats.vaccines} vaccines in catalog`)
+    console.log(`   • ${stats.faqs} FAQs`)
     console.log(`   ⏱️ Completed in ${duration}s`)
     console.log('✅ You can now use the app offline!')
+    console.log('📵 Note: Notifications and Messages require online connection')
 
     return { 
       success: true, 
