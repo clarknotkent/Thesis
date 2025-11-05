@@ -170,6 +170,63 @@ addToast({ message: 'Info text', type: 'info', title: 'Optional Title' })
 
 ---
 
+### ⚡ Offline Parent Portal – Performance & Reliability (Nov 5)
+
+Building on the Nov 4 offline release, we delivered a focused performance/refactor pass to make offline caching faster, smaller, and more deterministic — without using parallel writes.
+
+#### ✨ Added
+- Offline UI/utility components:
+  - `frontend/src/components/system/OfflineBanner.vue` — compact connectivity indicator
+  - `frontend/src/views/parent/ParentFAQs.vue` — offline-capable FAQs page
+  - `frontend/src/services/offline/chatOffline.js` — enrich conversations with last message/time for offline previews
+
+#### 🔄 Changed
+- Dexie write path refactor for speed and robustness (no schema changes):
+  - Introduced chunked bulk writes (CHUNK_SIZE=500) to avoid oversized transactions
+  - Grouped related writes in a single transaction per response when feasible
+  - Sequentialized the parent login prefetch with transactional per-child writes; global resources fetched/written sequentially
+  - Prefilter invalid records before mapping/writing; precompute denormalized fields (full_name, patient_name, vaccine_name)
+  - Reduced console noise to one-line per endpoint/batch summaries
+- Schedules/Vitals/Visits handling:
+  - Broader response-shape support with safe unwrapping (arrays and nested payloads)
+  - Schedule vaccine name display parity offline (name || vaccine_name || antigen_name)
+  - Stable vital_id derivation when missing (fallback to visit_id)
+- Messages/Conversations:
+  - Conversation list shows last message preview/time offline from cached messages
+
+#### 🧩 Technical Details
+```js
+// Chunked bulk writer (Dexie)
+const CHUNK_SIZE = 500
+async function bulkPutChunked(table, rows) {
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE)
+    await db.transaction('rw', table, async () => table.bulkPut(chunk))
+  }
+}
+```
+
+- Single transaction for patient details + nested arrays when small; split into chunked table writes when large
+- Write recache still triggered after POST/PUT/PATCH/DELETE without blocking UI
+
+#### 🗂 Files Affected (highlights)
+- `frontend/src/services/offline/apiCacheInterceptor.js`
+- `frontend/src/services/offline/parentLoginPrefetch.js`
+- `frontend/src/services/faqService.js`
+- `frontend/src/features/parent/schedule/ScheduleDetails.vue`
+- `frontend/src/features/parent/records/VisitSummary.vue`
+- `frontend/src/views/parent/ParentMessages.vue`
+- `frontend/src/services/offline/chatOffline.js` (new)
+- `frontend/src/components/system/OfflineBanner.vue` (new)
+- `frontend/src/views/parent/ParentFAQs.vue` (new)
+
+#### 📊 Impact
+- Faster seeding on login for large accounts (less transaction overhead)
+- More resilient offline parity for schedules, visits, vitals, FAQs, and chat previews
+- No changes to IndexedDB schema or keys; full backward compatibility
+
+---
+
 ## [system-prototype-v4] - 2025-11-04
 
 ### 🎉 MAJOR: Complete Parent Portal Offline System (November 4, 2025)

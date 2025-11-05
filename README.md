@@ -11,6 +11,19 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 > - ✅ **Guardian Details Modal** - View button shows comprehensive SMS statistics
 > - ✅ **Router Cleanup** - Removed duplicate SMS routes
 > - ✅ **100% Admin Verification** - All subsystems checked and validated
+>
+> **⚡ November 5, 2025 - OFFLINE PARENT PORTAL: PERFORMANCE & RELIABILITY**
+>
+> **Targeted Offline Refactor (Parent Portal):**
+> - ✅ Transactional prefetch — sequential, per-child transactions; global resources handled one-by-one
+> - ✅ Chunked Dexie writes — bulkPut in chunks of 500 for faster, safer writes
+> - ✅ Deterministic “Cached” toast — shown only after all IndexedDB writes complete
+> - ✅ Schedules/Vitals/Visits parity — broader response-shape support; stable vital_id fallback; status/age computed
+> - ✅ Vaccine name fallback — name || vaccine_name || antigen_name for offline views
+> - ✅ FAQs offline — inconsistent API shapes normalized and cached
+> - ✅ Chat previews offline — last message text/time derived from cached messages
+> - ✅ Block logout when offline — prevents accidental data loss while disconnected
+> - ✅ Quieter logs — summary-only per batch/endpoint
 > 
 > **November 4, 2025 - PARENT PORTAL 100% OFFLINE!**
 > 
@@ -108,6 +121,8 @@ The Immunization Management System is designed to digitize and streamline the im
 - **Bulk Prefetch System**: One-login complete offline access ⭐ NEW v4.2
 - **Supabase-Mirrored IndexedDB**: ParentPortalOfflineDB with 10 tables ⭐ NEW v4.2
 - **Local Storage**: Dexie.js 4.x (IndexedDB wrapper) for offline data persistence
+- **Transactional Prefetch & Writes**: Sequential transactions with chunked bulkPut (CHUNK_SIZE=500) and denormalized fields ⭐ NEW (Nov 5)
+- **Parent Offline Schema File**: `frontend/src/services/offline/db-parent-portal.js` (10 tables mirroring Supabase) ⭐ NEW (Nov 4)
 - **Auto-Caching**: Response interceptor pattern for transparent offline support
 - **Offline Sync**: Modern syncService with background queue processing
 - UI Framework: Bootstrap 5
@@ -455,6 +470,21 @@ visits: 'id, patient_id, visit_date'        // Visit history
 immunizations: 'id, patient_id, updated_at' // Vaccination records
 ```
 
+#### ParentPortalOfflineDB (Supabase-Mirrored, 10 tables)
+```javascript
+patients: 'patient_id'                 // Children basic info
+guardians: 'guardian_id'               // Parent/guardian info
+birthhistory: 'birthhistory_id, patient_id'
+immunizations: 'immunization_id, patient_id, updated_at'
+visits: 'visit_id, patient_id, visit_date'
+vitalsigns: 'vital_id, visit_id, patient_id'
+patientschedule: 'patient_schedule_id, patient_id, scheduled_date'
+notifications: 'notification_id, created_at'
+vaccinemaster: 'vaccine_id, antigen_name'
+_sync_metadata: 'key'
+```
+See `frontend/src/services/offline/db-parent-portal.js`.
+
 **Auto-Caching Endpoints (Parent Portal):**
 - `GET /parent/children` → Automatically saved to `children` table
 - `GET /parent/profile` → Auto-cached to `guardian_profile` table
@@ -583,6 +613,11 @@ All offline architecture documentation is in **docs/offline-architecture/**:
 - Health Worker and Admin portal offline features are work in progress
 - Auto-caching interceptor pattern documented in CHANGELOG.md
 - 77 files migrated from legacy to modern architecture
+
+**November 5 Update:**
+- Performance & reliability refactor delivered (transactional prefetch, chunked writes, normalized shapes)
+- FAQs and conversation previews work offline; logout blocked while offline
+- “Cached” toast is shown only after all Dexie writes successfully finish
 
 See **docs/offline-architecture/README.md** for documentation index.
 
@@ -1063,7 +1098,7 @@ git commit -m "feat: Add new feature description"
 ### Contact Information
 
 - Repository: https://github.com/clarknotkent/Thesis
-- Branch: system-prototype-v3
+ - Branch: system-prototype-v4
 - Issues: Use GitHub Issues for bug reports and feature requests
 
 ### Documentation Resources
@@ -1083,8 +1118,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 Project: Immunization Management System
-Version: 4.0 (system-prototype-v4) ⭐ Offline-First PWA
-Last Updated: November 3, 2025
+Version: 4.3 (system-prototype-v4) ⭐ Offline-First PWA
+Last Updated: November 5, 2025
 Maintained by: Clark Kent (clarknotkent), JapethDee and RobertBite15
 License: Academic Thesis Project
 
