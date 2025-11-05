@@ -10,6 +10,7 @@ import './assets/styles/index.css'
 // Import Bootstrap JS
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { Dropdown } from 'bootstrap'
+import { initializeChatOfflineSync } from '@/services/offline/chatOffline'
 
 // Ensure PWA service worker registration across dev/prod
 // (vite-plugin-pwa will provide this virtual module)
@@ -205,3 +206,6 @@ try {
     })
 	}
 } catch (_) {}
+
+// Initialize chat offline syncing (flush queued messages when back online)
+try { initializeChatOfflineSync() } catch (_) {}

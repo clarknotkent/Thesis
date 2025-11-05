@@ -179,7 +179,22 @@ const fetchVisitData = async () => {
       try {
         const cachedVisit = await db.visits.get(parseInt(visitId))
         if (cachedVisit) {
-          visitDataRaw = cachedVisit
+          // Augment cached visit with related records (immunizations and vitals) for completeness
+          const augmented = { ...cachedVisit }
+          try {
+            const relatedImms = await db.immunizations.where('visit_id').equals(parseInt(visitId)).toArray()
+            if (relatedImms && relatedImms.length) {
+              augmented.immunizations = relatedImms
+            }
+          } catch (_) {}
+          try {
+            // Try fetch vitals that reference this visit
+            const vitals = await db.vitalsigns.where('visit_id').equals(parseInt(visitId)).first()
+            if (vitals) {
+              augmented.vitals = vitals
+            }
+          } catch (_) {}
+          visitDataRaw = augmented
           console.log('✅ Loaded visit from IndexedDB cache')
         } else {
           throw new Error('Visit not found in cache')
