@@ -114,10 +114,21 @@ db.version(1).stores({
   _sync_metadata: 'table_name, last_synced_at'
 })
 
+// VERSION 2 - Messaging cache and outbox for offline chat
+db.version(2).stores({
+  conversations: 'conversation_id, updated_at',
+  conversationparticipants: '++id, conversation_id, user_id',
+  messages: 'message_id, conversation_id, created_at, sender_id',
+  messages_outbox: '++id, conversation_id, created_at' // queued messages to send when back online
+})
+
+// VERSION 3 - FAQs cache for offline help panel
+db.version(3).stores({
+  faqs: 'faq_id, updated_at'
+})
+
 // Database initialization hook
 db.on('ready', () => {
-  console.log('✅ ParentPortalOfflineDB initialized - Clean schema v1')
-  console.log('📋 Tables:', db.tables.map(t => t.name).join(', '))
   return db
 })
 

@@ -98,6 +98,7 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
 import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
 import api from '@/services/api'
+import { getConversationsOffline } from '@/services/offline/chatOffline'
 import { getUserId } from '@/services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
@@ -175,8 +176,30 @@ const fetchConversations = async () => {
       return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
     })
   } catch (e) {
-    console.error('Failed to fetch conversations:', e)
-    messages.value = []
+    // Offline fallback
+    try {
+      const items = await getConversationsOffline()
+      const me = String(getUserId())
+      messages.value = items.map(it => {
+        const id = it.conversation_id || it.id
+        const when = it.latest_message_time || it.last_message_at || it.updated_at || it.created_at
+        const txt = it.latest_message || it.last_message || it.last_message_body || it.message_preview || it.message_body || ''
+        let sender = 'Conversation'
+        let senderRole = ''
+        const list = Array.isArray(it.participants) ? it.participants : []
+        const others = list.filter(p => String(p.user_id || p.id) !== me)
+        if (others.length) {
+          const p = others[0]
+          sender = p.fullname || p.full_name || p.participant_name || `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() || sender
+          senderRole = p.role || p.user_role || p.userRole || ''
+        } else if (it.subject) {
+          sender = it.subject
+        }
+        return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
+      })
+    } catch (_) {
+      messages.value = []
+    }
   } finally {
     loading.value = false
   }

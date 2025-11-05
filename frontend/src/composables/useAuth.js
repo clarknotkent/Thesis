@@ -126,6 +126,16 @@ export const useAuth = () => {
   }
 
   const logout = async () => {
+    // Block logout while offline to preserve offline data
+    if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+      try {
+        const { addToast } = await import('@/composables/useToast')
+        addToast({ title: 'Offline', message: 'Logout is disabled offline to preserve your data. Reconnect to log out.', type: 'warning' })
+      } catch (_) {
+        alert('Offline: Logout is disabled offline to preserve your data. Reconnect to log out.')
+      }
+      return
+    }
     authToken.value = null
     userRole.value = null
     userInfo.value = null

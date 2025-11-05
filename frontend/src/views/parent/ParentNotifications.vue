@@ -70,21 +70,19 @@ const fetchNotifications = async () => {
     
     // NETWORK-FIRST: If online, fetch from API directly (fast)
     if (navigator.onLine) {
-      console.log('🌐 Fetching notifications from API (online)')
       try {
         const response = await api.get('/notifications')
-        const items = response.data?.data || response.data || []
+        const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
         
         notifications.value = items.map(n => ({
           id: n.notification_id || n.id,
-          title: n.title || 'Notification',
-          message: n.message || '',
-          type: n.type || 'info',
-          created_at: n.created_at,
-          read: Boolean(n.is_read)
+          title: n.title || n.template_code || 'Notification',
+          message: n.message || n.message_body || '',
+          type: n.type || n.related_entity_type || n.channel || 'info',
+          created_at: n.created_at || n.sent_at || n.scheduled_at,
+          read: Boolean(n.read_at || n.is_read)
         }))
         
-        console.log('✅ Notifications updated with fresh data')
       } catch (apiError) {
         console.error('Failed to fetch notifications from API:', apiError)
         // Fall through to offline fallback
@@ -93,17 +91,16 @@ const fetchNotifications = async () => {
     
     // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
     if (!navigator.onLine || notifications.value.length === 0) {
-      console.log('📴 Loading notifications from IndexedDB cache')
       try {
         const items = await db.notifications.orderBy('created_at').reverse().toArray()
         
         notifications.value = items.map(n => ({
-          id: n.id,
-          title: n.title || 'Notification',
-          message: n.message || '',
-          type: n.type || 'info',
-          created_at: n.created_at,
-          read: Boolean(n.is_read)
+          id: n.notification_id || n.id,
+          title: n.title || n.template_code || 'Notification',
+          message: n.message || n.message_body || '',
+          type: n.type || n.related_entity_type || n.channel || 'info',
+          created_at: n.created_at || n.sent_at || n.scheduled_at,
+          read: Boolean(n.read_at || n.is_read)
         }))
       } catch (dbError) {
         console.error('Failed to fetch notifications from IndexedDB:', dbError)

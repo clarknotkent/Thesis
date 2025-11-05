@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import { getUserId } from '@/services/auth';
+import { getConversationsOffline, getMessagesOffline, queueOfflineMessage } from '@/services/offline/chatOffline'
 
 // Helper to normalize user ID
 const getUserKey = (u) => u?.user_id ?? u?.id ?? u?.userId ?? null;
@@ -58,11 +59,14 @@ export const getConversationTitle = (conv, currentUserId) => {
 export const loadConversations = async () => {
   try {
     const res = await api.get('/conversations');
-    return res.data.items || res.data || [];
+    const list = res.data.items || res.data || [];
+    console.log(`💬 Conversations loaded from API: ${Array.isArray(list) ? list.length : 0}`)
+    return list;
   } catch (e) {
-    // Auto-caching handles offline fallback via API interceptor
-    console.error('Failed to load conversations:', e);
-    return [];
+    // Offline fallback
+    const offline = await getConversationsOffline();
+    console.log(`📴 Conversations loaded from offline cache: ${offline.length}`)
+    return offline;
   }
 };
 
@@ -70,11 +74,14 @@ export const loadConversations = async () => {
 export const loadMessages = async (conversationId) => {
   try {
     const res = await api.get(`/messages/${conversationId}`);
-    return res.data.items || res.data || [];
+    const list = res.data.items || res.data || [];
+    console.log(`💬 Messages loaded from API for ${conversationId}: ${Array.isArray(list) ? list.length : 0}`)
+    return list;
   } catch (e) {
-    // Auto-caching handles offline fallback via API interceptor
-    console.error(`Failed to load messages for conversation ${conversationId}:`, e);
-    return [];
+    // Offline fallback
+    const offline = await getMessagesOffline(conversationId);
+    console.log(`📴 Messages loaded from offline cache for ${conversationId}: ${offline.length}`)
+    return offline;
   }
 };
 
@@ -86,8 +93,12 @@ export const sendMessage = async (conversationId, messageContent) => {
       message_content: messageContent 
     });
   } catch (e) {
-    // Auto-caching handles offline persistence via pending_uploads
-    console.error('Failed to send message:', e);
+    // If offline, queue for later and resolve
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const uid = getUserId();
+      await queueOfflineMessage(conversationId, messageContent, uid);
+      return;
+    }
     throw e;
   }
 };

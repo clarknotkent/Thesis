@@ -90,9 +90,6 @@ const getParentChildren = async (req, res) => {
       .eq('is_deleted', false)
       .eq('patientschedule.is_deleted', false);
 
-    // Debug: Print fetched patients data
-    console.log('Fetched children data:', JSON.stringify(children, null, 2));
-
     if (childrenError) {
       console.error('Children query error:', childrenError);
       return res.status(500).json({
@@ -209,8 +206,6 @@ const getChildDetails = async (req, res) => {
     if (vaccinationError) {
       console.error('Error fetching vaccination history:', vaccinationError);
     }
-    
-    console.log('All vaccinations for child', childId, ':', allVaccinations);
 
     // Calculate age
     const dob = new Date(patient.date_of_birth);

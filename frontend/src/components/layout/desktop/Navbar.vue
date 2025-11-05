@@ -96,13 +96,20 @@ onUnmounted(() => {
 const logout = async () => {
   dropdownOpen.value = false
   try {
+    if (!isOnline.value) {
+      alert('You are offline. Logout is disabled to preserve your offline data. Please reconnect to the internet to log out.')
+      return
+    }
     await doLogout()
     router.push('/auth/login')
   } catch (error) {
     console.error('Logout error:', error)
     // Force logout even if API call fails
-    localStorage.clear()
-    router.push('/auth/login')
+    // If we are offline, do NOT clear local data; keep user in app
+    if (navigator.onLine !== false) {
+      localStorage.clear()
+      router.push('/auth/login')
+    }
   }
 }
 

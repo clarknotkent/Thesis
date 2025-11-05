@@ -808,6 +808,16 @@ const routes = [
     }
   },
   {
+    path: '/parent/faqs',
+    name: 'ParentFAQs',
+    component: () => import('@/views/parent/ParentFAQs.vue'),
+    meta: {
+      title: 'FAQs - ImmunizeMe',
+      requiresAuth: true,
+      role: 'parent'
+    }
+  },
+  {
     path: '/parent/messages',
     name: 'ParentMessages',
     component: () => import('@/views/parent/ParentMessages.vue'),

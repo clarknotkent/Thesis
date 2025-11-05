@@ -48,21 +48,22 @@ export async function login({ identifier, password }) {
 }
 
 export function logout() {
-  try {
-    const token = localStorage.getItem(TOKEN_KEY)
-    if (token) {
-      // fire-and-forget logout logging; ignore errors
-      fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {})
-    }
-  } finally {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userInfo')
+  // Prevent logout while offline to keep offline data accessible
+  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+    throw new Error('Cannot log out while offline')
   }
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (token) {
+    // fire-and-forget logout logging; ignore errors
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {})
+  }
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  localStorage.removeItem('userRole')
+  localStorage.removeItem('userInfo')
 }
 
 export function getToken() {

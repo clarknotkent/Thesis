@@ -47,7 +47,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import api from '@/services/api'
+import { getFaqs } from '@/services/faqService'
 
 const items = ref([])
 const loading = ref(true)
@@ -65,8 +65,8 @@ const filteredItems = computed(() => {
 const load = async () => {
   try {
     loading.value = true
-    const res = await api.get('/faqs')
-    items.value = Array.isArray(res.data.items) ? res.data.items : (Array.isArray(res.data) ? res.data : [])
+    const res = await getFaqs()
+    items.value = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.data) ? res.data : [])
   } catch (e) {
     items.value = []
   } finally {

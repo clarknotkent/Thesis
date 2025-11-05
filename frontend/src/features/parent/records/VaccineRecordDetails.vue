@@ -209,7 +209,7 @@ const fetchVaccineDetails = async () => {
         
         console.log(`✅ Found ${cachedImmunizations.length} immunizations in cache`)
         
-        // Map to match expected format
+        // Map to match expected format (avoid introducing fields not present online)
         vax = cachedImmunizations.map(i => ({
           immunization_id: i.immunization_id,
           vaccine_antigen_name: i.vaccine_name || i.antigen_name,
@@ -222,13 +222,13 @@ const fetchVaccineDetails = async () => {
           administered_by: i.administered_by,
           administered_by_name: i.health_worker_name,
           age_at_administration: i.age_at_administration,
-          facility_name: i.facility_name,
+          immunization_facility_name: i.immunization_facility_name || i.facility_name,
           outside: i.outside,
           remarks: i.remarks,
           disease_prevented: i.disease_prevented,
           brand_name: i.brand_name,
           manufacturer: i.manufacturer,
-          lot_number: i.inventory_id // Placeholder if lot number not available
+          // Do not fabricate lot/batch number offline if not available
         }))
       } catch (err) {
         console.error('❌ Failed to fetch immunizations from cache:', err)
