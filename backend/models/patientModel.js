@@ -917,6 +917,29 @@ const patientModel = {
                 .update({ is_deleted: false, updated_at: new Date().toISOString() })
                 .eq('patient_id', id);
             } catch (_) {}
+            // Restore previously cancelled/deleted SMS reminders for future dates
+            try {
+              const nowIso = new Date().toISOString();
+              // First, un-delete any sms_logs we cancelled when the patient was made Inactive
+              await supabase
+                .from('sms_logs')
+                .update({ is_deleted: false, updated_at: new Date().toISOString() })
+                .eq('patient_id', id)
+                .eq('is_deleted', true);
+
+              // Then, set future scheduled reminders back to pending so the scheduler can pick them up
+              const { data: restored } = await supabase
+                .from('sms_logs')
+                .update({ status: 'pending', error_message: null, updated_at: new Date().toISOString() })
+                .eq('patient_id', id)
+                .eq('is_deleted', false)
+                .eq('type', 'scheduled')
+                .gte('scheduled_at', nowIso)
+                .select('id');
+              console.log('[updatePatient] Active cascade restored future SMS count:', Array.isArray(restored) ? restored.length : 0);
+            } catch (restoreErr) {
+              console.warn('[updatePatient] Failed to restore sms_logs on activation (non-blocking):', restoreErr?.message || restoreErr);
+            }
             // Defer heavy message regeneration to avoid timeouts
             try {
               const runAsync = async () => { try { await updateMessagesForPatient(id, supabase); } catch (_) {} };

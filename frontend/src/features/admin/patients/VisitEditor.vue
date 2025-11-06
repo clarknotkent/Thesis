@@ -1113,34 +1113,19 @@ const fetchVaccineOptions = async () => {
     }))
     console.log('🎯 [VisitEditor] Processed vaccine options (unfiltered):', mapped)
 
-    // If a patient is selected, fetch their immunizations and filter out vaccines
-    // the patient already has a record for (so they won't appear in dropdown)
-    if (form.value.patient_id) {
-      try {
-        const immRes = await api.get('/immunizations', { params: { patient_id: form.value.patient_id, limit: 500 } })
-        const immData = immRes.data?.data || immRes.data || []
-        const patientVaccineIds = new Set()
-        const patientAntigenNames = new Set()
-        if (Array.isArray(immData)) {
-          immData.forEach(i => {
-            if (i.vaccine_id) patientVaccineIds.add(String(i.vaccine_id))
-            const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
-            if (name) patientAntigenNames.add(String(name).toLowerCase())
-          })
-        }
+    // Filter out expired inventory items (safety)
+    const today = new Date()
+    mapped = mapped.filter(opt => {
+      if (!opt.expiration_date) return true
+      const d = new Date(opt.expiration_date)
+      // keep if expiry is today or in the future
+      return d.setHours(0,0,0,0) >= new Date(today.setHours(0,0,0,0)).getTime()
+    })
 
-        // Filter mapped options: exclude inventory items whose vaccine_id or antigen name is already present
-        mapped = mapped.filter(opt => {
-          const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
-          const aname = opt.vaccine_name ? String(opt.vaccine_name).toLowerCase() : ''
-          if (vid && patientVaccineIds.has(vid)) return false
-          if (aname && patientAntigenNames.has(aname)) return false
-          return true
-        })
-        console.log('🔍 [VisitEditor] Filtered vaccine options based on patient immunizations:', mapped)
-      } catch (e) {
-        console.warn('⚠️ [VisitEditor] Failed to fetch patient immunizations for filtering:', e)
-      }
+    // Completion-aware filter: keep only vaccines with remaining doses for the selected patient
+    if (form.value.patient_id) {
+      mapped = await filterOptionsByRemainingDoses(mapped, (o) => o.vaccine_id)
+      console.log('🔍 [VisitEditor] Filtered vaccine options by remaining doses:', mapped)
     }
 
     vaccineOptions.value = mapped
@@ -1170,38 +1155,47 @@ const fetchVaccineCatalog = async () => {
       manufacturer: v.manufacturer || ''
     }))
 
-    // If a patient is selected, fetch their immunizations and filter out vaccines
+    // Completion-aware filter for outside mode, too
     if (form.value.patient_id) {
-      try {
-        const immRes = await api.get('/immunizations', { params: { patient_id: form.value.patient_id, limit: 500 } })
-        const immData = immRes.data?.data || immRes.data || []
-        const patientVaccineIds = new Set()
-        const patientAntigenNames = new Set()
-        if (Array.isArray(immData)) {
-          immData.forEach(i => {
-            if (i.vaccine_id) patientVaccineIds.add(String(i.vaccine_id))
-            const name = i.vaccine_name || i.antigen_name || i.vaccine_antigen_name || i.vaccineName || ''
-            if (name) patientAntigenNames.add(String(name).toLowerCase())
-          })
-        }
-
-        mapped = mapped.filter(opt => {
-          const vid = opt.vaccine_id ? String(opt.vaccine_id) : ''
-          const aname = opt.antigen_name ? String(opt.antigen_name).toLowerCase() : ''
-          if (vid && patientVaccineIds.has(vid)) return false
-          if (aname && patientAntigenNames.has(aname)) return false
-          return true
-        })
-        console.log('🔍 [VisitEditor] Filtered vaccine catalog based on patient immunizations:', mapped)
-      } catch (e) {
-        console.warn('⚠️ [VisitEditor] Failed to fetch patient immunizations for catalog filtering:', e)
-      }
+      mapped = await filterOptionsByRemainingDoses(mapped, (o) => o.vaccine_id)
+      console.log('🔍 [VisitEditor] Filtered vaccine catalog by remaining doses:', mapped)
     }
 
     vaccineCatalog.value = mapped
   } catch (e) {
     console.error('❌ [VisitEditor] Failed to load vaccine catalog:', e)
     vaccineCatalog.value = []
+  }
+}
+
+// Helper: completion-aware filter using smart-doses endpoint
+const filterOptionsByRemainingDoses = async (options, getVaccineId) => {
+  try {
+    const pid = normalizeId(form.value.patient_id)
+    if (!pid) return options
+  const results = await Promise.allSettled(options.map(async (opt) => {
+      const vaccineId = getVaccineId(opt)
+      if (!vaccineId) return { keep: true, opt } // Fail-open if we cannot determine vaccine id
+      try {
+        const res = await api.get(`/patients/${pid}/smart-doses`, { params: { vaccine_id: vaccineId } })
+        const data = res.data?.data || res.data || {}
+        const hasSchedule = !!(data.all_doses && Array.isArray(data.all_doses))
+        const doses = Array.isArray(data.available_doses) ? data.available_doses : (Array.isArray(data.doses) ? data.doses : [])
+        // Keep if remaining doses exist OR if schedule definition is missing (fail-open)
+        const keep = (doses && doses.length > 0) || !hasSchedule
+        return { keep, opt }
+      } catch (e) {
+        // On error, fail-open (do not hide vaccine silently)
+        return { keep: true, opt }
+      }
+    }))
+    return results
+      .map((r, idx) => (r.status === 'fulfilled' ? r.value : { keep: true, opt: options[idx] }))
+      .filter(x => x.keep)
+      .map(x => x.opt)
+  } catch (e) {
+    console.warn('⚠️ [VisitEditor] Smart-doses filtering failed, returning unfiltered options', e)
+    return options
   }
 }
 
@@ -1279,7 +1273,9 @@ const checkTodayVisitAndAdopt = async (patientId) => {
 }
 
 const openVaccinationForm = async (patientId = null) => {
-  const selectedPatientId = patientId || form.value.patient_id
+  // Sanitize potential event object accidentally passed from @click binding
+  const maybeId = (patientId && typeof patientId === 'object') ? '' : patientId
+  const selectedPatientId = normalizeId(maybeId) || normalizeId(form.value.patient_id)
   if (!selectedPatientId || selectedPatientId === '') {
     addToast({ title: 'Error', message: 'Please select a patient first', type: 'error' })
     return
@@ -1313,7 +1309,8 @@ const openVaccinationForm = async (patientId = null) => {
   showVaccinationForm.value = true
 }
 const openDewormModal = (patientId = null) => {
-  const selectedPatientId = patientId || form.value.patient_id
+  const maybeId = (patientId && typeof patientId === 'object') ? '' : patientId
+  const selectedPatientId = normalizeId(maybeId) || normalizeId(form.value.patient_id)
   if (!selectedPatientId || selectedPatientId === '') {
     addToast({ title: 'Error', message: 'Please select a patient first', type: 'error' })
     return
@@ -1321,7 +1318,8 @@ const openDewormModal = (patientId = null) => {
   emit('open-deworm', selectedPatientId, selectedPatientData.value, { outside: !!props.recordMode })
 }
 const openVitAModal = (patientId = null) => {
-  const selectedPatientId = patientId || form.value.patient_id
+  const maybeId = (patientId && typeof patientId === 'object') ? '' : patientId
+  const selectedPatientId = normalizeId(maybeId) || normalizeId(form.value.patient_id)
   if (!selectedPatientId || selectedPatientId === '') {
     addToast({ title: 'Error', message: 'Please select a patient first', type: 'error' })
     return

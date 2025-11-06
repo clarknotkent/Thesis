@@ -19,6 +19,19 @@ const create = async (req, res) => {
   }
 };
 
+// Broadcast notifications to recipient groups (admins/healthstaff/guardians/all-users)
+const broadcast = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const payload = req.body;
+    const result = await notificationModel.broadcastNotifications(payload, actorId);
+    return res.status(201).json({ success: true, message: `Broadcast created for ${result.length} recipient(s)`, data: result });
+  } catch (error) {
+    console.error('broadcastNotifications error:', error);
+    return sendError(res, error, 'Failed to broadcast notifications');
+  }
+};
+
 // Get notifications for current user (inbox)
 const list = async (req, res) => {
   try {
@@ -99,4 +112,4 @@ const updateNotificationStatus = async (req, res) => {
   }
 };
 
-export { create, list, markAsRead, deleteNotification, getPendingNotifications, updateNotificationStatus };
+export { create, list, markAsRead, deleteNotification, getPendingNotifications, updateNotificationStatus, broadcast };

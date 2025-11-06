@@ -6,120 +6,82 @@
     </h3>
 
     <div class="form-group">
-      <label class="form-label">Attach to visit</label>
-      <div class="visit-mode-options">
-        <label class="radio-label">
-          <input 
-            type="radio" 
-            :value="'new'" 
-            :checked="visitMode === 'new'"
-            @change="handleNewModeSelect"
-          >
-          <span>Create new visit</span>
-        </label>
-        <label class="radio-label">
-          <input 
-            type="radio" 
-            :value="'existing'" 
-            :checked="visitMode === 'existing'"
-            @change="handleExistingModeSelect"
-          >
-          <span>Use existing visit</span>
-        </label>
+      <label class="form-label">Visit for today</label>
+      <div class="visit-status">
+        <template v-if="visitMode === 'existing' && existingVisit">
+          <div class="status-row">
+            <i class="bi bi-check-circle-fill text-success" />
+            <span>Attached to today's visit</span>
+          </div>
+          <div class="meta">
+            <div>
+              <span class="meta-label">Date:</span>
+              <span class="meta-value">{{ formatDate(existingVisit.visit_date) }}</span>
+            </div>
+            <div>
+              <span class="meta-label">Recorded by:</span>
+              <span class="meta-value">{{ existingVisit.recorded_by_name || existingVisit.recorded_by || '—' }}</span>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="status-row">
+            <i class="bi bi-plus-circle-fill text-primary" />
+            <span>No visit yet today — will create a new visit</span>
+          </div>
+        </template>
       </div>
-      <small
-        v-if="visitMode === 'existing'"
-        class="form-hint"
-      >
-        Select a recent visit for this patient (preferably created by BHS)
-      </small>
-    </div>
-
-    <div
-      v-if="visitMode === 'existing'"
-      class="form-group"
-    >
-      <label class="form-label">Existing Visits</label>
-      <select 
-        class="form-input" 
-        :value="existingVisitId"
-        :disabled="loadingVisits"
-        @change="$emit('update:existingVisitId', $event.target.value)"
-      >
-        <option value="">
-          {{ loadingVisits ? 'Loading visits...' : 'Select a visit' }}
-        </option>
-        <option 
-          v-for="visit in availableVisits" 
-          :key="visit.visit_id" 
-          :value="String(visit.visit_id)"
-        >
-          {{ formatDate(visit.visit_date) }} — {{ visit.service_rendered || 'No services yet' }}
-        </option>
-      </select>
-      <small
-        v-if="availableVisits.length === 0 && !loadingVisits"
-        class="form-hint text-warning"
-      >
-        No recent visits found. Consider creating a new visit instead.
-      </small>
+      <small class="form-hint">One visit per day is enforced automatically.</small>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 
+// Props from parent (visit assignment context)
 defineProps({
-  visitMode: {
-    type: String,
-    required: true
-  },
-  existingVisitId: {
-    type: String,
-    default: ''
-  },
-  availableVisits: {
-    type: Array,
-    default: () => []
-  },
-  loadingVisits: {
-    type: Boolean,
-    default: false
-  }
+  visitMode: { type: String, required: true },
+  existingVisitId: { type: String, default: '' },
+  availableVisits: { type: Array, default: () => [] },
+  loadingVisits: { type: Boolean, default: false }
 })
 
+// Emitted events for parent coordination
 const emit = defineEmits(['update:visitMode', 'update:existingVisitId', 'ensure-visits-loaded'])
 
 const route = useRoute()
+const existingVisit = ref(null)
 
-// Centralized check: if a visit exists today, auto-correct to existing and toast
+// Core logic: check if a visit exists for today; if so, switch to existing mode
 const checkTodayVisitAndCorrect = async () => {
   const patientId = route.params.patientId || route.params.id
-  if (!patientId) return
+  if (!patientId) return false
   try {
     const visitDateIso = new Date().toISOString()
     const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
-    // Online success path with expected shape
     if (data && typeof data.exists === 'boolean') {
       if (data.exists) {
-        addToast({
-          title: 'Visit already exists',
-          message: 'A visit already exists for this patient today. Switched to use existing visit.',
-          type: 'info'
-        })
+        addToast({ title: 'Visit already exists', message: 'Switched to today\'s existing visit.', type: 'info' })
         emit('update:visitMode', 'existing')
-        emit('update:existingVisitId', String(data.visit_id || ''))
+        const foundId = String(data.visit_id || '')
+        emit('update:existingVisitId', foundId)
+        // Fetch full visit details for richer display
+        try {
+          if (foundId) {
+            const vres = await api.get(`/visits/${foundId}`)
+            existingVisit.value = vres.data?.data || vres.data || null
+          }
+        } catch (_) { existingVisit.value = null }
         emit('ensure-visits-loaded')
         return true
       }
       return false
     }
-
-    // Offline fallback: data likely contains cached visits array or store contents
+    // Offline / cached fallback shape handling
     const cachedVisits = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
     const sameDay = cachedVisits.find(v => {
       if (!v || String(v.patient_id) !== String(patientId) || !v.visit_date) return false
@@ -128,48 +90,26 @@ const checkTodayVisitAndCorrect = async () => {
       return vd.getFullYear() === cd.getFullYear() && vd.getMonth() === cd.getMonth() && vd.getDate() === cd.getDate()
     })
     if (sameDay) {
-      addToast({
-        title: 'Visit already exists',
-        message: 'A visit already exists for this patient today. Switched to use existing visit.',
-        type: 'info'
-      })
+      addToast({ title: 'Visit already exists', message: 'Switched to today\'s existing visit.', type: 'info' })
       emit('update:visitMode', 'existing')
-      emit('update:existingVisitId', String(sameDay.visit_id || ''))
+      const foundId = String(sameDay.visit_id || '')
+      emit('update:existingVisitId', foundId)
+      existingVisit.value = sameDay
       emit('ensure-visits-loaded')
       return true
     }
   } catch (err) {
-    // Non-blocking failure: inform but keep current selection
-    addToast({ title: 'Notice', message: 'Unable to check today\'s visit. Please try again.', type: 'warning' })
+    addToast({ title: 'Notice', message: 'Unable to verify today\'s visit. You may proceed.', type: 'warning' })
   }
   return false
 }
 
-const handleNewModeSelect = async () => {
-  // Optimistically set to new, then correct if needed
-  emit('update:visitMode', 'new')
-  emit('update:existingVisitId', '')
-  await checkTodayVisitAndCorrect()
-}
-
-const handleExistingModeSelect = () => {
-  emit('update:visitMode', 'existing')
-  emit('ensure-visits-loaded')
-}
-
 const formatDate = (dateStr) => {
   if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  return new Date(dateStr).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// Default is create new visit: run the check immediately on mount and correct if necessary
-onMounted(async () => {
-  await checkTodayVisitAndCorrect()
-})
+onMounted(async () => { await checkTodayVisitAndCorrect() })
 </script>
 
 <style scoped>
@@ -178,7 +118,6 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .section-title {
@@ -212,32 +151,13 @@ onMounted(async () => {
   font-size: 0.95rem;
 }
 
-.visit-mode-options {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-size: 0.95rem;
-  color: #4b5563;
-}
-
-.radio-label input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #3b82f6;
-}
-
-.radio-label span {
-  user-select: none;
-}
+.visit-status { display: flex; flex-direction: column; gap: 0.5rem; }
+.status-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; color: #374151; }
+.status-row .text-success { color: #10b981 !important; }
+.status-row .text-primary { color: #3b82f6 !important; }
+.meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; font-size: 0.9rem; }
+.meta-label { color: #6b7280; margin-right: 0.25rem; }
+.meta-value { color: #111827; font-weight: 500; }
 
 .form-input {
   width: 100%;

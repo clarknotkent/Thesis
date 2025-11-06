@@ -359,6 +359,27 @@ Database connected successfully
 - See `docs/RESET_QA_INSTRUCTIONS.md` for usage and verification steps.
 
 ### 🩺 Admin Visit Parity, Data Integrity, and SMS Behavior (November 6, 2025)
+### 🧩 BHS UI Inventory Wiring (November 6, 2025)
+
+#### Changed
+- Health Worker (BHS) Inventory UI now displays complete vaccine metadata:
+  - Disease Prevented is shown in stock cards and details view
+  - Type is shown for Vaccine, Deworming, and Vitamin A categories (Program: NIP/Other + specific type)
+  - Category is shown in the details view
+
+#### Backend Fix
+- Include `disease_prevented` and `is_nip` in `/api/vaccines/inventory/:id` join selection so details view has complete data.
+
+#### Files Touched
+- Backend
+  - `backend/models/vaccineModel.js` — added `disease_prevented` and `is_nip` to vaccinemaster selections across inventory fetches
+- Frontend
+  - `frontend/src/features/health-worker/inventory/InventoryCard.vue` — show Disease Prevented and Type chips
+  - `frontend/src/views/healthworker/inventory/InventoryDetails.vue` — show Category and Type (program + specific type)
+
+#### Outcome
+- BHS stock list and item details now correctly show Disease Prevented and Type across supported categories.
+
 
 #### ✨ Added / Changed
 - Admin portal now mirrors Health Worker rule: **one visit per patient per day**

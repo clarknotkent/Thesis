@@ -87,17 +87,20 @@ const fetchCounts = async () => {
       notificationCount.value = 0
     }
 
-    // Messages: sum unread_count from conversations
+    // Messages: prefer fast unread count endpoint; fallback to summing conversations
     try {
-      const cResp = await conversationAPI.getConversations({ limit: 200 })
-      const convs = cResp?.data?.items || cResp?.data || []
-      if (Array.isArray(convs)) {
-        messageCount.value = convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0)
+      const uResp = await conversationAPI.getUnreadCount()
+      const cnt = uResp?.data?.count ?? uResp?.data?.data?.count ?? null
+      if (typeof cnt === 'number') {
+        messageCount.value = cnt
       } else {
-        messageCount.value = 0
+        // Fallback: sum unread_count from conversations
+        const cResp = await conversationAPI.getConversations({ limit: 200 })
+        const convs = cResp?.data?.items || cResp?.data || []
+        messageCount.value = Array.isArray(convs) ? convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) : 0
       }
     } catch (e) {
-      console.error('Failed to fetch conversations for message count', e)
+      console.error('Failed to fetch unread message count', e)
       messageCount.value = 0
     }
   } catch (e) {
