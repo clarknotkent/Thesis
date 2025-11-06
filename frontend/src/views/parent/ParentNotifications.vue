@@ -50,11 +50,14 @@
       </div>
 
       <!-- Notifications List -->
-      <div v-else-if="isOnline" class="notifications-list">
+      <div
+        v-else-if="isOnline"
+        class="notifications-list"
+      >
         <NotificationItem
           v-for="n in notifications"
-          :key="n.id"
           :id="n.id"
+          :key="n.id"
           :title="n.title"
           :message="n.message"
           :type="n.type"

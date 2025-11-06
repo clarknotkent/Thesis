@@ -1,60 +1,115 @@
 <template>
   <HealthWorkerLayout :show-controls="false">
     <div class="header">
-      <button class="back" @click="goBack"><i class="bi bi-chevron-left"></i></button>
-      <h1 class="title">Edit Visit</h1>
-      <div style="width:36px"></div>
+      <button
+        class="back"
+        @click="goBack"
+      >
+        <i class="bi bi-chevron-left" />
+      </button>
+      <h1 class="title">
+        Edit Visit
+      </h1>
+      <div style="width:36px" />
     </div>
 
     <div class="content">
-      <div v-if="loading" class="loading">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading"
+      >
+        <div class="spinner" />
         <p>Loading visit...</p>
       </div>
 
-      <div v-else-if="visit" class="grid">
+      <div
+        v-else-if="visit"
+        class="grid"
+      >
         <!-- Visit info -->
         <div class="card">
-          <h3 class="card-title"><i class="bi bi-clipboard2-pulse"></i> Visit Info</h3>
+          <h3 class="card-title">
+            <i class="bi bi-clipboard2-pulse" /> Visit Info
+          </h3>
           <div class="row">
             <div>
-              <div class="label">Visit Date</div>
-              <div class="value">{{ formatDate(visit.visit_date) }}</div>
+              <div class="label">
+                Visit Date
+              </div>
+              <div class="value">
+                {{ formatDate(visit.visit_date) }}
+              </div>
             </div>
             <div>
-              <div class="label">Recorded By</div>
-              <div class="value">{{ visit.recorded_by_name || visit.recorded_by || '—' }}</div>
+              <div class="label">
+                Recorded By
+              </div>
+              <div class="value">
+                {{ visit.recorded_by_name || visit.recorded_by || '—' }}
+              </div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Findings / Notes</label>
-            <textarea class="form-input" rows="4" v-model="form.findings" placeholder="Enter clinical notes..."></textarea>
+            <textarea
+              v-model="form.findings"
+              class="form-input"
+              rows="4"
+              placeholder="Enter clinical notes..."
+            />
           </div>
         </div>
 
         <!-- Vitals -->
         <div class="card">
-          <h3 class="card-title"><i class="bi bi-heart-pulse"></i> Vital Signs</h3>
+          <h3 class="card-title">
+            <i class="bi bi-heart-pulse" /> Vital Signs
+          </h3>
           <div class="vitals-grid">
             <div class="form-group">
               <label class="form-label">Temperature (°C)</label>
-              <input class="form-input" type="number" step="0.1" v-model="form.vitals.temperature" />
+              <input
+                v-model="form.vitals.temperature"
+                class="form-input"
+                type="number"
+                step="0.1"
+              >
             </div>
             <div class="form-group">
               <label class="form-label">Weight (kg)</label>
-              <input class="form-input" type="number" step="0.1" v-model="form.vitals.weight" />
+              <input
+                v-model="form.vitals.weight"
+                class="form-input"
+                type="number"
+                step="0.1"
+              >
             </div>
             <div class="form-group">
               <label class="form-label">Height (cm)</label>
-              <input class="form-input" type="number" step="0.1" v-model="form.vitals.height" />
+              <input
+                v-model="form.vitals.height"
+                class="form-input"
+                type="number"
+                step="0.1"
+              >
             </div>
             <div class="form-group">
               <label class="form-label">MUAC (cm)</label>
-              <input class="form-input" type="number" step="0.1" v-model="form.vitals.muac" />
+              <input
+                v-model="form.vitals.muac"
+                class="form-input"
+                type="number"
+                step="0.1"
+              >
             </div>
             <div class="form-group">
               <label class="form-label">Respiration (/min)</label>
-              <input class="form-input" type="number" step="1" v-model="form.vitals.respiration" />
+              <input
+                v-model="form.vitals.respiration"
+                class="form-input"
+                type="number"
+                step="1"
+              >
             </div>
           </div>
           <small class="form-hint">Vitals are saved to this visit.
@@ -62,10 +117,21 @@
         </div>
 
         <!-- Services quick-add (Nurse/Nutritionist only) -->
-        <div class="card" v-if="isNurseOrNutritionist">
-          <h3 class="card-title"><i class="bi bi-ui-checks"></i> Add Services</h3>
+        <div
+          v-if="isNurseOrNutritionist"
+          class="card"
+        >
+          <h3 class="card-title">
+            <i class="bi bi-ui-checks" /> Add Services
+          </h3>
           <div class="actions">
-            <button class="btn" @click="openVaccineModal" :disabled="saving"><i class="bi bi-plus-circle"></i> Add Service</button>
+            <button
+              class="btn"
+              :disabled="saving"
+              @click="openVaccineModal"
+            >
+              <i class="bi bi-plus-circle" /> Add Service
+            </button>
           </div>
           <small class="form-hint">Use the Add Immunization page to record vaccines.</small>
         </div>
@@ -80,17 +146,33 @@
         />
 
         <div class="actions sticky">
-          <button class="btn ghost" @click="goBack" :disabled="saving">Cancel</button>
-          <button class="btn primary" @click="save" :disabled="saving">
-            <span v-if="saving" class="spinner small"></span>
-            <span v-else><i class="bi bi-check2-circle"></i></span>
+          <button
+            class="btn ghost"
+            :disabled="saving"
+            @click="goBack"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn primary"
+            :disabled="saving"
+            @click="save"
+          >
+            <span
+              v-if="saving"
+              class="spinner small"
+            />
+            <span v-else><i class="bi bi-check2-circle" /></span>
             <span>{{ saving ? 'Saving...' : 'Save Changes' }}</span>
           </button>
         </div>
       </div>
 
-      <div v-else class="error">
-        <i class="bi bi-exclamation-triangle"></i>
+      <div
+        v-else
+        class="error"
+      >
+        <i class="bi bi-exclamation-triangle" />
         <p>Visit not found.</p>
       </div>
     </div>

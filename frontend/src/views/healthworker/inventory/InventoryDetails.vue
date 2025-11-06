@@ -69,8 +69,10 @@
         <!-- Vaccine Information Card -->
         <div class="details-card">
           <div class="card-header">
-            <i class="bi bi-shield-fill-check card-icon"></i>
-            <h2 class="card-title">Item Information</h2>
+            <i class="bi bi-shield-fill-check card-icon" />
+            <h2 class="card-title">
+              Item Information
+            </h2>
           </div>
           <div class="card-body">
             <div class="detail-row">
@@ -93,11 +95,24 @@
               <span class="detail-label">Manufacturer</span>
               <span class="detail-value">{{ manufacturer }}</span>
             </div>
-            <div class="detail-row" v-if="showType">
+            <div
+              v-if="showType"
+              class="detail-row"
+            >
               <span class="detail-label">Type</span>
-              <span class="detail-value" style="display:flex; gap:0.5rem; justify-content:flex-end; align-items:center; flex-wrap:wrap;">
-                <span v-if="programLabel" class="type-badge" :class="isNIP ? 'type-nip' : 'type-other'">{{ programLabel }}</span>
-                <span v-if="vaccineType" class="type-chip">{{ vaccineType }}</span>
+              <span
+                class="detail-value"
+                style="display:flex; gap:0.5rem; justify-content:flex-end; align-items:center; flex-wrap:wrap;"
+              >
+                <span
+                  v-if="programLabel"
+                  class="type-badge"
+                  :class="isNIP ? 'type-nip' : 'type-other'"
+                >{{ programLabel }}</span>
+                <span
+                  v-if="vaccineType"
+                  class="type-chip"
+                >{{ vaccineType }}</span>
               </span>
             </div>
           </div>

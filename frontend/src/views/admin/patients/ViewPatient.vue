@@ -225,7 +225,10 @@
             </div>
           </div>
           <!-- QR Code (reuse shared component for parity with BHS/Parent) -->
-          <PatientQRCodeCard :patient="patientData" :allow-refresh="true" />
+          <PatientQRCodeCard
+            :patient="patientData"
+            :allow-refresh="true"
+          />
         </div>
       </div>
     </div>

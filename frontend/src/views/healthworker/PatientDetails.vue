@@ -37,9 +37,15 @@
     <!-- Content wrapper (same pattern as PatientRecords) -->
     <div class="page-content-wrapper">
       <!-- Patient Information Tab -->
-      <div v-if="activeTab === 'patient-info'" class="tab-content">
+      <div
+        v-if="activeTab === 'patient-info'"
+        class="tab-content"
+      >
         <!-- QR Code Card -->
-        <PatientQRCodeCard v-if="patient" :patient="patient" />
+        <PatientQRCodeCard
+          v-if="patient"
+          :patient="patient"
+        />
 
         <!-- Patient Information Card -->
         <CollapsibleCard
