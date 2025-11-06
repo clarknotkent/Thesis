@@ -32,7 +32,7 @@ const guardianModel = {
 
       if (error) throw error;
 
-      const result = []
+      const result = [];
       // Ensure each eligible user has an active guardian row; restore/create when missing
       for (const user of (data || [])) {
         let g = Array.isArray(user.guardians) ? user.guardians.find(x => x && x.is_deleted === false) || null : null;
@@ -40,13 +40,13 @@ const guardianModel = {
         // If no active guardian row, try to ensure it exists/restored based on user role
         if (!g) {
           try {
-            const ensured = await guardianModel.ensureGuardianForUser(user.user_id)
+            const ensured = await guardianModel.ensureGuardianForUser(user.user_id);
             if (ensured && ensured.guardian_id && ensured.is_deleted === false) {
-              g = ensured
+              g = ensured;
             }
           } catch (ensureErr) {
             // Non-blocking: if ensure fails, we just skip adding this entry
-            console.warn('[getAllGuardians] ensureGuardianForUser failed for user', user.user_id, ensureErr?.message || ensureErr)
+            console.warn('[getAllGuardians] ensureGuardianForUser failed for user', user.user_id, ensureErr?.message || ensureErr);
           }
         }
 
@@ -65,7 +65,7 @@ const guardianModel = {
             family_number: g.family_number || '',
             occupation: g.occupation || null,
             full_name: `${user.surname}, ${user.firstname} ${user.middlename || ''}`.trim()
-          })
+          });
         }
       }
 

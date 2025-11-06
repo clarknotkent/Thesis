@@ -19,31 +19,54 @@
               <div class="card shadow h-100 d-flex flex-column">
                 <div class="card-header bg-success text-white">
                   <div class="d-flex align-items-center">
-                    <i class="bi bi-plus-circle me-2"></i>
+                    <i class="bi bi-plus-circle me-2" />
                     <strong>{{ editing ? 'Edit FAQ' : 'New FAQ' }}</strong>
                   </div>
                 </div>
                 <div class="card-body d-flex flex-column grow">
                   <div class="mb-3">
                     <label class="form-label fw-bold">
-                      <i class="bi bi-question-circle text-primary me-1"></i>Question
+                      <i class="bi bi-question-circle text-primary me-1" />Question
                     </label>
-                    <input v-model.trim="newQuestion" class="form-control" placeholder="Enter the question..." />
+                    <input
+                      v-model.trim="newQuestion"
+                      class="form-control"
+                      placeholder="Enter the question..."
+                    >
                   </div>
                   <div class="mb-3">
                     <label class="form-label fw-bold">
-                      <i class="bi bi-chat-quote text-success me-1"></i>Answer
+                      <i class="bi bi-chat-quote text-success me-1" />Answer
                     </label>
-                    <textarea v-model.trim="newAnswer" class="form-control" rows="8" placeholder="Provide a detailed answer..."></textarea>
+                    <textarea
+                      v-model.trim="newAnswer"
+                      class="form-control"
+                      rows="8"
+                      placeholder="Provide a detailed answer..."
+                    />
                   </div>
                   <div class="d-flex justify-content-between align-items-center gap-2 mt-auto pt-2">
-                    <small class="text-muted" v-if="editing">Editing ID: {{ editing?.faq_id }}</small>
-                    <button class="btn btn-secondary" v-if="editing" @click="cancelEdit">
-                      <i class="bi bi-x-circle me-1"></i>Cancel
+                    <small
+                      v-if="editing"
+                      class="text-muted"
+                    >Editing ID: {{ editing?.faq_id }}</small>
+                    <button
+                      v-if="editing"
+                      class="btn btn-secondary"
+                      @click="cancelEdit"
+                    >
+                      <i class="bi bi-x-circle me-1" />Cancel
                     </button>
-                    <button class="btn btn-success" :disabled="!newQuestion || !newAnswer || saving" @click="create">
-                      <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                      <i class="bi bi-check-circle me-1"></i>{{ editing ? 'Update' : 'Create' }} FAQ
+                    <button
+                      class="btn btn-success"
+                      :disabled="!newQuestion || !newAnswer || saving"
+                      @click="create"
+                    >
+                      <span
+                        v-if="saving"
+                        class="spinner-border spinner-border-sm me-2"
+                      />
+                      <i class="bi bi-check-circle me-1" />{{ editing ? 'Update' : 'Create' }} FAQ
                     </button>
                   </div>
                 </div>
@@ -54,26 +77,57 @@
               <div class="card shadow h-100 faq-list-card d-flex flex-column">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                   <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-list-check"></i>
+                    <i class="bi bi-list-check" />
                     <strong>FAQ Library</strong>
                     <span class="chip chip-light">Total: {{ faqs.length }}</span>
                     <span class="chip chip-accent">Showing: {{ filteredFAQs.length }}</span>
                   </div>
                   <div class="d-flex align-items-center gap-2">
-                    <select class="form-select form-select-sm w-auto" v-model="sortOption" @change="applySort">
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                      <option value="az">A → Z</option>
-                      <option value="za">Z → A</option>
+                    <select
+                      v-model="sortOption"
+                      class="form-select form-select-sm w-auto"
+                      @change="applySort"
+                    >
+                      <option value="newest">
+                        Newest first
+                      </option>
+                      <option value="oldest">
+                        Oldest first
+                      </option>
+                      <option value="az">
+                        A → Z
+                      </option>
+                      <option value="za">
+                        Z → A
+                      </option>
                     </select>
-                    <select class="form-select form-select-sm w-auto" v-model.number="pageSize">
-                      <option :value="5">5 / page</option>
-                      <option :value="10">10 / page</option>
-                      <option :value="20">20 / page</option>
+                    <select
+                      v-model.number="pageSize"
+                      class="form-select form-select-sm w-auto"
+                    >
+                      <option :value="5">
+                        5 / page
+                      </option>
+                      <option :value="10">
+                        10 / page
+                      </option>
+                      <option :value="20">
+                        20 / page
+                      </option>
                     </select>
-                    <button class="btn btn-sm btn-light" @click="load" :disabled="loading">
-                      <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                      <i v-else class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    <button
+                      class="btn btn-sm btn-light"
+                      :disabled="loading"
+                      @click="load"
+                    >
+                      <span
+                        v-if="loading"
+                        class="spinner-border spinner-border-sm me-2"
+                      />
+                      <i
+                        v-else
+                        class="bi bi-arrow-clockwise me-1"
+                      />Refresh
                     </button>
                   </div>
                 </div>
@@ -81,47 +135,103 @@
                   <div class="search-bar p-2 border-bottom bg-light sticky-top">
                     <div class="input-group">
                       <span class="input-group-text">
-                        <i class="bi bi-search"></i>
+                        <i class="bi bi-search" />
                       </span>
-                      <input v-model="searchQuery" class="form-control" placeholder="Search FAQs..." @input="debouncedSearch">
-                      <button class="btn btn-outline-secondary" type="button" @click="clearSearch" :disabled="!searchQuery">
-                        <i class="bi bi-x-circle"></i>
+                      <input
+                        v-model="searchQuery"
+                        class="form-control"
+                        placeholder="Search FAQs..."
+                        @input="debouncedSearch"
+                      >
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        :disabled="!searchQuery"
+                        @click="clearSearch"
+                      >
+                        <i class="bi bi-x-circle" />
                       </button>
                     </div>
                   </div>
                   <div class="faq-list">
-                    <div v-if="loading" class="p-3">
+                    <div
+                      v-if="loading"
+                      class="p-3"
+                    >
                       <div class="placeholder-glow">
-                        <div class="placeholder col-12 mb-2" style="height:24px"></div>
-                        <div class="placeholder col-10 mb-2" style="height:18px"></div>
-                        <div class="placeholder col-8 mb-2" style="height:18px"></div>
+                        <div
+                          class="placeholder col-12 mb-2"
+                          style="height:24px"
+                        />
+                        <div
+                          class="placeholder col-10 mb-2"
+                          style="height:18px"
+                        />
+                        <div
+                          class="placeholder col-8 mb-2"
+                          style="height:18px"
+                        />
                       </div>
                     </div>
-                    <div v-else-if="filteredFAQs.length === 0" class="text-center py-5">
-                      <i class="bi bi-question-circle text-muted" style="font-size: 3rem;"></i>
-                      <h6 class="text-muted mt-3">No FAQs found</h6>
-                      <p class="text-muted small">Create your first FAQ or adjust your search</p>
+                    <div
+                      v-else-if="filteredFAQs.length === 0"
+                      class="text-center py-5"
+                    >
+                      <i
+                        class="bi bi-question-circle text-muted"
+                        style="font-size: 3rem;"
+                      />
+                      <h6 class="text-muted mt-3">
+                        No FAQs found
+                      </h6>
+                      <p class="text-muted small">
+                        Create your first FAQ or adjust your search
+                      </p>
                     </div>
-                    <div v-else v-for="f in pagedFAQs" :key="f.faq_id" class="faq-item border-bottom p-3">
+                    <div
+                      v-for="f in pagedFAQs"
+                      v-else
+                      :key="f.faq_id"
+                      class="faq-item border-bottom p-3"
+                    >
                       <div class="d-flex justify-content-between align-items-start">
-                        <button class="btn btn-link text-start p-0 grow" @click="toggleExpand(f.faq_id)" :aria-expanded="expandedId===f.faq_id">
+                        <button
+                          class="btn btn-link text-start p-0 grow"
+                          :aria-expanded="expandedId===f.faq_id"
+                          @click="toggleExpand(f.faq_id)"
+                        >
                           <div class="d-flex align-items-center mb-1">
-                            <i :class="['me-2', expandedId===f.faq_id ? 'bi bi-caret-down-square' : 'bi bi-caret-right-square']"></i>
-                            <h6 class="mb-0 fw-bold">{{ f.question }}</h6>
+                            <i :class="['me-2', expandedId===f.faq_id ? 'bi bi-caret-down-square' : 'bi bi-caret-right-square']" />
+                            <h6 class="mb-0 fw-bold">
+                              {{ f.question }}
+                            </h6>
                           </div>
                         </button>
                         <div class="btn-group ms-3">
-                          <button class="btn btn-sm btn-outline-primary" @click="edit(f)" title="Edit">
-                            <i class="bi bi-pencil"></i>
+                          <button
+                            class="btn btn-sm btn-outline-primary"
+                            title="Edit"
+                            @click="edit(f)"
+                          >
+                            <i class="bi bi-pencil" />
                           </button>
-                          <button class="btn btn-sm btn-outline-danger" @click="remove(f.faq_id)" title="Delete">
-                            <i class="bi bi-trash"></i>
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            title="Delete"
+                            @click="remove(f.faq_id)"
+                          >
+                            <i class="bi bi-trash" />
                           </button>
                         </div>
                       </div>
                       <transition name="fade">
-                        <div v-if="expandedId===f.faq_id" class="mt-2">
-                          <div class="text-muted">{{ f.answer }}</div>
+                        <div
+                          v-if="expandedId===f.faq_id"
+                          class="mt-2"
+                        >
+                          <div class="text-muted">
+                            {{ f.answer }}
+                          </div>
                         </div>
                       </transition>
                     </div>
@@ -129,7 +239,7 @@
                 </div>
                 <div class="card-footer bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
                   <div class="text-muted small">
-                    <i class="bi bi-info-circle me-1"></i>
+                    <i class="bi bi-info-circle me-1" />
                     <template v-if="filteredFAQs.length > 0">
                       Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredFAQs.length) }} of {{ filteredFAQs.length }} FAQs
                     </template>
@@ -139,21 +249,48 @@
                   </div>
                   <nav aria-label="FAQ pagination">
                     <ul class="pagination mb-0 pagination-sm">
-                      <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                        <button class="page-link" @click="prevPage" :disabled="currentPage === 1">Prev</button>
+                      <li
+                        class="page-item"
+                        :class="{ disabled: currentPage === 1 }"
+                      >
+                        <button
+                          class="page-link"
+                          :disabled="currentPage === 1"
+                          @click="prevPage"
+                        >
+                          Prev
+                        </button>
                       </li>
-                      <li v-for="n in totalPages" :key="'p'+n" class="page-item" :class="{ active: n === currentPage }">
-                        <button class="page-link" @click="goToPage(n)">{{ n }}</button>
+                      <li
+                        v-for="n in totalPages"
+                        :key="'p'+n"
+                        class="page-item"
+                        :class="{ active: n === currentPage }"
+                      >
+                        <button
+                          class="page-link"
+                          @click="goToPage(n)"
+                        >
+                          {{ n }}
+                        </button>
                       </li>
-                      <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                        <button class="page-link" @click="nextPage" :disabled="currentPage === totalPages">Next</button>
+                      <li
+                        class="page-item"
+                        :class="{ disabled: currentPage === totalPages }"
+                      >
+                        <button
+                          class="page-link"
+                          :disabled="currentPage === totalPages"
+                          @click="nextPage"
+                        >
+                          Next
+                        </button>
                       </li>
                     </ul>
                   </nav>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

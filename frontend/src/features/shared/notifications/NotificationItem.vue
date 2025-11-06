@@ -4,32 +4,45 @@
     :class="{ unread: !read }"
     @click="$emit('click', $props)"
   >
-    <div class="notification-icon" :class="type">
-      <i :class="iconClass"></i>
+    <div
+      class="notification-icon"
+      :class="type"
+    >
+      <i :class="iconClass" />
     </div>
     <div class="notification-content">
       <div class="notification-header">
-        <h6 class="notification-title">{{ title || 'Notification' }}</h6>
+        <h6 class="notification-title">
+          {{ title || 'Notification' }}
+        </h6>
         <div class="notification-actions">
           <small class="notification-time">{{ displayTime }}</small>
           <button 
             v-if="showDelete"
             class="delete-btn"
-            @click.stop="$emit('delete', $props)"
             title="Delete"
+            @click.stop="$emit('delete', $props)"
           >
-            <i class="bi bi-x"></i>
+            <i class="bi bi-x" />
           </button>
         </div>
       </div>
-      <p class="notification-message">{{ message }}</p>
-      <div class="notification-footer" v-if="channel">
+      <p class="notification-message">
+        {{ message }}
+      </p>
+      <div
+        v-if="channel"
+        class="notification-footer"
+      >
         <span class="notification-channel">
-          <i :class="channelIcon"></i>
+          <i :class="channelIcon" />
           {{ channelLabel }}
         </span>
       </div>
-      <span v-if="!read" class="unread-indicator"></span>
+      <span
+        v-if="!read"
+        class="unread-indicator"
+      />
     </div>
   </div>
 </template>

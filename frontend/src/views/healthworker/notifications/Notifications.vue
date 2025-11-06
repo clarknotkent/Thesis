@@ -93,11 +93,14 @@
       </div>
 
       <!-- Notifications List -->
-      <div v-else-if="filteredNotifications.length > 0" class="notifications-list">
+      <div
+        v-else-if="filteredNotifications.length > 0"
+        class="notifications-list"
+      >
         <NotificationItem
           v-for="n in filteredNotifications"
-          :key="n.id"
           :id="n.id"
+          :key="n.id"
           :title="n.title"
           :message="n.message"
           :type="n.type"

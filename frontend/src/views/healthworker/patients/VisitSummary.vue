@@ -9,14 +9,26 @@
         >
           <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Visit Summary</h1>
+        <h1 class="page-title">
+          Visit Summary
+        </h1>
         <div class="menu-wrapper">
-          <button class="menu-button" @click.stop="toggleMenu">
-            <i class="bi bi-three-dots-vertical"></i>
+          <button
+            class="menu-button"
+            @click.stop="toggleMenu"
+          >
+            <i class="bi bi-three-dots-vertical" />
           </button>
-          <div v-if="showMenu" class="menu-popover" @click.stop>
-            <button class="menu-item" @click="goToEdit">
-              <i class="bi bi-pencil-square"></i>
+          <div
+            v-if="showMenu"
+            class="menu-popover"
+            @click.stop
+          >
+            <button
+              class="menu-item"
+              @click="goToEdit"
+            >
+              <i class="bi bi-pencil-square" />
               Edit Visit
             </button>
           </div>

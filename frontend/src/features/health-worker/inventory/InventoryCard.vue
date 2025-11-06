@@ -7,9 +7,18 @@
       <div class="vaccine-info">
         <i class="bi bi-shield-fill-check vaccine-icon" />
         <div class="vaccine-details">
-          <h3 class="vaccine-name">{{ vaccineName }}</h3>
-          <p class="vaccine-meta">{{ manufacturer }} • {{ brandName }}</p>
-          <p v-if="diseasePrevented" class="vaccine-disease">{{ diseasePrevented }}</p>
+          <h3 class="vaccine-name">
+            {{ vaccineName }}
+          </h3>
+          <p class="vaccine-meta">
+            {{ manufacturer }} • {{ brandName }}
+          </p>
+          <p
+            v-if="diseasePrevented"
+            class="vaccine-disease"
+          >
+            {{ diseasePrevented }}
+          </p>
         </div>
       </div>
       <span
@@ -33,15 +42,28 @@
         </div>
       </div>
 
-      <div class="type-row" v-if="showType">
+      <div
+        v-if="showType"
+        class="type-row"
+      >
         <span class="type-label">Type</span>
         <div class="type-values">
-          <span v-if="programLabel" class="type-badge" :class="isNIP ? 'type-nip' : 'type-other'">{{ programLabel }}</span>
-          <span v-if="vaccineType" class="type-chip">{{ vaccineType }}</span>
+          <span
+            v-if="programLabel"
+            class="type-badge"
+            :class="isNIP ? 'type-nip' : 'type-other'"
+          >{{ programLabel }}</span>
+          <span
+            v-if="vaccineType"
+            class="type-chip"
+          >{{ vaccineType }}</span>
         </div>
       </div>
 
-      <div v-if="lotNumber" class="lot-info">
+      <div
+        v-if="lotNumber"
+        class="lot-info"
+      >
         <span class="lot-label">Lot:</span>
         <span class="lot-value">{{ lotNumber }}</span>
       </div>
