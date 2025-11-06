@@ -1,17 +1,33 @@
 <template>
   <div class="children-section">
-    <h5 class="section-title">My Children</h5>
-    <div v-if="children.length === 0" class="empty-state">
-      <i class="bi bi-info-circle"></i>
+    <h5 class="section-title">
+      My Children
+    </h5>
+    <div
+      v-if="children.length === 0"
+      class="empty-state"
+    >
+      <i class="bi bi-info-circle" />
       <p>No children found. Please contact your health center to link your children to your account.</p>
     </div>
-    <div v-else class="children-list">
-      <div v-for="child in children" :key="child.patient_id || child.id" class="child-card">
+    <div
+      v-else
+      class="children-list"
+    >
+      <div
+        v-for="child in children"
+        :key="child.patient_id || child.id"
+        class="child-card"
+      >
         <div class="child-header">
-          <i class="bi bi-person-circle child-avatar"></i>
+          <i class="bi bi-person-circle child-avatar" />
           <div class="child-info">
-            <h6 class="child-name">{{ getChildName(child) }}</h6>
-            <p class="child-dob">Born: {{ formatDate(getChildDOB(child)) }}</p>
+            <h6 class="child-name">
+              {{ getChildName(child) }}
+            </h6>
+            <p class="child-dob">
+              Born: {{ formatDate(getChildDOB(child)) }}
+            </p>
           </div>
         </div>
         <div class="child-stats">
@@ -28,12 +44,18 @@
             <span class="stat-value text-warning">{{ getPendingCount(child) }}</span>
           </div>
         </div>
-        <div v-if="child.nextVaccination" class="next-vaccine">
-          <i class="bi bi-calendar-event text-primary"></i>
+        <div
+          v-if="child.nextVaccination"
+          class="next-vaccine"
+        >
+          <i class="bi bi-calendar-event text-primary" />
           <span class="next-vaccine-text">Next: <strong>{{ child.nextVaccination.name }}</strong> on {{ formatDate(child.nextVaccination.date) }}</span>
         </div>
-        <div v-else class="next-vaccine all-caught-up">
-          <i class="bi bi-check-circle text-success"></i>
+        <div
+          v-else
+          class="next-vaccine all-caught-up"
+        >
+          <i class="bi bi-check-circle text-success" />
           <span class="next-vaccine-text">All caught up!</span>
         </div>
       </div>

@@ -3,8 +3,11 @@
     <!-- Fixed Header -->
     <div class="inventory-details-header">
       <div class="header-content">
-        <button class="btn-back" @click="handleBack">
-          <i class="bi bi-arrow-left"></i>
+        <button
+          class="btn-back"
+          @click="handleBack"
+        >
+          <i class="bi bi-arrow-left" />
         </button>
         <div class="header-title">
           <h1>Inventory Details</h1>
@@ -15,37 +18,61 @@
     <!-- Scrollable Content -->
     <div class="details-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-section">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-section"
+      >
+        <div class="spinner" />
         <p>Loading inventory details...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="error-section">
-        <i class="bi bi-exclamation-circle"></i>
+      <div
+        v-else-if="error"
+        class="error-section"
+      >
+        <i class="bi bi-exclamation-circle" />
         <p>{{ error }}</p>
-        <button class="btn-retry" @click="fetchInventoryDetails">
-          <i class="bi bi-arrow-clockwise"></i>
+        <button
+          class="btn-retry"
+          @click="fetchInventoryDetails"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>
 
       <!-- Inventory Details -->
-      <div v-else-if="inventory" class="details-container">
+      <div
+        v-else-if="inventory"
+        class="details-container"
+      >
         <!-- Status Banner -->
-        <div class="status-banner" :class="statusBannerClass">
-          <i class="bi" :class="statusIcon"></i>
+        <div
+          class="status-banner"
+          :class="statusBannerClass"
+        >
+          <i
+            class="bi"
+            :class="statusIcon"
+          />
           <div class="status-info">
-            <h3 class="status-title">{{ status }}</h3>
-            <p class="status-subtitle">{{ statusMessage }}</p>
+            <h3 class="status-title">
+              {{ status }}
+            </h3>
+            <p class="status-subtitle">
+              {{ statusMessage }}
+            </p>
           </div>
         </div>
 
         <!-- Vaccine Information Card -->
         <div class="details-card">
           <div class="card-header">
-            <i class="bi bi-shield-fill-check card-icon"></i>
-            <h2 class="card-title">Vaccine Information</h2>
+            <i class="bi bi-shield-fill-check card-icon" />
+            <h2 class="card-title">
+              Vaccine Information
+            </h2>
           </div>
           <div class="card-body">
             <div class="detail-row">
@@ -67,7 +94,10 @@
             <div class="detail-row">
               <span class="detail-label">Type</span>
               <span class="detail-value">
-                <span class="type-badge" :class="isNIP ? 'type-nip' : 'type-other'">
+                <span
+                  class="type-badge"
+                  :class="isNIP ? 'type-nip' : 'type-other'"
+                >
                   {{ isNIP ? 'NIP Vaccine' : 'Other Vaccine' }}
                 </span>
               </span>
@@ -78,19 +108,27 @@
         <!-- Stock Information Card -->
         <div class="details-card">
           <div class="card-header">
-            <i class="bi bi-clipboard-data card-icon"></i>
-            <h2 class="card-title">Stock Information</h2>
+            <i class="bi bi-clipboard-data card-icon" />
+            <h2 class="card-title">
+              Stock Information
+            </h2>
           </div>
           <div class="card-body">
             <div class="detail-row">
               <span class="detail-label">Status</span>
               <span class="detail-value">
-                <span class="status-badge" :class="statusBadgeClass">{{ status }}</span>
+                <span
+                  class="status-badge"
+                  :class="statusBadgeClass"
+                >{{ status }}</span>
               </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Current Quantity</span>
-              <span class="detail-value quantity-value" :class="quantityClass">
+              <span
+                class="detail-value quantity-value"
+                :class="quantityClass"
+              >
                 {{ currentQuantity }} {{ currentQuantity === 1 ? 'dose' : 'doses' }}
               </span>
             </div>
@@ -100,11 +138,20 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">Expiration Date</span>
-              <span class="detail-value" :class="expirationClass">{{ expirationDate }}</span>
+              <span
+                class="detail-value"
+                :class="expirationClass"
+              >{{ expirationDate }}</span>
             </div>
-            <div v-if="daysUntilExpiry !== null" class="detail-row">
+            <div
+              v-if="daysUntilExpiry !== null"
+              class="detail-row"
+            >
               <span class="detail-label">Days Until Expiry</span>
-              <span class="detail-value" :class="daysUntilExpiryClass">
+              <span
+                class="detail-value"
+                :class="daysUntilExpiryClass"
+              >
                 {{ daysUntilExpiry }} {{ Math.abs(daysUntilExpiry) === 1 ? 'day' : 'days' }}
                 {{ daysUntilExpiry < 0 ? 'ago' : '' }}
               </span>
@@ -115,15 +162,20 @@
         <!-- Storage Information Card -->
         <div class="details-card">
           <div class="card-header">
-            <i class="bi bi-building card-icon"></i>
-            <h2 class="card-title">Storage & Location</h2>
+            <i class="bi bi-building card-icon" />
+            <h2 class="card-title">
+              Storage & Location
+            </h2>
           </div>
           <div class="card-body">
             <div class="detail-row">
               <span class="detail-label">Storage Location</span>
               <span class="detail-value">{{ storageLocation }}</span>
             </div>
-            <div v-if="receivedDate" class="detail-row">
+            <div
+              v-if="receivedDate"
+              class="detail-row"
+            >
               <span class="detail-label">Date Received</span>
               <span class="detail-value">{{ receivedDate }}</span>
             </div>
@@ -131,13 +183,20 @@
         </div>
 
         <!-- Additional Information Card -->
-        <div v-if="remarks" class="details-card">
+        <div
+          v-if="remarks"
+          class="details-card"
+        >
           <div class="card-header">
-            <i class="bi bi-chat-left-text card-icon"></i>
-            <h2 class="card-title">Additional Information</h2>
+            <i class="bi bi-chat-left-text card-icon" />
+            <h2 class="card-title">
+              Additional Information
+            </h2>
           </div>
           <div class="card-body">
-            <p class="remarks-text">{{ remarks }}</p>
+            <p class="remarks-text">
+              {{ remarks }}
+            </p>
           </div>
         </div>
       </div>

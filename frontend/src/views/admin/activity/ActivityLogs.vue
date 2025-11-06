@@ -3,11 +3,18 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Activity Logs</h1>
-          <p class="text-muted mb-0">Monitor system activity and user actions</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Activity Logs
+          </h1>
+          <p class="text-muted mb-0">
+            Monitor system activity and user actions
+          </p>
         </div>
-        <button class="btn btn-outline-danger" @click="showClearModal = true">
-          <i class="bi bi-trash me-2"></i>Clear Old Logs
+        <button
+          class="btn btn-outline-danger"
+          @click="showClearModal = true"
+        >
+          <i class="bi bi-trash me-2" />Clear Old Logs
         </button>
       </div>
 
@@ -21,10 +28,15 @@
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Total Logs
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalLogs }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.totalLogs }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-journal-text text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-journal-text text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -39,10 +51,15 @@
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Today's Activity
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.todayLogs }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.todayLogs }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-calendar-day text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-calendar-day text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -57,10 +74,15 @@
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Active Users
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.activeUsers }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.activeUsers }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-people text-info" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-people text-info"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -75,10 +97,15 @@
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Failed Actions
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.failedActions }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.failedActions }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-exclamation-triangle text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -92,19 +119,39 @@
           <div class="row g-3">
             <div class="col-md-3">
               <label class="form-label">Date Range:</label>
-              <select class="form-select" v-model="filters.dateRange" @change="applyFilters">
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="custom">Custom Range</option>
-                <option value="all">All Time</option>
+              <select
+                v-model="filters.dateRange"
+                class="form-select"
+                @change="applyFilters"
+              >
+                <option value="today">
+                  Today
+                </option>
+                <option value="week">
+                  This Week
+                </option>
+                <option value="month">
+                  This Month
+                </option>
+                <option value="custom">
+                  Custom Range
+                </option>
+                <option value="all">
+                  All Time
+                </option>
               </select>
             </div>
-            <div class="col-md-3" v-if="filters.dateRange === 'custom'">
+            <div
+              v-if="filters.dateRange === 'custom'"
+              class="col-md-3"
+            >
               <label class="form-label">From Date:</label>
               <DateInput v-model="filters.fromDate" />
             </div>
-            <div class="col-md-3" v-if="filters.dateRange === 'custom'">
+            <div
+              v-if="filters.dateRange === 'custom'"
+              class="col-md-3"
+            >
               <label class="form-label">To Date:</label>
               <DateInput v-model="filters.toDate" />
             </div>
@@ -115,81 +162,167 @@
       <!-- Activity Logs Table -->
       <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
-          <h6 class="m-0 fw-bold text-primary">Activity History</h6>
+          <h6 class="m-0 fw-bold text-primary">
+            Activity History
+          </h6>
           <div class="d-flex gap-2 align-items-center">
-            <div class="input-group" style="width: 300px;">
+            <div
+              class="input-group"
+              style="width: 300px;"
+            >
               <input 
+                v-model="searchQuery" 
                 type="text" 
-                class="form-control" 
+                class="form-control"
                 placeholder="Search by user, action, or IP address..."
-                v-model="searchQuery"
                 @input="debouncedSearch"
               >
-              <button class="btn btn-outline-primary" type="button">
-                <i class="bi bi-search"></i>
+              <button
+                class="btn btn-outline-primary"
+                type="button"
+              >
+                <i class="bi bi-search" />
               </button>
             </div>
-            <select class="form-select" style="width: 150px;" v-model="filters.actionType" @change="applyFilters">
-              <option value="">All Actions</option>
-              <option value="login">Login</option>
-              <option value="logout">Logout</option>
-              <option value="create">Create</option>
-              <option value="update">Update</option>
-              <option value="delete">Delete</option>
-              <option value="view">View</option>
+            <select
+              v-model="filters.actionType"
+              class="form-select"
+              style="width: 150px;"
+              @change="applyFilters"
+            >
+              <option value="">
+                All Actions
+              </option>
+              <option value="login">
+                Login
+              </option>
+              <option value="logout">
+                Logout
+              </option>
+              <option value="create">
+                Create
+              </option>
+              <option value="update">
+                Update
+              </option>
+              <option value="delete">
+                Delete
+              </option>
+              <option value="view">
+                View
+              </option>
             </select>
-            <select class="form-select" style="width: 150px;" v-model="filters.userRole" @change="applyFilters">
-              <option value="">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="health_staff">Health Staff</option>
-              <option value="parent">Parent</option>
-              <option value="System">System</option>
+            <select
+              v-model="filters.userRole"
+              class="form-select"
+              style="width: 150px;"
+              @change="applyFilters"
+            >
+              <option value="">
+                All Roles
+              </option>
+              <option value="admin">
+                Admin
+              </option>
+              <option value="health_staff">
+                Health Staff
+              </option>
+              <option value="parent">
+                Parent
+              </option>
+              <option value="System">
+                System
+              </option>
             </select>
-            <button class="btn btn-outline-primary" @click="refreshLogs" title="Refresh">
-              <i class="bi bi-arrow-clockwise"></i>
+            <button
+              class="btn btn-outline-primary"
+              title="Refresh"
+              @click="refreshLogs"
+            >
+              <i class="bi bi-arrow-clockwise" />
             </button>
-            <button class="btn btn-outline-secondary" @click="exportLogs">
-              <i class="bi bi-download me-1"></i>Export
+            <button
+              class="btn btn-outline-secondary"
+              @click="exportLogs"
+            >
+              <i class="bi bi-download me-1" />Export
             </button>
           </div>
         </div>
         <div class="card-body">
-          <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
+          <div
+            v-if="loading"
+            class="text-center py-5"
+          >
+            <div
+              class="spinner-border text-primary"
+              role="status"
+            >
               <span class="visually-hidden">Loading...</span>
             </div>
           </div>
-          <div v-else class="table-responsive">
+          <div
+            v-else
+            class="table-responsive"
+          >
             <table class="table table-hover table-bordered">
               <thead class="table-light">
                 <tr>
-                  <th class="text-center">User</th>
-                  <th class="text-center">Action</th>
-                  <th class="text-center">Date</th>
-                  <th class="text-center">Time</th>
-                  <th class="text-center">Details</th>
+                  <th class="text-center">
+                    User
+                  </th>
+                  <th class="text-center">
+                    Action
+                  </th>
+                  <th class="text-center">
+                    Date
+                  </th>
+                  <th class="text-center">
+                    Time
+                  </th>
+                  <th class="text-center">
+                    Details
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="log in logs" :key="log.id">
+                <tr
+                  v-for="log in logs"
+                  :key="log.id"
+                >
                   <td class="align-middle">
                     <div class="d-flex align-items-center">
                       <div class="me-2">
-                        <i :class="getRoleIcon(log.userRole)" :style="{ color: getRoleColor(log.userRole) }"></i>
+                        <i
+                          :class="getRoleIcon(log.userRole)"
+                          :style="{ color: getRoleColor(log.userRole) }"
+                        />
                       </div>
                       <div>
-                        <div class="fw-semibold">{{ log.userFullName }}</div>
-                        <small class="badge role-badge" :class="getRoleBadgeClass(log.userRole)">{{ formatUserRole(log.userRole) }}</small>
+                        <div class="fw-semibold">
+                          {{ log.userFullName }}
+                        </div>
+                        <small
+                          class="badge role-badge"
+                          :class="getRoleBadgeClass(log.userRole)"
+                        >{{ formatUserRole(log.userRole) }}</small>
                       </div>
                     </div>
                   </td>
                   <td class="text-center align-middle">
-                    <span class="badge" :class="getActionBadgeClass(log.actionType)">
+                    <span
+                      class="badge"
+                      :class="getActionBadgeClass(log.actionType)"
+                    >
                       {{ log.displayAction }}
                     </span>
                   </td>
-                  <td class="text-center align-middle">{{ formatDateOnly(log.timestamp) }}</td>
-                  <td class="text-center align-middle">{{ formatTimeOnly(log.timestamp) }}</td>
+                  <td class="text-center align-middle">
+                    {{ formatDateOnly(log.timestamp) }}
+                  </td>
+                  <td class="text-center align-middle">
+                    {{ formatTimeOnly(log.timestamp) }}
+                  </td>
                   <td class="text-center align-middle">
                     <router-link 
                       class="btn btn-sm btn-outline-primary"
@@ -197,14 +330,22 @@
                       title="View Details"
                       @click="prefetchDetails(log)"
                     >
-                      <i class="bi bi-eye me-1"></i>View
+                      <i class="bi bi-eye me-1" />View
                     </router-link>
                   </td>
                 </tr>
                 <tr v-if="logs.length === 0">
-                  <td colspan="5" class="text-center text-muted py-4">
-                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                    <p class="mb-0 mt-2">No activity logs found</p>
+                  <td
+                    colspan="5"
+                    class="text-center text-muted py-4"
+                  >
+                    <i
+                      class="bi bi-inbox"
+                      style="font-size: 2rem;"
+                    />
+                    <p class="mb-0 mt-2">
+                      No activity logs found
+                    </p>
                   </td>
                 </tr>
               </tbody>
@@ -213,7 +354,10 @@
         </div>
         
         <!-- Pagination -->
-        <div class="card-footer" v-if="totalPages > 1">
+        <div
+          v-if="totalPages > 1"
+          class="card-footer"
+        >
           <AppPagination
             :current-page="currentPage"
             :total-pages="totalPages"
@@ -225,37 +369,76 @@
       </div>
 
       <!-- Clear Logs Confirmation Modal -->
-      <div class="modal fade" :class="{ show: showClearModal }" :style="{ display: showClearModal ? 'block' : 'none' }" tabindex="-1">
+      <div
+        class="modal fade"
+        :class="{ show: showClearModal }"
+        :style="{ display: showClearModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-exclamation-triangle me-2"></i>
+                <i class="bi bi-exclamation-triangle me-2" />
                 Clear Activity Logs
               </h5>
-              <button type="button" class="btn-close" @click="closeClearModal"></button>
+              <button
+                type="button"
+                class="btn-close"
+                @click="closeClearModal"
+              />
             </div>
             <div class="modal-body">
               <p>Are you sure you want to clear old activity logs?</p>
               <div class="mb-3">
                 <label class="form-label">Clear logs older than:</label>
-                <select class="form-select" v-model="clearLogsAge">
-                  <option value="30">30 days</option>
-                  <option value="60">60 days</option>
-                  <option value="90">90 days</option>
-                  <option value="180">6 months</option>
-                  <option value="365">1 year</option>
+                <select
+                  v-model="clearLogsAge"
+                  class="form-select"
+                >
+                  <option value="30">
+                    30 days
+                  </option>
+                  <option value="60">
+                    60 days
+                  </option>
+                  <option value="90">
+                    90 days
+                  </option>
+                  <option value="180">
+                    6 months
+                  </option>
+                  <option value="365">
+                    1 year
+                  </option>
                 </select>
               </div>
-              <p class="text-danger small">This action cannot be undone.</p>
+              <p class="text-danger small">
+                This action cannot be undone.
+              </p>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeClearModal">
-                <i class="bi bi-x-circle me-2"></i>Cancel
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="closeClearModal"
+              >
+                <i class="bi bi-x-circle me-2" />Cancel
               </button>
-              <button type="button" class="btn btn-danger" @click="clearOldLogs" :disabled="clearing">
-                <span v-if="clearing" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-trash me-2"></i>
+              <button
+                type="button"
+                class="btn btn-danger"
+                :disabled="clearing"
+                @click="clearOldLogs"
+              >
+                <span
+                  v-if="clearing"
+                  class="spinner-border spinner-border-sm me-2"
+                />
+                <i
+                  v-else
+                  class="bi bi-trash me-2"
+                />
                 {{ clearing ? 'Clearing...' : 'Clear Logs' }}
               </button>
             </div>
@@ -263,8 +446,11 @@
         </div>
       </div>
 
-  <!-- Modal Backdrop -->
-  <div v-if="showClearModal" class="modal-backdrop fade show"></div>
+      <!-- Modal Backdrop -->
+      <div
+        v-if="showClearModal"
+        class="modal-backdrop fade show"
+      />
     </div>
   </AdminLayout>
 </template>

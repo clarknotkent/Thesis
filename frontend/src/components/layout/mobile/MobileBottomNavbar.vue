@@ -8,9 +8,15 @@
         class="bottom-nav-item"
         :class="{ active: isActiveRoute(item.path) }"
       >
-        <div class="nav-icon" :class="{ 'icon-with-menu': item.isMenu }">
-          <i :class="item.icon"></i>
-          <i v-if="item.isMenu" class="menu-overlay bi bi-three-dots"></i>
+        <div
+          class="nav-icon"
+          :class="{ 'icon-with-menu': item.isMenu }"
+        >
+          <i :class="item.icon" />
+          <i
+            v-if="item.isMenu"
+            class="menu-overlay bi bi-three-dots"
+          />
         </div>
         <span class="nav-label">{{ item.label }}</span>
       </router-link>

@@ -6,22 +6,29 @@
     <div class="card-content">
       <!-- Avatar Icon -->
       <div class="dependent-avatar">
-        <i class="bi bi-person-circle"></i>
+        <i class="bi bi-person-circle" />
       </div>
 
       <!-- Dependent Info -->
       <div class="dependent-info">
-        <h6 class="dependent-name">{{ dependent.name }}</h6>
-        <p class="dependent-age">{{ ageText }}</p>
-        <div class="dependent-status" :class="statusClass">
-          <i :class="statusIcon"></i>
+        <h6 class="dependent-name">
+          {{ dependent.name }}
+        </h6>
+        <p class="dependent-age">
+          {{ ageText }}
+        </p>
+        <div
+          class="dependent-status"
+          :class="statusClass"
+        >
+          <i :class="statusIcon" />
           <span>{{ dependent.status }}</span>
         </div>
       </div>
 
       <!-- Chevron Icon -->
       <div class="chevron-icon">
-        <i class="bi bi-chevron-right"></i>
+        <i class="bi bi-chevron-right" />
       </div>
     </div>
   </router-link>

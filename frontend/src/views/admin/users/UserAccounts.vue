@@ -3,8 +3,12 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">User Accounts</h1>
-          <p class="text-muted mb-0">Manage system users and permissions</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            User Accounts
+          </h1>
+          <p class="text-muted mb-0">
+            Manage system users and permissions
+          </p>
         </div>
       </div>
 
@@ -18,10 +22,15 @@
                   <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                     Total Users
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.total }}</div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{ userStats.total }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-people text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -36,10 +45,15 @@
                   <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                     Health Workers
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.healthWorkers }}</div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{ userStats.healthWorkers }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-person-badge text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-person-badge text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -54,10 +68,15 @@
                   <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                     Parents
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.parents }}</div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{ userStats.parents }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-person-vcard text-info" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-person-vcard text-info"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -72,10 +91,15 @@
                   <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                     Admins
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">{{ userStats.admins }}</div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{ userStats.admins }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-person-lock text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-person-lock text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -86,18 +110,26 @@
       <!-- User Management -->
       <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
-          <h6 class="m-0 fw-bold text-primary">User List</h6>
+          <h6 class="m-0 fw-bold text-primary">
+            User List
+          </h6>
           <div class="d-flex gap-2 align-items-center">
-            <div class="input-group" style="width: 250px;">
+            <div
+              class="input-group"
+              style="width: 250px;"
+            >
               <input 
+                v-model="searchQuery" 
                 type="text" 
-                class="form-control" 
+                class="form-control"
                 placeholder="Search users..."
-                v-model="searchQuery"
                 @input="handleSearch"
               >
-              <button class="btn btn-outline-primary" type="button">
-                <i class="bi bi-search"></i>
+              <button
+                class="btn btn-outline-primary"
+                type="button"
+              >
+                <i class="bi bi-search" />
               </button>
             </div>
             <div class="btn-group btn-group-sm ms-2">
@@ -105,63 +137,118 @@
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'all' }"
                 @click="setFilter('all')"
-              >All</button>
+              >
+                All
+              </button>
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'admin' }"
                 @click="setFilter('admin')"
-              >Admins</button>
+              >
+                Admins
+              </button>
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'health_worker' }"
                 @click="setFilter('health_worker')"
-              >Health Workers</button>
+              >
+                Health Workers
+              </button>
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'parent' }"
                 @click="setFilter('parent')"
-              >Parents</button>
+              >
+                Parents
+              </button>
             </div>
             <div class="form-check form-switch ms-2">
-              <input class="form-check-input" type="checkbox" id="showDeletedSwitch" v-model="showDeleted" @change="fetchUsers">
-              <label class="form-check-label small" for="showDeletedSwitch">Show Deleted</label>
+              <input
+                id="showDeletedSwitch"
+                v-model="showDeleted"
+                class="form-check-input"
+                type="checkbox"
+                @change="fetchUsers"
+              >
+              <label
+                class="form-check-label small"
+                for="showDeletedSwitch"
+              >Show Deleted</label>
             </div>
-            <router-link to="/admin/users/add" class="btn btn-primary ms-2">
-              <i class="bi bi-plus-circle me-2"></i>Add New User
+            <router-link
+              to="/admin/users/add"
+              class="btn btn-primary ms-2"
+            >
+              <i class="bi bi-plus-circle me-2" />Add New User
             </router-link>
           </div>
         </div>
         <div class="card-body">
           <AppSpinner v-if="loading" />
-          <div v-else class="table-responsive">
+          <div
+            v-else
+            class="table-responsive"
+          >
             <table class="table table-hover table-bordered">
               <thead class="table-light">
                 <tr>
-                  <th class="text-center">ID</th>
-                  <th class="text-center">Name</th>
-                  <th class="text-center">Email</th>
-                  <th class="text-center">Role</th>
-                  <th class="text-center">Status</th>
-                  <th class="text-center">Last Login</th>
-                  <th class="text-center">Actions</th>
+                  <th class="text-center">
+                    ID
+                  </th>
+                  <th class="text-center">
+                    Name
+                  </th>
+                  <th class="text-center">
+                    Email
+                  </th>
+                  <th class="text-center">
+                    Role
+                  </th>
+                  <th class="text-center">
+                    Status
+                  </th>
+                  <th class="text-center">
+                    Last Login
+                  </th>
+                  <th class="text-center">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in users" :key="user.id" :class="{ 'table-secondary': user.status === 'inactive' }">
-                  <td class="text-center align-middle fw-semibold text-primary">{{ user.id }}</td>
-                  <td class="text-center align-middle fw-semibold">{{ user.name }}</td>
-                  <td class="text-center align-middle">{{ user.email }}</td>
+                <tr
+                  v-for="user in users"
+                  :key="user.id"
+                  :class="{ 'table-secondary': user.status === 'inactive' }"
+                >
+                  <td class="text-center align-middle fw-semibold text-primary">
+                    {{ user.id }}
+                  </td>
+                  <td class="text-center align-middle fw-semibold">
+                    {{ user.name }}
+                  </td>
                   <td class="text-center align-middle">
-                    <span class="badge role-badge" :class="getRoleBadgeClass(user.role)">
+                    {{ user.email }}
+                  </td>
+                  <td class="text-center align-middle">
+                    <span
+                      class="badge role-badge"
+                      :class="getRoleBadgeClass(user.role)"
+                    >
                       {{ getRoleDisplayName(user.role) }}
                     </span>
                   </td>
                   <td class="text-center align-middle">
-                    <span class="badge" :class="statusBadgeClass(user.status)">
+                    <span
+                      class="badge"
+                      :class="statusBadgeClass(user.status)"
+                    >
                       {{ user.status }}
                     </span>
                   </td>
-                  <td class="text-center align-middle">{{ user.lastLoginDisplay }}</td>
+                  <td class="text-center align-middle">
+                    {{ user.lastLoginDisplay }}
+                  </td>
                   <td class="text-center align-middle">
                     <div class="d-flex gap-2 justify-content-center">
                       <router-link 
@@ -169,41 +256,49 @@
                         class="btn btn-sm btn-outline-primary"
                         title="View Details"
                       >
-                        <i class="bi bi-eye me-1"></i>View
+                        <i class="bi bi-eye me-1" />View
                       </router-link>
                       <button 
                         v-if="user.status !== 'archived'"
                         class="btn btn-sm btn-outline-danger" 
-                        @click="confirmDeleteUser(user)"
                         :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : ''"
+                        @click="confirmDeleteUser(user)"
                       >
-                        <i class="bi bi-trash me-1"></i>Delete
+                        <i class="bi bi-trash me-1" />Delete
                       </button>
                       <button
                         v-else-if="user.status === 'archived'"
                         class="btn btn-sm btn-outline-success"
-                        @click="openRestoreModal(user)"
                         title="Restore User"
+                        @click="openRestoreModal(user)"
                       >
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+                        <i class="bi bi-arrow-counterclockwise me-1" />Restore
                       </button>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <div v-if="users.length === 0" class="text-center py-4">
-              <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
-              <p class="text-muted mt-2">{{ showDeleted ? 'No deleted users found' : 'No users found' }}</p>
+            <div
+              v-if="users.length === 0"
+              class="text-center py-4"
+            >
+              <i
+                class="bi bi-person-x text-muted"
+                style="font-size: 3rem;"
+              />
+              <p class="text-muted mt-2">
+                {{ showDeleted ? 'No deleted users found' : 'No users found' }}
+              </p>
             </div>
           </div>
         </div>
         <div class="card-footer">
           <AppPagination
-            :currentPage="currentPage"
-            :totalPages="totalPages"
-            :totalItems="totalItems"
-            :itemsPerPage="itemsPerPage"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="totalItems"
+            :items-per-page="itemsPerPage"
             @page-changed="goToPage"
           />
         </div>
@@ -212,44 +307,85 @@
       <!-- Recent Activity table removed as requested -->
 
       <!-- User Modal -->
-      <div class="modal fade" :class="{ show: showUserModal }" :style="{ display: showUserModal ? 'block' : 'none' }" tabindex="-1">
-        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 75vw; width: 75vw;">
+      <div
+        class="modal fade"
+        :class="{ show: showUserModal }"
+        :style="{ display: showUserModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
+        <div
+          class="modal-dialog modal-dialog-scrollable"
+          style="max-width: 75vw; width: 75vw;"
+        >
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-person-circle me-2"></i>
+                <i class="bi bi-person-circle me-2" />
                 {{ isEditing ? 'Edit User' : 'Add New User' }}
               </h5>
-              <button type="button" class="btn-close" @click="closeUserModal"></button>
+              <button
+                type="button"
+                class="btn-close"
+                @click="closeUserModal"
+              />
             </div>
             <div class="modal-body px-4">
-              <form id="user-form" @submit.prevent="saveUser">
+              <form
+                id="user-form"
+                @submit.prevent="saveUser"
+              >
                 <!-- Personal Information -->
                 <div class="row mb-4">
                   <div class="col-12">
                     <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-person-fill me-2"></i>Personal Information
+                      <i class="bi bi-person-fill me-2" />Personal Information
                     </h6>
                     <div class="row g-4">
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">First Name: <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="userForm.firstName" required>
+                        <input
+                          v-model="userForm.firstName"
+                          type="text"
+                          class="form-control"
+                          required
+                        >
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Middle Name:</label>
-                        <input type="text" class="form-control" v-model="userForm.middleName">
+                        <input
+                          v-model="userForm.middleName"
+                          type="text"
+                          class="form-control"
+                        >
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Last Name: <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="userForm.lastName" required>
+                        <input
+                          v-model="userForm.lastName"
+                          type="text"
+                          class="form-control"
+                          required
+                        >
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Sex: <span class="text-danger">*</span></label>
-                        <select class="form-select" v-model="userForm.sex" required>
-                          <option value="">Select Sex</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
+                        <select
+                          v-model="userForm.sex"
+                          class="form-select"
+                          required
+                        >
+                          <option value="">
+                            Select Sex
+                          </option>
+                          <option value="Male">
+                            Male
+                          </option>
+                          <option value="Female">
+                            Female
+                          </option>
+                          <option value="Other">
+                            Other
+                          </option>
                         </select>
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
@@ -259,9 +395,9 @@
                       <div class="col-xl-9 col-lg-8 col-md-6">
                         <label class="form-label">Address:</label>
                         <input
+                          v-model="userForm.address"
                           type="text"
                           class="form-control"
-                          v-model="userForm.address"
                           placeholder="House/Street, Barangay, City/Municipality, Province"
                         >
                       </div>
@@ -273,32 +409,42 @@
                 <div class="row mb-4">
                   <div class="col-12">
                     <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-envelope me-2"></i>Account Information
+                      <i class="bi bi-envelope me-2" />Account Information
                     </h6>
                     <div class="row g-4">
                       <div class="col-xl-6 col-lg-6 col-md-6">
                         <label class="form-label">Email Address: <span class="text-danger">*</span></label>
                         <input
+                          v-model="userForm.email"
                           type="email"
                           class="form-control"
-                          v-model="userForm.email"
                           required
                         >
                       </div>
-                      <div class="col-xl-3 col-lg-3 col-md-6" v-if="!isEditing">
+                      <div
+                        v-if="!isEditing"
+                        class="col-xl-3 col-lg-3 col-md-6"
+                      >
                         <label class="form-label">Password: <span class="text-danger">*</span></label>
                         <input
+                          v-model="userForm.password"
                           type="password"
                           class="form-control"
-                          v-model="userForm.password"
                           :required="!isEditing"
                         >
                       </div>
                       <div class="col-xl-3 col-lg-3 col-md-6">
                         <label class="form-label">Status:</label>
-                        <select class="form-select" v-model="userForm.status">
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
+                        <select
+                          v-model="userForm.status"
+                          class="form-select"
+                        >
+                          <option value="active">
+                            Active
+                          </option>
+                          <option value="inactive">
+                            Inactive
+                          </option>
                         </select>
                       </div>
                     </div>
@@ -309,57 +455,96 @@
                 <div class="row mb-4">
                   <div class="col-12">
                     <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-briefcase me-2"></i>Role & Professional Information
+                      <i class="bi bi-briefcase me-2" />Role & Professional Information
                     </h6>
                     <div class="row g-4">
                       <div class="col-xl-4 col-lg-4 col-md-6">
                         <label class="form-label">Role: <span class="text-danger">*</span></label>
-                        <select class="form-select" v-model="userForm.role" required>
-                          <option value="">Select Role</option>
-                          <option value="admin">Admin</option>
-                          <option value="health_worker">Health Worker</option>
-                          <option value="parent">Parent</option>
+                        <select
+                          v-model="userForm.role"
+                          class="form-select"
+                          required
+                        >
+                          <option value="">
+                            Select Role
+                          </option>
+                          <option value="admin">
+                            Admin
+                          </option>
+                          <option value="health_worker">
+                            Health Worker
+                          </option>
+                          <option value="parent">
+                            Parent
+                          </option>
                         </select>
                       </div>
-                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker'">
+                      <div
+                        v-if="userForm.role === 'health_worker'"
+                        class="col-xl-4 col-lg-4 col-md-6"
+                      >
                         <label class="form-label">Health Worker Type: <span class="text-danger">*</span></label>
-                        <select class="form-select" v-model="userForm.hwType" required>
-                          <option value="">Select Type</option>
-                          <option value="nurse">Nurse</option>
-                          <option value="nutritionist">Nutritionist</option>
-                          <option value="bhs">Barangay Health Staff</option>
+                        <select
+                          v-model="userForm.hwType"
+                          class="form-select"
+                          required
+                        >
+                          <option value="">
+                            Select Type
+                          </option>
+                          <option value="nurse">
+                            Nurse
+                          </option>
+                          <option value="nutritionist">
+                            Nutritionist
+                          </option>
+                          <option value="bhs">
+                            Barangay Health Staff
+                          </option>
                         </select>
                       </div>
-                      <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
+                      <div
+                        v-if="userForm.role === 'health_worker' || userForm.role === 'admin'"
+                        class="col-xl-4 col-lg-4 col-md-6"
+                      >
                         <label class="form-label">Employee ID:</label>
                         <input
+                          v-model="userForm.employeeId"
                           type="text"
                           class="form-control"
-                          v-model="userForm.employeeId"
                         >
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'">
+                      <div
+                        v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'"
+                        class="col-xl-6 col-lg-6 col-md-6"
+                      >
                         <label class="form-label">PRC License Number:</label>
                         <input
+                          v-model="userForm.licenseNumber"
                           type="text"
                           class="form-control"
-                          v-model="userForm.licenseNumber"
                         >
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="userForm.role === 'parent'">
+                      <div
+                        v-if="userForm.role === 'parent'"
+                        class="col-xl-6 col-lg-6 col-md-6"
+                      >
                         <label class="form-label">Contact Number:</label>
                         <input
+                          v-model="userForm.contactNumber"
                           type="tel"
                           class="form-control"
-                          v-model="userForm.contactNumber"
                         >
                       </div>
-                      <div class="col-xl-6 col-lg-6 col-md-6" v-if="userForm.role !== 'parent'">
+                      <div
+                        v-if="userForm.role !== 'parent'"
+                        class="col-xl-6 col-lg-6 col-md-6"
+                      >
                         <label class="form-label">Contact Number:</label>
                         <input
+                          v-model="userForm.contactNumber"
                           type="tel"
                           class="form-control"
-                          v-model="userForm.contactNumber"
                         >
                       </div>
                     </div>
@@ -368,12 +553,27 @@
               </form>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeUserModal">
-                <i class="bi bi-x-circle me-2"></i>Cancel
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="closeUserModal"
+              >
+                <i class="bi bi-x-circle me-2" />Cancel
               </button>
-              <button type="submit" class="btn btn-primary" :disabled="saving" form="user-form">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-check-circle me-2"></i>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="saving"
+                form="user-form"
+              >
+                <span
+                  v-if="saving"
+                  class="spinner-border spinner-border-sm me-2"
+                />
+                <i
+                  v-else
+                  class="bi bi-check-circle me-2"
+                />
                 {{ saving ? 'Saving...' : (isEditing ? 'Update User' : 'Create User') }}
               </button>
             </div>
@@ -382,7 +582,10 @@
       </div>
 
       <!-- Modal Backdrop -->
-      <div v-if="showUserModal" class="modal-backdrop fade show"></div>
+      <div
+        v-if="showUserModal"
+        class="modal-backdrop fade show"
+      />
 
       <!-- Delete Confirmation Modal -->
       <AppModal
@@ -391,11 +594,22 @@
         @close="closeDeleteModal"
       >
         <p>Are you sure you want to delete the user "{{ userToDelete?.name }}"?</p>
-        <p class="text-danger small">This action cannot be undone.</p>
+        <p class="text-danger small">
+          This action cannot be undone.
+        </p>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closeDeleteModal">Cancel</button>
-          <button class="btn btn-danger" @click="deleteUser" :disabled="deleting">
-            <i class="bi bi-trash me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closeDeleteModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-danger"
+            :disabled="deleting"
+            @click="deleteUser"
+          >
+            <i class="bi bi-trash me-1" />
             {{ deleting ? 'Deleting...' : 'Delete User' }}
           </button>
         </div>
@@ -411,16 +625,25 @@
         <div class="mb-3">
           <label class="form-label">New Password</label>
           <input
+            v-model="newPassword"
             type="password"
             class="form-control"
-            v-model="newPassword"
             placeholder="Enter new password"
           >
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closePasswordModal">Cancel</button>
-          <button class="btn btn-primary" @click="updatePassword" :disabled="resettingPassword">
-            <i class="bi bi-key me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closePasswordModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="resettingPassword"
+            @click="updatePassword"
+          >
+            <i class="bi bi-key me-1" />
             {{ resettingPassword ? 'Resetting...' : 'Reset Password' }}
           </button>
         </div>
@@ -434,9 +657,18 @@
       >
         <p>Restore the user "{{ userToRestore?.name }}"?</p>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closeRestoreModal">Cancel</button>
-          <button class="btn btn-success" @click="performRestore" :disabled="restoring">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closeRestoreModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-success"
+            :disabled="restoring"
+            @click="performRestore"
+          >
+            <i class="bi bi-arrow-counterclockwise me-1" />
             {{ restoring ? 'Restoring...' : 'Restore User' }}
           </button>
         </div>
@@ -932,7 +1164,7 @@ const validateAndFormatDate = (fieldName) => {
   if (!userForm.value[fieldName]) return
   
   // Handle various input formats and convert to MM/DD/YYYY
-  let dateStr = userForm.value[fieldName].trim()
+  const dateStr = userForm.value[fieldName].trim()
   let date = null
   
   // Try parsing MM/DD/YYYY format

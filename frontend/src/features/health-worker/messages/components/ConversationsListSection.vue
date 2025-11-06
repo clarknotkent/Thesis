@@ -2,26 +2,37 @@
   <div class="conversations-list-section">
     <!-- Messages Header (match Parent UI) -->
     <div class="section-header d-flex justify-content-between align-items-center">
-      <h5 class="section-title mb-0">Messages</h5>
-      <button class="btn btn-primary btn-sm" @click="$emit('new-conversation')">
-        <i class="bi bi-plus-circle me-1"></i>
+      <h5 class="section-title mb-0">
+        Messages
+      </h5>
+      <button
+        class="btn btn-primary btn-sm"
+        @click="$emit('new-conversation')"
+      >
+        <i class="bi bi-plus-circle me-1" />
         New Chat
       </button>
     </div>
 
     <!-- Search Bar -->
-    <div v-if="conversations.length > 0" class="search-bar">
-      <i class="bi bi-search"></i>
+    <div
+      v-if="conversations.length > 0"
+      class="search-bar"
+    >
+      <i class="bi bi-search" />
       <input 
         :value="searchQuery" 
+        type="text"
+        placeholder="Search conversations..." 
         @input="$emit('update:searchQuery', $event.target.value)"
-        type="text" 
-        placeholder="Search conversations..."
       >
     </div>
 
     <!-- Messages List -->
-    <div v-if="filteredConversations.length > 0" class="messages-list">
+    <div
+      v-if="filteredConversations.length > 0"
+      class="messages-list"
+    >
       <div 
         v-for="conv in filteredConversations" 
         :key="conv.conversation_id"
@@ -30,26 +41,41 @@
         @click="$emit('open-conversation', conv)"
       >
         <div class="message-avatar">
-          <i class="bi bi-person-circle"></i>
+          <i class="bi bi-person-circle" />
         </div>
         <div class="message-content">
           <div class="message-header">
-            <h6 class="sender-name">{{ getConversationTitle(conv) }}</h6>
+            <h6 class="sender-name">
+              {{ getConversationTitle(conv) }}
+            </h6>
             <small class="message-time">{{ formatTimePH(conv.latest_message_time || conv.created_at) }}</small>
           </div>
-          <p class="message-preview">{{ conv.latest_message || 'No messages yet' }}</p>
-          <span v-if="conv.unread_count > 0" class="unread-badge">{{ conv.unread_count }}</span>
+          <p class="message-preview">
+            {{ conv.latest_message || 'No messages yet' }}
+          </p>
+          <span
+            v-if="conv.unread_count > 0"
+            class="unread-badge"
+          >{{ conv.unread_count }}</span>
         </div>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else class="empty-state">
-      <i class="bi bi-chat-dots-fill empty-icon"></i>
+    <div
+      v-else
+      class="empty-state"
+    >
+      <i class="bi bi-chat-dots-fill empty-icon" />
       <h5>No conversations yet</h5>
-      <p class="text-muted">Start a new conversation to get started</p>
-      <button @click="$emit('new-conversation')" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-1"></i>
+      <p class="text-muted">
+        Start a new conversation to get started
+      </p>
+      <button
+        class="btn btn-primary"
+        @click="$emit('new-conversation')"
+      >
+        <i class="bi bi-plus-circle me-1" />
         Start Conversation
       </button>
     </div>

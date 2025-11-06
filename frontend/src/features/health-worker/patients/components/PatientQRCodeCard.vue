@@ -1,21 +1,44 @@
 <template>
   <div class="qr-code-card">
     <div class="qr-code-header">
-      <i class="bi bi-qr-code-scan"></i>
-      <h3 class="card-title">Patient QR Code</h3>
+      <i class="bi bi-qr-code-scan" />
+      <h3 class="card-title">
+        Patient QR Code
+      </h3>
     </div>
     <div class="qr-code-content">
       <div class="qr-code-container">
-        <canvas ref="qrCanvas" width="200" height="200"></canvas>
-        <p v-if="!qrUrl" class="qr-error">QR Code not available</p>
+        <canvas
+          ref="qrCanvas"
+          width="200"
+          height="200"
+        />
+        <p
+          v-if="!qrUrl"
+          class="qr-error"
+        >
+          QR Code not available
+        </p>
       </div>
-      <div v-if="qrUrl" class="qr-actions">
-        <a :href="qrUrl" target="_blank" rel="noreferrer" class="qr-link">
-          <i class="bi bi-box-arrow-up-right"></i>
+      <div
+        v-if="qrUrl"
+        class="qr-actions"
+      >
+        <a
+          :href="qrUrl"
+          target="_blank"
+          rel="noreferrer"
+          class="qr-link"
+        >
+          <i class="bi bi-box-arrow-up-right" />
           Open Link
         </a>
-        <button v-if="allowRefresh" class="refresh-qr-button" @click="refreshQR">
-          <i class="bi bi-arrow-clockwise"></i>
+        <button
+          v-if="allowRefresh"
+          class="refresh-qr-button"
+          @click="refreshQR"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Refresh QR
         </button>
       </div>

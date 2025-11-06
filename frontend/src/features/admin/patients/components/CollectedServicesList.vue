@@ -1,12 +1,20 @@
 <template>
   <div>
-    <h6 class="mb-2">Collected Services</h6>
+    <h6 class="mb-2">
+      Collected Services
+    </h6>
     
-    <div v-if="services.length === 0" class="alert alert-info">
+    <div
+      v-if="services.length === 0"
+      class="alert alert-info"
+    >
       No services collected yet.
     </div>
 
-    <div v-else class="table-responsive">
+    <div
+      v-else
+      class="table-responsive"
+    >
       <table class="table table-sm table-bordered">
         <thead class="table-light">
           <tr>
@@ -16,11 +24,19 @@
             <th>Site</th>
             <th>Health Worker</th>
             <th>Type</th>
-            <th v-if="!disabled" style="width: 100px;">Actions</th>
+            <th
+              v-if="!disabled"
+              style="width: 100px;"
+            >
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(service, idx) in services" :key="idx">
+          <tr
+            v-for="(service, idx) in services"
+            :key="idx"
+          >
             <td>{{ service.vaccine_name }}</td>
             <td>{{ formatDate(service.date_administered) }}</td>
             <td>{{ service.dose_ordinal }}</td>
@@ -37,18 +53,18 @@
               <button 
                 type="button" 
                 class="btn btn-sm btn-outline-primary me-1"
-                @click="$emit('edit', idx)"
                 title="Edit"
+                @click="$emit('edit', idx)"
               >
-                <i class="bi bi-pencil"></i>
+                <i class="bi bi-pencil" />
               </button>
               <button 
                 type="button" 
                 class="btn btn-sm btn-outline-danger"
-                @click="$emit('remove', idx)"
                 title="Remove"
+                @click="$emit('remove', idx)"
               >
-                <i class="bi bi-trash"></i>
+                <i class="bi bi-trash" />
               </button>
             </td>
           </tr>

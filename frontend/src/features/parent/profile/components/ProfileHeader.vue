@@ -1,11 +1,17 @@
 <template>
   <div class="profile-header">
     <div class="profile-avatar">
-      <i class="bi bi-person-circle"></i>
+      <i class="bi bi-person-circle" />
     </div>
-    <h4 class="profile-name">{{ displayName }}</h4>
-    <p class="profile-role">{{ role }}</p>
-    <p class="profile-id">ID: {{ userId }}</p>
+    <h4 class="profile-name">
+      {{ displayName }}
+    </h4>
+    <p class="profile-role">
+      {{ role }}
+    </p>
+    <p class="profile-id">
+      ID: {{ userId }}
+    </p>
   </div>
 </template>
 

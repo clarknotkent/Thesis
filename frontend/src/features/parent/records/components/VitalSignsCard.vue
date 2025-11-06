@@ -1,59 +1,77 @@
 <template>
   <div class="info-card">
     <div class="card-header info">
-      <i class="bi bi-heart-pulse"></i>
+      <i class="bi bi-heart-pulse" />
       <h2>Vital Signs</h2>
     </div>
     <div class="card-body">
       <div class="vitals-grid">
-        <div v-if="vitals.temperature" class="vital-box">
+        <div
+          v-if="vitals.temperature"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-thermometer-half text-danger"></i>
+            <i class="bi bi-thermometer-half text-danger" />
           </div>
           <div class="vital-content">
             <span class="vital-label">Temperature</span>
             <span class="vital-value">{{ vitals.temperature }}°C</span>
           </div>
         </div>
-        <div v-if="vitals.weight" class="vital-box">
+        <div
+          v-if="vitals.weight"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-speedometer2 text-primary"></i>
+            <i class="bi bi-speedometer2 text-primary" />
           </div>
           <div class="vital-content">
             <span class="vital-label">Weight</span>
             <span class="vital-value">{{ vitals.weight }} kg</span>
           </div>
         </div>
-        <div v-if="vitals.height" class="vital-box">
+        <div
+          v-if="vitals.height"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-arrows-vertical text-info"></i>
+            <i class="bi bi-arrows-vertical text-info" />
           </div>
           <div class="vital-content">
             <span class="vital-label">Height</span>
             <span class="vital-value">{{ vitals.height }} cm</span>
           </div>
         </div>
-        <div v-if="vitals.muac" class="vital-box">
+        <div
+          v-if="vitals.muac"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-rulers text-warning"></i>
+            <i class="bi bi-rulers text-warning" />
           </div>
           <div class="vital-content">
             <span class="vital-label">MUAC</span>
             <span class="vital-value">{{ vitals.muac }} cm</span>
           </div>
         </div>
-        <div v-if="vitals.respiration" class="vital-box">
+        <div
+          v-if="vitals.respiration"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-lungs text-success"></i>
+            <i class="bi bi-lungs text-success" />
           </div>
           <div class="vital-content">
             <span class="vital-label">Respiration</span>
             <span class="vital-value">{{ vitals.respiration }} /min</span>
           </div>
         </div>
-        <div v-if="vitals.heart_rate" class="vital-box">
+        <div
+          v-if="vitals.heart_rate"
+          class="vital-box"
+        >
           <div class="vital-icon">
-            <i class="bi bi-heart text-danger"></i>
+            <i class="bi bi-heart text-danger" />
           </div>
           <div class="vital-content">
             <span class="vital-label">Heart Rate</span>

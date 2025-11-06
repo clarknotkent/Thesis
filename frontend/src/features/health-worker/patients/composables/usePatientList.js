@@ -100,7 +100,7 @@ export function usePatientList() {
     const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
       while (queue.length) {
         const next = queue.shift()
-        // eslint-disable-next-line no-await-in-loop
+         
         await enrichWithLastVaccination(next)
       }
     })

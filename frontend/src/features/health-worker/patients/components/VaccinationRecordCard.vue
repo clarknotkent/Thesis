@@ -1,26 +1,42 @@
 <template>
   <div class="vaccination-record-card">
     <!-- Collapsed View: Header -->
-    <div class="card-header" @click="toggleExpanded">
+    <div
+      class="card-header"
+      @click="toggleExpanded"
+    >
       <div class="vaccine-info">
-        <i class="bi bi-shield-fill-check vaccine-icon"></i>
+        <i class="bi bi-shield-fill-check vaccine-icon" />
         <div class="vaccine-details">
-          <h3 class="vaccine-name">{{ vaccineName }}</h3>
-          <p class="vaccine-summary">{{ doseSummary }}</p>
+          <h3 class="vaccine-name">
+            {{ vaccineName }}
+          </h3>
+          <p class="vaccine-summary">
+            {{ doseSummary }}
+          </p>
         </div>
       </div>
       
       <div class="header-actions">
-        <span class="status-badge" :class="overallStatusClass">
+        <span
+          class="status-badge"
+          :class="overallStatusClass"
+        >
           {{ overallStatus }}
         </span>
-        <i class="bi toggle-icon" :class="isExpanded ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+        <i
+          class="bi toggle-icon"
+          :class="isExpanded ? 'bi-chevron-up' : 'bi-chevron-down'"
+        />
       </div>
     </div>
 
     <!-- Expanded View: Dose Details -->
     <transition name="expand">
-      <div v-show="isExpanded" class="card-body">
+      <div
+        v-show="isExpanded"
+        class="card-body"
+      >
         <div class="dose-list">
           <div 
             v-for="(dose, index) in doses" 
@@ -30,7 +46,10 @@
             <!-- Dose Header -->
             <div class="dose-header">
               <span class="dose-badge">Dose {{ dose.dose_number || dose.doseNumber || dose.dose || index + 1 }}</span>
-              <span class="dose-status-badge" :class="getDoseStatusClass(dose)">
+              <span
+                class="dose-status-badge"
+                :class="getDoseStatusClass(dose)"
+              >
                 {{ dose.status || 'Completed' }}
               </span>
             </div>
@@ -52,43 +71,61 @@
                 <span class="detail-value">{{ getAdministeredBy(dose) }}</span>
               </div>
               
-              <div v-if="dose.site || dose.administration_site" class="detail-row">
+              <div
+                v-if="dose.site || dose.administration_site"
+                class="detail-row"
+              >
                 <span class="detail-label">Site</span>
                 <span class="detail-value">{{ dose.site || dose.administration_site || '—' }}</span>
               </div>
               
-              <div v-if="dose.facility || dose.health_center" class="detail-row">
+              <div
+                v-if="dose.facility || dose.health_center"
+                class="detail-row"
+              >
                 <span class="detail-label">Facility</span>
                 <span class="detail-value">{{ dose.facility || dose.health_center || '—' }}</span>
               </div>
               
-              <div v-if="dose.remarks || dose.notes" class="detail-row remarks-row">
+              <div
+                v-if="dose.remarks || dose.notes"
+                class="detail-row remarks-row"
+              >
                 <span class="detail-label">Remarks</span>
                 <span class="detail-value remarks">{{ dose.remarks || dose.notes }}</span>
               </div>
             </div>
 
             <!-- Dose Actions -->
-            <div class="dose-actions" v-if="false">
+            <div
+              v-if="false"
+              class="dose-actions"
+            >
               <!-- Hidden - actions moved to bottom -->
             </div>
 
             <!-- Divider (not on last item) -->
-            <div v-if="index < doses.length - 1" class="dose-divider"></div>
+            <div
+              v-if="index < doses.length - 1"
+              class="dose-divider"
+            />
           </div>
         </div>
         
         <!-- Action Buttons for All Doses -->
         <div class="card-actions">
-          <button class="action-btn-full view-btn-full" @click="$emit('view', { vaccineName, doses })">
-            <i class="bi bi-eye"></i>
+          <button
+            class="action-btn-full view-btn-full"
+            @click="$emit('view', { vaccineName, doses })"
+          >
+            <i class="bi bi-eye" />
             View Full Details
           </button>
           <button 
             class="action-btn-full edit-btn-full"
             @click="$emit('edit', { vaccineName, doses })"
           >
-            <i class="bi bi-pencil"></i>
+            <i class="bi bi-pencil" />
             Edit All Doses
           </button>
         </div>

@@ -1,19 +1,30 @@
 <template>
   <div class="tab-content">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <div class="spinner" />
       <p>Loading medical history...</p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="medicalHistory.length === 0" class="empty-state">
-      <i class="bi bi-clipboard2-pulse empty-icon"></i>
-      <p class="empty-text">No medical history found</p>
+    <div
+      v-else-if="medicalHistory.length === 0"
+      class="empty-state"
+    >
+      <i class="bi bi-clipboard2-pulse empty-icon" />
+      <p class="empty-text">
+        No medical history found
+      </p>
     </div>
 
     <!-- Medical History List -->
-    <div v-else class="history-list">
+    <div
+      v-else
+      class="history-list"
+    >
       <ParentMedicalHistoryCard
         v-for="(visit, index) in medicalHistory"
         :key="visit.visit_id || index"

@@ -4,8 +4,12 @@
       <!-- Fixed Header -->
       <div class="edit-record-header-section">
         <div class="header-content">
-          <button class="btn-back" @click="handleBack" :disabled="saving">
-            <i class="bi bi-arrow-left"></i>
+          <button
+            class="btn-back"
+            :disabled="saving"
+            @click="handleBack"
+          >
+            <i class="bi bi-arrow-left" />
           </button>
           <div class="header-title">
             <h1>{{ form.vaccineName ? `Edit ${form.vaccineName}` : 'Edit Vaccination Record' }}</h1>
@@ -14,36 +18,55 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="loading-section">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-section"
+      >
+        <div class="spinner" />
         <p>Loading vaccination record...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="error-section">
-        <i class="bi bi-exclamation-circle"></i>
+      <div
+        v-else-if="error"
+        class="error-section"
+      >
+        <i class="bi bi-exclamation-circle" />
         <p>{{ error }}</p>
-        <button class="btn-retry" @click="fetchVaccinationRecord">
-          <i class="bi bi-arrow-clockwise"></i>
+        <button
+          class="btn-retry"
+          @click="fetchVaccinationRecord"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>
 
       <!-- Edit Form -->
-      <div v-else-if="vaccinationRecord" class="edit-form-content">
+      <div
+        v-else-if="vaccinationRecord"
+        class="edit-form-content"
+      >
         <!-- Other doses navigator (quick jump between doses of same vaccine) -->
-        <div v-if="otherDoses.length > 0" class="dose-navigator">
+        <div
+          v-if="otherDoses.length > 0"
+          class="dose-navigator"
+        >
           <div
             v-for="dose in otherDoses"
             :key="dose.immunization_id || dose.id"
             class="dose-pill"
             :class="{ active: String(dose.immunization_id || dose.id) === String(recordId) }"
-            @click="jumpToDose(dose.immunization_id || dose.id)"
             role="button"
             tabindex="0"
+            @click="jumpToDose(dose.immunization_id || dose.id)"
           >
-            <div class="dose-label">Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}</div>
-            <div class="dose-date">{{ formatDisplayDate(dose) }}</div>
+            <div class="dose-label">
+              Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}
+            </div>
+            <div class="dose-date">
+              {{ formatDisplayDate(dose) }}
+            </div>
           </div>
         </div>
         <form @submit.prevent="handleSubmit">
@@ -51,9 +74,9 @@
           <div class="form-group">
             <label class="form-label">Vaccine Name *</label>
             <input 
+              v-model="form.vaccineName" 
               type="text" 
-              class="form-input" 
-              v-model="form.vaccineName"
+              class="form-input"
               readonly
               disabled
             >
@@ -64,15 +87,25 @@
           <div class="form-group">
             <label class="form-label">Dose Number *</label>
             <select 
-              class="form-input" 
-              v-model="form.doseNumber"
+              v-model="form.doseNumber" 
+              class="form-input"
               required
             >
-              <option value="">Select dose number</option>
-              <option value="1">Dose 1</option>
-              <option value="2">Dose 2</option>
-              <option value="3">Dose 3</option>
-              <option value="4">Booster</option>
+              <option value="">
+                Select dose number
+              </option>
+              <option value="1">
+                Dose 1
+              </option>
+              <option value="2">
+                Dose 2
+              </option>
+              <option value="3">
+                Dose 3
+              </option>
+              <option value="4">
+                Booster
+              </option>
             </select>
           </div>
 
@@ -80,12 +113,12 @@
           <div class="form-group">
             <label class="form-label">Date Administered *</label>
             <input 
+              v-model="form.dateAdministered" 
               type="date" 
-              class="form-input" 
-              v-model="form.dateAdministered"
-              @change="calculateAge"
+              class="form-input"
               required
               :max="todayDate"
+              @change="calculateAge"
             >
           </div>
 
@@ -93,9 +126,9 @@
           <div class="form-group">
             <label class="form-label">Age at Administration</label>
             <input 
+              v-model="form.ageAtAdministration" 
               type="text" 
-              class="form-input" 
-              v-model="form.ageAtAdministration"
+              class="form-input"
               readonly
             >
             <small class="form-hint">Automatically calculated from date administered</small>
@@ -106,12 +139,14 @@
             <label class="form-label">Administered By *</label>
             <div v-if="!form.isOutside">
               <select 
-                class="form-input" 
-                v-model="form.administeredBy"
+                v-model="form.administeredBy" 
+                class="form-input"
                 required
                 :disabled="form.isOutside"
               >
-                <option value="">Select health staff</option>
+                <option value="">
+                  Select health staff
+                </option>
                 <option 
                   v-for="nurse in nurses" 
                   :key="nurse.user_id" 
@@ -119,16 +154,21 @@
                 >
                   {{ nurse.fullname }} ({{ nurse.hs_type }})
                 </option>
-                <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+                <option
+                  v-if="nurses.length === 0"
+                  disabled
+                >
+                  No nurses/nutritionists available
+                </option>
               </select>
             </div>
             <div v-else>
               <input
+                v-model="form.administeredByDisplay"
                 type="text"
                 class="form-input"
-                v-model="form.administeredByDisplay"
                 placeholder="Name of vaccinator or provider"
-              />
+              >
               <small class="form-hint">For outside immunizations, enter vaccinator name (will be stored in remarks)</small>
             </div>
           </div>
@@ -137,15 +177,27 @@
           <div class="form-group">
             <label class="form-label">Site of Administration</label>
             <select 
-              class="form-input" 
-              v-model="form.siteOfAdministration"
+              v-model="form.siteOfAdministration" 
+              class="form-input"
             >
-              <option value="">Select a site</option>
-              <option value="Left arm (deltoid)">Left arm (deltoid)</option>
-              <option value="Right arm (deltoid)">Right arm (deltoid)</option>
-              <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
-              <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
-              <option value="Oral">Oral</option>
+              <option value="">
+                Select a site
+              </option>
+              <option value="Left arm (deltoid)">
+                Left arm (deltoid)
+              </option>
+              <option value="Right arm (deltoid)">
+                Right arm (deltoid)
+              </option>
+              <option value="Left thigh (anterolateral)">
+                Left thigh (anterolateral)
+              </option>
+              <option value="Right thigh (anterolateral)">
+                Right thigh (anterolateral)
+              </option>
+              <option value="Oral">
+                Oral
+              </option>
             </select>
           </div>
 
@@ -153,37 +205,49 @@
           <div class="form-group">
             <label class="form-label">Manufacturer</label>
             <input 
+              v-model="form.manufacturer" 
               type="text" 
-              class="form-input" 
-              v-model="form.manufacturer"
+              class="form-input"
               placeholder="e.g., Sanofi Pasteur"
               :readonly="!form.isOutside"
             >
-            <small class="form-hint" v-if="!form.isOutside">Auto-filled from inventory / read-only for in-facility</small>
-            <small class="form-hint" v-else>Editable for outside immunizations</small>
+            <small
+              v-if="!form.isOutside"
+              class="form-hint"
+            >Auto-filled from inventory / read-only for in-facility</small>
+            <small
+              v-else
+              class="form-hint"
+            >Editable for outside immunizations</small>
           </div>
 
           <!-- Lot Number -->
           <div class="form-group">
             <label class="form-label">Lot Number</label>
             <input 
+              v-model="form.lotNumber" 
               type="text" 
-              class="form-input" 
-              v-model="form.lotNumber"
+              class="form-input"
               placeholder="e.g., L123456"
               :readonly="!form.isOutside"
             >
-            <small class="form-hint" v-if="!form.isOutside">Auto-filled from inventory / read-only for in-facility</small>
-            <small class="form-hint" v-else>Editable for outside immunizations</small>
+            <small
+              v-if="!form.isOutside"
+              class="form-hint"
+            >Auto-filled from inventory / read-only for in-facility</small>
+            <small
+              v-else
+              class="form-hint"
+            >Editable for outside immunizations</small>
           </div>
 
           <!-- Facility Name -->
           <div class="form-group">
             <label class="form-label">Facility Name</label>
             <input 
+              v-model="form.facilityName" 
               type="text" 
-              class="form-input" 
-              v-model="form.facilityName"
+              class="form-input"
               placeholder="e.g., Barangay Health Center"
             >
           </div>
@@ -192,11 +256,11 @@
           <div class="form-group">
             <label class="form-label">Remarks</label>
             <textarea 
-              class="form-input" 
-              v-model="form.remarks"
+              v-model="form.remarks" 
+              class="form-input"
               rows="4"
               placeholder="Additional notes or observations..."
-            ></textarea>
+            />
           </div>
 
           <!-- Action Buttons -->
@@ -204,8 +268,8 @@
             <button 
               type="button" 
               class="btn-cancel"
-              @click="handleBack"
               :disabled="saving"
+              @click="handleBack"
             >
               Cancel
             </button>
@@ -214,8 +278,14 @@
               class="btn-save"
               :disabled="saving || !isFormValid"
             >
-              <i class="bi bi-check-circle-fill" v-if="!saving"></i>
-              <span class="spinner-small" v-else></span>
+              <i
+                v-if="!saving"
+                class="bi bi-check-circle-fill"
+              />
+              <span
+                v-else
+                class="spinner-small"
+              />
               {{ saving ? 'Saving...' : 'Save All Changes' }}
             </button>
           </div>
@@ -224,7 +294,11 @@
     </div>
   </HealthWorkerLayout>
   <!-- Approval modal for second approver -->
-  <ApprovalModal v-if="showApproval" @approved="onApproverApproved" @cancel="onApproverCancel" />
+  <ApprovalModal
+    v-if="showApproval"
+    @approved="onApproverApproved"
+    @cancel="onApproverCancel"
+  />
 </template>
 
 <script setup>

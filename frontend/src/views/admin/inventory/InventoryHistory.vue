@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Transaction History</li>
+          <li class="breadcrumb-item active">
+            Transaction History
+          </li>
         </ol>
       </nav>
 
@@ -18,41 +27,69 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-clock-history me-2"></i>Inventory Transaction History
+            <i class="bi bi-clock-history me-2" />Inventory Transaction History
           </h1>
-          <p class="text-muted mb-0" v-if="inventoryData">{{ inventoryData.vaccineName }}</p>
+          <p
+            v-if="inventoryData"
+            class="text-muted mb-0"
+          >
+            {{ inventoryData.vaccineName }}
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- History Table -->
-      <div v-else class="card shadow">
+      <div
+        v-else
+        class="card shadow"
+      >
         <div class="card-header py-3">
           <div class="d-flex justify-content-between align-items-center">
-            <h6 class="m-0 fw-bold text-primary">Transaction History</h6>
+            <h6 class="m-0 fw-bold text-primary">
+              Transaction History
+            </h6>
             <span class="text-muted">{{ history.length }} transactions</span>
           </div>
         </div>
         <div class="card-body">
-          <div v-if="history.length === 0" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+          <div
+            v-if="history.length === 0"
+            class="text-center py-5 text-muted"
+          >
+            <i class="bi bi-inbox fs-1 d-block mb-3" />
             <p>No transaction history found</p>
           </div>
-          <div v-else class="table-responsive">
+          <div
+            v-else
+            class="table-responsive"
+          >
             <table class="table table-hover">
               <thead class="table-light">
                 <tr>
@@ -67,11 +104,17 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in history" :key="item.id">
+                <tr
+                  v-for="item in history"
+                  :key="item.id"
+                >
                   <td>{{ formatDateOnly(item.timestamp) }}</td>
                   <td>{{ formatTimeOnly(item.timestamp) }}</td>
                   <td>
-                    <span class="badge" :class="getTypeBadgeClass(item.type)">
+                    <span
+                      class="badge"
+                      :class="getTypeBadgeClass(item.type)"
+                    >
                       {{ item.type }}
                     </span>
                   </td>

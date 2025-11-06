@@ -1,6 +1,8 @@
 <template>
   <div class="table-responsive">
-    <h6 class="fw-bold mb-3">Vaccination Records</h6>
+    <h6 class="fw-bold mb-3">
+      Vaccination Records
+    </h6>
     <table class="table table-hover table-striped">
       <thead class="table-light">
         <tr>
@@ -18,7 +20,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(vaccination, index) in sortedVaccinations" :key="vaccination.immunization_id || vaccination.id || index">
+        <tr
+          v-for="(vaccination, index) in sortedVaccinations"
+          :key="vaccination.immunization_id || vaccination.id || index"
+        >
           <td class="fw-semibold">
             {{ vaccination.vaccine_antigen_name || vaccination.vaccineName || vaccination.antigen_name || vaccination.antigenName || 'Unknown' }}
           </td>
@@ -26,10 +31,16 @@
             <small>{{ vaccination.disease_prevented || vaccination.diseasePrevented || vaccination.lotNumber || vaccination.batch_number || vaccination.batchNumber || '—' }}</small>
           </td>
           <td>
-            <span v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose" class="badge bg-secondary">
+            <span
+              v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose"
+              class="badge bg-secondary"
+            >
               Dose {{ vaccination.dose_number || vaccination.doseNumber || vaccination.dose }}
             </span>
-            <span v-else class="text-muted">—</span>
+            <span
+              v-else
+              class="text-muted"
+            >—</span>
           </td>
           <td>
             <small>{{ formatDate(vaccination.administered_date || vaccination.date_administered || vaccination.dateAdministered) }}</small>
@@ -40,13 +51,13 @@
           <td>
             <small>{{
               vaccination.administered_by_name ||
-              vaccination.administeredBy ||
-              vaccination.health_worker_name ||
-              vaccination.healthWorkerName ||
-              vaccination.worker_name ||
-              vaccination.workerName ||
-              vaccination.recorded_by_name ||
-              'Taken Outside'
+                vaccination.administeredBy ||
+                vaccination.health_worker_name ||
+                vaccination.healthWorkerName ||
+                vaccination.worker_name ||
+                vaccination.workerName ||
+                vaccination.recorded_by_name ||
+                'Taken Outside'
             }}</small>
           </td>
           <td>
@@ -56,7 +67,10 @@
             <small>{{ deriveFacility(vaccination) }}</small>
           </td>
           <td>
-            <span class="badge" :class="getStatusBadgeClass(vaccination.status)">
+            <span
+              class="badge"
+              :class="getStatusBadgeClass(vaccination.status)"
+            >
               {{ vaccination.status || 'Completed' }}
             </span>
           </td>
@@ -71,21 +85,24 @@
                 :title="isOutside(vaccination) ? 'Edit' : 'Edit allowed for Outside records only'" 
                 @click="$emit('edit', index)"
               >
-                <i class="bi bi-pencil"></i>
+                <i class="bi bi-pencil" />
               </button>
               <button 
                 class="btn btn-outline-danger" 
-                @click="$emit('delete', vaccination)" 
-                title="Delete"
+                title="Delete" 
+                @click="$emit('delete', vaccination)"
               >
-                <i class="bi bi-trash"></i>
+                <i class="bi bi-trash" />
               </button>
             </div>
           </td>
         </tr>
         <tr v-if="sortedVaccinations.length === 0">
-          <td colspan="11" class="text-center py-4 text-muted">
-            <i class="bi bi-shield-exclamation me-2"></i>
+          <td
+            colspan="11"
+            class="text-center py-4 text-muted"
+          >
+            <i class="bi bi-shield-exclamation me-2" />
             No vaccination records found for this patient
           </td>
         </tr>

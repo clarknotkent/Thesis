@@ -1,25 +1,37 @@
 <template>
   <!-- Desktop Only: Floating indicator at bottom left -->
-  <div class="desktop-offline-indicator d-none d-xl-block" :class="indicatorClass">
+  <div
+    class="desktop-offline-indicator d-none d-xl-block"
+    :class="indicatorClass"
+  >
     <!-- Main status bar -->
-    <div class="status-bar" @click="toggleDetails">
-      <i :class="statusIcon"></i>
+    <div
+      class="status-bar"
+      @click="toggleDetails"
+    >
+      <i :class="statusIcon" />
       <span class="status-text">{{ connectionStatus }}</span>
-      <i class="bi bi-chevron-down ms-auto"></i>
+      <i class="bi bi-chevron-down ms-auto" />
     </div>
 
     <!-- Expandable details -->
     <transition name="slide-down">
-      <div v-if="showDetails" class="details-panel">
+      <div
+        v-if="showDetails"
+        class="details-panel"
+      >
         <!-- Info message -->
         <div class="detail-row">
-          <i class="bi bi-info-circle"></i>
+          <i class="bi bi-info-circle" />
           <span>Data caches automatically as you navigate</span>
         </div>
 
         <!-- Storage stats -->
-        <div v-if="storageStats && Object.keys(storageStats).length > 0" class="detail-row">
-          <i class="bi bi-database"></i>
+        <div
+          v-if="storageStats && Object.keys(storageStats).length > 0"
+          class="detail-row"
+        >
+          <i class="bi bi-database" />
           <span>Cached: {{ totalCachedRecords }} records</span>
         </div>
 
@@ -29,17 +41,24 @@
             class="btn btn-sm btn-outline-secondary" 
             @click="showStorageDetails = !showStorageDetails"
           >
-            <i class="bi bi-info-circle"></i>
+            <i class="bi bi-info-circle" />
             {{ showStorageDetails ? 'Hide' : 'Show' }} Details
           </button>
         </div>
 
         <!-- Storage details -->
         <transition name="fade">
-          <div v-if="showStorageDetails && storageStats" class="storage-details">
+          <div
+            v-if="showStorageDetails && storageStats"
+            class="storage-details"
+          >
             <h6>Offline Storage</h6>
             <div class="storage-list">
-              <div v-for="(count, store) in storageStats" :key="store" class="storage-item">
+              <div
+                v-for="(count, store) in storageStats"
+                :key="store"
+                class="storage-item"
+              >
                 <span class="store-name">{{ formatStoreName(store) }}</span>
                 <span class="store-count">{{ count }}</span>
               </div>
@@ -48,7 +67,7 @@
               class="btn btn-sm btn-outline-danger mt-2 w-100"
               @click="handleClearData"
             >
-              <i class="bi bi-trash"></i>
+              <i class="bi bi-trash" />
               Clear Offline Data
             </button>
           </div>

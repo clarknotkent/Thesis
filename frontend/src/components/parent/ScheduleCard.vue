@@ -2,28 +2,43 @@
   <div class="schedule-card">
     <div class="card-content">
       <div class="date-section">
-        <div class="date-badge" :class="statusClass">
-          <div class="date-day">{{ formattedDay }}</div>
-          <div class="date-month">{{ formattedMonth }}</div>
+        <div
+          class="date-badge"
+          :class="statusClass"
+        >
+          <div class="date-day">
+            {{ formattedDay }}
+          </div>
+          <div class="date-month">
+            {{ formattedMonth }}
+          </div>
         </div>
       </div>
       <div class="vaccine-section">
-        <h3 class="vaccine-name">{{ vaccineName }}</h3>
+        <h3 class="vaccine-name">
+          {{ vaccineName }}
+        </h3>
         <div class="vaccine-details">
           <div class="detail-item">
-            <i class="bi bi-capsule"></i>
+            <i class="bi bi-capsule" />
             <span>Dose {{ dose }}</span>
           </div>
           <div class="detail-item">
-            <i class="bi bi-calendar-event"></i>
+            <i class="bi bi-calendar-event" />
             <span>{{ fullFormattedDate }}</span>
           </div>
-          <div v-if="recommendedAge" class="detail-item">
-            <i class="bi bi-info-circle"></i>
+          <div
+            v-if="recommendedAge"
+            class="detail-item"
+          >
+            <i class="bi bi-info-circle" />
             <span>Recommended: {{ recommendedAge }}</span>
           </div>
         </div>
-        <div class="status-badge" :class="statusClass">
+        <div
+          class="status-badge"
+          :class="statusClass"
+        >
           {{ statusText }}
         </div>
       </div>

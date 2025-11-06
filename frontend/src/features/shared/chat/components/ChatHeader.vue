@@ -6,7 +6,9 @@
           {{ getInitials(headerTitle) }}
         </div>
         <div>
-          <h6 class="mb-0 fw-semibold">{{ headerTitle }}</h6>
+          <h6 class="mb-0 fw-semibold">
+            {{ headerTitle }}
+          </h6>
           <small class="text-muted">{{ participantList }}</small>
         </div>
       </div>
@@ -14,19 +16,22 @@
         <small class="text-muted">{{ formatDate(conversation.latest_message_time) }}</small>
         <button 
           class="btn btn-sm btn-outline-danger" 
-          @click="$emit('leave')" 
-          :disabled="leaving"
+          :disabled="leaving" 
+          @click="$emit('leave')"
         >
-          <i class="bi bi-box-arrow-right me-1"></i>
+          <i class="bi bi-box-arrow-right me-1" />
           <span class="d-none d-sm-inline">Leave</span>
         </button>
-        <button class="btn btn-sm btn-outline-secondary" @click="$emit('close')">
-          <i class="bi bi-x-lg"></i>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          @click="$emit('close')"
+        >
+          <i class="bi bi-x-lg" />
         </button>
       </div>
     </div>
   </div>
- </template>
+</template>
 
 <script setup>
 import { computed } from 'vue';

@@ -11,7 +11,7 @@
     @filter="toggleFilters"
     @scan="openQrScanner"
     @add="goToAddPatient"
-    @update:searchQuery="searchQuery = $event"
+    @update:search-query="searchQuery = $event"
   >
     <!-- Filter Sheet -->
     <FilterSheet
@@ -23,15 +23,26 @@
     <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-container">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="loading-container"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading patients...</span>
         </div>
-        <p class="loading-text">Loading patients...</p>
+        <p class="loading-text">
+          Loading patients...
+        </p>
       </div>
 
       <!-- Patient List -->
-      <div v-else-if="paginatedPatients.length > 0" class="patient-list">
+      <div
+        v-else-if="paginatedPatients.length > 0"
+        class="patient-list"
+      >
         <PatientListCard
           v-for="patient in paginatedPatients" 
           :key="patient.id"
@@ -41,17 +52,30 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="empty-state">
-        <i class="bi bi-person-x empty-icon"></i>
-        <h4 class="empty-title">No patients found</h4>
-        <p class="empty-text">Try adjusting your search criteria or add a new patient.</p>
-        <button class="btn btn-primary mt-3" @click="goToAddPatient">
-          <i class="bi bi-plus-lg me-2"></i>Add New Patient
+      <div
+        v-else
+        class="empty-state"
+      >
+        <i class="bi bi-person-x empty-icon" />
+        <h4 class="empty-title">
+          No patients found
+        </h4>
+        <p class="empty-text">
+          Try adjusting your search criteria or add a new patient.
+        </p>
+        <button
+          class="btn btn-primary mt-3"
+          @click="goToAddPatient"
+        >
+          <i class="bi bi-plus-lg me-2" />Add New Patient
         </button>
       </div>
 
       <!-- Pagination -->
-      <div v-if="!loading && totalPages > 1" class="pagination-container">
+      <div
+        v-if="!loading && totalPages > 1"
+        class="pagination-container"
+      >
         <AppPagination
           :current-page="currentPage"
           :total-pages="totalPages"
@@ -271,7 +295,7 @@ const fetchPatients = async () => {
       const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
         while (queue.length) {
           const next = queue.shift()
-          // eslint-disable-next-line no-await-in-loop
+           
           await fetchLastForPatient(next)
         }
       })

@@ -3,19 +3,39 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">System Settings</h1>
-          <p class="text-muted mb-0">Configure system preferences and application settings</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            System Settings
+          </h1>
+          <p class="text-muted mb-0">
+            Configure system preferences and application settings
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" @click="exportSettings">
-            <i class="bi bi-download me-2"></i>Export Settings
+          <button
+            class="btn btn-outline-primary"
+            @click="exportSettings"
+          >
+            <i class="bi bi-download me-2" />Export Settings
           </button>
-          <button class="btn btn-outline-warning" @click="resetToDefaults">
-            <i class="bi bi-arrow-clockwise me-2"></i>Reset to Defaults
+          <button
+            class="btn btn-outline-warning"
+            @click="resetToDefaults"
+          >
+            <i class="bi bi-arrow-clockwise me-2" />Reset to Defaults
           </button>
-          <button class="btn btn-primary" @click="saveAllSettings" :disabled="saving">
-            <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-            <i v-else class="bi bi-check-circle me-2"></i>
+          <button
+            class="btn btn-primary"
+            :disabled="saving"
+            @click="saveAllSettings"
+          >
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm me-2"
+            />
+            <i
+              v-else
+              class="bi bi-check-circle me-2"
+            />
             {{ saving ? 'Saving...' : 'Save Settings' }}
           </button>
         </div>
@@ -31,10 +51,15 @@
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     System Status
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ systemStatus }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ systemStatus }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-gear text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-gear text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -49,10 +74,15 @@
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Last Backup
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ formatBackupDate(settings.system.lastBackup) }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ formatBackupDate(settings.system.lastBackup) }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-cloud-check text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-cloud-check text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -67,10 +97,15 @@
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Storage Used
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ settings.system.storageUsed || '0 GB' }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ settings.system.storageUsed || '0 GB' }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-hdd text-info" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-hdd text-info"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -85,10 +120,15 @@
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     App Version
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ settings.system.version || 'v1.0.0' }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ settings.system.version || 'v1.0.0' }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-app text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-app text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -100,7 +140,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-sliders me-2"></i>
+            <i class="bi bi-sliders me-2" />
             General Settings
           </h6>
         </div>
@@ -109,53 +149,93 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Application Name:</label>
               <input 
+                v-model="settings.general.appName" 
                 type="text" 
-                class="form-control" 
-                v-model="settings.general.appName"
+                class="form-control"
                 placeholder="Vaccination Management System"
               >
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Organization Name:</label>
               <input 
+                v-model="settings.general.organizationName" 
                 type="text" 
-                class="form-control" 
-                v-model="settings.general.organizationName"
+                class="form-control"
                 placeholder="Health Department"
               >
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Default Language:</label>
-              <select class="form-select" v-model="settings.general.defaultLanguage">
-                <option value="en">English</option>
-                <option value="tl">Tagalog</option>
-                <option value="ceb">Cebuano</option>
-                <option value="ilo">Ilocano</option>
+              <select
+                v-model="settings.general.defaultLanguage"
+                class="form-select"
+              >
+                <option value="en">
+                  English
+                </option>
+                <option value="tl">
+                  Tagalog
+                </option>
+                <option value="ceb">
+                  Cebuano
+                </option>
+                <option value="ilo">
+                  Ilocano
+                </option>
               </select>
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Timezone:</label>
-              <select class="form-select" v-model="settings.general.timezone">
-                <option value="Asia/Manila">Asia/Manila (GMT+8)</option>
-                <option value="UTC">UTC (GMT+0)</option>
-                <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
+              <select
+                v-model="settings.general.timezone"
+                class="form-select"
+              >
+                <option value="Asia/Manila">
+                  Asia/Manila (GMT+8)
+                </option>
+                <option value="UTC">
+                  UTC (GMT+0)
+                </option>
+                <option value="Asia/Singapore">
+                  Asia/Singapore (GMT+8)
+                </option>
               </select>
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Date Format:</label>
-              <select class="form-select" v-model="settings.general.dateFormat">
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              <select
+                v-model="settings.general.dateFormat"
+                class="form-select"
+              >
+                <option value="MM/DD/YYYY">
+                  MM/DD/YYYY
+                </option>
+                <option value="DD/MM/YYYY">
+                  DD/MM/YYYY
+                </option>
+                <option value="YYYY-MM-DD">
+                  YYYY-MM-DD
+                </option>
               </select>
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Records Per Page:</label>
-              <select class="form-select" v-model="settings.general.recordsPerPage">
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
+              <select
+                v-model="settings.general.recordsPerPage"
+                class="form-select"
+              >
+                <option value="10">
+                  10
+                </option>
+                <option value="20">
+                  20
+                </option>
+                <option value="50">
+                  50
+                </option>
+                <option value="100">
+                  100
+                </option>
               </select>
             </div>
           </div>
@@ -166,43 +246,58 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="maintenanceMode" 
-                  v-model="settings.general.maintenanceMode"
+                  v-model="settings.general.maintenanceMode" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="maintenanceMode">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="maintenanceMode"
+                >
                   Maintenance Mode
                 </label>
-                <div class="form-text">When enabled, only administrators can access the system</div>
+                <div class="form-text">
+                  When enabled, only administrators can access the system
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="allowRegistration" 
-                  v-model="settings.general.allowRegistration"
+                  v-model="settings.general.allowRegistration" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="allowRegistration">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="allowRegistration"
+                >
                   Allow User Registration
                 </label>
-                <div class="form-text">Allow new users to register accounts</div>
+                <div class="form-text">
+                  Allow new users to register accounts
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="requireEmailVerification" 
-                  v-model="settings.general.requireEmailVerification"
+                  v-model="settings.general.requireEmailVerification" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="requireEmailVerification">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="requireEmailVerification"
+                >
                   Require Email Verification
                 </label>
-                <div class="form-text">New users must verify their email address before accessing the system</div>
+                <div class="form-text">
+                  New users must verify their email address before accessing the system
+                </div>
               </div>
             </div>
           </div>
@@ -213,7 +308,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-shield-lock me-2"></i>
+            <i class="bi bi-shield-lock me-2" />
             Security Settings
           </h6>
         </div>
@@ -222,9 +317,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Session Timeout (minutes):</label>
               <input 
+                v-model.number="settings.security.sessionTimeout" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.security.sessionTimeout"
+                class="form-control"
                 min="5"
                 max="1440"
               >
@@ -232,9 +327,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Password Minimum Length:</label>
               <input 
+                v-model.number="settings.security.passwordMinLength" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.security.passwordMinLength"
+                class="form-control"
                 min="6"
                 max="20"
               >
@@ -242,9 +337,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Max Login Attempts:</label>
               <input 
+                v-model.number="settings.security.maxLoginAttempts" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.security.maxLoginAttempts"
+                class="form-control"
                 min="3"
                 max="10"
               >
@@ -252,9 +347,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Account Lockout Duration (minutes):</label>
               <input 
+                v-model.number="settings.security.lockoutDuration" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.security.lockoutDuration"
+                class="form-control"
                 min="5"
                 max="60"
               >
@@ -267,43 +362,58 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="requireStrongPasswords" 
-                  v-model="settings.security.requireStrongPasswords"
+                  v-model="settings.security.requireStrongPasswords" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="requireStrongPasswords">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="requireStrongPasswords"
+                >
                   Require Strong Passwords
                 </label>
-                <div class="form-text">Passwords must contain uppercase, lowercase, numbers, and special characters</div>
+                <div class="form-text">
+                  Passwords must contain uppercase, lowercase, numbers, and special characters
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="enableTwoFactor" 
-                  v-model="settings.security.enableTwoFactor"
+                  v-model="settings.security.enableTwoFactor" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="enableTwoFactor">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="enableTwoFactor"
+                >
                   Enable Two-Factor Authentication
                 </label>
-                <div class="form-text">Allow users to enable 2FA for enhanced security</div>
+                <div class="form-text">
+                  Allow users to enable 2FA for enhanced security
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="logSecurityEvents" 
-                  v-model="settings.security.logSecurityEvents"
+                  v-model="settings.security.logSecurityEvents" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="logSecurityEvents">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="logSecurityEvents"
+                >
                   Log Security Events
                 </label>
-                <div class="form-text">Log failed login attempts and other security-related events</div>
+                <div class="form-text">
+                  Log failed login attempts and other security-related events
+                </div>
               </div>
             </div>
           </div>
@@ -314,7 +424,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-shield-plus me-2"></i>
+            <i class="bi bi-shield-plus me-2" />
             Vaccination Settings
           </h6>
         </div>
@@ -322,18 +432,27 @@
           <div class="row g-4">
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Default Vaccine Schedule:</label>
-              <select class="form-select" v-model="settings.vaccination.defaultSchedule">
-                <option value="doh-epi">DOH Expanded Program on Immunization</option>
-                <option value="who-standard">WHO Standard Schedule</option>
-                <option value="custom">Custom Schedule</option>
+              <select
+                v-model="settings.vaccination.defaultSchedule"
+                class="form-select"
+              >
+                <option value="doh-epi">
+                  DOH Expanded Program on Immunization
+                </option>
+                <option value="who-standard">
+                  WHO Standard Schedule
+                </option>
+                <option value="custom">
+                  Custom Schedule
+                </option>
               </select>
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Reminder Days Before Due:</label>
               <input 
+                v-model.number="settings.vaccination.reminderDays" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.vaccination.reminderDays"
+                class="form-control"
                 min="1"
                 max="30"
               >
@@ -341,9 +460,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Low Stock Alert Threshold:</label>
               <input 
+                v-model.number="settings.vaccination.lowStockThreshold" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.vaccination.lowStockThreshold"
+                class="form-control"
                 min="1"
                 max="100"
               >
@@ -351,9 +470,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Expiry Alert Days:</label>
               <input 
+                v-model.number="settings.vaccination.expiryAlertDays" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.vaccination.expiryAlertDays"
+                class="form-control"
                 min="1"
                 max="90"
               >
@@ -366,43 +485,58 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="autoGenerateSchedule" 
-                  v-model="settings.vaccination.autoGenerateSchedule"
+                  v-model="settings.vaccination.autoGenerateSchedule" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="autoGenerateSchedule">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="autoGenerateSchedule"
+                >
                   Auto-Generate Vaccination Schedule
                 </label>
-                <div class="form-text">Automatically create vaccination schedules for new patients</div>
+                <div class="form-text">
+                  Automatically create vaccination schedules for new patients
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="sendReminders" 
-                  v-model="settings.vaccination.sendReminders"
+                  v-model="settings.vaccination.sendReminders" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="sendReminders">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="sendReminders"
+                >
                   Send Vaccination Reminders
                 </label>
-                <div class="form-text">Send SMS/Email reminders to parents before vaccination due dates</div>
+                <div class="form-text">
+                  Send SMS/Email reminders to parents before vaccination due dates
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="requireBatchNumber" 
-                  v-model="settings.vaccination.requireBatchNumber"
+                  v-model="settings.vaccination.requireBatchNumber" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="requireBatchNumber">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="requireBatchNumber"
+                >
                   Require Batch Numbers
                 </label>
-                <div class="form-text">Make batch number mandatory for all vaccine administrations</div>
+                <div class="form-text">
+                  Make batch number mandatory for all vaccine administrations
+                </div>
               </div>
             </div>
           </div>
@@ -413,12 +547,22 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-cloud-arrow-up me-2"></i>
+            <i class="bi bi-cloud-arrow-up me-2" />
             Backup & Data Settings
           </h6>
-          <button class="btn btn-outline-primary btn-sm" @click="triggerBackup" :disabled="backing">
-            <span v-if="backing" class="spinner-border spinner-border-sm me-2"></span>
-            <i v-else class="bi bi-cloud-upload me-2"></i>
+          <button
+            class="btn btn-outline-primary btn-sm"
+            :disabled="backing"
+            @click="triggerBackup"
+          >
+            <span
+              v-if="backing"
+              class="spinner-border spinner-border-sm me-2"
+            />
+            <i
+              v-else
+              class="bi bi-cloud-upload me-2"
+            />
             {{ backing ? 'Creating...' : 'Create Backup Now' }}
           </button>
         </div>
@@ -426,11 +570,22 @@
           <div class="row g-4">
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Backup Frequency:</label>
-              <select class="form-select" v-model="settings.backup.frequency">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="manual">Manual Only</option>
+              <select
+                v-model="settings.backup.frequency"
+                class="form-select"
+              >
+                <option value="daily">
+                  Daily
+                </option>
+                <option value="weekly">
+                  Weekly
+                </option>
+                <option value="monthly">
+                  Monthly
+                </option>
+                <option value="manual">
+                  Manual Only
+                </option>
               </select>
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
@@ -442,9 +597,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Retain Backups (days):</label>
               <input 
+                v-model.number="settings.backup.retentionDays" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.backup.retentionDays"
+                class="form-control"
                 min="7"
                 max="365"
               >
@@ -452,9 +607,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Data Retention (years):</label>
               <input 
+                v-model.number="settings.backup.dataRetentionYears" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.backup.dataRetentionYears"
+                class="form-control"
                 min="1"
                 max="20"
               >
@@ -467,43 +622,58 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="autoBackup" 
-                  v-model="settings.backup.autoBackup"
+                  v-model="settings.backup.autoBackup" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="autoBackup">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="autoBackup"
+                >
                   Enable Automatic Backups
                 </label>
-                <div class="form-text">Automatically backup data according to the schedule</div>
+                <div class="form-text">
+                  Automatically backup data according to the schedule
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="compressBackups" 
-                  v-model="settings.backup.compressBackups"
+                  v-model="settings.backup.compressBackups" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="compressBackups">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="compressBackups"
+                >
                   Compress Backup Files
                 </label>
-                <div class="form-text">Reduce backup file size by compressing data</div>
+                <div class="form-text">
+                  Reduce backup file size by compressing data
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="encryptBackups" 
-                  v-model="settings.backup.encryptBackups"
+                  v-model="settings.backup.encryptBackups" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="encryptBackups">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="encryptBackups"
+                >
                   Encrypt Backup Files
                 </label>
-                <div class="form-text">Encrypt backup files for enhanced security</div>
+                <div class="form-text">
+                  Encrypt backup files for enhanced security
+                </div>
               </div>
             </div>
           </div>
@@ -514,7 +684,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-bell me-2"></i>
+            <i class="bi bi-bell me-2" />
             Notification Settings
           </h6>
         </div>
@@ -523,36 +693,36 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">SMTP Server:</label>
               <input 
+                v-model="settings.notifications.smtpServer" 
                 type="text" 
-                class="form-control" 
-                v-model="settings.notifications.smtpServer"
+                class="form-control"
                 placeholder="smtp.gmail.com"
               >
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">SMTP Port:</label>
               <input 
+                v-model.number="settings.notifications.smtpPort" 
                 type="number" 
-                class="form-control" 
-                v-model.number="settings.notifications.smtpPort"
+                class="form-control"
                 placeholder="587"
               >
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">From Email:</label>
               <input 
+                v-model="settings.notifications.fromEmail" 
                 type="email" 
-                class="form-control" 
-                v-model="settings.notifications.fromEmail"
+                class="form-control"
                 placeholder="noreply@healthcenter.gov.ph"
               >
             </div>
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">SMS API Key:</label>
               <input 
+                v-model="settings.notifications.smsApiKey" 
                 type="text" 
-                class="form-control" 
-                v-model="settings.notifications.smsApiKey"
+                class="form-control"
                 placeholder="Enter SMS API key"
               >
             </div>
@@ -564,43 +734,58 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="enableEmailNotifications" 
-                  v-model="settings.notifications.enableEmail"
+                  v-model="settings.notifications.enableEmail" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="enableEmailNotifications">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="enableEmailNotifications"
+                >
                   Enable Email Notifications
                 </label>
-                <div class="form-text">Send email notifications for reminders and alerts</div>
+                <div class="form-text">
+                  Send email notifications for reminders and alerts
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="enableSmsNotifications" 
-                  v-model="settings.notifications.enableSms"
+                  v-model="settings.notifications.enableSms" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="enableSmsNotifications">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="enableSmsNotifications"
+                >
                   Enable SMS Notifications
                 </label>
-                <div class="form-text">Send SMS notifications for urgent reminders</div>
+                <div class="form-text">
+                  Send SMS notifications for urgent reminders
+                </div>
               </div>
             </div>
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="notifyStockAlerts" 
-                  v-model="settings.notifications.notifyStockAlerts"
+                  v-model="settings.notifications.notifyStockAlerts" 
+                  class="form-check-input" 
+                  type="checkbox"
                 >
-                <label class="form-check-label fw-semibold" for="notifyStockAlerts">
+                <label
+                  class="form-check-label fw-semibold"
+                  for="notifyStockAlerts"
+                >
                   Notify on Stock Alerts
                 </label>
-                <div class="form-text">Send notifications when vaccine stock is low or expiring</div>
+                <div class="form-text">
+                  Send notifications when vaccine stock is low or expiring
+                </div>
               </div>
             </div>
           </div>

@@ -1,36 +1,86 @@
 <template>
   <div class="scheduled-vaccinations">
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading scheduled vaccinations...</span>
       </div>
-      <p class="text-muted mt-3">Loading scheduled vaccinations...</p>
+      <p class="text-muted mt-3">
+        Loading scheduled vaccinations...
+      </p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!schedules || schedules.length === 0" class="text-center py-5">
-      <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
-      <p class="text-muted mt-3">No scheduled vaccinations found</p>
+    <div
+      v-else-if="!schedules || schedules.length === 0"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-calendar-x text-muted"
+        style="font-size: 3rem;"
+      />
+      <p class="text-muted mt-3">
+        No scheduled vaccinations found
+      </p>
     </div>
 
     <!-- Scheduled Vaccinations Table -->
-    <div v-else class="table-responsive">
+    <div
+      v-else
+      class="table-responsive"
+    >
       <table class="table table-bordered">
         <thead class="table-light">
           <tr>
-            <th style="width: 25%;" class="text-center">Vaccine</th>
-            <th style="width: 10%;" class="text-center">Doses</th>
-            <th style="width: 40%;" class="text-center">Date of Vaccine<br><small class="text-muted">MM/DD/YYYY</small></th>
-            <th style="width: 10%;" class="text-center">Status</th>
-            <th style="width: 15%;" class="text-center">Action</th>
+            <th
+              style="width: 25%;"
+              class="text-center"
+            >
+              Vaccine
+            </th>
+            <th
+              style="width: 10%;"
+              class="text-center"
+            >
+              Doses
+            </th>
+            <th
+              style="width: 40%;"
+              class="text-center"
+            >
+              Date of Vaccine<br><small class="text-muted">MM/DD/YYYY</small>
+            </th>
+            <th
+              style="width: 10%;"
+              class="text-center"
+            >
+              Status
+            </th>
+            <th
+              style="width: 15%;"
+              class="text-center"
+            >
+              Action
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="group in groupedVaccines" :key="group.vaccineName">
+          <tr
+            v-for="group in groupedVaccines"
+            :key="group.vaccineName"
+          >
             <td class="text-center align-middle">
               <strong>{{ group.vaccineName }}</strong>
-              <div v-if="group.scheduleInfo" class="text-muted small mt-1">
+              <div
+                v-if="group.scheduleInfo"
+                class="text-muted small mt-1"
+              >
                 {{ group.scheduleInfo }}
               </div>
             </td>
@@ -44,30 +94,50 @@
                   :key="index"
                   class="d-flex align-items-center justify-content-center gap-2 mb-2"
                 >
-                  <span :class="['badge', 'dose-badge', getDoseBadgeClass(dose.doseNumber)]" style="min-width: 60px;">Dose {{ dose.doseNumber }}</span>
-                    <div class="flex-grow-1" v-if="!editForm.doses[index]?.readonly">
-                      <DateInput
-                        v-model="editForm.doses[index].scheduledDate"
-                        :required="true"
-                        placeholder="MM/DD/YYYY"
-                      />
-                    </div>
-                    <div v-else class="flex-grow-1 d-flex align-items-center">
-                      <span class="text-muted small me-2">Completed</span>
-                      <span class="small">{{ formatShortDate(dose.scheduledDate) }}</span>
-                    </div>
+                  <span
+                    :class="['badge', 'dose-badge', getDoseBadgeClass(dose.doseNumber)]"
+                    style="min-width: 60px;"
+                  >Dose {{ dose.doseNumber }}</span>
+                  <div
+                    v-if="!editForm.doses[index]?.readonly"
+                    class="flex-grow-1"
+                  >
+                    <DateInput
+                      v-model="editForm.doses[index].scheduledDate"
+                      :required="true"
+                      placeholder="MM/DD/YYYY"
+                    />
+                  </div>
+                  <div
+                    v-else
+                    class="flex-grow-1 d-flex align-items-center"
+                  >
+                    <span class="text-muted small me-2">Completed</span>
+                    <span class="small">{{ formatShortDate(dose.scheduledDate) }}</span>
+                  </div>
                 </div>
               </div>
-              <div v-else class="d-flex flex-wrap gap-2 justify-content-center">
+              <div
+                v-else
+                class="d-flex flex-wrap gap-2 justify-content-center"
+              >
                 <div 
                   v-for="(dose, index) in group.doses" 
                   :key="index"
                   class="dose-box-small"
-                   :class="[getDoseColorClass(dose.doseNumber), getDoseBoxClass(dose)]"
+                  :class="[getDoseColorClass(dose.doseNumber), getDoseBoxClass(dose)]"
                 >
-                  <div class="dose-number-small">Dose {{ dose.doseNumber }}</div>
-                  <div class="dose-date-small">{{ formatShortDate(dose.scheduledDate) }}</div>
-                  <div v-if="dose.daysOverdue > 0" class="text-danger" style="font-size: 0.65rem; margin-top: 2px;">
+                  <div class="dose-number-small">
+                    Dose {{ dose.doseNumber }}
+                  </div>
+                  <div class="dose-date-small">
+                    {{ formatShortDate(dose.scheduledDate) }}
+                  </div>
+                  <div
+                    v-if="dose.daysOverdue > 0"
+                    class="text-danger"
+                    style="font-size: 0.65rem; margin-top: 2px;"
+                  >
                     {{ dose.daysOverdue }}d overdue
                   </div>
                 </div>
@@ -75,7 +145,11 @@
             </td>
             <td class="text-center align-middle">
               <div class="d-flex flex-column gap-1">
-                <div v-for="(dose, index) in group.doses" :key="index" class="text-center">
+                <div
+                  v-for="(dose, index) in group.doses"
+                  :key="index"
+                  class="text-center"
+                >
                   <small><strong>Dose {{ dose.doseNumber }}:</strong></small>
                   <span :class="['badge', 'badge-sm', 'ms-1', getStatusBadgeClass(dose.status)]">
                     {{ formatStatus(dose.status) }}
@@ -84,29 +158,32 @@
               </div>
             </td>
             <td class="align-middle text-center">
-              <div v-if="editingGroup && editingGroup.vaccineName === group.vaccineName" class="btn-group btn-group-sm">
+              <div
+                v-if="editingGroup && editingGroup.vaccineName === group.vaccineName"
+                class="btn-group btn-group-sm"
+              >
                 <button 
                   class="btn btn-success"
-                  @click="saveEdit(group)"
                   :disabled="saving"
+                  @click="saveEdit(group)"
                 >
-                  <i class="bi bi-check-lg me-1"></i>Save
+                  <i class="bi bi-check-lg me-1" />Save
                 </button>
                 <button 
                   class="btn btn-secondary"
-                  @click="cancelEdit"
                   :disabled="saving"
+                  @click="cancelEdit"
                 >
-                  <i class="bi bi-x-lg me-1"></i>Cancel
+                  <i class="bi bi-x-lg me-1" />Cancel
                 </button>
               </div>
               <button 
                 v-else
                 class="btn btn-sm btn-outline-primary"
-                @click="startEdit(group)"
                 :disabled="!!editingGroup"
+                @click="startEdit(group)"
               >
-                <i class="bi bi-pencil me-1"></i>Edit
+                <i class="bi bi-pencil me-1" />Edit
               </button>
             </td>
           </tr>

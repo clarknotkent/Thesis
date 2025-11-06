@@ -1,20 +1,33 @@
 ﻿<template>
   <ParentLayout title="Home">
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
-    <div v-else class="dashboard-container">
+    <div
+      v-else
+      class="dashboard-container"
+    >
       <div class="welcome-header">
-        <h4 class="welcome-title">Welcome, {{ parentName }}!</h4>
-        <p class="welcome-subtitle">Here's your family's health summary</p>
+        <h4 class="welcome-title">
+          Welcome, {{ parentName }}!
+        </h4>
+        <p class="welcome-subtitle">
+          Here's your family's health summary
+        </p>
       </div>
       
       <SummaryCards 
-        :totalChildren="stats.totalChildren"
-        :dueVaccines="stats.dueVaccines"
-        :completedVaccines="stats.completedVaccines"
+        :total-children="stats.totalChildren"
+        :due-vaccines="stats.dueVaccines"
+        :completed-vaccines="stats.completedVaccines"
       />
       
       <ChildrenList :children="children" />

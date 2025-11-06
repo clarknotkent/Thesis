@@ -1,52 +1,73 @@
 <template>
   <div class="medical-history-card">
     <!-- Card Header (Always Visible - Collapsed State) -->
-    <div class="card-header" @click="toggleExpanded">
+    <div
+      class="card-header"
+      @click="toggleExpanded"
+    >
       <div class="header-content">
         <div class="header-icon">
-          <i class="bi bi-clipboard2-pulse"></i>
+          <i class="bi bi-clipboard2-pulse" />
         </div>
         <div class="header-info">
-          <h3 class="visit-date">{{ formattedDate }}</h3>
-          <p class="service-type">{{ serviceRendered }}</p>
+          <h3 class="visit-date">
+            {{ formattedDate }}
+          </h3>
+          <p class="service-type">
+            {{ serviceRendered }}
+          </p>
         </div>
       </div>
-      <div class="chevron-icon" :class="{ expanded: isExpanded }">
-        <i class="bi bi-chevron-down"></i>
+      <div
+        class="chevron-icon"
+        :class="{ expanded: isExpanded }"
+      >
+        <i class="bi bi-chevron-down" />
       </div>
     </div>
 
     <!-- Card Body (Expanded State) -->
     <transition name="expand">
-      <div v-if="isExpanded" class="card-body" @click="handleNavigate">
+      <div
+        v-if="isExpanded"
+        class="card-body"
+        @click="handleNavigate"
+      >
         <!-- Tap to View Hint -->
         <div class="tap-hint">
-          <i class="bi bi-hand-index"></i>
+          <i class="bi bi-hand-index" />
           <span>Tap to view full visit summary</span>
         </div>
         
         <!-- Recorded By -->
         <div class="info-section">
           <div class="section-label">
-            <i class="bi bi-person-badge"></i>
+            <i class="bi bi-person-badge" />
             Recorded By
           </div>
-          <div class="section-value">{{ recordedBy }}</div>
+          <div class="section-value">
+            {{ recordedBy }}
+          </div>
         </div>
 
         <!-- Findings -->
-        <div v-if="findings" class="info-section">
+        <div
+          v-if="findings"
+          class="info-section"
+        >
           <div class="section-label">
-            <i class="bi bi-journal-medical"></i>
+            <i class="bi bi-journal-medical" />
             Findings
           </div>
-          <div class="findings-text">{{ findings }}</div>
+          <div class="findings-text">
+            {{ findings }}
+          </div>
         </div>
 
         <!-- Brief Summary -->
         <div class="info-section">
           <div class="section-label">
-            <i class="bi bi-info-circle"></i>
+            <i class="bi bi-info-circle" />
             Summary
           </div>
           <div class="summary-text">
@@ -58,8 +79,11 @@
         </div>
 
         <!-- Empty State -->
-        <div v-if="!findings && !hasVitals && !hasImmunizations" class="empty-details">
-          <i class="bi bi-info-circle"></i>
+        <div
+          v-if="!findings && !hasVitals && !hasImmunizations"
+          class="empty-details"
+        >
+          <i class="bi bi-info-circle" />
           <p>No additional details recorded for this visit.</p>
         </div>
       </div>

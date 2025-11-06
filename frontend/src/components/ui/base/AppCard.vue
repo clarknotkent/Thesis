@@ -1,8 +1,20 @@
 <template>
-  <div class="card shadow" :class="cardClasses">
-    <div v-if="title || $slots.header" class="card-header py-3" :class="headerClasses">
-      <div v-if="title" class="d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+  <div
+    class="card shadow"
+    :class="cardClasses"
+  >
+    <div
+      v-if="title || $slots.header"
+      class="card-header py-3"
+      :class="headerClasses"
+    >
+      <div
+        v-if="title"
+        class="d-flex justify-content-between align-items-center"
+      >
+        <h6 class="m-0 font-weight-bold text-primary">
+          {{ title }}
+        </h6>
         <slot name="actions" />
       </div>
       <slot name="header" />
@@ -10,7 +22,10 @@
     <div class="card-body">
       <slot />
     </div>
-    <div v-if="$slots.footer" class="card-footer">
+    <div
+      v-if="$slots.footer"
+      class="card-footer"
+    >
       <slot name="footer" />
     </div>
   </div>

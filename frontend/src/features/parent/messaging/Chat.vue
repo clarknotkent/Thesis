@@ -3,12 +3,19 @@
     <div class="chat-page">
       <!-- Header -->
       <div class="chat-header d-flex align-items-center gap-2 p-2 border-bottom bg-white">
-        <button class="btn btn-link text-decoration-none" @click="goBack">
-          <i class="bi bi-arrow-left"></i>
+        <button
+          class="btn btn-link text-decoration-none"
+          @click="goBack"
+        >
+          <i class="bi bi-arrow-left" />
         </button>
-  <div class="flex-fill">
-          <div class="fw-semibold text-truncate">{{ title }}</div>
-          <div class="text-muted small text-truncate">{{ participantsLabel }}</div>
+        <div class="flex-fill">
+          <div class="fw-semibold text-truncate">
+            {{ title }}
+          </div>
+          <div class="text-muted small text-truncate">
+            {{ participantsLabel }}
+          </div>
         </div>
       </div>
 
@@ -25,11 +32,9 @@
           :sending="sending"
           @send="handleSend"
         />
-
       </div>
     </div>
   </ParentLayout>
-  
 </template>
 
 <script setup>

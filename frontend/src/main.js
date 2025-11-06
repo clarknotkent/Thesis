@@ -18,7 +18,7 @@ import { initializeChatOfflineSync } from '@/services/offline/chatOffline'
 let registerSW
 try {
 	// dynamic import to avoid breaking non-PWA builds
-	// eslint-disable-next-line no-undef
+	 
 	registerSW = (await import('virtual:pwa-register')).registerSW
 } catch (_) {}
 

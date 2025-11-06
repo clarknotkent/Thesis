@@ -3,25 +3,36 @@
     <!-- Fixed Header Section -->
     <div class="visit-summary-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Visit Summary</h1>
+        <h1 class="page-title">
+          Visit Summary
+        </h1>
         <!-- Removed menu button for read-only -->
-        <div class="header-spacer"></div>
+        <div class="header-spacer" />
       </div>
     </div>
 
     <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading visit summary...</p>
       </div>
 
       <!-- Content -->
-      <div v-else-if="visit" class="visit-content">
+      <div
+        v-else-if="visit"
+        class="visit-content"
+      >
         <VisitInfoCard
           :patient-name="patientName"
           :formatted-visit-date="formattedVisitDate"
@@ -41,18 +52,31 @@
         />
 
         <!-- No Services Message -->
-        <div v-if="!hasServices && !hasVitalSigns" class="empty-state">
-          <i class="bi bi-info-circle empty-icon"></i>
-          <p class="empty-text">No additional services or vitals recorded for this visit</p>
+        <div
+          v-if="!hasServices && !hasVitalSigns"
+          class="empty-state"
+        >
+          <i class="bi bi-info-circle empty-icon" />
+          <p class="empty-text">
+            No additional services or vitals recorded for this visit
+          </p>
         </div>
       </div>
 
       <!-- Error State -->
-      <div v-else class="error-state">
-        <i class="bi bi-exclamation-triangle error-icon"></i>
-        <p class="error-text">Failed to load visit summary</p>
-        <button class="retry-button" @click="fetchVisitData">
-          <i class="bi bi-arrow-clockwise"></i>
+      <div
+        v-else
+        class="error-state"
+      >
+        <i class="bi bi-exclamation-triangle error-icon" />
+        <p class="error-text">
+          Failed to load visit summary
+        </p>
+        <button
+          class="retry-button"
+          @click="fetchVisitData"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>

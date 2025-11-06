@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">{{ isNew ? 'New Receiving Report' : 'View Receiving Report' }}</li>
+          <li class="breadcrumb-item active">
+            {{ isNew ? 'New Receiving Report' : 'View Receiving Report' }}
+          </li>
         </ol>
       </nav>
 
@@ -18,16 +27,24 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-file-earmark-text me-2"></i>{{ isNew ? 'New Receiving Report' : `Receiving Report ${form.report_number || ''}` }}
+            <i class="bi bi-file-earmark-text me-2" />{{ isNew ? 'New Receiving Report' : `Receiving Report ${form.report_number || ''}` }}
           </h1>
-          <p class="text-muted mb-0">Record deliveries and convert to inventory</p>
+          <p class="text-muted mb-0">
+            Record deliveries and convert to inventory
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
@@ -38,20 +55,33 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Delivery Date *</label>
-                <DateInput v-model="form.delivery_date" :disabled="isReadOnly" />
+                <DateInput
+                  v-model="form.delivery_date"
+                  :disabled="isReadOnly"
+                />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Delivered By *</label>
-                <input class="form-control" v-model="form.delivered_by" :disabled="isReadOnly" required />
+                <input
+                  v-model="form.delivered_by"
+                  class="form-control"
+                  :disabled="isReadOnly"
+                  required
+                >
               </div>
               <div class="col-12">
                 <label class="form-label">Supplier Notes</label>
-                <textarea class="form-control" rows="2" v-model="form.supplier_notes" :disabled="isReadOnly"></textarea>
+                <textarea
+                  v-model="form.supplier_notes"
+                  class="form-control"
+                  rows="2"
+                  :disabled="isReadOnly"
+                />
               </div>
             </div>
           </form>
 
-          <hr />
+          <hr>
           <div>
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="m-0">
@@ -60,40 +90,67 @@
                   ({{ Number(form.total_items || visibleItems.length) }} items · {{ Number(form.total_quantity || visibleItems.reduce((s,i)=> s + (Number(i.quantity_received)||0), 0)) }} total)
                 </small>
               </h6>
-              <button v-if="form.status === 'DRAFT'" class="btn btn-sm btn-outline-primary" @click="addItemRow">
-                <i class="bi bi-plus"></i> Add Item
+              <button
+                v-if="form.status === 'DRAFT'"
+                class="btn btn-sm btn-outline-primary"
+                @click="addItemRow"
+              >
+                <i class="bi bi-plus" /> Add Item
               </button>
             </div>
             <div class="table-responsive">
               <table class="table table-sm align-middle table-striped table-expanded">
                 <thead>
                   <tr>
-                    <th style="width: 20%;">Vaccine (existing)</th>
-                    <th style="width: 12%;">Antigen</th>
-                    <th style="width: 12%;">Brand</th>
-                    <th style="width: 12%;">Manufacturer</th>
-                    <th style="width: 10%;">Lot #</th>
-                    <th style="width: 10%;">Expiry</th>
-                    <th style="width: 12%;">Qty</th>
-                    <th style="width: 10%;">Storage</th>
-                    <th style="width: 2%;"></th>
+                    <th style="width: 20%;">
+                      Vaccine (existing)
+                    </th>
+                    <th style="width: 12%;">
+                      Antigen
+                    </th>
+                    <th style="width: 12%;">
+                      Brand
+                    </th>
+                    <th style="width: 12%;">
+                      Manufacturer
+                    </th>
+                    <th style="width: 10%;">
+                      Lot #
+                    </th>
+                    <th style="width: 10%;">
+                      Expiry
+                    </th>
+                    <th style="width: 12%;">
+                      Qty
+                    </th>
+                    <th style="width: 10%;">
+                      Storage
+                    </th>
+                    <th style="width: 2%;" />
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(it, idx) in visibleItems" :key="it.item_id || idx">
+                  <tr
+                    v-for="(it, idx) in visibleItems"
+                    :key="it.item_id || idx"
+                  >
                     <td>
-                      <div class="vaccine-dropdown-wrapper" :class="{ 'is-open': it.dropdownOpen }" v-click-outside="() => it.dropdownOpen = false">
+                      <div
+                        v-click-outside="() => it.dropdownOpen = false"
+                        class="vaccine-dropdown-wrapper"
+                        :class="{ 'is-open': it.dropdownOpen }"
+                      >
                         <input 
-                          type="text"
-                          class="form-control form-control-sm" 
-                          v-model="it.vaccine_search" 
-                          @input="onVaccineInput(it)"
-                          @focus="openDropdown(it, $event)"
+                          v-model="it.vaccine_search"
+                          :ref="el => it.inputRef = el" 
+                          type="text" 
+                          class="form-control form-control-sm"
                           :disabled="isReadOnly"
                           placeholder="Type or select..."
                           autocomplete="off"
-                          :ref="el => it.inputRef = el"
-                        />
+                          @input="onVaccineInput(it)"
+                          @focus="openDropdown(it, $event)"
+                        >
                         <div 
                           v-if="it.dropdownOpen && !isCompleted" 
                           class="vaccine-dropdown-menu"
@@ -117,48 +174,146 @@
                       </div>
                     </td>
                     <td>
-                      <input class="form-control form-control-sm" v-model="it.antigen_name" :disabled="isReadOnly || !!it.vaccine_id" placeholder="e.g., DTP" />
+                      <input
+                        v-model="it.antigen_name"
+                        class="form-control form-control-sm"
+                        :disabled="isReadOnly || !!it.vaccine_id"
+                        placeholder="e.g., DTP"
+                      >
                     </td>
                     <td>
-                      <input class="form-control form-control-sm" v-model="it.brand_name" :disabled="isReadOnly || !!it.vaccine_id" placeholder="Brand" />
+                      <input
+                        v-model="it.brand_name"
+                        class="form-control form-control-sm"
+                        :disabled="isReadOnly || !!it.vaccine_id"
+                        placeholder="Brand"
+                      >
                     </td>
-                    <td><input class="form-control form-control-sm" v-model="it.manufacturer" :disabled="isReadOnly" list="mfgList" /></td>
-                    <td><input class="form-control form-control-sm" v-model="it.lot_number" :disabled="isReadOnly" /></td>
-                    <td><DateInput v-model="it.expiration_date" small :disabled="isReadOnly" /></td>
+                    <td>
+                      <input
+                        v-model="it.manufacturer"
+                        class="form-control form-control-sm"
+                        :disabled="isReadOnly"
+                        list="mfgList"
+                      >
+                    </td>
+                    <td>
+                      <input
+                        v-model="it.lot_number"
+                        class="form-control form-control-sm"
+                        :disabled="isReadOnly"
+                      >
+                    </td>
+                    <td>
+                      <DateInput
+                        v-model="it.expiration_date"
+                        small
+                        :disabled="isReadOnly"
+                      />
+                    </td>
                     <td>
                       <div class="input-group qty-group">
-                        <button class="btn btn-outline-secondary" type="button" title="Decrease" @click="it.quantity_received = Math.max(1, (Number(it.quantity_received)||1) - 1)" :disabled="isReadOnly">-</button>
-                        <input type="number" min="1" step="1" inputmode="numeric" aria-label="Quantity" class="form-control text-center qty-input" v-model.number="it.quantity_received" :disabled="isReadOnly" />
-                        <button class="btn btn-outline-secondary" type="button" title="Increase" @click="it.quantity_received = (Number(it.quantity_received)||0) + 1" :disabled="isReadOnly">+</button>
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          title="Decrease"
+                          :disabled="isReadOnly"
+                          @click="it.quantity_received = Math.max(1, (Number(it.quantity_received)||1) - 1)"
+                        >
+                          -
+                        </button>
+                        <input
+                          v-model.number="it.quantity_received"
+                          type="number"
+                          min="1"
+                          step="1"
+                          inputmode="numeric"
+                          aria-label="Quantity"
+                          class="form-control text-center qty-input"
+                          :disabled="isReadOnly"
+                        >
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          title="Increase"
+                          :disabled="isReadOnly"
+                          @click="it.quantity_received = (Number(it.quantity_received)||0) + 1"
+                        >
+                          +
+                        </button>
                       </div>
                     </td>
-                    <td><input class="form-control form-control-sm" v-model="it.storage_location" :disabled="isReadOnly" list="storageList" /></td>
                     <td>
-                      <button v-if="form.status === 'DRAFT'" class="btn btn-sm btn-outline-danger" @click="it.is_deleted = true"><i class="bi bi-trash"></i></button>
+                      <input
+                        v-model="it.storage_location"
+                        class="form-control form-control-sm"
+                        :disabled="isReadOnly"
+                        list="storageList"
+                      >
+                    </td>
+                    <td>
+                      <button
+                        v-if="form.status === 'DRAFT'"
+                        class="btn btn-sm btn-outline-danger"
+                        @click="it.is_deleted = true"
+                      >
+                        <i class="bi bi-trash" />
+                      </button>
                     </td>
                   </tr>
-                  <tr v-if="visibleItems.length===0"><td colspan="9" class="text-center text-muted">No items yet</td></tr>
+                  <tr v-if="visibleItems.length===0">
+                    <td
+                      colspan="9"
+                      class="text-center text-muted"
+                    >
+                      No items yet
+                    </td>
+                  </tr>
                 </tbody>
               </table>
               <datalist id="mfgList">
-                <option v-for="m in manufacturerOptions" :key="m" :value="m" />
+                <option
+                  v-for="m in manufacturerOptions"
+                  :key="m"
+                  :value="m"
+                />
               </datalist>
               <datalist id="storageList">
-                <option v-for="s in storageOptions" :key="s" :value="s" />
+                <option
+                  v-for="s in storageOptions"
+                  :key="s"
+                  :value="s"
+                />
               </datalist>
             </div>
           </div>
 
           <!-- Action Buttons -->
           <div class="d-flex justify-content-end gap-2 mt-3">
-            <button v-if="form.status === 'DRAFT' && !isNew" class="btn btn-danger" @click="openCancelConfirm">
+            <button
+              v-if="form.status === 'DRAFT' && !isNew"
+              class="btn btn-danger"
+              @click="openCancelConfirm"
+            >
               Cancel
             </button>
-            <button v-if="form.status === 'DRAFT' && !isNew" class="btn btn-primary" @click="openCompleteConfirm">
+            <button
+              v-if="form.status === 'DRAFT' && !isNew"
+              class="btn btn-primary"
+              @click="openCompleteConfirm"
+            >
               Complete
             </button>
-            <button v-if="isNew || form.status === 'DRAFT'" class="btn btn-success" @click="save" :disabled="saving">
-              <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+            <button
+              v-if="isNew || form.status === 'DRAFT'"
+              class="btn btn-success"
+              :disabled="saving"
+              @click="save"
+            >
+              <span
+                v-if="saving"
+                class="spinner-border spinner-border-sm me-2"
+              />
               {{ isNew ? 'Create Report' : 'Save Report' }}
             </button>
           </div>
@@ -166,12 +321,22 @@
       </div>
 
       <!-- Complete Confirm Modal -->
-      <div class="modal fade" :class="{ show: showCompleteModal }" :style="{ display: showCompleteModal ? 'block' : 'none' }" tabindex="-1">
+      <div
+        class="modal fade"
+        :class="{ show: showCompleteModal }"
+        :style="{ display: showCompleteModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Complete Receiving Report</h5>
-              <button class="btn-close" @click="showCompleteModal = false"></button>
+              <h5 class="modal-title">
+                Complete Receiving Report
+              </h5>
+              <button
+                class="btn-close"
+                @click="showCompleteModal = false"
+              />
             </div>
             <div class="modal-body">
               <p>You're about to complete this report and create inventory records.</p>
@@ -181,93 +346,202 @@
               </ul>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showCompleteModal = false">Cancel</button>
-              <button class="btn btn-primary" @click="confirmComplete" :disabled="completing">Complete Now</button>
+              <button
+                class="btn btn-secondary"
+                @click="showCompleteModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                class="btn btn-primary"
+                :disabled="completing"
+                @click="confirmComplete"
+              >
+                Complete Now
+              </button>
             </div>
           </div>
         </div>
       </div>
-      <div v-if="showCompleteModal" class="modal-backdrop fade show" />
+      <div
+        v-if="showCompleteModal"
+        class="modal-backdrop fade show"
+      />
 
       <!-- Cancel Confirm Modal -->
-      <div class="modal fade" :class="{ show: showCancelModal }" :style="{ display: showCancelModal ? 'block' : 'none' }" tabindex="-1">
+      <div
+        class="modal fade"
+        :class="{ show: showCancelModal }"
+        :style="{ display: showCancelModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Cancel Receiving Report</h5>
-              <button class="btn-close" @click="showCancelModal = false"></button>
+              <h5 class="modal-title">
+                Cancel Receiving Report
+              </h5>
+              <button
+                class="btn-close"
+                @click="showCancelModal = false"
+              />
             </div>
             <div class="modal-body">
               <label class="form-label">Reason (optional)</label>
-              <textarea class="form-control" rows="3" v-model="cancelReason" placeholder="Enter reason for cancellation (optional)"></textarea>
+              <textarea
+                v-model="cancelReason"
+                class="form-control"
+                rows="3"
+                placeholder="Enter reason for cancellation (optional)"
+              />
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showCancelModal = false">Close</button>
-              <button class="btn btn-danger" @click="confirmCancel" :disabled="cancelling">Cancel Report</button>
+              <button
+                class="btn btn-secondary"
+                @click="showCancelModal = false"
+              >
+                Close
+              </button>
+              <button
+                class="btn btn-danger"
+                :disabled="cancelling"
+                @click="confirmCancel"
+              >
+                Cancel Report
+              </button>
             </div>
           </div>
         </div>
       </div>
-      <div v-if="showCancelModal" class="modal-backdrop fade show" />
+      <div
+        v-if="showCancelModal"
+        class="modal-backdrop fade show"
+      />
 
       <!-- Post-completion: Complete Vaccine Details Modal -->
-      <div class="modal fade" :class="{ show: showDetailsModal }" :style="{ display: showDetailsModal ? 'block' : 'none' }" tabindex="-1">
+      <div
+        class="modal fade"
+        :class="{ show: showDetailsModal }"
+        :style="{ display: showDetailsModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Complete Vaccine Details</h5>
-              <button class="btn-close" @click="showDetailsModal = false"></button>
+              <h5 class="modal-title">
+                Complete Vaccine Details
+              </h5>
+              <button
+                class="btn-close"
+                @click="showDetailsModal = false"
+              />
             </div>
             <div class="modal-body">
-              <p class="text-muted">Some vaccines created from this receiving report are missing details. Please review and complete them.</p>
-              <div v-for="f in detailsForms" :key="f.vaccine_id" class="border rounded p-3 mb-3">
+              <p class="text-muted">
+                Some vaccines created from this receiving report are missing details. Please review and complete them.
+              </p>
+              <div
+                v-for="f in detailsForms"
+                :key="f.vaccine_id"
+                class="border rounded p-3 mb-3"
+              >
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label">Antigen</label>
-                    <input class="form-control" v-model="f.antigen_name" readonly />
+                    <input
+                      v-model="f.antigen_name"
+                      class="form-control"
+                      readonly
+                    >
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Brand</label>
-                    <input class="form-control" v-model="f.brand_name" readonly />
+                    <input
+                      v-model="f.brand_name"
+                      class="form-control"
+                      readonly
+                    >
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Manufacturer</label>
-                    <input class="form-control" v-model="f.manufacturer" />
+                    <input
+                      v-model="f.manufacturer"
+                      class="form-control"
+                    >
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Disease Prevented</label>
-                    <input class="form-control" v-model="f.disease_prevented" placeholder="e.g., Measles, Polio" />
+                    <input
+                      v-model="f.disease_prevented"
+                      class="form-control"
+                      placeholder="e.g., Measles, Polio"
+                    >
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Vaccine Type</label>
-                    <select class="form-select" v-model="f.vaccine_type">
-                      <option v-for="o in vaccineTypeOptions" :key="o" :value="o">{{ o }}</option>
+                    <select
+                      v-model="f.vaccine_type"
+                      class="form-select"
+                    >
+                      <option
+                        v-for="o in vaccineTypeOptions"
+                        :key="o"
+                        :value="o"
+                      >
+                        {{ o }}
+                      </option>
                     </select>
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Category</label>
-                    <select class="form-select" v-model="f.category">
-                      <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
+                    <select
+                      v-model="f.category"
+                      class="form-select"
+                    >
+                      <option
+                        v-for="c in categoryOptions"
+                        :key="c"
+                        :value="c"
+                      >
+                        {{ c }}
+                      </option>
                     </select>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Default Storage Location (optional)</label>
-                    <input class="form-control" v-model="f.default_storage_location" list="storageList" placeholder="Set for all inventory created by this RR" />
+                    <input
+                      v-model="f.default_storage_location"
+                      class="form-control"
+                      list="storageList"
+                      placeholder="Set for all inventory created by this RR"
+                    >
                   </div>
                 </div>
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" @click="showDetailsModal = false">Close</button>
-              <button class="btn btn-primary" @click="saveCompletedDetails">Save Details</button>
+              <button
+                class="btn btn-secondary"
+                @click="showDetailsModal = false"
+              >
+                Close
+              </button>
+              <button
+                class="btn btn-primary"
+                @click="saveCompletedDetails"
+              >
+                Save Details
+              </button>
             </div>
           </div>
         </div>
       </div>
-      <div v-if="showDetailsModal" class="modal-backdrop fade show" />
+      <div
+        v-if="showDetailsModal"
+        class="modal-backdrop fade show"
+      />
     </div>
   </AdminLayout>
-  
 </template>
 
 <script setup>

@@ -2,7 +2,7 @@
   <div class="search-container mb-4">
     <div class="input-group mb-3">
       <span class="input-group-text">
-        <i class="bi bi-search"></i>
+        <i class="bi bi-search" />
       </span>
       <input 
         type="text" 
@@ -16,12 +16,24 @@
         :value="statusFilter"
         @change="$emit('update:statusFilter', $event.target.value)"
       >
-        <option value="">All Status</option>
-        <option value="Available">Available</option>
-        <option value="Low Stock">Low Stock</option>
-        <option value="Out of Stock">Out of Stock</option>
-        <option value="Expiring Soon">Expiring Soon</option>
-        <option value="Expired">Expired</option>
+        <option value="">
+          All Status
+        </option>
+        <option value="Available">
+          Available
+        </option>
+        <option value="Low Stock">
+          Low Stock
+        </option>
+        <option value="Out of Stock">
+          Out of Stock
+        </option>
+        <option value="Expiring Soon">
+          Expiring Soon
+        </option>
+        <option value="Expired">
+          Expired
+        </option>
       </select>
     </div>
     
@@ -36,9 +48,12 @@
         }"
         @click="$emit('toggle-nip-filter')"
       >
-        <i :class="getNipFilterIcon()" class="me-2"></i>
+        <i
+          :class="getNipFilterIcon()"
+          class="me-2"
+        />
         {{ getNipFilterText() }}
-        <i class="bi bi-arrow-repeat ms-2"></i>
+        <i class="bi bi-arrow-repeat ms-2" />
       </button>
     </div>
   </div>

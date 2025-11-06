@@ -3,104 +3,158 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">FAQ Manager</h1>
-          <p class="text-muted mb-0">Create, edit and manage frequently asked questions</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            FAQ Manager
+          </h1>
+          <p class="text-muted mb-0">
+            Create, edit and manage frequently asked questions
+          </p>
         </div>
       </div>
 
       <div class="faq-manager container py-0">
         <div class="row g-4">
-        <div class="col-md-5">
-          <div class="card shadow">
-            <div class="card-header bg-success text-white">
-              <div class="d-flex align-items-center">
-                <i class="bi bi-plus-circle me-2"></i>
-                <strong>{{ editing ? 'Edit FAQ' : 'New FAQ' }}</strong>
+          <div class="col-md-5">
+            <div class="card shadow">
+              <div class="card-header bg-success text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-plus-circle me-2" />
+                  <strong>{{ editing ? 'Edit FAQ' : 'New FAQ' }}</strong>
+                </div>
               </div>
-            </div>
-            <div class="card-body">
-              <div class="mb-3">
-                <label class="form-label fw-bold">
-                  <i class="bi bi-question-circle text-primary me-1"></i>Question
-                </label>
-                <input v-model="newQuestion" class="form-control" placeholder="Enter the question..." />
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-bold">
-                  <i class="bi bi-chat-quote text-success me-1"></i>Answer
-                </label>
-                <textarea v-model="newAnswer" class="form-control" rows="8" placeholder="Provide a detailed answer..."></textarea>
-              </div>
-              <div class="d-flex justify-content-end gap-2">
-                <button class="btn btn-secondary" v-if="editing" @click="cancelEdit">
-                  <i class="bi bi-x-circle me-1"></i>Cancel
-                </button>
-                <button class="btn btn-success" @click="create">
-                  <i class="bi bi-check-circle me-1"></i>{{ editing ? 'Update' : 'Create' }} FAQ
-                </button>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="bi bi-question-circle text-primary me-1" />Question
+                  </label>
+                  <input
+                    v-model="newQuestion"
+                    class="form-control"
+                    placeholder="Enter the question..."
+                  >
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="bi bi-chat-quote text-success me-1" />Answer
+                  </label>
+                  <textarea
+                    v-model="newAnswer"
+                    class="form-control"
+                    rows="8"
+                    placeholder="Provide a detailed answer..."
+                  />
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                  <button
+                    v-if="editing"
+                    class="btn btn-secondary"
+                    @click="cancelEdit"
+                  >
+                    <i class="bi bi-x-circle me-1" />Cancel
+                  </button>
+                  <button
+                    class="btn btn-success"
+                    @click="create"
+                  >
+                    <i class="bi bi-check-circle me-1" />{{ editing ? 'Update' : 'Create' }} FAQ
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="col-md-7">
-          <div class="card shadow">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-              <div class="d-flex align-items-center">
-                <i class="bi bi-list-check me-2"></i>
-                <strong>FAQ List</strong>
-              </div>
-              <button class="btn btn-sm btn-light" @click="load">
-                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-              </button>
-            </div>
-            <div class="card-body p-0">
-              <div class="p-3 border-bottom bg-light">
-                <div class="input-group">
-                  <span class="input-group-text">
-                    <i class="bi bi-search"></i>
-                  </span>
-                  <input v-model="searchQuery" class="form-control" placeholder="Search FAQs..." @input="filterFAQs">
+          <div class="col-md-7">
+            <div class="card shadow">
+              <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-list-check me-2" />
+                  <strong>FAQ List</strong>
                 </div>
+                <button
+                  class="btn btn-sm btn-light"
+                  @click="load"
+                >
+                  <i class="bi bi-arrow-clockwise me-1" />Refresh
+                </button>
               </div>
-              <div style="max-height:500px; overflow:auto">
-                <div v-if="filteredFAQs.length === 0" class="text-center py-5">
-                  <i class="bi bi-question-circle text-muted" style="font-size: 3rem;"></i>
-                  <h6 class="text-muted mt-3">No FAQs found</h6>
-                  <p class="text-muted small">Create your first FAQ or adjust your search</p>
+              <div class="card-body p-0">
+                <div class="p-3 border-bottom bg-light">
+                  <div class="input-group">
+                    <span class="input-group-text">
+                      <i class="bi bi-search" />
+                    </span>
+                    <input
+                      v-model="searchQuery"
+                      class="form-control"
+                      placeholder="Search FAQs..."
+                      @input="filterFAQs"
+                    >
+                  </div>
                 </div>
-                <div v-for="f in filteredFAQs" :key="f.faq_id" class="faq-item border-bottom p-3">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div class="flex-grow-1">
-                      <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-question-circle text-primary me-2"></i>
-                        <h6 class="mb-0 fw-bold">{{ f.question }}</h6>
+                <div style="max-height:500px; overflow:auto">
+                  <div
+                    v-if="filteredFAQs.length === 0"
+                    class="text-center py-5"
+                  >
+                    <i
+                      class="bi bi-question-circle text-muted"
+                      style="font-size: 3rem;"
+                    />
+                    <h6 class="text-muted mt-3">
+                      No FAQs found
+                    </h6>
+                    <p class="text-muted small">
+                      Create your first FAQ or adjust your search
+                    </p>
+                  </div>
+                  <div
+                    v-for="f in filteredFAQs"
+                    :key="f.faq_id"
+                    class="faq-item border-bottom p-3"
+                  >
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                          <i class="bi bi-question-circle text-primary me-2" />
+                          <h6 class="mb-0 fw-bold">
+                            {{ f.question }}
+                          </h6>
+                        </div>
+                        <div class="text-muted small mb-2">
+                          {{ truncate(f.answer, 150) }}
+                        </div>
+                        <div class="d-flex align-items-center text-muted small">
+                          <i class="bi bi-calendar-event me-1" />
+                          Created {{ formatDate(f.created_at) }}
+                        </div>
                       </div>
-                      <div class="text-muted small mb-2">{{ truncate(f.answer, 150) }}</div>
-                      <div class="d-flex align-items-center text-muted small">
-                        <i class="bi bi-calendar-event me-1"></i>
-                        Created {{ formatDate(f.created_at) }}
+                      <div class="btn-group ms-3">
+                        <button
+                          class="btn btn-sm btn-outline-primary"
+                          title="Edit"
+                          @click="edit(f)"
+                        >
+                          <i class="bi bi-pencil" />
+                        </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          title="Delete"
+                          @click="remove(f.faq_id)"
+                        >
+                          <i class="bi bi-trash" />
+                        </button>
                       </div>
-                    </div>
-                    <div class="btn-group ms-3">
-                      <button class="btn btn-sm btn-outline-primary" @click="edit(f)" title="Edit">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger" @click="remove(f.faq_id)" title="Delete">
-                        <i class="bi bi-trash"></i>
-                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="card-footer bg-light text-muted small">
-              <i class="bi bi-info-circle me-1"></i>
-              Total FAQs: {{ faqs.length }}
+              <div class="card-footer bg-light text-muted small">
+                <i class="bi bi-info-circle me-1" />
+                Total FAQs: {{ faqs.length }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   </AdminLayout>

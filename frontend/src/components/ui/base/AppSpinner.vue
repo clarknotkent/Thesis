@@ -1,9 +1,15 @@
 <template>
   <div class="d-flex justify-content-center align-items-center py-5">
-    <div class="spinner-border text-primary" role="status">
+    <div
+      class="spinner-border text-primary"
+      role="status"
+    >
       <span class="visually-hidden">Loading...</span>
     </div>
-    <span v-if="text" class="ms-3 text-muted">{{ text }}</span>
+    <span
+      v-if="text"
+      class="ms-3 text-muted"
+    >{{ text }}</span>
   </div>
 </template>
 

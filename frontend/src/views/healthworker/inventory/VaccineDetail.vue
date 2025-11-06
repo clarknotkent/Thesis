@@ -2,27 +2,49 @@
   <HealthWorkerLayout>
     <!-- Mobile Header -->
     <div class="mobile-header d-flex align-items-center mb-3">
-      <button class="btn btn-link p-0 me-3" @click="goBack">
-        <i class="bi bi-arrow-left" style="font-size: 1.5rem; color: #007bff;"></i>
+      <button
+        class="btn btn-link p-0 me-3"
+        @click="goBack"
+      >
+        <i
+          class="bi bi-arrow-left"
+          style="font-size: 1.5rem; color: #007bff;"
+        />
       </button>
-      <h5 class="mb-0 fw-bold">Vaccine Details</h5>
+      <h5 class="mb-0 fw-bold">
+        Vaccine Details
+      </h5>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
     <!-- Vaccine Details -->
-    <div v-if="!loading && vaccine" class="vaccine-detail">
+    <div
+      v-if="!loading && vaccine"
+      class="vaccine-detail"
+    >
       <!-- Main Info Card -->
       <div class="detail-card mb-3">
         <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
-            <h6 class="vaccine-title mb-0">{{ vaccine.vaccineName }}</h6>
-            <span class="badge status-badge" :class="getStatusBadgeClass(vaccine.status)">
+            <h6 class="vaccine-title mb-0">
+              {{ vaccine.vaccineName }}
+            </h6>
+            <span
+              class="badge status-badge"
+              :class="getStatusBadgeClass(vaccine.status)"
+            >
               {{ vaccine.status }}
             </span>
           </div>
@@ -39,7 +61,10 @@
             </div>
             <div class="info-item">
               <span class="info-label">Available Doses</span>
-              <span class="info-value quantity" :class="getQuantityClass(vaccine.quantity)">
+              <span
+                class="info-value quantity"
+                :class="getQuantityClass(vaccine.quantity)"
+              >
                 <strong>{{ vaccine.quantity || 0 }}</strong> doses
               </span>
             </div>
@@ -54,22 +79,30 @@
       <!-- Stock Level Card -->
       <div class="detail-card mb-3">
         <div class="card-header">
-          <h6 class="mb-0">Stock Level</h6>
+          <h6 class="mb-0">
+            Stock Level
+          </h6>
         </div>
         <div class="card-body">
           <div class="stock-visual mb-3">
             <div class="d-flex justify-content-between mb-2">
               <span class="stock-label">Current Stock</span>
-              <span class="stock-amount" :class="getQuantityClass(vaccine.quantity)">
+              <span
+                class="stock-amount"
+                :class="getQuantityClass(vaccine.quantity)"
+              >
                 {{ vaccine.quantity }} doses
               </span>
             </div>
-            <div class="progress" style="height: 10px;">
+            <div
+              class="progress"
+              style="height: 10px;"
+            >
               <div 
                 class="progress-bar"
                 :class="getProgressBarClass(vaccine.status)"
                 :style="{ width: getProgressWidth(vaccine.quantity) + '%' }"
-              ></div>
+              />
             </div>
           </div>
           
@@ -78,8 +111,11 @@
             <div class="d-flex align-items-center justify-content-between">
               <span class="availability-label">Available for administration</span>
               <div class="availability-indicator">
-                <i :class="(vaccine.quantity || 0) > 0 ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'"></i>
-                <span class="fw-bold ms-2" :class="(vaccine.quantity || 0) > 0 ? 'text-success' : 'text-danger'">
+                <i :class="(vaccine.quantity || 0) > 0 ? 'bi bi-check-circle-fill text-success' : 'bi bi-x-circle-fill text-danger'" />
+                <span
+                  class="fw-bold ms-2"
+                  :class="(vaccine.quantity || 0) > 0 ? 'text-success' : 'text-danger'"
+                >
                   {{ (vaccine.quantity || 0) > 0 ? 'YES' : 'NO' }}
                 </span>
               </div>
@@ -89,29 +125,49 @@
       </div>
 
       <!-- Additional Information -->
-      <div class="detail-card mb-3" v-if="vaccine.description || vaccine.ageGroup || vaccine.dosageInfo || vaccine.storageLocation || vaccine.brandName">
+      <div
+        v-if="vaccine.description || vaccine.ageGroup || vaccine.dosageInfo || vaccine.storageLocation || vaccine.brandName"
+        class="detail-card mb-3"
+      >
         <div class="card-header">
-          <h6 class="mb-0">Additional Information</h6>
+          <h6 class="mb-0">
+            Additional Information
+          </h6>
         </div>
         <div class="card-body">
           <div class="info-grid">
-            <div class="info-item" v-if="vaccine.brandName">
+            <div
+              v-if="vaccine.brandName"
+              class="info-item"
+            >
               <span class="info-label">Brand Name</span>
               <span class="info-value">{{ vaccine.brandName }}</span>
             </div>
-            <div class="info-item" v-if="vaccine.storageLocation">
+            <div
+              v-if="vaccine.storageLocation"
+              class="info-item"
+            >
               <span class="info-label">Storage Location</span>
               <span class="info-value">{{ vaccine.storageLocation }}</span>
             </div>
-            <div class="info-item" v-if="vaccine.ageGroup">
+            <div
+              v-if="vaccine.ageGroup"
+              class="info-item"
+            >
               <span class="info-label">Target Age Group</span>
               <span class="info-value">{{ vaccine.ageGroup }}</span>
             </div>
-            <div class="info-item" v-if="vaccine.dosageInfo">
+            <div
+              v-if="vaccine.dosageInfo"
+              class="info-item"
+            >
               <span class="info-label">Dosage Information</span>
               <span class="info-value">{{ vaccine.dosageInfo }}</span>
             </div>
-            <div class="info-item full-width" v-if="vaccine.description">
+            <div
+              v-if="vaccine.description"
+              class="info-item full-width"
+            >
               <span class="info-label">Description</span>
               <span class="info-value">{{ vaccine.description }}</span>
             </div>
@@ -120,31 +176,53 @@
       </div>
 
       <!-- Expiry Warning -->
-      <div v-if="vaccine.status === 'Expiring Soon'" class="alert alert-warning">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      <div
+        v-if="vaccine.status === 'Expiring Soon'"
+        class="alert alert-warning"
+      >
+        <i class="bi bi-exclamation-triangle-fill me-2" />
         <strong>Warning:</strong> This vaccine expires within 30 days. Please prioritize its use.
       </div>
 
       <!-- Out of Stock Alert -->
-      <div v-if="vaccine.status === 'Out of Stock'" class="alert alert-danger">
-        <i class="bi bi-x-circle-fill me-2"></i>
+      <div
+        v-if="vaccine.status === 'Out of Stock'"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-x-circle-fill me-2" />
         <strong>Out of Stock:</strong> This vaccine is currently unavailable. Please contact the administrator for restocking.
       </div>
 
       <!-- Low Stock Alert -->
-      <div v-if="vaccine.status === 'Low Stock'" class="alert alert-warning">
-        <i class="bi bi-exclamation-circle-fill me-2"></i>
+      <div
+        v-if="vaccine.status === 'Low Stock'"
+        class="alert alert-warning"
+      >
+        <i class="bi bi-exclamation-circle-fill me-2" />
         <strong>Low Stock:</strong> This vaccine is running low. Consider requesting a restock soon.
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-if="!loading && !vaccine" class="text-center py-5">
-      <i class="bi bi-exclamation-triangle text-muted mb-3" style="font-size: 3rem;"></i>
-      <h6 class="text-muted">Vaccine not found</h6>
-      <p class="text-muted small">The requested vaccine could not be found or may have been removed from inventory.</p>
-      <button class="btn btn-primary" @click="goBack">
-        <i class="bi bi-arrow-left me-2"></i>Back to Inventory
+    <div
+      v-if="!loading && !vaccine"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-exclamation-triangle text-muted mb-3"
+        style="font-size: 3rem;"
+      />
+      <h6 class="text-muted">
+        Vaccine not found
+      </h6>
+      <p class="text-muted small">
+        The requested vaccine could not be found or may have been removed from inventory.
+      </p>
+      <button
+        class="btn btn-primary"
+        @click="goBack"
+      >
+        <i class="bi bi-arrow-left me-2" />Back to Inventory
       </button>
     </div>
   </HealthWorkerLayout>

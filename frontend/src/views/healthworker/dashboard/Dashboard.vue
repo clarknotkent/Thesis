@@ -1,14 +1,23 @@
 <template>
   <HealthWorkerLayout>
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
     <!-- 2x2 Gallery Grid -->
-    <div v-if="!loading" class="dashboard-gallery">
+    <div
+      v-if="!loading"
+      class="dashboard-gallery"
+    >
       <div class="row g-3">
         <!-- Total Patients -->
         <div class="col-6">

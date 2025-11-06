@@ -1,12 +1,18 @@
 <template>
   <div class="services-list-section">
-    <div v-if="services.length === 0" class="empty-state">
-      <i class="bi bi-inbox"></i>
+    <div
+      v-if="services.length === 0"
+      class="empty-state"
+    >
+      <i class="bi bi-inbox" />
       <p>No services added yet</p>
       <small>Click "Add Service" above to get started</small>
     </div>
 
-    <div v-else class="services-container">
+    <div
+      v-else
+      class="services-container"
+    >
       <div 
         v-for="(service, index) in services" 
         :key="index"
@@ -14,31 +20,37 @@
       >
         <div class="service-header">
           <div class="service-title">
-            <i class="bi bi-shield-fill-check"></i>
+            <i class="bi bi-shield-fill-check" />
             <h4>{{ service.vaccineName }}</h4>
-            <span v-if="service.doseNumber" class="dose-badge">
+            <span
+              v-if="service.doseNumber"
+              class="dose-badge"
+            >
               Dose {{ service.doseNumber }}
             </span>
-            <span v-if="service.outsideFacility" class="outside-badge">
-              <i class="bi bi-geo-alt"></i> Outside
+            <span
+              v-if="service.outsideFacility"
+              class="outside-badge"
+            >
+              <i class="bi bi-geo-alt" /> Outside
             </span>
           </div>
           <div class="service-actions">
             <button 
               type="button"
               class="btn-icon btn-edit" 
-              @click="$emit('edit', index)"
               title="Edit service"
+              @click="$emit('edit', index)"
             >
-              <i class="bi bi-pencil"></i>
+              <i class="bi bi-pencil" />
             </button>
             <button 
               type="button"
               class="btn-icon btn-delete" 
-              @click="$emit('remove', index)"
               title="Remove service"
+              @click="$emit('remove', index)"
             >
-              <i class="bi bi-trash"></i>
+              <i class="bi bi-trash" />
             </button>
           </div>
         </div>
@@ -48,35 +60,59 @@
             <span class="label">Date:</span>
             <span class="value">{{ formatDate(service.dateAdministered) }}</span>
           </div>
-          <div v-if="service.diseasePrevented" class="detail-row">
+          <div
+            v-if="service.diseasePrevented"
+            class="detail-row"
+          >
             <span class="label">Disease Prevented:</span>
             <span class="value">{{ service.diseasePrevented }}</span>
           </div>
-          <div v-if="service.manufacturer" class="detail-row">
+          <div
+            v-if="service.manufacturer"
+            class="detail-row"
+          >
             <span class="label">Manufacturer:</span>
             <span class="value">{{ service.manufacturer }}</span>
           </div>
-          <div v-if="service.lotNumber" class="detail-row">
+          <div
+            v-if="service.lotNumber"
+            class="detail-row"
+          >
             <span class="label">Lot Number:</span>
             <span class="value">{{ service.lotNumber }}</span>
           </div>
-          <div v-if="service.site" class="detail-row">
+          <div
+            v-if="service.site"
+            class="detail-row"
+          >
             <span class="label">Site:</span>
             <span class="value">{{ service.site }}</span>
           </div>
-          <div v-if="service.ageAtAdmin" class="detail-row">
+          <div
+            v-if="service.ageAtAdmin"
+            class="detail-row"
+          >
             <span class="label">Age at Administration:</span>
             <span class="value">{{ service.ageAtAdmin }}</span>
           </div>
-          <div v-if="service.healthStaff" class="detail-row">
+          <div
+            v-if="service.healthStaff"
+            class="detail-row"
+          >
             <span class="label">Health Staff:</span>
             <span class="value">{{ service.healthStaff }}</span>
           </div>
-          <div v-if="service.facilityName" class="detail-row">
+          <div
+            v-if="service.facilityName"
+            class="detail-row"
+          >
             <span class="label">Facility:</span>
             <span class="value">{{ service.facilityName }}</span>
           </div>
-          <div v-if="service.remarks" class="detail-row">
+          <div
+            v-if="service.remarks"
+            class="detail-row"
+          >
             <span class="label">Remarks:</span>
             <span class="value">{{ service.remarks }}</span>
           </div>

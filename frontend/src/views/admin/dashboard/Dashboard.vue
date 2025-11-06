@@ -4,8 +4,12 @@
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
-          <p class="text-muted mb-0">Welcome to the Immunization Management System</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Admin Dashboard
+          </h1>
+          <p class="text-muted mb-0">
+            Welcome to the Immunization Management System
+          </p>
         </div>
         <div class="d-flex align-items-center gap-2 header-actions">
           <small class="text-muted">Last updated: {{ lastUpdated }}</small>
@@ -13,14 +17,23 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading dashboard...</span>
         </div>
       </div>
 
       <!-- Stats Cards Row -->
-      <div v-if="!loading" class="row g-3 mb-3">
+      <div
+        v-if="!loading"
+        class="row g-3 mb-3"
+      >
         <!-- Vaccinations Today Card -->
         <div class="col">
           <div class="card border-start border-success border-4 shadow h-100 py-2">
@@ -30,10 +43,15 @@
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Vaccinations Today
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.vaccinationsToday }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.vaccinationsToday }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-shield-check text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-shield-check text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -49,10 +67,15 @@
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Total Patients
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalPatients }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.totalPatients }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-people text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -68,10 +91,15 @@
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Active Health Staff
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.activeHealthWorkers }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.activeHealthWorkers }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-person-badge text-info" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-person-badge text-info"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -87,10 +115,15 @@
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Pending Appointments
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.pendingAppointments }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.pendingAppointments }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-calendar-event text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-calendar-event text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -99,12 +132,17 @@
       </div>
 
       <!-- Chart and Recent Vaccinations -->
-      <div v-if="!loading" class="row">
+      <div
+        v-if="!loading"
+        class="row"
+      >
         <!-- Vaccine Data Chart -->
         <div class="col-12">
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-              <h6 class="m-0 fw-bold text-primary">All 7 Vaccines Usage</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                All 7 Vaccines Usage
+              </h6>
               <small class="text-muted">Across all records</small>
             </div>
             <div class="card-body">
@@ -121,15 +159,32 @@
         <div class="col-12">
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-              <h6 class="m-0 fw-bold text-primary">Recent Vaccinations</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Recent Vaccinations
+              </h6>
               <div class="dropdown no-arrow">
-                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
-                  <i class="bi bi-three-dots-vertical"></i>
+                <a
+                  id="dropdownMenuLink"
+                  class="dropdown-toggle"
+                  href="#"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                >
+                  <i class="bi bi-three-dots-vertical" />
                 </a>
                 <div class="dropdown-menu dropdown-menu-end shadow">
-                  <div class="dropdown-header">Actions:</div>
-                  <a class="dropdown-item" href="#" @click.prevent="refreshData">Refresh Data</a>
-                  <a class="dropdown-item" href="#">Export Data</a>
+                  <div class="dropdown-header">
+                    Actions:
+                  </div>
+                  <a
+                    class="dropdown-item"
+                    href="#"
+                    @click.prevent="refreshData"
+                  >Refresh Data</a>
+                  <a
+                    class="dropdown-item"
+                    href="#"
+                  >Export Data</a>
                 </div>
               </div>
             </div>
@@ -147,8 +202,13 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="vaccination in recentVaccinations" :key="vaccination.id">
-                      <td class="fw-semibold">{{ vaccination.patientName }}</td>
+                    <tr
+                      v-for="vaccination in recentVaccinations"
+                      :key="vaccination.id"
+                    >
+                      <td class="fw-semibold">
+                        {{ vaccination.patientName }}
+                      </td>
                       <td>{{ vaccination.parentName }}</td>
                       <td>{{ vaccination.vaccineName }}</td>
                       <td>
@@ -166,7 +226,10 @@
                       </td>
                     </tr>
                     <tr v-if="recentVaccinations.length === 0">
-                      <td colspan="6" class="text-center text-muted py-4">
+                      <td
+                        colspan="6"
+                        class="text-center text-muted py-4"
+                      >
                         No recent vaccinations found
                       </td>
                     </tr>
@@ -178,11 +241,23 @@
                 <div>
                   <small class="text-muted">Showing page {{ recentPage }} of {{ Math.max(1, Math.ceil(totalRecentItems / pageSize)) }} — {{ totalRecentItems }} total</small>
                 </div>
-                <div class="btn-group" role="group" aria-label="Pagination">
-                  <button class="btn btn-sm btn-outline-secondary" :disabled="recentPage <= 1 || isLoadingRecent" @click.prevent="fetchRecentPage(recentPage - 1)">
+                <div
+                  class="btn-group"
+                  role="group"
+                  aria-label="Pagination"
+                >
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    :disabled="recentPage <= 1 || isLoadingRecent"
+                    @click.prevent="fetchRecentPage(recentPage - 1)"
+                  >
                     Prev
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" :disabled="(recentPage * pageSize) >= totalRecentItems || isLoadingRecent" @click.prevent="fetchRecentPage(recentPage + 1)">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    :disabled="(recentPage * pageSize) >= totalRecentItems || isLoadingRecent"
+                    @click.prevent="fetchRecentPage(recentPage + 1)"
+                  >
                     Next
                   </button>
                 </div>

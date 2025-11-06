@@ -24,7 +24,7 @@ export function useQRScanner(videoElement, onQRDetected) {
   const error = ref('')
 
   // Internal state
-  let reader = new BrowserQRCodeReader()
+  const reader = new BrowserQRCodeReader()
   let currentStream = null
   let handled = false
   let statusTimer = null

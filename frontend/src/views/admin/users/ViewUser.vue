@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/users">User Accounts</router-link>
+            <router-link to="/admin/users">
+              User Accounts
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">User Details</li>
+          <li class="breadcrumb-item active">
+            User Details
+          </li>
         </ol>
       </nav>
 
@@ -18,35 +27,57 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-person-circle me-2"></i>User Details
+            <i class="bi bi-person-circle me-2" />User Details
           </h1>
-          <p class="text-muted mb-0">View user account information</p>
+          <p class="text-muted mb-0">
+            View user account information
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/users" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/users"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- User Details -->
-      <div v-else-if="userData" class="row">
+      <div
+        v-else-if="userData"
+        class="row"
+      >
         <div class="col-lg-8">
           <!-- User Information Card -->
           <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex justify-content-between align-items-center">
-              <h6 class="m-0 fw-bold text-primary">User Information</h6>
-              <span class="badge" :class="statusBadgeClass">
+              <h6 class="m-0 fw-bold text-primary">
+                User Information
+              </h6>
+              <span
+                class="badge"
+                :class="statusBadgeClass"
+              >
                 {{ userData.status }}
               </span>
             </div>
@@ -59,24 +90,35 @@
           </div>
         </div>
 
-  <div class="col-lg-4">
+        <div class="col-lg-4">
           <!-- Account Stats -->
           <div class="card shadow mb-4">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Account Stats</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Account Stats
+              </h6>
             </div>
             <div class="card-body">
               <div class="mb-3">
                 <small class="text-muted d-block">Role</small>
-                <span class="badge role-badge" :class="roleBadgeClass">
+                <span
+                  class="badge role-badge"
+                  :class="roleBadgeClass"
+                >
                   {{ roleDisplayName }}
                 </span>
               </div>
-              <div class="mb-3" v-if="userData.lastLogin">
+              <div
+                v-if="userData.lastLogin"
+                class="mb-3"
+              >
                 <small class="text-muted d-block">Last Login</small>
                 <strong>{{ formatDate(userData.lastLogin) }}</strong>
               </div>
-              <div class="mb-3" v-if="userData.createdAt">
+              <div
+                v-if="userData.createdAt"
+                class="mb-3"
+              >
                 <small class="text-muted d-block">Account Created</small>
                 <strong>{{ formatDate(userData.createdAt) }}</strong>
               </div>
@@ -86,7 +128,9 @@
           <!-- Actions Card -->
           <div class="card shadow">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Actions</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Actions
+              </h6>
             </div>
             <div class="card-body">
               <div class="d-grid gap-2">
@@ -94,32 +138,35 @@
                   :to="`/admin/users/edit/${userId}`"
                   class="btn btn-primary"
                 >
-                  <i class="bi bi-pencil me-2"></i>Edit User
+                  <i class="bi bi-pencil me-2" />Edit User
                 </router-link>
                 <button 
                   class="btn btn-warning"
                   @click="openPasswordModal"
                 >
-                  <i class="bi bi-key me-2"></i>Reset Password
+                  <i class="bi bi-key me-2" />Reset Password
                 </button>
                 <button 
                   v-if="userData?.status !== 'archived'"
                   class="btn btn-danger"
                   @click="openDeleteModal"
                 >
-                  <i class="bi bi-trash me-2"></i>Delete User
+                  <i class="bi bi-trash me-2" />Delete User
                 </button>
                 <button
                   v-else-if="userData?.status === 'archived'"
                   class="btn btn-success"
                   @click="openRestoreModal"
                 >
-                  <i class="bi bi-arrow-counterclockwise me-2"></i>Restore User
+                  <i class="bi bi-arrow-counterclockwise me-2" />Restore User
                 </button>
               </div>
               
-              <div v-if="isAdmin" class="alert alert-warning mt-3 mb-0 small">
-                <i class="bi bi-exclamation-triangle me-1"></i>
+              <div
+                v-if="isAdmin"
+                class="alert alert-warning mt-3 mb-0 small"
+              >
+                <i class="bi bi-exclamation-triangle me-1" />
                 Admin accounts cannot be deleted
               </div>
             </div>
@@ -128,9 +175,14 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        Failed to load user data. <router-link to="/admin/users">Go back to user list</router-link>
+      <div
+        v-else
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        Failed to load user data. <router-link to="/admin/users">
+          Go back to user list
+        </router-link>
       </div>
 
       <!-- Password Reset Modal -->
@@ -143,16 +195,25 @@
         <div class="mb-3">
           <label class="form-label">New Password</label>
           <input
+            v-model="newPassword"
             type="password"
             class="form-control"
-            v-model="newPassword"
             placeholder="Enter new password"
           >
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closePasswordModal">Cancel</button>
-          <button class="btn btn-primary" @click="submitPasswordReset" :disabled="resettingPassword">
-            <i class="bi bi-key me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closePasswordModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="resettingPassword"
+            @click="submitPasswordReset"
+          >
+            <i class="bi bi-key me-1" />
             {{ resettingPassword ? 'Resetting...' : 'Reset Password' }}
           </button>
         </div>
@@ -165,11 +226,22 @@
         @close="closeDeleteModal"
       >
         <p>Are you sure you want to delete the user "{{ userFullName }}"?</p>
-        <p class="text-danger small">This action cannot be undone.</p>
+        <p class="text-danger small">
+          This action cannot be undone.
+        </p>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closeDeleteModal">Cancel</button>
-          <button class="btn btn-danger" @click="performDelete" :disabled="deleting">
-            <i class="bi bi-trash me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closeDeleteModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-danger"
+            :disabled="deleting"
+            @click="performDelete"
+          >
+            <i class="bi bi-trash me-1" />
             {{ deleting ? 'Deleting...' : 'Delete User' }}
           </button>
         </div>
@@ -183,9 +255,18 @@
       >
         <p>Restore the user "{{ userFullName }}"?</p>
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="closeRestoreModal">Cancel</button>
-          <button class="btn btn-success" @click="performRestore" :disabled="restoring">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>
+          <button
+            class="btn btn-secondary"
+            @click="closeRestoreModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-success"
+            :disabled="restoring"
+            @click="performRestore"
+          >
+            <i class="bi bi-arrow-counterclockwise me-1" />
             {{ restoring ? 'Restoring...' : 'Restore User' }}
           </button>
         </div>

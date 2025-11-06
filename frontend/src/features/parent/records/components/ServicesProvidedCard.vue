@@ -1,13 +1,17 @@
 <template>
   <div class="info-card">
     <div class="card-header success">
-      <i class="bi bi-shield-fill-check"></i>
+      <i class="bi bi-shield-fill-check" />
       <h2>Services Provided</h2>
     </div>
     <div class="card-body">
-      <div v-for="(service, idx) in services" :key="idx" class="service-item">
+      <div
+        v-for="(service, idx) in services"
+        :key="idx"
+        class="service-item"
+      >
         <div class="service-header">
-          <i class="bi bi-syringe-fill service-icon"></i>
+          <i class="bi bi-syringe-fill service-icon" />
           <span class="service-name">{{ service.vaccine_name || service.antigen_name }}</span>
         </div>
         <div class="service-details">
@@ -15,7 +19,10 @@
             <span class="detail-label">Dose</span>
             <span class="detail-value">{{ service.dose_number }}</span>
           </div>
-          <div v-if="service.outside" class="service-detail">
+          <div
+            v-if="service.outside"
+            class="service-detail"
+          >
             <span class="badge bg-warning text-dark">Outside Facility</span>
           </div>
         </div>

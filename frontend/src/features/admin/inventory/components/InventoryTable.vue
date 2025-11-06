@@ -1,7 +1,9 @@
 <template>
   <div class="card shadow mb-4">
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
-      <h6 class="m-0 fw-bold text-primary">Vaccine Stock</h6>
+      <h6 class="m-0 fw-bold text-primary">
+        Vaccine Stock
+      </h6>
       <div class="d-flex gap-2 align-items-center">
         <div class="input-group w-25">
           <input 
@@ -9,46 +11,103 @@
             class="form-control" 
             placeholder="Search vaccines..." 
             :value="searchTerm"
-            @input="$emit('update:searchTerm', $event.target.value)"
             aria-label="Search"
+            @input="$emit('update:searchTerm', $event.target.value)"
           >
-          <button class="btn btn-outline-primary" type="button">
-            <i class="bi bi-search"></i>
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+          >
+            <i class="bi bi-search" />
           </button>
         </div>
         <div class="dropdown ms-2">
           <button 
+            id="filterDropdown" 
             class="btn btn-outline-secondary dropdown-toggle" 
             type="button" 
-            id="filterDropdown" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
           >
             Filter: {{ filterLabel }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="filterDropdown">
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'All')">All Vaccines</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'NIP')">NIP Vaccines</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('filter-change', 'Others')">Other Vaccines</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="filterDropdown"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('filter-change', 'All')"
+              >All Vaccines</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('filter-change', 'NIP')"
+              >NIP Vaccines</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('filter-change', 'Others')"
+              >Other Vaccines</a>
+            </li>
           </ul>
         </div>
         <!-- Sort Dropdown -->
         <div class="dropdown ms-2">
           <button 
+            id="sortDropdown" 
             class="btn btn-outline-secondary dropdown-toggle" 
             type="button" 
-            id="sortDropdown" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
           >
             Sort: {{ currentSort }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Name A-Z')">Name A-Z</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Name Z-A')">Name Z-A</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Quantity Low-High')">Quantity Low-High</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Quantity High-Low')">Quantity High-Low</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="$emit('sort-change', 'Expiry Date')">Expiry Date</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="sortDropdown"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('sort-change', 'Name A-Z')"
+              >Name A-Z</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('sort-change', 'Name Z-A')"
+              >Name Z-A</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('sort-change', 'Quantity Low-High')"
+              >Quantity Low-High</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('sort-change', 'Quantity High-Low')"
+              >Quantity High-Low</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="$emit('sort-change', 'Expiry Date')"
+              >Expiry Date</a>
+            </li>
           </ul>
         </div>
       </div>
@@ -68,18 +127,29 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="vaccine in paginatedVaccines" :key="vaccine.id">
-              <td class="fw-semibold">{{ vaccine.vaccineName }}</td>
+            <tr
+              v-for="vaccine in paginatedVaccines"
+              :key="vaccine.id"
+            >
+              <td class="fw-semibold">
+                {{ vaccine.vaccineName }}
+              </td>
               <td>{{ vaccine.brandName }}</td>
               <td>{{ vaccine.manufacturer }}</td>
               <td>{{ formatDate(vaccine.expiryDate) }}</td>
               <td>
-                <span class="fw-bold" :class="getQuantityClass(vaccine.quantity)">
+                <span
+                  class="fw-bold"
+                  :class="getQuantityClass(vaccine.quantity)"
+                >
                   {{ vaccine.quantity }}
                 </span>
               </td>
               <td>
-                <span class="badge" :class="getStatusBadgeClass(vaccine.status)">
+                <span
+                  class="badge"
+                  :class="getStatusBadgeClass(vaccine.status)"
+                >
                   {{ vaccine.status }}
                 </span>
               </td>
@@ -89,19 +159,22 @@
                     :to="`/admin/vaccines/view/${vaccine.id}`"
                     class="btn btn-sm btn-outline-primary"
                   >
-                    <i class="bi bi-eye me-2"></i>View
+                    <i class="bi bi-eye me-2" />View
                   </router-link>
                   <button 
                     class="btn btn-sm btn-outline-danger" 
                     @click="$emit('delete', vaccine)"
                   >
-                    <i class="bi bi-trash me-2"></i>Delete
+                    <i class="bi bi-trash me-2" />Delete
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="paginatedVaccines.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">
+              <td
+                colspan="7"
+                class="text-center text-muted py-4"
+              >
                 No vaccines found
               </td>
             </tr>
@@ -111,10 +184,10 @@
     </div>
     <div class="card-footer">
       <AppPagination
-        :currentPage="currentPage"
-        :totalPages="totalPages"
-        :totalItems="totalItems"
-        :itemsPerPage="itemsPerPage"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="totalItems"
+        :items-per-page="itemsPerPage"
         @page-changed="$emit('page-changed', $event)"
       />
     </div>

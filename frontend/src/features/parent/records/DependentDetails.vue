@@ -4,11 +4,16 @@
     <div class="patient-details-header-section">
       <!-- Patient Details Header Bar -->
       <div class="details-header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">My Child's Records</h1>
-        <div class="header-spacer"></div>
+        <h1 class="page-title">
+          My Child's Records
+        </h1>
+        <div class="header-spacer" />
       </div>
 
       <!-- Tab Navigation -->
@@ -27,8 +32,11 @@
     <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Show loading state while data is being fetched -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading patient details...</p>
       </div>
 
@@ -56,9 +64,17 @@
       </template>
 
       <!-- Show error state if no patient data -->
-      <div v-else class="error-state">
+      <div
+        v-else
+        class="error-state"
+      >
         <p>Unable to load patient details</p>
-        <button @click="goBack" class="btn btn-primary">Go Back</button>
+        <button
+          class="btn btn-primary"
+          @click="goBack"
+        >
+          Go Back
+        </button>
       </div>
     </div>
   </ParentLayout>

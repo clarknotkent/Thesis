@@ -2,6 +2,16 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
+> **🔧 November 6, 2025 - ESLint Code Quality Setup**
+>
+> - ✅ **ESLint 9.39.1 integrated** with Vue 3 plugin for automated code quality checks
+> - ✅ **Flat config format** (eslint.config.js) using ESLint 9's modern standard
+> - ✅ **Auto-fixed 7,744 issues** - Consistent formatting across entire codebase
+> - ✅ **Vite integration** - Real-time linting during development via vite-plugin-eslint
+> - ✅ **Team-ready** - `npm run lint` and `npm run lint:fix` scripts for everyone
+> - ✅ **Vue 3 optimized** - Composition API globals configured (defineProps, defineEmits, etc.)
+> - 📦 Push includes: eslint.config.js, updated package.json, vite.config.js
+>
 > **� November 6, 2025 - Admin Visit Parity & Data Integrity**
 >
 > - ✅ Admin UI now enforces **one visit per patient per day** (parity with Health Worker)
@@ -137,6 +147,8 @@ The Immunization Management System is designed to digitize and streamline the im
 - Build Tool: Vite 7.x
 - Routing: Vue Router 4
 - State Management: Vue Reactivity API (ref, computed, reactive)
+- **Code Quality**: ESLint 9.39.1 with Vue plugin and flat config format ⭐ NEW (Nov 6)
+- **Linting Integration**: vite-plugin-eslint for real-time feedback during development ⭐ NEW (Nov 6)
 - **Bulk Prefetch System**: One-login complete offline access ⭐ NEW v4.2
 - **Supabase-Mirrored IndexedDB**: ParentPortalOfflineDB with 10 tables ⭐ NEW v4.2
 - **Local Storage**: Dexie.js 4.x (IndexedDB wrapper) for offline data persistence

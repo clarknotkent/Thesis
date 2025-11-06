@@ -1,5 +1,8 @@
 <template>
-  <div class="admin-layout" :class="{ 'sidebar-collapsed': !sidebarOpen }">
+  <div
+    class="admin-layout"
+    :class="{ 'sidebar-collapsed': !sidebarOpen }"
+  >
     <Navbar 
       user-role="Admin" 
       :user-name="userName"
@@ -24,8 +27,8 @@
       :title="confirmState.title"
       :message="confirmState.message"
       :variant="confirmState.variant"
-      :confirmText="confirmState.confirmText"
-      :cancelText="confirmState.cancelText"
+      :confirm-text="confirmState.confirmText"
+      :cancel-text="confirmState.cancelText"
       @confirm="handleConfirm"
       @cancel="handleCancel"
     />

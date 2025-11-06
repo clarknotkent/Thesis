@@ -1,13 +1,25 @@
 <template>
   <teleport to="body">
     <transition name="filter-sheet">
-      <div v-if="show" class="filter-sheet-overlay" @click="close">
-        <div class="filter-sheet" @click.stop>
+      <div
+        v-if="show"
+        class="filter-sheet-overlay"
+        @click="close"
+      >
+        <div
+          class="filter-sheet"
+          @click.stop
+        >
           <!-- Header -->
           <div class="filter-header">
-            <h3 class="filter-title">Filters</h3>
-            <button class="close-btn" @click="close">
-              <i class="bi bi-x-lg"></i>
+            <h3 class="filter-title">
+              Filters
+            </h3>
+            <button
+              class="close-btn"
+              @click="close"
+            >
+              <i class="bi bi-x-lg" />
             </button>
           </div>
 
@@ -18,15 +30,27 @@
               <label class="filter-label">Gender</label>
               <div class="filter-options">
                 <label class="filter-option">
-                  <input type="radio" v-model="filters.gender" value="" />
+                  <input
+                    v-model="filters.gender"
+                    type="radio"
+                    value=""
+                  >
                   <span>All</span>
                 </label>
                 <label class="filter-option">
-                  <input type="radio" v-model="filters.gender" value="Male" />
+                  <input
+                    v-model="filters.gender"
+                    type="radio"
+                    value="Male"
+                  >
                   <span>Male</span>
                 </label>
                 <label class="filter-option">
-                  <input type="radio" v-model="filters.gender" value="Female" />
+                  <input
+                    v-model="filters.gender"
+                    type="radio"
+                    value="Female"
+                  >
                   <span>Female</span>
                 </label>
               </div>
@@ -37,35 +61,67 @@
               <label class="filter-label">Status</label>
               <div class="filter-options">
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="All Status" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="All Status"
+                  >
                   <span>All Status</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="Active" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="Active"
+                  >
                   <span>Active</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="Inactive" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="Inactive"
+                  >
                   <span>Inactive</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="Vaccination Due" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="Vaccination Due"
+                  >
                   <span>Vaccination Due</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="Up to Date" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="Up to Date"
+                  >
                   <span>Up to Date</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="FIC" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="FIC"
+                  >
                   <span>FIC</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="CIC" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="CIC"
+                  >
                   <span>CIC</span>
                 </label>
                 <label class="filter-option">
-                  <input type="checkbox" v-model="filters.statuses" value="Defaulter" />
+                  <input
+                    v-model="filters.statuses"
+                    type="checkbox"
+                    value="Defaulter"
+                  >
                   <span>Defaulter</span>
                 </label>
               </div>
@@ -74,10 +130,16 @@
 
           <!-- Footer Actions -->
           <div class="filter-footer">
-            <button class="btn-clear" @click="clearFilters">
+            <button
+              class="btn-clear"
+              @click="clearFilters"
+            >
               Clear All
             </button>
-            <button class="btn-apply" @click="applyFilters">
+            <button
+              class="btn-apply"
+              @click="applyFilters"
+            >
               Apply Filters
             </button>
           </div>

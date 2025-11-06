@@ -3,7 +3,7 @@
     <!-- Header Section -->
     <div class="mb-3">
       <h5 class="mb-0">
-        <i class="bi bi-capsule me-2"></i>Vaccine Stock Levels
+        <i class="bi bi-capsule me-2" />Vaccine Stock Levels
       </h5>
     </div>
 
@@ -11,114 +11,289 @@
     <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
       <div class="d-flex gap-2 align-items-center flex-grow-1">
         <!-- Search Bar -->
-        <div class="input-group" style="max-width: 300px;">
+        <div
+          class="input-group"
+          style="max-width: 300px;"
+        >
           <input 
+            v-model="searchTerm" 
             type="text" 
             class="form-control form-control-sm" 
-            placeholder="Search vaccines..." 
-            v-model="searchTerm"
+            placeholder="Search vaccines..."
             aria-label="Search"
           >
-          <button class="btn btn-sm btn-outline-primary" type="button">
-            <i class="bi bi-search"></i>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            type="button"
+          >
+            <i class="bi bi-search" />
           </button>
         </div>
         
         <!-- Category Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="categoryFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('category')">
+          <button
+            id="categoryFilter"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            @click="debugDropdown('category')"
+          >
             Filter: {{ currentCategoryLabel }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="categoryFilter">
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('All')">All Vaccines</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('NIP')">NIP Vaccines</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setCategoryFilter('Others')">Other Vaccines</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="categoryFilter"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setCategoryFilter('All')"
+              >All Vaccines</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setCategoryFilter('NIP')"
+              >NIP Vaccines</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setCategoryFilter('Others')"
+              >Other Vaccines</a>
+            </li>
           </ul>
         </div>
         
         <!-- Type/Status Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('status')">
+          <button
+            id="statusFilter"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            @click="debugDropdown('status')"
+          >
             Type: {{ currentStatusFilter }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="statusFilter">
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('All Status')">All Status</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('Available')">Available</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('Low Stock')">Low Stock</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('Expiring Soon')">Expiring Soon</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('Expired')">Expired</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('Out of Stock')">Out of Stock</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="statusFilter"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('All Status')"
+              >All Status</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('Available')"
+              >Available</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('Low Stock')"
+              >Low Stock</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('Expiring Soon')"
+              >Expiring Soon</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('Expired')"
+              >Expired</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('Out of Stock')"
+              >Out of Stock</a>
+            </li>
           </ul>
         </div>
         
         <!-- Sort Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('sort')">
+          <button
+            id="sortDropdown"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            @click="debugDropdown('sort')"
+          >
             Sort: {{ currentSort }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-            <li><a class="dropdown-item" href="#" @click.prevent="setSort('Name A-Z')">Name A-Z</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setSort('Name Z-A')">Name Z-A</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setSort('Quantity Low-High')">Quantity Low-High</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setSort('Quantity High-Low')">Quantity High-Low</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setSort('Expiry Date')">Expiry Date</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="sortDropdown"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setSort('Name A-Z')"
+              >Name A-Z</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setSort('Name Z-A')"
+              >Name Z-A</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setSort('Quantity Low-High')"
+              >Quantity Low-High</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setSort('Quantity High-Low')"
+              >Quantity High-Low</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setSort('Expiry Date')"
+              >Expiry Date</a>
+            </li>
           </ul>
         </div>
 
         <!-- Removed from view toggle -->
         <div class="form-check form-switch ms-2">
-          <input class="form-check-input" type="checkbox" id="toggleRemovedFromView" v-model="showRemovedFromView">
-          <label class="form-check-label" for="toggleRemovedFromView">Removed from view</label>
+          <input
+            id="toggleRemovedFromView"
+            v-model="showRemovedFromView"
+            class="form-check-input"
+            type="checkbox"
+          >
+          <label
+            class="form-check-label"
+            for="toggleRemovedFromView"
+          >Removed from view</label>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-sm btn-outline-primary" @click="refreshData">
-          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        <button
+          class="btn btn-sm btn-outline-primary"
+          @click="refreshData"
+        >
+          <i class="bi bi-arrow-clockwise me-1" />Refresh
         </button>
-        <button class="btn btn-sm btn-outline-warning" @click="editVaccineType">
-          <i class="bi bi-pencil-square me-1"></i>Edit Vaccine Type
+        <button
+          class="btn btn-sm btn-outline-warning"
+          @click="editVaccineType"
+        >
+          <i class="bi bi-pencil-square me-1" />Edit Vaccine Type
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading vaccine stock...</span>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!filteredInventory || filteredInventory.length === 0" class="text-center py-5">
-      <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-      <p class="text-muted mt-3">No vaccine stock found</p>
+    <div
+      v-else-if="!filteredInventory || filteredInventory.length === 0"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-inbox text-muted"
+        style="font-size: 3rem;"
+      />
+      <p class="text-muted mt-3">
+        No vaccine stock found
+      </p>
     </div>
 
     <!-- Stock Table -->
-    <div v-else class="table-responsive">
+    <div
+      v-else
+      class="table-responsive"
+    >
       <table class="table table-hover table-bordered">
         <thead class="table-light">
           <tr>
-            <th class="text-center">Vaccine Name</th>
-            <th class="text-center">Brand</th>
-            <th class="text-center">Batch Number</th>
-            <th class="text-center">Quantity</th>
-            <th class="text-center">Expiration Date</th>
-            <th class="text-center">Status</th>
-            <th class="text-center">Actions</th>
+            <th class="text-center">
+              Vaccine Name
+            </th>
+            <th class="text-center">
+              Brand
+            </th>
+            <th class="text-center">
+              Batch Number
+            </th>
+            <th class="text-center">
+              Quantity
+            </th>
+            <th class="text-center">
+              Expiration Date
+            </th>
+            <th class="text-center">
+              Status
+            </th>
+            <th class="text-center">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in paginatedInventory" :key="item.id">
-            <td class="text-center align-middle">{{ item.antigen_name || '—' }}</td>
-            <td class="text-center align-middle">{{ item.brand_name || '—' }}</td>
+          <tr
+            v-for="item in paginatedInventory"
+            :key="item.id"
+          >
+            <td class="text-center align-middle">
+              {{ item.antigen_name || '—' }}
+            </td>
+            <td class="text-center align-middle">
+              {{ item.brand_name || '—' }}
+            </td>
             <td class="text-center align-middle">
               <code>{{ item.batch_number || '—' }}</code>
             </td>
             <td class="text-center align-middle">
-              <span class="badge" :class="getQuantityBadgeClass(item.quantity, item.minimum_stock)">
+              <span
+                class="badge"
+                :class="getQuantityBadgeClass(item.quantity, item.minimum_stock)"
+              >
                 {{ item.quantity || 0 }}
               </span>
             </td>
@@ -128,13 +303,20 @@
               </span>
             </td>
             <td class="text-center align-middle">
-              <span class="badge" :class="getStatusBadgeClass(item)">
+              <span
+                class="badge"
+                :class="getStatusBadgeClass(item)"
+              >
                 {{ getStatus(item) }}
               </span>
             </td>
             <td class="text-center align-middle">
-              <button class="btn btn-sm btn-outline-primary" @click="viewDetails(item)" title="View Details">
-                <i class="bi bi-eye me-1"></i>View
+              <button
+                class="btn btn-sm btn-outline-primary"
+                title="View Details"
+                @click="viewDetails(item)"
+              >
+                <i class="bi bi-eye me-1" />View
               </button>
             </td>
           </tr>
@@ -143,12 +325,15 @@
     </div>
     
     <!-- Pagination Footer -->
-    <div v-if="filteredInventory.length > 0" class="pagination-footer border-top mt-3 pt-3">
+    <div
+      v-if="filteredInventory.length > 0"
+      class="pagination-footer border-top mt-3 pt-3"
+    >
       <AppPagination
-        :currentPage="currentPage"
-        :totalPages="totalPages"
-        :totalItems="filteredInventory.length"
-        :itemsPerPage="itemsPerPage"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filteredInventory.length"
+        :items-per-page="itemsPerPage"
         @page-changed="goToPage"
       />
     </div>

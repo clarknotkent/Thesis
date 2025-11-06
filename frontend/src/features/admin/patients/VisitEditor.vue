@@ -1,24 +1,51 @@
 <template>
-  <div v-if="!embedded" class="modal fade" :class="{ show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
+  <div
+    v-if="!embedded"
+    class="modal fade"
+    :class="{ show }"
+    :style="{ display: show ? 'block' : 'none' }"
+    tabindex="-1"
+  >
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ existingVisitMode ? `Edit Visit for ${patientDisplayName}` : (recordMode ? 'Add Patient Immunization Record' : 'Add Patient Visit / Record') }}</h5>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <h5 class="modal-title">
+            {{ existingVisitMode ? `Edit Visit for ${patientDisplayName}` : (recordMode ? 'Add Patient Immunization Record' : 'Add Patient Visit / Record') }}
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            @click="$emit('close')"
+          />
         </div>
         <div class="modal-body">
           <form @submit.prevent="saveVisit">
-            <div v-if="viewOnly" class="alert alert-light border mb-3">
+            <div
+              v-if="viewOnly"
+              class="alert alert-light border mb-3"
+            >
               <div><strong>Patient:</strong> {{ patientDisplayName }}</div>
               <div><strong>Visit Date:</strong> {{ formatDate(form.visit_date) }}</div>
-              <div v-if="form.findings"><strong>Findings:</strong> {{ form.findings }}</div>
-              <div v-if="form.service_rendered"><strong>Service Rendered:</strong> {{ form.service_rendered }}</div>
-              <div v-if="!recordMode"><strong>Recorded By:</strong> {{ recordedByDisplayName }}</div>
+              <div v-if="form.findings">
+                <strong>Findings:</strong> {{ form.findings }}
+              </div>
+              <div v-if="form.service_rendered">
+                <strong>Service Rendered:</strong> {{ form.service_rendered }}
+              </div>
+              <div v-if="!recordMode">
+                <strong>Recorded By:</strong> {{ recordedByDisplayName }}
+              </div>
               <div><strong>Taken Outside:</strong> {{ hasOutsideInVisit ? 'Yes' : 'No' }}</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Patient *</label>
-              <input v-if="existingVisitMode" type="text" class="form-control" :value="patientDisplayName" readonly>
+              <input
+                v-if="existingVisitMode"
+                type="text"
+                class="form-control"
+                :value="patientDisplayName"
+                readonly
+              >
               <SearchableSelect
                 v-else
                 v-model="form.patient_id"
@@ -31,9 +58,18 @@
               />
             </div>
 
-            <div class="mb-3" v-if="!recordMode">
+            <div
+              v-if="!recordMode"
+              class="mb-3"
+            >
               <label class="form-label">Select Health Staff *</label>
-              <input v-if="existingVisitMode" type="text" class="form-control" :value="recordedByDisplayName" readonly>
+              <input
+                v-if="existingVisitMode"
+                type="text"
+                class="form-control"
+                :value="recordedByDisplayName"
+                readonly
+              >
               <SearchableSelect
                 v-else
                 v-model="form.recorded_by"
@@ -46,42 +82,103 @@
               />
             </div>
 
-            <h6 class="mb-2">Vital Signs</h6>
-            <div v-if="existingVisitMode && todayVisitId && todayVisitHasVitals" class="alert alert-info py-2 px-3 mb-2">
+            <h6 class="mb-2">
+              Vital Signs
+            </h6>
+            <div
+              v-if="existingVisitMode && todayVisitId && todayVisitHasVitals"
+              class="alert alert-info py-2 px-3 mb-2"
+            >
               Vitals prefilled from today’s existing visit and locked.
             </div>
             <div class="row g-3 mb-3">
               <div class="col-md-4">
                 <label class="form-label">Temperature (°C)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="vitalsReadOnly">
+                <input
+                  v-model="form.vitals.temperature"
+                  type="number"
+                  step="0.1"
+                  class="form-control"
+                  :disabled="vitalsReadOnly"
+                >
               </div>
               <div class="col-md-4">
                 <label class="form-label">MUAC (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="vitalsReadOnly">
+                <input
+                  v-model="form.vitals.muac"
+                  type="number"
+                  step="0.1"
+                  class="form-control"
+                  :disabled="vitalsReadOnly"
+                >
               </div>
               <div class="col-md-4">
                 <label class="form-label">Respiration (Beats/min)</label>
-                <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="vitalsReadOnly">
+                <input
+                  v-model="form.vitals.respiration"
+                  type="number"
+                  class="form-control"
+                  :disabled="vitalsReadOnly"
+                >
               </div>
               <div class="col-md-4">
                 <label class="form-label">Weight (kg)</label>
-                <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="vitalsReadOnly">
+                <input
+                  v-model="form.vitals.weight"
+                  type="number"
+                  step="0.01"
+                  class="form-control"
+                  :disabled="vitalsReadOnly"
+                >
               </div>
               <div class="col-md-4">
                 <label class="form-label">Height (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="vitalsReadOnly">
+                <input
+                  v-model="form.vitals.height"
+                  type="number"
+                  step="0.1"
+                  class="form-control"
+                  :disabled="vitalsReadOnly"
+                >
               </div>
             </div>
 
             <div class="mb-3">
               <label class="form-label">Service Options</label>
               <div class="d-flex gap-2 align-items-center">
-                <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Vaccine</button>
-                <button type="button" class="btn btn-outline-secondary" @click="openDewormModal">Deworm</button>
-                <button type="button" class="btn btn-outline-info" @click="openVitAModal">Vitamin A</button>
+                <button
+                  type="button"
+                  class="btn btn-outline-primary"
+                  @click="openVaccinationForm"
+                >
+                  Add Vaccine
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  @click="openDewormModal"
+                >
+                  Deworm
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-info"
+                  @click="openVitAModal"
+                >
+                  Vitamin A
+                </button>
                 <div class="form-check form-switch ms-3">
-                  <input class="form-check-input" type="checkbox" id="visitOutsideToggle" v-model="hasOutsideInVisit" :disabled="viewOnly || existingVisitMode">
-                  <label class="form-check-label small" for="visitOutsideToggle">
+                  <input
+                    id="visitOutsideToggle"
+                    v-model="hasOutsideInVisit"
+                    class="form-check-input"
+                    type="checkbox"
+                    :disabled="viewOnly || existingVisitMode"
+                  >
+                  <label
+                    class="form-check-label small"
+                    for="visitOutsideToggle"
+                  >
                     Outside Facility
                   </label>
                 </div>
@@ -89,21 +186,44 @@
               <small class="text-muted">Check if services will be administered outside the facility</small>
             </div>
 
-            <div class="mb-3" v-if="!recordMode">
+            <div
+              v-if="!recordMode"
+              class="mb-3"
+            >
               <label class="form-label">Findings (auto-filled after interventions)</label>
-              <textarea class="form-control" rows="3" v-model="form.findings" readonly></textarea>
+              <textarea
+                v-model="form.findings"
+                class="form-control"
+                rows="3"
+                readonly
+              />
             </div>
 
-            <div class="mb-3" v-if="!recordMode">
+            <div
+              v-if="!recordMode"
+              class="mb-3"
+            >
               <label class="form-label">Service Rendered (auto-filled)</label>
-              <textarea class="form-control" rows="3" v-model="form.service_rendered" readonly></textarea>
+              <textarea
+                v-model="form.service_rendered"
+                class="form-control"
+                rows="3"
+                readonly
+              />
             </div>
 
             <!-- Collected Vaccinations Display (with edit/remove in modal) -->
-            <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="mb-3">
+            <div
+              v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0"
+              class="mb-3"
+            >
               <label class="form-label">Vaccines to be Administered During Visit</label>
               <div class="border rounded p-2 bg-light">
-                <div v-for="(vacc, index) in localCollectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-1 p-2 border rounded">
+                <div
+                  v-for="(vacc, index) in localCollectedVaccinations"
+                  :key="index"
+                  class="d-flex justify-content-between align-items-center mb-1 p-2 border rounded"
+                >
                   <div class="flex-grow-1">
                     <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
                     <br>
@@ -115,13 +235,26 @@
                   </div>
                   <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-info me-2">Will be saved with visit</span>
-                    <div v-if="!viewOnly" class="d-flex gap-1">
-                      <button type="button" class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
-                        <i class="bi bi-pencil"></i>
+                    <div
+                      v-if="!viewOnly"
+                      class="d-flex gap-1"
+                    >
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        title="Edit"
+                        @click="editService(index)"
+                      >
+                        <i class="bi bi-pencil" />
                         <span class="ms-1">Edit</span>
                       </button>
-                      <button type="button" class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
-                        <i class="bi bi-trash"></i>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        title="Remove"
+                        @click="removeService(index)"
+                      >
+                        <i class="bi bi-trash" />
                         <span class="ms-1">Remove</span>
                       </button>
                     </div>
@@ -132,9 +265,29 @@
             </div>
 
             <div class="text-end">
-              <button type="button" class="btn btn-secondary me-2" @click="$emit('close')">Cancel</button>
-              <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Visit') }}</button>
-              <button v-else type="button" class="btn btn-primary" @click="$emit('close')">Close</button>
+              <button
+                type="button"
+                class="btn btn-secondary me-2"
+                @click="$emit('close')"
+              >
+                Cancel
+              </button>
+              <button
+                v-if="!viewOnly"
+                type="submit"
+                class="btn btn-primary"
+                :disabled="isSaveDisabled"
+              >
+                {{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Visit') }}
+              </button>
+              <button
+                v-else
+                type="button"
+                class="btn btn-primary"
+                @click="$emit('close')"
+              >
+                Close
+              </button>
             </div>
           </form>
         </div>
@@ -143,17 +296,32 @@
   </div>
   <div v-else>
     <form @submit.prevent="saveVisit">
-      <div v-if="viewOnly" class="alert alert-light border mb-3">
+      <div
+        v-if="viewOnly"
+        class="alert alert-light border mb-3"
+      >
         <div><strong>Patient:</strong> {{ patientDisplayName }}</div>
         <div><strong>Visit Date:</strong> {{ formatDate(form.visit_date) }}</div>
-        <div v-if="form.findings"><strong>Findings:</strong> {{ form.findings }}</div>
-        <div v-if="form.service_rendered"><strong>Service Rendered:</strong> {{ form.service_rendered }}</div>
-        <div v-if="!recordMode"><strong>Recorded By:</strong> {{ recordedByDisplayName }}</div>
+        <div v-if="form.findings">
+          <strong>Findings:</strong> {{ form.findings }}
+        </div>
+        <div v-if="form.service_rendered">
+          <strong>Service Rendered:</strong> {{ form.service_rendered }}
+        </div>
+        <div v-if="!recordMode">
+          <strong>Recorded By:</strong> {{ recordedByDisplayName }}
+        </div>
         <div><strong>Taken Outside:</strong> {{ hasOutsideInVisit ? 'Yes' : 'No' }}</div>
       </div>
       <div class="mb-3">
         <label class="form-label">Patient *</label>
-        <input v-if="existingVisitMode" type="text" class="form-control" :value="patientDisplayName" readonly>
+        <input
+          v-if="existingVisitMode"
+          type="text"
+          class="form-control"
+          :value="patientDisplayName"
+          readonly
+        >
         <SearchableSelect
           v-else
           v-model="form.patient_id"
@@ -166,234 +334,457 @@
         />
       </div>
 
-        <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Select Health Staff *</label>
-          <input v-if="existingVisitMode" type="text" class="form-control" :value="recordedByDisplayName" readonly>
-          <SearchableSelect
-            v-else
-            v-model="form.recorded_by"
-            :options="healthWorkers"
-            :disabled="viewOnly"
-            :required="true"
-            placeholder="Search or select health staff..."
-            label-key="fullname"
-            value-key="user_id"
-          />
-        </div>
+      <div
+        v-if="!recordMode"
+        class="mb-3"
+      >
+        <label class="form-label">Select Health Staff *</label>
+        <input
+          v-if="existingVisitMode"
+          type="text"
+          class="form-control"
+          :value="recordedByDisplayName"
+          readonly
+        >
+        <SearchableSelect
+          v-else
+          v-model="form.recorded_by"
+          :options="healthWorkers"
+          :disabled="viewOnly"
+          :required="true"
+          placeholder="Search or select health staff..."
+          label-key="fullname"
+          value-key="user_id"
+        />
+      </div>
 
-        <h6 class="mb-2">Vital Signs</h6>
-        <div v-if="existingVisitMode && todayVisitId && todayVisitHasVitals" class="alert alert-info py-2 px-3 mb-2">
-          Vitals prefilled from today’s existing visit and locked.
+      <h6 class="mb-2">
+        Vital Signs
+      </h6>
+      <div
+        v-if="existingVisitMode && todayVisitId && todayVisitHasVitals"
+        class="alert alert-info py-2 px-3 mb-2"
+      >
+        Vitals prefilled from today’s existing visit and locked.
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Temperature (°C)</label>
+          <input
+            v-model="form.vitals.temperature"
+            type="number"
+            step="0.1"
+            class="form-control"
+            :disabled="vitalsReadOnly"
+          >
         </div>
-        <div class="row g-3 mb-3">
-          <div class="col-md-4">
-            <label class="form-label">Temperature (°C)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="vitalsReadOnly">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">MUAC (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="vitalsReadOnly">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Respiration (breaths/min)</label>
-            <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="vitalsReadOnly">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Weight (kg)</label>
-            <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="vitalsReadOnly">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="vitalsReadOnly">
-          </div>
+        <div class="col-md-4">
+          <label class="form-label">MUAC (cm)</label>
+          <input
+            v-model="form.vitals.muac"
+            type="number"
+            step="0.1"
+            class="form-control"
+            :disabled="vitalsReadOnly"
+          >
         </div>
+        <div class="col-md-4">
+          <label class="form-label">Respiration (breaths/min)</label>
+          <input
+            v-model="form.vitals.respiration"
+            type="number"
+            class="form-control"
+            :disabled="vitalsReadOnly"
+          >
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Weight (kg)</label>
+          <input
+            v-model="form.vitals.weight"
+            type="number"
+            step="0.01"
+            class="form-control"
+            :disabled="vitalsReadOnly"
+          >
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Height (cm)</label>
+          <input
+            v-model="form.vitals.height"
+            type="number"
+            step="0.1"
+            class="form-control"
+            :disabled="vitalsReadOnly"
+          >
+        </div>
+      </div>
 
-        <div class="mb-3">
-          <label class="form-label">Service Options</label>
-          <div class="d-flex gap-2 align-items-center">
-            <button type="button" class="btn btn-outline-primary" @click="openVaccinationForm">Add Record</button>
-          </div>
+      <div class="mb-3">
+        <label class="form-label">Service Options</label>
+        <div class="d-flex gap-2 align-items-center">
+          <button
+            type="button"
+            class="btn btn-outline-primary"
+            @click="openVaccinationForm"
+          >
+            Add Record
+          </button>
         </div>
+      </div>
 
-        <!-- Vaccination Form Section -->
-        <div v-if="showVaccinationForm" class="mb-3 border rounded p-3 bg-light">
-          <h6 class="mb-3">
-            <i class="bi bi-plus-circle me-2"></i>
-            {{ recordMode ? 'Add Vaccine to Record' : 'Add Service to Record' }}
-            <button type="button" class="btn btn-sm btn-outline-secondary float-end" @click="closeVaccinationForm">
-              <i class="bi bi-x"></i> Cancel
-            </button>
-          </h6>
-          <form @submit.prevent="saveVaccination">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">Vaccine *</label>
-                  <!-- In-facility (inside): choose from inventory stocks -->
-                  <div class="d-flex align-items-center mb-2">
-                    <div class="form-check form-switch ms-auto">
-                      <input class="form-check-input" type="checkbox" id="nipOnlyToggle" v-model="showNipOnly" @change="onNipToggle">
-                      <label class="form-check-label small" for="nipOnlyToggle">Filter NIP only</label>
-                    </div>
-                  </div>
-                  <SearchableSelect
-                    v-if="!recordMode && !vaccinationForm.outside"
-                    v-model="vaccinationForm.inventoryId"
-                    :options="vaccineOptions"
-                    :required="true"
-                    placeholder="Search or select vaccine..."
-                    label-key="display_name"
-                    value-key="inventory_id"
-                    @update:modelValue="onVaccineSelect"
-                  />
-                <!-- Outside: choose vaccine from catalog (no inventory) -->
-                <SearchableSelect
-                  v-else
-                  v-model="vaccinationForm.vaccineId"
-                  :options="vaccineCatalog"
-                  :required="true"
-                  placeholder="Search or select vaccine..."
-                  label-key="antigen_name"
-                  value-key="vaccine_id"
-                  @update:modelValue="onVaccineCatalogSelect"
-                />
-                <div class="form-check form-switch mt-2">
-                  <input class="form-check-input" type="checkbox" id="vaccinationOutsideToggle" v-model="vaccinationForm.outside">
-                  <label class="form-check-label small" for="vaccinationOutsideToggle">
-                    Administered from outside facility
-                  </label>
+      <!-- Vaccination Form Section -->
+      <div
+        v-if="showVaccinationForm"
+        class="mb-3 border rounded p-3 bg-light"
+      >
+        <h6 class="mb-3">
+          <i class="bi bi-plus-circle me-2" />
+          {{ recordMode ? 'Add Vaccine to Record' : 'Add Service to Record' }}
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary float-end"
+            @click="closeVaccinationForm"
+          >
+            <i class="bi bi-x" /> Cancel
+          </button>
+        </h6>
+        <form @submit.prevent="saveVaccination">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Vaccine *</label>
+              <!-- In-facility (inside): choose from inventory stocks -->
+              <div class="d-flex align-items-center mb-2">
+                <div class="form-check form-switch ms-auto">
+                  <input
+                    id="nipOnlyToggle"
+                    v-model="showNipOnly"
+                    class="form-check-input"
+                    type="checkbox"
+                    @change="onNipToggle"
+                  >
+                  <label
+                    class="form-check-label small"
+                    for="nipOnlyToggle"
+                  >Filter NIP only</label>
                 </div>
               </div>
-              <div class="col-md-6">
-                <label class="form-label">Disease Prevented</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.diseasePrevented" readonly>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Dose Number *</label>
-                <select class="form-select" v-model="vaccinationForm.doseNumber" required>
-                  <option value="">Select dose</option>
-                  <option v-for="dose in availableDoses" :key="dose" :value="dose">
-                    Dose {{ dose }}
-                  </option>
-                </select>
-                <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Date Administered *</label>
-                <DateInput 
-                  v-model="vaccinationForm.dateAdministered"
-                  :required="true"
-                  output-format="iso"
-                  @update:modelValue="updateAgeCalculation"
-                />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Age at Administration</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.ageAtAdministration" readonly>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Manufacturer</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.vaccineManufacturer" :readonly="!recordMode && !vaccinationForm.outside">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Lot Number</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.lotNumber" :readonly="!recordMode && !vaccinationForm.outside">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Site of Administration</label>
-                <select class="form-select" v-model="vaccinationForm.siteOfAdministration">
-                  <option value="">Select a site</option>
-                  <option value="Left arm (deltoid)">Left arm (deltoid)</option>
-                  <option value="Right arm (deltoid)">Right arm (deltoid)</option>
-                  <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
-                  <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
-                  <option value="Oral">Oral</option>
-                </select>
-              </div>
-              <div class="col-md-6" v-if="!recordMode && !vaccinationForm.outside">
-                <label class="form-label">Health Staff *</label>
-                <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
-                  <option value="">Select health staff</option>
-                  <option v-for="nurse in nurses" :key="nurse.user_id || nurse.id" :value="nurse.user_id || nurse.id">
-                    {{ nurse.fullname }}
-                  </option>
-                  <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Facility Name</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.facilityName">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Remarks</label>
-                <input type="text" class="form-control" v-model="vaccinationForm.remarks" :placeholder="recordMode ? 'Hint: include the person who administered the vaccine' : ''">
+              <SearchableSelect
+                v-if="!recordMode && !vaccinationForm.outside"
+                v-model="vaccinationForm.inventoryId"
+                :options="vaccineOptions"
+                :required="true"
+                placeholder="Search or select vaccine..."
+                label-key="display_name"
+                value-key="inventory_id"
+                @update:model-value="onVaccineSelect"
+              />
+              <!-- Outside: choose vaccine from catalog (no inventory) -->
+              <SearchableSelect
+                v-else
+                v-model="vaccinationForm.vaccineId"
+                :options="vaccineCatalog"
+                :required="true"
+                placeholder="Search or select vaccine..."
+                label-key="antigen_name"
+                value-key="vaccine_id"
+                @update:model-value="onVaccineCatalogSelect"
+              />
+              <div class="form-check form-switch mt-2">
+                <input
+                  id="vaccinationOutsideToggle"
+                  v-model="vaccinationForm.outside"
+                  class="form-check-input"
+                  type="checkbox"
+                >
+                <label
+                  class="form-check-label small"
+                  for="vaccinationOutsideToggle"
+                >
+                  Administered from outside facility
+                </label>
               </div>
             </div>
-            <div class="text-end mt-3">
-              <button type="button" class="btn btn-secondary me-2" @click="closeVaccinationForm">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="savingVaccination">
-                <span v-if="savingVaccination" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{ savingVaccination ? 'Adding...' : 'Add to Record' }}
-              </button>
+            <div class="col-md-6">
+              <label class="form-label">Disease Prevented</label>
+              <input
+                v-model="vaccinationForm.diseasePrevented"
+                type="text"
+                class="form-control"
+                readonly
+              >
             </div>
-            
-            <!-- Debug info -->
-            <div v-if="false" class="mt-3 p-2 bg-light border rounded">
-              <small class="text-muted">Debug: {{ nurses.length }} nurses/nutritionists available</small>
-              <pre class="small">{{ JSON.stringify(nurses, null, 2) }}</pre>
-            </div>
-          </form>
-        </div>
-
-        <div class="mb-3" v-if="!recordMode">
-          <label class="form-label">Findings</label>
-          <textarea class="form-control" rows="3" v-model="form.findings" :readonly="viewOnly || existingVisitMode" placeholder="Enter clinical findings..."></textarea>
-          <small class="text-muted">Auto-filled when services are added, but can be edited</small>
-        </div>
-
-            <div class="mb-3" v-if="!recordMode">
-              <label class="form-label">Service Rendered</label>
-              <textarea class="form-control" rows="3" v-model="form.service_rendered" :readonly="viewOnly || existingVisitMode" placeholder="Describe services rendered..."></textarea>
-              <small class="text-muted">Auto-filled when services are added, but can be edited</small>
-            </div>
-
-        <!-- Editable Services Section -->
-  <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="mb-3">
-          <label class="form-label">Services to be Administered During Visit</label>
-          <div class="border rounded p-3 bg-light">
-            <div v-for="(vacc, index) in localCollectedVaccinations" :key="index" class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-              <div class="flex-grow-1">
-                <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
-                <br>
-                <small class="text-muted">
-                  Date: {{ formatDate(vacc.administered_date) }} |
-                  Dose: {{ vacc.dose_number || 'N/A' }} |
-                  Outside Transaction: {{ vacc.outside ? 'Yes' : 'No' }}
-                </small>
+            <div class="col-md-6">
+              <label class="form-label">Dose Number *</label>
+              <select
+                v-model="vaccinationForm.doseNumber"
+                class="form-select"
+                required
+              >
+                <option value="">
+                  Select dose
+                </option>
+                <option
+                  v-for="dose in availableDoses"
+                  :key="dose"
+                  :value="dose"
+                >
+                  Dose {{ dose }}
+                </option>
+              </select>
+              <div
+                v-if="autoSelectHint"
+                class="form-text text-success"
+              >
+                {{ autoSelectHint }}
               </div>
-              <div class="d-flex gap-1" v-if="!viewOnly">
-                <button type="button" class="btn btn-sm btn-outline-primary" @click="editService(index)" title="Edit">
-                  <i class="bi bi-pencil"></i>
-                  <span class="ms-1">Edit</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" @click="removeService(index)" title="Remove">
-                  <i class="bi bi-trash"></i>
-                  <span class="ms-1">Remove</span>
-                </button>
-              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date Administered *</label>
+              <DateInput 
+                v-model="vaccinationForm.dateAdministered"
+                :required="true"
+                output-format="iso"
+                @update:model-value="updateAgeCalculation"
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Age at Administration</label>
+              <input
+                v-model="vaccinationForm.ageAtAdministration"
+                type="text"
+                class="form-control"
+                readonly
+              >
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Manufacturer</label>
+              <input
+                v-model="vaccinationForm.vaccineManufacturer"
+                type="text"
+                class="form-control"
+                :readonly="!recordMode && !vaccinationForm.outside"
+              >
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Lot Number</label>
+              <input
+                v-model="vaccinationForm.lotNumber"
+                type="text"
+                class="form-control"
+                :readonly="!recordMode && !vaccinationForm.outside"
+              >
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Site of Administration</label>
+              <select
+                v-model="vaccinationForm.siteOfAdministration"
+                class="form-select"
+              >
+                <option value="">
+                  Select a site
+                </option>
+                <option value="Left arm (deltoid)">
+                  Left arm (deltoid)
+                </option>
+                <option value="Right arm (deltoid)">
+                  Right arm (deltoid)
+                </option>
+                <option value="Left thigh (anterolateral)">
+                  Left thigh (anterolateral)
+                </option>
+                <option value="Right thigh (anterolateral)">
+                  Right thigh (anterolateral)
+                </option>
+                <option value="Oral">
+                  Oral
+                </option>
+              </select>
+            </div>
+            <div
+              v-if="!recordMode && !vaccinationForm.outside"
+              class="col-md-6"
+            >
+              <label class="form-label">Health Staff *</label>
+              <select
+                v-model="vaccinationForm.healthWorkerId"
+                class="form-select"
+                required
+              >
+                <option value="">
+                  Select health staff
+                </option>
+                <option
+                  v-for="nurse in nurses"
+                  :key="nurse.user_id || nurse.id"
+                  :value="nurse.user_id || nurse.id"
+                >
+                  {{ nurse.fullname }}
+                </option>
+                <option
+                  v-if="nurses.length === 0"
+                  disabled
+                >
+                  No nurses/nutritionists available
+                </option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Facility Name</label>
+              <input
+                v-model="vaccinationForm.facilityName"
+                type="text"
+                class="form-control"
+              >
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Remarks</label>
+              <input
+                v-model="vaccinationForm.remarks"
+                type="text"
+                class="form-control"
+                :placeholder="recordMode ? 'Hint: include the person who administered the vaccine' : ''"
+              >
             </div>
           </div>
-          <small class="text-muted">These services will be administered and recorded when you save the visit. You can edit or remove them before saving.</small>
-        </div>
+          <div class="text-end mt-3">
+            <button
+              type="button"
+              class="btn btn-secondary me-2"
+              @click="closeVaccinationForm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="savingVaccination"
+            >
+              <span
+                v-if="savingVaccination"
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+              />
+              {{ savingVaccination ? 'Adding...' : 'Add to Record' }}
+            </button>
+          </div>
+            
+          <!-- Debug info -->
+          <div
+            v-if="false"
+            class="mt-3 p-2 bg-light border rounded"
+          >
+            <small class="text-muted">Debug: {{ nurses.length }} nurses/nutritionists available</small>
+            <pre class="small">{{ JSON.stringify(nurses, null, 2) }}</pre>
+          </div>
+        </form>
+      </div>
 
-        <div class="text-end">
-          <button type="button" class="btn btn-secondary me-2" @click="$emit('close')">Cancel</button>
-          <button v-if="!viewOnly" type="submit" class="btn btn-primary" :disabled="isSaveDisabled">{{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Record') }}</button>
-          <button v-else type="button" class="btn btn-primary" @click="$emit('close')">Close</button>
+      <div
+        v-if="!recordMode"
+        class="mb-3"
+      >
+        <label class="form-label">Findings</label>
+        <textarea
+          v-model="form.findings"
+          class="form-control"
+          rows="3"
+          :readonly="viewOnly || existingVisitMode"
+          placeholder="Enter clinical findings..."
+        />
+        <small class="text-muted">Auto-filled when services are added, but can be edited</small>
+      </div>
+
+      <div
+        v-if="!recordMode"
+        class="mb-3"
+      >
+        <label class="form-label">Service Rendered</label>
+        <textarea
+          v-model="form.service_rendered"
+          class="form-control"
+          rows="3"
+          :readonly="viewOnly || existingVisitMode"
+          placeholder="Describe services rendered..."
+        />
+        <small class="text-muted">Auto-filled when services are added, but can be edited</small>
+      </div>
+
+      <!-- Editable Services Section -->
+      <div
+        v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0"
+        class="mb-3"
+      >
+        <label class="form-label">Services to be Administered During Visit</label>
+        <div class="border rounded p-3 bg-light">
+          <div
+            v-for="(vacc, index) in localCollectedVaccinations"
+            :key="index"
+            class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
+          >
+            <div class="flex-grow-1">
+              <strong>{{ vacc.vaccine_name || vacc.vaccineName || vacc.antigen_name || 'Unknown Vaccine' }}</strong>
+              <br>
+              <small class="text-muted">
+                Date: {{ formatDate(vacc.administered_date) }} |
+                Dose: {{ vacc.dose_number || 'N/A' }} |
+                Outside Transaction: {{ vacc.outside ? 'Yes' : 'No' }}
+              </small>
+            </div>
+            <div
+              v-if="!viewOnly"
+              class="d-flex gap-1"
+            >
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                title="Edit"
+                @click="editService(index)"
+              >
+                <i class="bi bi-pencil" />
+                <span class="ms-1">Edit</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                title="Remove"
+                @click="removeService(index)"
+              >
+                <i class="bi bi-trash" />
+                <span class="ms-1">Remove</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </form>
+        <small class="text-muted">These services will be administered and recorded when you save the visit. You can edit or remove them before saving.</small>
+      </div>
+
+      <div class="text-end">
+        <button
+          type="button"
+          class="btn btn-secondary me-2"
+          @click="$emit('close')"
+        >
+          Cancel
+        </button>
+        <button
+          v-if="!viewOnly"
+          type="submit"
+          class="btn btn-primary"
+          :disabled="isSaveDisabled"
+        >
+          {{ existingVisitMode ? (props.editMode ? 'Update Visit' : 'Add Services') : (recordMode ? 'Save Record' : 'Save Record') }}
+        </button>
+        <button
+          v-else
+          type="button"
+          class="btn btn-primary"
+          @click="$emit('close')"
+        >
+          Close
+        </button>
+      </div>
+    </form>
   </div>
-
-
 </template>
 
 <script setup>
@@ -476,7 +867,7 @@ const autoFilledFindings = computed(() => {
   const dewormingCount = services.filter(s => s.deworming_type).length
   const vitaminACount = services.filter(s => s.vitamin_a_type).length
   
-  let findings = []
+  const findings = []
   if (vaccineCount > 0) findings.push(`${vaccineCount} vaccine${vaccineCount > 1 ? 's' : ''} administered`)
   if (dewormingCount > 0) findings.push(`${dewormingCount} deworming treatment${dewormingCount > 1 ? 's' : ''} given`)
   if (vitaminACount > 0) findings.push(`${vitaminACount} vitamin A supplement${vitaminACount > 1 ? 's' : ''} provided`)
@@ -492,7 +883,7 @@ const autoFilledServiceRendered = computed(() => {
   const dewormingCount = services.filter(s => s.deworming_type).length
   const vitaminACount = services.filter(s => s.vitamin_a_type).length
   
-  let servicesRendered = []
+  const servicesRendered = []
   if (vaccineCount > 0) servicesRendered.push(`Vaccination (${vaccineCount} dose${vaccineCount > 1 ? 's' : ''})`)
   if (dewormingCount > 0) servicesRendered.push(`Deworming (${dewormingCount} treatment${dewormingCount > 1 ? 's' : ''})`)
   if (vitaminACount > 0) servicesRendered.push(`Vitamin A supplementation (${vitaminACount} dose${vitaminACount > 1 ? 's' : ''})`)

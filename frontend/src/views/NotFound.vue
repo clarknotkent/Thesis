@@ -1,20 +1,29 @@
 <template>
   <div class="not-found">
-    <div class="icon">😕</div>
+    <div class="icon">
+      😕
+    </div>
     <h1>Page not Found</h1>
-    <p class="subtitle">The page you're looking for doesn't exist or you don't have permission to view it.</p>
+    <p class="subtitle">
+      The page you're looking for doesn't exist or you don't have permission to view it.
+    </p>
     <div class="actions">
-      <button class="btn" @click="goBack">
-        <i class="bi bi-arrow-left"></i>
+      <button
+        class="btn"
+        @click="goBack"
+      >
+        <i class="bi bi-arrow-left" />
         Go Back
       </button>
-      <button class="btn primary" @click="goHome">
-        <i class="bi bi-house"></i>
+      <button
+        class="btn primary"
+        @click="goHome"
+      >
+        <i class="bi bi-house" />
         Go to Home
       </button>
     </div>
   </div>
-  
 </template>
 
 <script setup>

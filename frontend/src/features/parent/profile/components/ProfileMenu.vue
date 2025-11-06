@@ -8,13 +8,17 @@
       @click="$emit('menu-click', item.id)"
     >
       <div class="menu-icon">
-        <i :class="item.icon"></i>
+        <i :class="item.icon" />
       </div>
       <div class="menu-content">
-        <h6 class="menu-title">{{ item.title }}</h6>
-        <p class="menu-subtitle">{{ item.subtitle }}</p>
+        <h6 class="menu-title">
+          {{ item.title }}
+        </h6>
+        <p class="menu-subtitle">
+          {{ item.subtitle }}
+        </p>
       </div>
-      <i class="bi bi-chevron-right menu-arrow"></i>
+      <i class="bi bi-chevron-right menu-arrow" />
     </div>
   </div>
 </template>

@@ -3,16 +3,28 @@
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="h3 mb-1">Visit Summary</h1>
-        <p class="text-muted mb-0">Patient visit record and medical history</p>
+        <h1 class="h3 mb-1">
+          Visit Summary
+        </h1>
+        <p class="text-muted mb-0">
+          Patient visit record and medical history
+        </p>
       </div>
       <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary" @click="enableEditMode">
-          <i class="bi bi-pencil-square me-2"></i>
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          @click="enableEditMode"
+        >
+          <i class="bi bi-pencil-square me-2" />
           Edit Visit
         </button>
-        <button type="button" class="btn btn-outline-secondary" @click="$router.go(-1)">
-          <i class="bi bi-arrow-left me-2"></i>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          @click="$router.go(-1)"
+        >
+          <i class="bi bi-arrow-left me-2" />
           Back
         </button>
       </div>
@@ -22,7 +34,7 @@
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-primary text-white">
         <h6 class="card-title mb-0">
-          <i class="bi bi-clipboard-data me-2"></i>
+          <i class="bi bi-clipboard-data me-2" />
           Visit Information
         </h6>
       </div>
@@ -30,7 +42,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <div class="d-flex align-items-center">
-              <i class="bi bi-person-circle text-primary me-3 fs-4"></i>
+              <i class="bi bi-person-circle text-primary me-3 fs-4" />
               <div>
                 <small class="text-muted d-block">Patient</small>
                 <strong class="text-dark">{{ patientDisplayName }}</strong>
@@ -39,7 +51,7 @@
           </div>
           <div class="col-md-6">
             <div class="d-flex align-items-center">
-              <i class="bi bi-calendar-event text-success me-3 fs-4"></i>
+              <i class="bi bi-calendar-event text-success me-3 fs-4" />
               <div>
                 <small class="text-muted d-block">Visit Date</small>
                 <strong class="text-dark">{{ formatDate(form.visit_date) }}</strong>
@@ -48,7 +60,7 @@
           </div>
           <div class="col-md-6">
             <div class="d-flex align-items-center">
-              <i class="bi bi-person-badge text-info me-3 fs-4"></i>
+              <i class="bi bi-person-badge text-info me-3 fs-4" />
               <div>
                 <small class="text-muted d-block">Health Staff</small>
                 <strong class="text-dark">{{ healthStaffName }}</strong>
@@ -57,7 +69,10 @@
           </div>
           <div class="col-md-6">
             <div class="d-flex align-items-center">
-              <i :class="hasOutsideInVisit ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'" class="me-3 fs-4"></i>
+              <i
+                :class="hasOutsideInVisit ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'"
+                class="me-3 fs-4"
+              />
               <div>
                 <small class="text-muted d-block">Service Location</small>
                 <span :class="hasOutsideInVisit ? 'badge bg-warning text-dark' : 'badge bg-secondary'">
@@ -66,12 +81,17 @@
               </div>
             </div>
           </div>
-          <div class="col-12" v-if="form.findings">
+          <div
+            v-if="form.findings"
+            class="col-12"
+          >
             <div class="d-flex align-items-start">
-              <i class="bi bi-journal-text text-info me-3 fs-4 mt-1"></i>
+              <i class="bi bi-journal-text text-info me-3 fs-4 mt-1" />
               <div class="flex-grow-1">
                 <small class="text-muted d-block">Clinical Findings</small>
-                <p class="text-dark mb-0">{{ form.findings }}</p>
+                <p class="text-dark mb-0">
+                  {{ form.findings }}
+                </p>
               </div>
             </div>
           </div>
@@ -80,28 +100,43 @@
     </div>
 
     <!-- Services Provided Card -->
-    <div v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0" class="card border-0 shadow-sm mb-4">
+    <div
+      v-if="localCollectedVaccinations && localCollectedVaccinations.length > 0"
+      class="card border-0 shadow-sm mb-4"
+    >
       <div class="card-header bg-success text-white">
         <h6 class="card-title mb-0">
-          <i class="bi bi-check-circle-fill me-2"></i>
+          <i class="bi bi-check-circle-fill me-2" />
           Services Provided
         </h6>
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-12">
-            <div v-for="(service, index) in localCollectedVaccinations" :key="index" class="service-item mb-3 p-3 bg-light rounded">
+            <div
+              v-for="(service, index) in localCollectedVaccinations"
+              :key="index"
+              class="service-item mb-3 p-3 bg-light rounded"
+            >
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-shield-check text-success me-3 fs-5"></i>
+                <i class="bi bi-shield-check text-success me-3 fs-5" />
                 <div class="flex-grow-1">
-                  <h6 class="mb-1 text-dark">{{ service.vaccine_name || service.antigen_name || 'Unknown Vaccine' }}</h6>
+                  <h6 class="mb-1 text-dark">
+                    {{ service.vaccine_name || service.antigen_name || 'Unknown Vaccine' }}
+                  </h6>
                   <div class="service-details text-muted small">
                     <span class="badge bg-success me-2">Vaccination</span>
                     <span>Dose {{ service.dose_number || 'N/A' }}</span>
                     <span class="ms-2">• </span>
                     <span>{{ formatDate(service.administered_date) }}</span>
-                    <span v-if="service.outside" class="ms-2">• </span>
-                    <span v-if="service.outside" class="badge bg-warning text-dark ms-1">Outside Facility</span>
+                    <span
+                      v-if="service.outside"
+                      class="ms-2"
+                    >• </span>
+                    <span
+                      v-if="service.outside"
+                      class="badge bg-warning text-dark ms-1"
+                    >Outside Facility</span>
                   </div>
                 </div>
               </div>
@@ -112,19 +147,25 @@
     </div>
 
     <!-- Vital Signs Card -->
-    <div v-if="hasVitalSigns" class="card border-0 shadow-sm mb-4">
+    <div
+      v-if="hasVitalSigns"
+      class="card border-0 shadow-sm mb-4"
+    >
       <div class="card-header bg-info text-white">
         <h6 class="card-title mb-0">
-          <i class="bi bi-heart-pulse me-2"></i>
+          <i class="bi bi-heart-pulse me-2" />
           Vital Signs
         </h6>
       </div>
       <div class="card-body">
         <div class="row g-3">
-          <div v-if="form.vitals.temperature" class="col-md-6 col-lg-4">
+          <div
+            v-if="form.vitals.temperature"
+            class="col-md-6 col-lg-4"
+          >
             <div class="vital-sign-item p-3 bg-light rounded">
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-thermometer-half text-danger me-3 fs-4"></i>
+                <i class="bi bi-thermometer-half text-danger me-3 fs-4" />
                 <div>
                   <small class="text-muted d-block">Temperature</small>
                   <strong class="text-dark fs-5">{{ form.vitals.temperature }}°C</strong>
@@ -132,10 +173,13 @@
               </div>
             </div>
           </div>
-          <div v-if="form.vitals.muac" class="col-md-6 col-lg-4">
+          <div
+            v-if="form.vitals.muac"
+            class="col-md-6 col-lg-4"
+          >
             <div class="vital-sign-item p-3 bg-light rounded">
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-rulers text-warning me-3 fs-4"></i>
+                <i class="bi bi-rulers text-warning me-3 fs-4" />
                 <div>
                   <small class="text-muted d-block">MUAC</small>
                   <strong class="text-dark fs-5">{{ form.vitals.muac }} cm</strong>
@@ -143,10 +187,13 @@
               </div>
             </div>
           </div>
-          <div v-if="form.vitals.respiration" class="col-md-6 col-lg-4">
+          <div
+            v-if="form.vitals.respiration"
+            class="col-md-6 col-lg-4"
+          >
             <div class="vital-sign-item p-3 bg-light rounded">
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-lungs text-success me-3 fs-4"></i>
+                <i class="bi bi-lungs text-success me-3 fs-4" />
                 <div>
                   <small class="text-muted d-block">Respiration</small>
                   <strong class="text-dark fs-5">{{ form.vitals.respiration }} breaths/min</strong>
@@ -154,10 +201,13 @@
               </div>
             </div>
           </div>
-          <div v-if="form.vitals.weight" class="col-md-6 col-lg-4">
+          <div
+            v-if="form.vitals.weight"
+            class="col-md-6 col-lg-4"
+          >
             <div class="vital-sign-item p-3 bg-light rounded">
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-speedometer2 text-primary me-3 fs-4"></i>
+                <i class="bi bi-speedometer2 text-primary me-3 fs-4" />
                 <div>
                   <small class="text-muted d-block">Weight</small>
                   <strong class="text-dark fs-5">{{ form.vitals.weight }} kg</strong>
@@ -165,10 +215,13 @@
               </div>
             </div>
           </div>
-          <div v-if="form.vitals.height" class="col-md-6 col-lg-4">
+          <div
+            v-if="form.vitals.height"
+            class="col-md-6 col-lg-4"
+          >
             <div class="vital-sign-item p-3 bg-light rounded">
               <div class="d-flex align-items-center mb-2">
-                <i class="bi bi-arrows-vertical text-info me-3 fs-4"></i>
+                <i class="bi bi-arrows-vertical text-info me-3 fs-4" />
                 <div>
                   <small class="text-muted d-block">Height</small>
                   <strong class="text-dark fs-5">{{ form.vitals.height }} cm</strong>
@@ -181,11 +234,18 @@
     </div>
 
     <!-- No Services Message -->
-    <div v-else-if="!localCollectedVaccinations || localCollectedVaccinations.length === 0" class="card border-0 shadow-sm mb-4">
+    <div
+      v-else-if="!localCollectedVaccinations || localCollectedVaccinations.length === 0"
+      class="card border-0 shadow-sm mb-4"
+    >
       <div class="card-body text-center py-5">
-        <i class="bi bi-info-circle text-muted fs-1 mb-3"></i>
-        <h5 class="text-muted">No Services Recorded</h5>
-        <p class="text-muted mb-0">This visit has no recorded services or vaccinations.</p>
+        <i class="bi bi-info-circle text-muted fs-1 mb-3" />
+        <h5 class="text-muted">
+          No Services Recorded
+        </h5>
+        <p class="text-muted mb-0">
+          This visit has no recorded services or vaccinations.
+        </p>
       </div>
     </div>
   </div>

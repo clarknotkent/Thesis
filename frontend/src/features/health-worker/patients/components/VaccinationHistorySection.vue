@@ -1,14 +1,23 @@
 <template>
   <div class="detail-card mb-3">
-    <div class="card-header dropdown-header" @click="toggleExpanded">
+    <div
+      class="card-header dropdown-header"
+      @click="toggleExpanded"
+    >
       <h6 class="mb-0 d-flex justify-content-between align-items-center">
         <span>Vaccination History</span>
-        <i :class="isExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+        <i :class="isExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" />
       </h6>
     </div>
-    <div v-show="isExpanded" class="card-body">
+    <div
+      v-show="isExpanded"
+      class="card-body"
+    >
       <!-- Has Vaccination History -->
-      <div v-if="hasHistory" class="vaccination-history">
+      <div
+        v-if="hasHistory"
+        class="vaccination-history"
+      >
         <div 
           v-for="vaccination in vaccinationHistory" 
           :key="vaccination.id"
@@ -16,8 +25,12 @@
         >
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="fw-semibold">{{ vaccination.vaccineName }}</div>
-              <div class="text-muted small">{{ formatDate(vaccination.dateAdministered) }}</div>
+              <div class="fw-semibold">
+                {{ vaccination.vaccineName }}
+              </div>
+              <div class="text-muted small">
+                {{ formatDate(vaccination.dateAdministered) }}
+              </div>
             </div>
             <span class="badge bg-success">Administered</span>
           </div>
@@ -25,9 +38,17 @@
       </div>
 
       <!-- No Vaccination History -->
-      <div v-else class="text-center py-4">
-        <i class="bi bi-clipboard-x text-muted mb-2" style="font-size: 2rem;"></i>
-        <p class="text-muted mb-0">No vaccination records found</p>
+      <div
+        v-else
+        class="text-center py-4"
+      >
+        <i
+          class="bi bi-clipboard-x text-muted mb-2"
+          style="font-size: 2rem;"
+        />
+        <p class="text-muted mb-0">
+          No vaccination records found
+        </p>
       </div>
     </div>
   </div>

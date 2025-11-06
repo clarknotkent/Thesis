@@ -5,21 +5,21 @@
         class="btn btn-outline-secondary compact-btn"
         @click="$emit('sort')"
       >
-        <i class="bi bi-sort-down"></i>
+        <i class="bi bi-sort-down" />
         Sort
       </button>
       <button
         class="btn btn-info compact-btn"
         @click="$emit('scan')"
       >
-        <i class="bi bi-camera"></i>
+        <i class="bi bi-camera" />
         Scan
       </button>
       <button
         class="btn btn-primary compact-btn"
         @click="$emit('add')"
       >
-        <i class="bi bi-plus-circle"></i>
+        <i class="bi bi-plus-circle" />
         + Add
       </button>
     </div>

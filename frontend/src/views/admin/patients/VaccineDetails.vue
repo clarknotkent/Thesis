@@ -2,12 +2,32 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item"><router-link :to="`/admin/patients/view/${patientId}`">Patient Details</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Vaccine Details</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link :to="`/admin/patients/view/${patientId}`">
+              Patient Details
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Vaccine Details
+          </li>
         </ol>
       </nav>
 
@@ -15,33 +35,52 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 class="mb-1">
-            <i class="bi bi-shield-check me-2"></i>{{ vaccineName }}
+            <i class="bi bi-shield-check me-2" />{{ vaccineName }}
           </h2>
-          <p class="text-muted mb-0">Detailed vaccination records for {{ patientName }}</p>
+          <p class="text-muted mb-0">
+            Detailed vaccination records for {{ patientName }}
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/dashboard" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/dashboard"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading vaccine details...</span>
         </div>
-        <p class="text-muted mt-2">Loading vaccine details...</p>
+        <p class="text-muted mt-2">
+          Loading vaccine details...
+        </p>
       </div>
 
       <!-- Vaccine Details Card -->
-      <div v-else class="card shadow">
+      <div
+        v-else
+        class="card shadow"
+      >
         <div class="card-header py-3 bg-primary text-white">
           <h5 class="m-0 fw-bold">
-            <i class="bi bi-clipboard-data me-2"></i>{{ vaccineName }} - Vaccination Records
+            <i class="bi bi-clipboard-data me-2" />{{ vaccineName }} - Vaccination Records
           </h5>
         </div>
         <div class="card-body p-4">
@@ -50,13 +89,17 @@
             <div class="col-md-6">
               <div class="info-box">
                 <label class="text-muted small">Disease Prevented</label>
-                <p class="fw-bold mb-0">{{ diseasePrevented }}</p>
+                <p class="fw-bold mb-0">
+                  {{ diseasePrevented }}
+                </p>
               </div>
             </div>
             <div class="col-md-6">
               <div class="info-box">
                 <label class="text-muted small">Total Doses Administered</label>
-                <p class="fw-bold mb-0">{{ doses.length }}</p>
+                <p class="fw-bold mb-0">
+                  {{ doses.length }}
+                </p>
               </div>
             </div>
           </div>
@@ -66,19 +109,40 @@
             <table class="table table-bordered table-hover">
               <thead class="table-light">
                 <tr>
-                  <th style="width: 8%;">Dose</th>
-                  <th style="width: 12%;">Date Administered<br><small class="text-muted">MM/DD/YYYY</small></th>
-                  <th style="width: 10%;">Age at Administration</th>
-                  <th style="width: 12%;">Batch Number</th>
-                  <th style="width: 13%;">Administered By</th>
-                  <th style="width: 10%;">Site</th>
-                  <th style="width: 12%;">Facility</th>
-                  <th style="width: 8%;">Status</th>
-                  <th style="width: 15%;">Remarks</th>
+                  <th style="width: 8%;">
+                    Dose
+                  </th>
+                  <th style="width: 12%;">
+                    Date Administered<br><small class="text-muted">MM/DD/YYYY</small>
+                  </th>
+                  <th style="width: 10%;">
+                    Age at Administration
+                  </th>
+                  <th style="width: 12%;">
+                    Batch Number
+                  </th>
+                  <th style="width: 13%;">
+                    Administered By
+                  </th>
+                  <th style="width: 10%;">
+                    Site
+                  </th>
+                  <th style="width: 12%;">
+                    Facility
+                  </th>
+                  <th style="width: 8%;">
+                    Status
+                  </th>
+                  <th style="width: 15%;">
+                    Remarks
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(dose, index) in sortedDoses" :key="index">
+                <tr
+                  v-for="(dose, index) in sortedDoses"
+                  :key="index"
+                >
                   <td class="text-center">
                     <span class="badge bg-secondary">Dose {{ dose.doseNumber }}</span>
                   </td>
@@ -104,9 +168,17 @@
           </div>
 
           <!-- Empty State -->
-          <div v-if="doses.length === 0" class="text-center py-5">
-            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-            <p class="text-muted mt-3">No vaccination records found for this vaccine</p>
+          <div
+            v-if="doses.length === 0"
+            class="text-center py-5"
+          >
+            <i
+              class="bi bi-inbox text-muted"
+              style="font-size: 3rem;"
+            />
+            <p class="text-muted mt-3">
+              No vaccination records found for this vaccine
+            </p>
           </div>
         </div>
       </div>
@@ -215,7 +287,7 @@ const fetchVaccineDetails = async () => {
     }) : []
 
     // Fetch inventory data to get batch numbers
-    let inventoryMap = {}
+    const inventoryMap = {}
     try {
       const inventoryResponse = await api.get('/vaccines/inventory')
       const inventoryItems = inventoryResponse.data?.data || inventoryResponse.data || []

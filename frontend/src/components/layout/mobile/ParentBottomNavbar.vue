@@ -9,7 +9,7 @@
         :class="{ active: isActiveRoute(item.path) }"
       >
         <div class="nav-icon">
-          <i :class="item.icon"></i>
+          <i :class="item.icon" />
         </div>
         <span class="nav-label">{{ item.label }}</span>
       </router-link>

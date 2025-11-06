@@ -2,29 +2,55 @@
   <div class="chat-view">
     <!-- Chat Header -->
     <div class="chat-header">
-      <button @click="$emit('close-chat')" class="back-btn">
-        <i class="bi bi-arrow-left"></i>
+      <button
+        class="back-btn"
+        @click="$emit('close-chat')"
+      >
+        <i class="bi bi-arrow-left" />
       </button>
       <div class="chat-info">
-        <h6 class="chat-title">{{ getConversationTitle(conversation) }}</h6>
-        <small class="chat-subtitle" v-if="conversation.participants">
+        <h6 class="chat-title">
+          {{ getConversationTitle(conversation) }}
+        </h6>
+        <small
+          v-if="conversation.participants"
+          class="chat-subtitle"
+        >
           {{ getParticipantList(conversation) }}
         </small>
       </div>
     </div>
 
     <!-- Messages Container -->
-    <div ref="messagesContainer" class="messages-container-scroll">
-      <div v-if="loadingMessages" class="text-center p-3">
-        <div class="spinner-border spinner-border-sm text-primary" role="status">
+    <div
+      ref="messagesContainer"
+      class="messages-container-scroll"
+    >
+      <div
+        v-if="loadingMessages"
+        class="text-center p-3"
+      >
+        <div
+          class="spinner-border spinner-border-sm text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
-      <div v-else-if="messages.length === 0" class="text-center p-4 text-muted">
-        <i class="bi bi-chat-text mb-2" style="font-size: 2rem;"></i>
+      <div
+        v-else-if="messages.length === 0"
+        class="text-center p-4 text-muted"
+      >
+        <i
+          class="bi bi-chat-text mb-2"
+          style="font-size: 2rem;"
+        />
         <p>No messages yet</p>
       </div>
-      <div v-else class="messages-list-chat">
+      <div
+        v-else
+        class="messages-list-chat"
+      >
         <div 
           v-for="msg in messages" 
           :key="msg.message_id"
@@ -32,7 +58,9 @@
           :class="{ 'mine': isMyMessage(msg) }"
         >
           <div class="message-bubble">
-            <div class="message-text">{{ msg.message_content }}</div>
+            <div class="message-text">
+              {{ msg.message_content }}
+            </div>
             <div class="message-meta">
               <small>{{ formatTimePH(msg.created_at) }}</small>
             </div>
@@ -45,21 +73,27 @@
     <div class="message-input-container">
       <textarea 
         :value="messageText"
-        @input="$emit('update:messageText', $event.target.value)"
         placeholder="Type your message..."
         rows="1"
-        @keydown.enter.prevent="$emit('send-message')"
         class="message-input"
         maxlength="1000"
-      ></textarea>
+        @input="$emit('update:messageText', $event.target.value)"
+        @keydown.enter.prevent="$emit('send-message')"
+      />
       <button 
-        @click="$emit('send-message')" 
-        class="send-btn"
+        class="send-btn" 
         :disabled="!messageText.trim() || sending"
         :title="!messageText.trim() ? 'Type a message to send' : 'Send message'"
+        @click="$emit('send-message')"
       >
-        <i v-if="sending" class="bi bi-hourglass-split"></i>
-        <i v-else class="bi bi-send-fill"></i>
+        <i
+          v-if="sending"
+          class="bi bi-hourglass-split"
+        />
+        <i
+          v-else
+          class="bi bi-send-fill"
+        />
       </button>
     </div>
   </div>

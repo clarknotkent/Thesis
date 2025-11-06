@@ -3,12 +3,20 @@
     <!-- Fixed Header Section -->
     <div class="add-patient-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Add New Patient</h1>
-        <button class="menu-button" style="visibility: hidden;">
-          <i class="bi bi-three-dots-vertical"></i>
+        <h1 class="page-title">
+          Add New Patient
+        </h1>
+        <button
+          class="menu-button"
+          style="visibility: hidden;"
+        >
+          <i class="bi bi-three-dots-vertical" />
         </button>
       </div>
     </div>
@@ -16,13 +24,20 @@
     <!-- Page Content -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loadingGuardians" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loadingGuardians"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading guardians...</p>
       </div>
 
       <!-- Form Content -->
-      <form v-else @submit.prevent="handleSubmit" class="patient-form">
+      <form
+        v-else
+        class="patient-form"
+        @submit.prevent="handleSubmit"
+      >
         <!-- Patient Information Card -->
         <CollapsibleCard
           title="Patient Information"
@@ -34,85 +49,95 @@
             <div class="form-group">
               <label class="form-label">First Name <span class="required">*</span></label>
               <input 
+                v-model="formData.firstname" 
                 type="text" 
                 class="form-input" 
-                v-model="formData.firstname" 
                 required
                 placeholder="Enter first name"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Middle Name</label>
               <input 
+                v-model="formData.middlename" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.middlename"
+                class="form-input"
                 placeholder="Enter middle name"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Surname <span class="required">*</span></label>
               <input 
+                v-model="formData.surname" 
                 type="text" 
                 class="form-input" 
-                v-model="formData.surname" 
                 required
                 placeholder="Enter surname"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Sex <span class="required">*</span></label>
-              <select class="form-input" v-model="formData.sex" required>
-                <option value="">Select Sex</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+              <select
+                v-model="formData.sex"
+                class="form-input"
+                required
+              >
+                <option value="">
+                  Select Sex
+                </option>
+                <option value="Male">
+                  Male
+                </option>
+                <option value="Female">
+                  Female
+                </option>
               </select>
             </div>
 
             <div class="form-group">
               <label class="form-label">Date of Birth <span class="required">*</span></label>
               <input 
+                v-model="formData.date_of_birth" 
                 type="date" 
                 class="form-input" 
-                v-model="formData.date_of_birth" 
                 required
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Barangay <span class="required">*</span></label>
               <input 
+                v-model="formData.barangay" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.barangay"
+                class="form-input"
                 required
                 placeholder="Enter barangay"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Health Center <span class="required">*</span></label>
               <input 
+                v-model="formData.health_center" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.health_center"
+                class="form-input"
                 required
                 placeholder="Enter health center"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Address <span class="required">*</span></label>
               <textarea 
+                v-model="formData.address" 
                 class="form-input" 
-                rows="3" 
-                v-model="formData.address"
+                rows="3"
                 required
                 placeholder="Enter complete address"
-              ></textarea>
+              />
             </div>
           </div>
         </CollapsibleCard>
@@ -128,12 +153,14 @@
             <div class="form-group">
               <label class="form-label">Guardian <span class="required">*</span></label>
               <select 
-                class="form-input" 
                 v-model="formData.guardian_id" 
-                @change="onGuardianSelected"
+                class="form-input" 
                 required
+                @change="onGuardianSelected"
               >
-                <option value="">Select Guardian</option>
+                <option value="">
+                  Select Guardian
+                </option>
                 <option 
                   v-for="guardian in guardians" 
                   :key="guardian.guardian_id" 
@@ -146,28 +173,46 @@
 
             <div class="form-group">
               <label class="form-label">Relationship to Guardian <span class="required">*</span></label>
-              <select class="form-input" v-model="formData.relationship_to_guardian" required>
-                <option value="">Select relationship</option>
-                <option value="Mother">Mother</option>
-                <option value="Father">Father</option>
-                <option value="Guardian">Guardian</option>
-                <option value="Other">Other</option>
+              <select
+                v-model="formData.relationship_to_guardian"
+                class="form-input"
+                required
+              >
+                <option value="">
+                  Select relationship
+                </option>
+                <option value="Mother">
+                  Mother
+                </option>
+                <option value="Father">
+                  Father
+                </option>
+                <option value="Guardian">
+                  Guardian
+                </option>
+                <option value="Other">
+                  Other
+                </option>
               </select>
             </div>
 
             <div class="form-group">
               <label class="form-label">Family Number</label>
               <input 
+                v-model="formData.family_number" 
                 type="text" 
                 class="form-input" 
-                v-model="formData.family_number" 
                 readonly
                 placeholder="Auto-generated from guardian"
-              />
-              <div class="form-hint">Auto-populated from selected guardian</div>
+              >
+              <div class="form-hint">
+                Auto-populated from selected guardian
+              </div>
             </div>
 
-            <div class="section-divider">Mother's Information</div>
+            <div class="section-divider">
+              Mother's Information
+            </div>
 
             <div class="form-group">
               <label class="form-label">Mother's Name <span class="required">*</span></label>
@@ -184,24 +229,26 @@
             <div class="form-group">
               <label class="form-label">Mother's Occupation</label>
               <input 
+                v-model="formData.mother_occupation" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.mother_occupation"
+                class="form-input"
                 placeholder="Enter occupation"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Mother's Contact Number</label>
               <input 
+                v-model="formData.mother_contact_number" 
                 type="tel" 
-                class="form-input" 
-                v-model="formData.mother_contact_number"
+                class="form-input"
                 placeholder="Enter contact number"
-              />
+              >
             </div>
 
-            <div class="section-divider">Father's Information</div>
+            <div class="section-divider">
+              Father's Information
+            </div>
 
             <div class="form-group">
               <label class="form-label">Father's Name</label>
@@ -217,21 +264,21 @@
             <div class="form-group">
               <label class="form-label">Father's Occupation</label>
               <input 
+                v-model="formData.father_occupation" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.father_occupation"
+                class="form-input"
                 placeholder="Enter occupation"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Father's Contact Number</label>
               <input 
+                v-model="formData.father_contact_number" 
                 type="tel" 
-                class="form-input" 
-                v-model="formData.father_contact_number"
+                class="form-input"
                 placeholder="Enter contact number"
-              />
+              >
             </div>
           </div>
         </CollapsibleCard>
@@ -247,103 +294,117 @@
             <div class="form-group">
               <label class="form-label">Time of Birth <span class="required">*</span></label>
               <input 
+                v-model="formData.time_of_birth" 
                 type="time" 
-                class="form-input" 
-                v-model="formData.time_of_birth"
+                class="form-input"
                 required
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Attendant at Birth <span class="required">*</span></label>
               <input 
+                v-model="formData.attendant_at_birth" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.attendant_at_birth"
+                class="form-input"
                 required
                 placeholder="e.g., Doctor, Midwife"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Type of Delivery <span class="required">*</span></label>
-              <select class="form-input" v-model="formData.type_of_delivery" required>
-                <option value="">Select delivery type</option>
-                <option value="Normal">Normal</option>
-                <option value="Cesarean">Cesarean</option>
-                <option value="Assisted">Assisted</option>
-                <option value="Other">Other</option>
+              <select
+                v-model="formData.type_of_delivery"
+                class="form-input"
+                required
+              >
+                <option value="">
+                  Select delivery type
+                </option>
+                <option value="Normal">
+                  Normal
+                </option>
+                <option value="Cesarean">
+                  Cesarean
+                </option>
+                <option value="Assisted">
+                  Assisted
+                </option>
+                <option value="Other">
+                  Other
+                </option>
               </select>
             </div>
 
             <div class="form-group">
               <label class="form-label">Birth Weight (kg)</label>
               <input 
+                v-model="formData.birth_weight" 
                 type="number" 
                 step="0.1" 
-                class="form-input" 
-                v-model="formData.birth_weight"
+                class="form-input"
                 placeholder="e.g., 3.2"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Birth Length (cm)</label>
               <input 
+                v-model="formData.birth_length" 
                 type="number" 
                 step="0.1" 
-                class="form-input" 
-                v-model="formData.birth_length"
+                class="form-input"
                 placeholder="e.g., 50.5"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Place of Birth</label>
               <input 
+                v-model="formData.place_of_birth" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.place_of_birth"
+                class="form-input"
                 placeholder="Enter place of birth"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Ballard's Score</label>
               <input 
+                v-model="formData.ballards_score" 
                 type="number" 
-                class="form-input" 
-                v-model="formData.ballards_score"
+                class="form-input"
                 placeholder="Enter score"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Newborn Screening Result</label>
               <input 
+                v-model="formData.newborn_screening_result" 
                 type="text" 
-                class="form-input" 
-                v-model="formData.newborn_screening_result"
+                class="form-input"
                 placeholder="Enter result"
-              />
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Newborn Screening Date</label>
               <input 
+                v-model="formData.newborn_screening_date" 
                 type="date" 
-                class="form-input" 
-                v-model="formData.newborn_screening_date"
-              />
+                class="form-input"
+              >
             </div>
 
             <div class="form-group">
               <label class="form-label">Hearing Test Date</label>
               <input 
+                v-model="formData.hearing_test_date" 
                 type="date" 
-                class="form-input" 
-                v-model="formData.hearing_test_date"
-              />
+                class="form-input"
+              >
             </div>
           </div>
         </CollapsibleCard>
@@ -355,8 +416,14 @@
             class="save-button" 
             :disabled="submitting"
           >
-            <i class="bi bi-check-circle-fill" v-if="!submitting"></i>
-            <span class="spinner-small" v-else></span>
+            <i
+              v-if="!submitting"
+              class="bi bi-check-circle-fill"
+            />
+            <span
+              v-else
+              class="spinner-small"
+            />
             {{ submitting ? 'Saving...' : 'Save Record' }}
           </button>
         </div>

@@ -1,20 +1,23 @@
 <template>
-  <div class="searchable-select-wrapper" ref="wrapperRef">
+  <div
+    ref="wrapperRef"
+    class="searchable-select-wrapper"
+  >
     <div class="input-group">
       <input
         ref="inputRef"
+        v-model="searchTerm"
         type="text"
         :class="inputClass"
         :placeholder="placeholder"
         :disabled="disabled"
         :required="required"
-        v-model="searchTerm"
+        autocomplete="off"
         @input="handleInput"
         @focus="handleFocus"
         @blur="handleBlur"
         @keydown="handleKeydown"
-        autocomplete="off"
-      />
+      >
       <button
         v-if="!hideDropdownIcon"
         class="btn btn-outline-secondary dropdown-toggle"
@@ -22,16 +25,19 @@
         :disabled="disabled"
         @click="toggleDropdown"
         @mousedown.prevent
-      ></button>
+      />
     </div>
     
     <!-- Dropdown List -->
     <div
       v-if="showDropdown"
-      class="dropdown-list card shadow-sm"
       ref="dropdownRef"
+      class="dropdown-list card shadow-sm"
     >
-      <div v-if="filteredOptions.length > 0" class="list-group list-group-flush">
+      <div
+        v-if="filteredOptions.length > 0"
+        class="list-group list-group-flush"
+      >
         <button
           v-for="(option, index) in filteredOptions"
           :key="getOptionValue(option)"
@@ -45,18 +51,24 @@
           {{ getOptionLabel(option) }}
         </button>
       </div>
-      <div v-else class="p-3 text-muted text-center">
+      <div
+        v-else
+        class="p-3 text-muted text-center"
+      >
         <small>{{ allowCustom ? 'Type to add new or select from list' : 'No options found' }}</small>
       </div>
       
-      <div v-if="allowCustom && searchTerm && !exactMatch" class="p-2 border-top">
+      <div
+        v-if="allowCustom && searchTerm && !exactMatch"
+        class="p-2 border-top"
+      >
         <button
           type="button"
           class="btn btn-sm btn-outline-primary w-100"
           @click="addCustomOption"
           @mousedown.prevent
         >
-          <i class="bi bi-plus-circle me-1"></i>
+          <i class="bi bi-plus-circle me-1" />
           Add "{{ searchTerm }}"
         </button>
       </div>

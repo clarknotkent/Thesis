@@ -3,13 +3,20 @@
     <!-- Header -->
     <div class="card-header">
       <div class="vaccine-info">
-        <i class="bi bi-shield-fill-check vaccine-icon"></i>
+        <i class="bi bi-shield-fill-check vaccine-icon" />
         <div class="vaccine-details">
-          <h3 class="vaccine-name">{{ vaccineName }}</h3>
-          <p class="disease-prevented">{{ diseasePrevented }}</p>
+          <h3 class="vaccine-name">
+            {{ vaccineName }}
+          </h3>
+          <p class="disease-prevented">
+            {{ diseasePrevented }}
+          </p>
         </div>
       </div>
-      <span class="status-badge" :class="statusClass">
+      <span
+        class="status-badge"
+        :class="statusClass"
+      >
         {{ vaccination.status || 'Completed' }}
       </span>
     </div>
@@ -19,10 +26,16 @@
       <div class="info-row">
         <span class="info-label">Dose</span>
         <span class="info-value">
-          <span v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose" class="dose-badge">
+          <span
+            v-if="vaccination.dose_number || vaccination.doseNumber || vaccination.dose"
+            class="dose-badge"
+          >
             Dose {{ vaccination.dose_number || vaccination.doseNumber || vaccination.dose }}
           </span>
-          <span v-else class="text-muted">—</span>
+          <span
+            v-else
+            class="text-muted"
+          >—</span>
         </span>
       </div>
 
@@ -51,7 +64,10 @@
         <span class="info-value">{{ facility }}</span>
       </div>
 
-      <div v-if="vaccination.remarks || vaccination.notes" class="info-row">
+      <div
+        v-if="vaccination.remarks || vaccination.notes"
+        class="info-row"
+      >
         <span class="info-label">Remarks</span>
         <span class="info-value remarks">{{ vaccination.remarks || vaccination.notes }}</span>
       </div>
@@ -59,8 +75,11 @@
 
     <!-- Actions -->
     <div class="card-actions">
-      <button class="action-btn view-btn" @click="$emit('view')">
-        <i class="bi bi-eye"></i>
+      <button
+        class="action-btn view-btn"
+        @click="$emit('view')"
+      >
+        <i class="bi bi-eye" />
         View
       </button>
       <button 
@@ -69,7 +88,7 @@
         :title="isOutside ? 'Edit record' : 'Only outside records can be edited'"
         @click="$emit('edit')"
       >
-        <i class="bi bi-pencil"></i>
+        <i class="bi bi-pencil" />
         Edit
       </button>
     </div>

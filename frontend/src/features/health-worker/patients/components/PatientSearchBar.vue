@@ -2,7 +2,7 @@
   <div class="hw-patient-search">
     <div class="input-group">
       <span class="input-group-text">
-        <i class="bi bi-search"></i>
+        <i class="bi bi-search" />
       </span>
       <input 
         type="text" 
@@ -17,7 +17,7 @@
         class="btn btn-clear"
         @click="$emit('update:modelValue', '')"
       >
-        <i class="bi bi-x-circle-fill"></i>
+        <i class="bi bi-x-circle-fill" />
       </button>
     </div>
   </div>

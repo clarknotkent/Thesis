@@ -3,54 +3,131 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Notifications Inbox</h1>
-          <p class="text-muted mb-0">View and manage your notifications</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Notifications Inbox
+          </h1>
+          <p class="text-muted mb-0">
+            View and manage your notifications
+          </p>
         </div>
-        <router-link to="/admin/add-notifications" class="btn btn-primary">
-          <i class="bi bi-plus-circle me-2"></i>Create Notification
+        <router-link
+          to="/admin/add-notifications"
+          class="btn btn-primary"
+        >
+          <i class="bi bi-plus-circle me-2" />Create Notification
         </router-link>
       </div>
 
       <!-- Compact Toolbar -->
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <ul class="nav nav-pills small">
-          <li class="nav-item"><button class="nav-link" :class="{ active: !filters.channel }" @click="onChannelTab('')"><i class="bi bi-ui-checks-grid me-1"></i>All</button></li>
-          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='in-app' }" @click="onChannelTab('in-app')"><i class="bi bi-bell-fill me-1"></i>In‑App</button></li>
-          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='email' }" @click="onChannelTab('email')"><i class="bi bi-envelope-fill me-1"></i>Email</button></li>
-          <li class="nav-item"><button class="nav-link" :class="{ active: filters.channel==='sms' }" @click="onChannelTab('sms')"><i class="bi bi-chat-dots-fill me-1"></i>SMS</button></li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: !filters.channel }"
+              @click="onChannelTab('')"
+            >
+              <i class="bi bi-ui-checks-grid me-1" />All
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: filters.channel==='in-app' }"
+              @click="onChannelTab('in-app')"
+            >
+              <i class="bi bi-bell-fill me-1" />In‑App
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: filters.channel==='email' }"
+              @click="onChannelTab('email')"
+            >
+              <i class="bi bi-envelope-fill me-1" />Email
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              :class="{ active: filters.channel==='sms' }"
+              @click="onChannelTab('sms')"
+            >
+              <i class="bi bi-chat-dots-fill me-1" />SMS
+            </button>
+          </li>
         </ul>
         <div class="d-flex align-items-center gap-3 ms-auto">
           <div class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" id="unreadOnly" v-model="filters.unreadOnly" @change="loadNotifications">
-            <label class="form-check-label small" for="unreadOnly">Unread only</label>
+            <input
+              id="unreadOnly"
+              v-model="filters.unreadOnly"
+              class="form-check-input"
+              type="checkbox"
+              @change="loadNotifications"
+            >
+            <label
+              class="form-check-label small"
+              for="unreadOnly"
+            >Unread only</label>
           </div>
-          <input v-model="filters.search" class="form-control form-control-sm" style="min-width: 240px;" placeholder="Search notifications..." @input="debouncedSearch">
-          <button class="btn btn-sm btn-outline-secondary" @click="markAllVisibleAsRead" :disabled="!hasUnreadVisible"><i class="bi bi-check2-all me-1"></i>Mark all read</button>
+          <input
+            v-model="filters.search"
+            class="form-control form-control-sm"
+            style="min-width: 240px;"
+            placeholder="Search notifications..."
+            @input="debouncedSearch"
+          >
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="!hasUnreadVisible"
+            @click="markAllVisibleAsRead"
+          >
+            <i class="bi bi-check2-all me-1" />Mark all read
+          </button>
         </div>
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Notifications List (Grouped) -->
-      <div v-else-if="notifications.length > 0" class="row">
+      <div
+        v-else-if="notifications.length > 0"
+        class="row"
+      >
         <div class="col-12">
           <div class="card shadow">
             <div class="card-body p-0">
-              <div v-for="section in groupedNotifications" :key="section.label">
-                <div class="section-header small text-uppercase text-muted px-3 py-2">{{ section.label }}</div>
+              <div
+                v-for="section in groupedNotifications"
+                :key="section.label"
+              >
+                <div class="section-header small text-uppercase text-muted px-3 py-2">
+                  {{ section.label }}
+                </div>
                 <div
                   v-for="n in section.items"
                   :key="n.notification_id"
                   class="notification-item d-flex align-items-start px-3 py-3"
                   :class="{ unread: !n.read_at }"
                 >
-                  <div class="avatar me-3" :class="avatarClass(n)">
-                    <i :class="channelIcon(n.channel)"></i>
+                  <div
+                    class="avatar me-3"
+                    :class="avatarClass(n)"
+                  >
+                    <i :class="channelIcon(n.channel)" />
                   </div>
                   <div class="flex-grow-1 min-w-0">
                     <div class="d-flex align-items-center justify-content-between mb-1">
@@ -60,19 +137,43 @@
                       </div>
                       <small class="text-muted flex-shrink-0 ms-2">{{ timeAgo(n.created_at) }}</small>
                     </div>
-                    <div class="text-truncate-2 mb-1">{{ n.message_body }}</div>
+                    <div class="text-truncate-2 mb-1">
+                      {{ n.message_body }}
+                    </div>
                     <div class="small text-muted d-flex align-items-center gap-3">
                       <span>Template: {{ n.template_code || 'Custom' }}</span>
                       <span v-if="n.related_entity_type">Related: {{ n.related_entity_type }}</span>
                     </div>
                     <div class="mt-2 d-flex align-items-center gap-3">
-                      <button v-if="n.related_entity_type && n.related_entity_id" class="btn btn-link btn-sm p-0" @click="openRelated(n)">View</button>
-                      <button class="btn btn-link btn-sm p-0" @click="openDetails(n)">Details</button>
+                      <button
+                        v-if="n.related_entity_type && n.related_entity_id"
+                        class="btn btn-link btn-sm p-0"
+                        @click="openRelated(n)"
+                      >
+                        View
+                      </button>
+                      <button
+                        class="btn btn-link btn-sm p-0"
+                        @click="openDetails(n)"
+                      >
+                        Details
+                      </button>
                     </div>
                   </div>
                   <div class="ms-3 d-flex flex-column align-items-end gap-2">
-                    <button v-if="!n.read_at" class="btn btn-sm btn-outline-primary" @click="markAsRead(n.notification_id)"><i class="bi bi-check2 me-1"></i>Mark read</button>
-                    <button class="btn btn-sm btn-outline-danger" @click="deleteNotification(n.notification_id)"><i class="bi bi-trash"></i></button>
+                    <button
+                      v-if="!n.read_at"
+                      class="btn btn-sm btn-outline-primary"
+                      @click="markAsRead(n.notification_id)"
+                    >
+                      <i class="bi bi-check2 me-1" />Mark read
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      @click="deleteNotification(n.notification_id)"
+                    >
+                      <i class="bi bi-trash" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -82,20 +183,41 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="text-center py-5">
+      <div
+        v-else
+        class="text-center py-5"
+      >
         <div class="mb-4">
-          <i class="bi bi-bell-slash text-muted" style="font-size: 4rem;"></i>
+          <i
+            class="bi bi-bell-slash text-muted"
+            style="font-size: 4rem;"
+          />
         </div>
-        <h5 class="text-muted">No notifications found</h5>
-        <p class="text-muted">You don't have any notifications matching your filters.</p>
+        <h5 class="text-muted">
+          No notifications found
+        </h5>
+        <p class="text-muted">
+          You don't have any notifications matching your filters.
+        </p>
       </div>
 
       <!-- Pagination -->
-      <div v-if="notifications.length > 0" class="d-flex justify-content-center mt-4">
+      <div
+        v-if="notifications.length > 0"
+        class="d-flex justify-content-center mt-4"
+      >
         <nav>
           <ul class="pagination">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <button class="page-link" @click="changePage(currentPage - 1)">Previous</button>
+            <li
+              class="page-item"
+              :class="{ disabled: currentPage === 1 }"
+            >
+              <button
+                class="page-link"
+                @click="changePage(currentPage - 1)"
+              >
+                Previous
+              </button>
             </li>
             <li
               v-for="page in visiblePages"
@@ -103,10 +225,23 @@
               class="page-item"
               :class="{ active: page === currentPage }"
             >
-              <button class="page-link" @click="changePage(page)">{{ page }}</button>
+              <button
+                class="page-link"
+                @click="changePage(page)"
+              >
+                {{ page }}
+              </button>
             </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <button class="page-link" @click="changePage(currentPage + 1)">Next</button>
+            <li
+              class="page-item"
+              :class="{ disabled: currentPage === totalPages }"
+            >
+              <button
+                class="page-link"
+                @click="changePage(currentPage + 1)"
+              >
+                Next
+              </button>
             </li>
           </ul>
         </nav>
@@ -115,30 +250,72 @@
   </AdminLayout>
   
   <!-- Details Modal -->
-  <div v-if="showDetails && selectedNotification" class="modal-backdrop-custom">
+  <div
+    v-if="showDetails && selectedNotification"
+    class="modal-backdrop-custom"
+  >
     <div class="modal-custom card shadow">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="m-0">Notification Details</h6>
-        <button class="btn btn-sm btn-outline-secondary" @click="closeDetails">Close</button>
+        <h6 class="m-0">
+          Notification Details
+        </h6>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          @click="closeDetails"
+        >
+          Close
+        </button>
       </div>
       <div class="card-body">
-        <div class="mb-2"><strong>Message:</strong><br>{{ selectedNotification.message_body }}</div>
+        <div class="mb-2">
+          <strong>Message:</strong><br>{{ selectedNotification.message_body }}
+        </div>
         <div class="row g-3">
-          <div class="col-md-6"><strong>Channel:</strong> {{ selectedNotification.channel }}</div>
-          <div class="col-md-6"><strong>Status:</strong> {{ selectedNotification.status }}</div>
-          <div class="col-md-6"><strong>Sender:</strong> {{ selectedNotification.created_by_name || senderLabel(selectedNotification) }}</div>
-          <div class="col-md-6"><strong>Recipient:</strong> {{ selectedNotification.recipient_name || selectedNotification.recipient_user_id }}</div>
-          <div class="col-md-6"><strong>Template:</strong> {{ selectedNotification.template_code || 'Custom' }}</div>
-          <div class="col-md-6" v-if="selectedNotification.related_entity_type"><strong>Related:</strong> {{ selectedNotification.related_entity_type }} #{{ selectedNotification.related_entity_id }}</div>
+          <div class="col-md-6">
+            <strong>Channel:</strong> {{ selectedNotification.channel }}
+          </div>
+          <div class="col-md-6">
+            <strong>Status:</strong> {{ selectedNotification.status }}
+          </div>
+          <div class="col-md-6">
+            <strong>Sender:</strong> {{ selectedNotification.created_by_name || senderLabel(selectedNotification) }}
+          </div>
+          <div class="col-md-6">
+            <strong>Recipient:</strong> {{ selectedNotification.recipient_name || selectedNotification.recipient_user_id }}
+          </div>
+          <div class="col-md-6">
+            <strong>Template:</strong> {{ selectedNotification.template_code || 'Custom' }}
+          </div>
+          <div
+            v-if="selectedNotification.related_entity_type"
+            class="col-md-6"
+          >
+            <strong>Related:</strong> {{ selectedNotification.related_entity_type }} #{{ selectedNotification.related_entity_id }}
+          </div>
         </div>
         <hr>
         <div class="row g-3 small text-muted">
-          <div class="col-md-6"><strong>Created:</strong> {{ formatDate(selectedNotification.created_at) }}</div>
-          <div class="col-md-6"><strong>Scheduled:</strong> {{ formatDate(selectedNotification.scheduled_at) }}</div>
-          <div class="col-md-6"><strong>Sent:</strong> {{ formatDate(selectedNotification.sent_at) }}</div>
-          <div class="col-md-6"><strong>Read:</strong> {{ formatDate(selectedNotification.read_at) }}</div>
-          <div class="col-md-6"><strong>Updated:</strong> {{ formatDate(selectedNotification.updated_at) }}</div>
-          <div class="col-md-6" v-if="selectedNotification.error_message"><strong>Error:</strong> {{ selectedNotification.error_message }}</div>
+          <div class="col-md-6">
+            <strong>Created:</strong> {{ formatDate(selectedNotification.created_at) }}
+          </div>
+          <div class="col-md-6">
+            <strong>Scheduled:</strong> {{ formatDate(selectedNotification.scheduled_at) }}
+          </div>
+          <div class="col-md-6">
+            <strong>Sent:</strong> {{ formatDate(selectedNotification.sent_at) }}
+          </div>
+          <div class="col-md-6">
+            <strong>Read:</strong> {{ formatDate(selectedNotification.read_at) }}
+          </div>
+          <div class="col-md-6">
+            <strong>Updated:</strong> {{ formatDate(selectedNotification.updated_at) }}
+          </div>
+          <div
+            v-if="selectedNotification.error_message"
+            class="col-md-6"
+          >
+            <strong>Error:</strong> {{ selectedNotification.error_message }}
+          </div>
         </div>
         <hr>
         <details>
@@ -159,6 +336,10 @@ export default {
   name: 'NotificationsInbox',
   components: {
     AdminLayout
+  },
+  setup() {
+    const { addToast } = useToast()
+    return { addToast }
   },
   data() {
     return {
@@ -212,10 +393,6 @@ export default {
   },
   async mounted() {
     await this.loadNotifications()
-  },
-  setup() {
-    const { addToast } = useToast()
-    return { addToast }
   },
   methods: {
     onChannelTab(ch) {

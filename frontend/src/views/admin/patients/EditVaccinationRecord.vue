@@ -2,12 +2,32 @@
   <AdminLayout>
     <div class="container-fluid py-3">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item"><router-link :to="`/admin/patients/view/${patientId}`">Patient Details</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Edit Vaccination Record</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link :to="`/admin/patients/view/${patientId}`">
+              Patient Details
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Edit Vaccination Record
+          </li>
         </ol>
       </nav>
 
@@ -15,33 +35,53 @@
       <div class="d-flex align-items-center mb-4">
         <div>
           <h3 class="mb-1">
-            <i class="bi bi-pencil-square me-2"></i>Edit Vaccination Record
+            <i class="bi bi-pencil-square me-2" />Edit Vaccination Record
           </h3>
-          <p class="text-muted mb-0" v-if="patientData">
+          <p
+            v-if="patientData"
+            class="text-muted mb-0"
+          >
             Patient: <strong>{{ patientData.firstname }} {{ patientData.surname }}</strong>
           </p>
         </div>
-        <button class="btn btn-outline-secondary ms-auto" @click="goBack">
-          <i class="bi bi-arrow-left me-2"></i>Back
+        <button
+          class="btn btn-outline-secondary ms-auto"
+          @click="goBack"
+        >
+          <i class="bi bi-arrow-left me-2" />Back
         </button>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="text-muted mt-3">Loading vaccination record...</p>
+        <p class="text-muted mt-3">
+          Loading vaccination record...
+        </p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
+      <div
+        v-else-if="error"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
         {{ error }}
       </div>
 
       <!-- Edit Form -->
-      <div v-else-if="vaccinationRecord" class="card shadow-sm">
+      <div
+        v-else-if="vaccinationRecord"
+        class="card shadow-sm"
+      >
         <div class="card-body p-4">
           <form @submit.prevent="saveVaccinationRecord">
             <div class="row g-3">
@@ -49,9 +89,9 @@
               <div class="col-md-6">
                 <label class="form-label">Vaccine Name: <span class="text-danger">*</span></label>
                 <input 
+                  v-model="form.vaccineName" 
                   type="text" 
-                  class="form-control" 
-                  v-model="form.vaccineName"
+                  class="form-control"
                   readonly
                   disabled
                 >
@@ -62,9 +102,9 @@
               <div class="col-md-6">
                 <label class="form-label">Dose Number: <span class="text-danger">*</span></label>
                 <input 
+                  v-model="form.doseNumber" 
                   type="number" 
-                  class="form-control" 
-                  v-model="form.doseNumber"
+                  class="form-control"
                   min="1"
                   required
                 >
@@ -76,7 +116,7 @@
                 <DateInput
                   v-model="form.dateAdministered"
                   :required="true"
-                  @update:modelValue="calculateAge"
+                  @update:model-value="calculateAge"
                 />
               </div>
 
@@ -84,9 +124,9 @@
               <div class="col-md-6">
                 <label class="form-label">Age at Administration:</label>
                 <input 
+                  v-model="form.ageAtAdministration" 
                   type="text" 
-                  class="form-control" 
-                  v-model="form.ageAtAdministration"
+                  class="form-control"
                   readonly
                 >
                 <small class="text-muted">Automatically calculated from date administered</small>
@@ -109,9 +149,9 @@
               <div class="col-md-6">
                 <label class="form-label">Site of Administration:</label>
                 <input 
+                  v-model="form.siteOfAdministration" 
                   type="text" 
-                  class="form-control" 
-                  v-model="form.siteOfAdministration"
+                  class="form-control"
                   placeholder="e.g., Left deltoid, Right thigh"
                 >
               </div>
@@ -120,20 +160,31 @@
               <div class="col-md-6">
                 <label class="form-label">Facility Name:</label>
                 <input 
+                  v-model="form.facilityName" 
                   type="text" 
-                  class="form-control" 
-                  v-model="form.facilityName"
+                  class="form-control"
                 >
               </div>
 
               <!-- Status -->
               <div class="col-md-6">
                 <label class="form-label">Status:</label>
-                <select class="form-select" v-model="form.status">
-                  <option value="Completed">Completed</option>
-                  <option value="Administered">Administered</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Missed">Missed</option>
+                <select
+                  v-model="form.status"
+                  class="form-select"
+                >
+                  <option value="Completed">
+                    Completed
+                  </option>
+                  <option value="Administered">
+                    Administered
+                  </option>
+                  <option value="Pending">
+                    Pending
+                  </option>
+                  <option value="Missed">
+                    Missed
+                  </option>
                 </select>
               </div>
 
@@ -141,11 +192,11 @@
               <div class="col-12">
                 <label class="form-label">Remarks:</label>
                 <textarea 
-                  class="form-control" 
-                  v-model="form.remarks"
+                  v-model="form.remarks" 
+                  class="form-control"
                   rows="3"
                   placeholder="Additional notes or observations"
-                ></textarea>
+                />
               </div>
             </div>
 
@@ -154,8 +205,8 @@
               <button 
                 type="button" 
                 class="btn btn-outline-secondary"
-                @click="goBack"
                 :disabled="saving"
+                @click="goBack"
               >
                 Cancel
               </button>
@@ -165,11 +216,14 @@
                 :disabled="saving || !isFormValid"
               >
                 <span v-if="saving">
-                  <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  />
                   Saving...
                 </span>
                 <span v-else>
-                  <i class="bi bi-check-circle me-2"></i>Save Changes
+                  <i class="bi bi-check-circle me-2" />Save Changes
                 </span>
               </button>
             </div>

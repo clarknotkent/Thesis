@@ -3,7 +3,7 @@
     <!-- Header Section -->
     <div class="mb-3">
       <h5 class="mb-0">
-        <i class="bi bi-box-seam me-2"></i>Receiving Reports
+        <i class="bi bi-box-seam me-2" />Receiving Reports
       </h5>
     </div>
 
@@ -11,77 +11,162 @@
     <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
       <div class="d-flex gap-2 align-items-center flex-grow-1">
         <!-- Search Bar -->
-        <div class="input-group" style="max-width: 300px;">
+        <div
+          class="input-group"
+          style="max-width: 300px;"
+        >
           <input 
+            v-model="searchTerm" 
             type="text" 
             class="form-control form-control-sm" 
-            placeholder="Search RR-..." 
-            v-model="searchTerm"
+            placeholder="Search RR-..."
             @input="applyFilters"
           >
-          <button class="btn btn-sm btn-outline-primary" type="button">
-            <i class="bi bi-search"></i>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            type="button"
+          >
+            <i class="bi bi-search" />
           </button>
         </div>
         
         <!-- Status Filter -->
         <div class="dropdown">
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false" @click="debugDropdown('status')">
+          <button
+            id="statusFilter"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            @click="debugDropdown('status')"
+          >
             {{ currentStatusFilter }}
           </button>
-          <ul class="dropdown-menu" aria-labelledby="statusFilter">
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('All Status')">All Status</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('COMPLETED')">Completed</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('DRAFT')">Draft</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="setStatusFilter('CANCELLED')">Cancelled</a></li>
+          <ul
+            class="dropdown-menu"
+            aria-labelledby="statusFilter"
+          >
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('All Status')"
+              >All Status</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('COMPLETED')"
+              >Completed</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('DRAFT')"
+              >Draft</a>
+            </li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="#"
+                @click.prevent="setStatusFilter('CANCELLED')"
+              >Cancelled</a>
+            </li>
           </ul>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-sm btn-outline-primary" @click="refreshData">
-          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        <button
+          class="btn btn-sm btn-outline-primary"
+          @click="refreshData"
+        >
+          <i class="bi bi-arrow-clockwise me-1" />Refresh
         </button>
-        <button class="btn btn-sm btn-primary" @click="createNew">
-          <i class="bi bi-plus-circle me-1"></i>New Report
+        <button
+          class="btn btn-sm btn-primary"
+          @click="createNew"
+        >
+          <i class="bi bi-plus-circle me-1" />New Report
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading receiving reports...</span>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!reports || reports.length === 0" class="text-center py-5">
-      <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-      <p class="text-muted mt-3">No receiving reports found</p>
-      <button class="btn btn-primary" @click="createNew">
-        <i class="bi bi-plus-circle me-2"></i>Create First Report
+    <div
+      v-else-if="!reports || reports.length === 0"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-inbox text-muted"
+        style="font-size: 3rem;"
+      />
+      <p class="text-muted mt-3">
+        No receiving reports found
+      </p>
+      <button
+        class="btn btn-primary"
+        @click="createNew"
+      >
+        <i class="bi bi-plus-circle me-2" />Create First Report
       </button>
     </div>
 
     <!-- Reports Table -->
-    <div v-else class="table-responsive">
+    <div
+      v-else
+      class="table-responsive"
+    >
       <table class="table table-hover table-bordered">
         <thead class="table-light">
           <tr>
-            <th class="text-center">Report #</th>
-            <th class="text-center">Delivery Date</th>
-            <th class="text-center">Delivered By</th>
-            <th class="text-center">Received By</th>
-            <th class="text-center">Total Items</th>
-            <th class="text-center">Total Qty</th>
-            <th class="text-center">Status</th>
-            <th class="text-center">Actions</th>
+            <th class="text-center">
+              Report #
+            </th>
+            <th class="text-center">
+              Delivery Date
+            </th>
+            <th class="text-center">
+              Delivered By
+            </th>
+            <th class="text-center">
+              Received By
+            </th>
+            <th class="text-center">
+              Total Items
+            </th>
+            <th class="text-center">
+              Total Qty
+            </th>
+            <th class="text-center">
+              Status
+            </th>
+            <th class="text-center">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="report in paginatedReports" :key="report.id">
+          <tr
+            v-for="report in paginatedReports"
+            :key="report.id"
+          >
             <td class="text-center align-middle fw-semibold">
               {{ report.report_number || '—' }}
             </td>
@@ -101,13 +186,20 @@
               {{ report.total_qty || 0 }}
             </td>
             <td class="text-center align-middle">
-              <span class="badge" :class="getStatusBadgeClass(report.status)">
+              <span
+                class="badge"
+                :class="getStatusBadgeClass(report.status)"
+              >
                 {{ report.status || 'COMPLETED' }}
               </span>
             </td>
             <td class="text-center align-middle">
-              <button class="btn btn-sm btn-outline-primary" @click="viewReport(report)" title="View Details">
-                <i class="bi bi-eye me-1"></i>View
+              <button
+                class="btn btn-sm btn-outline-primary"
+                title="View Details"
+                @click="viewReport(report)"
+              >
+                <i class="bi bi-eye me-1" />View
               </button>
             </td>
           </tr>
@@ -117,10 +209,10 @@
       <!-- Pagination Footer -->
       <div class="pagination-footer border-top mt-3 pt-3">
         <AppPagination
-          :currentPage="currentPage"
-          :totalPages="totalPages"
-          :totalItems="filteredReports.length"
-          :itemsPerPage="itemsPerPage"
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :total-items="filteredReports.length"
+          :items-per-page="itemsPerPage"
           @page-changed="changePage"
         />
       </div>

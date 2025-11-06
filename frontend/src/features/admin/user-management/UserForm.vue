@@ -3,15 +3,15 @@
     <!-- Personal Information -->
     <div class="mb-4">
       <h6 class="text-primary fw-bold mb-3">
-        <i class="bi bi-person-fill me-2"></i>Personal Information
+        <i class="bi bi-person-fill me-2" />Personal Information
       </h6>
       <div class="row g-3">
         <div class="col-md-4">
           <label class="form-label">First Name <span class="text-danger">*</span></label>
           <input 
+            v-model="localForm.firstName" 
             type="text" 
             class="form-control" 
-            v-model="localForm.firstName" 
             :readonly="readOnly"
             required
           >
@@ -19,18 +19,18 @@
         <div class="col-md-4">
           <label class="form-label">Middle Name</label>
           <input 
+            v-model="localForm.middleName" 
             type="text" 
-            class="form-control" 
-            v-model="localForm.middleName"
+            class="form-control"
             :readonly="readOnly"
           >
         </div>
         <div class="col-md-4">
           <label class="form-label">Last Name <span class="text-danger">*</span></label>
           <input 
+            v-model="localForm.lastName" 
             type="text" 
-            class="form-control" 
-            v-model="localForm.lastName"
+            class="form-control"
             :readonly="readOnly"
             required
           >
@@ -41,15 +41,23 @@
         <div class="col-md-3">
           <label class="form-label">Sex <span class="text-danger">*</span></label>
           <select 
-            class="form-select" 
-            v-model="localForm.sex"
+            v-model="localForm.sex" 
+            class="form-select"
             :disabled="readOnly"
             required
           >
-            <option value="">Select Sex</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
+            <option value="">
+              Select Sex
+            </option>
+            <option value="Male">
+              Male
+            </option>
+            <option value="Female">
+              Female
+            </option>
+            <option value="Other">
+              Other
+            </option>
           </select>
         </div>
         <div class="col-md-3">
@@ -62,9 +70,9 @@
         <div class="col-md-6">
           <label class="form-label">Address</label>
           <input 
+            v-model="localForm.address" 
             type="text" 
-            class="form-control" 
-            v-model="localForm.address"
+            class="form-control"
             :readonly="readOnly"
             :class="{
               'placeholder-address': readOnly && (localForm.address || '').toLowerCase() === 'address not given'
@@ -78,37 +86,44 @@
     <!-- Account Information -->
     <div class="mb-4">
       <h6 class="text-primary fw-bold mb-3">
-        <i class="bi bi-envelope me-2"></i>Account Information
+        <i class="bi bi-envelope me-2" />Account Information
       </h6>
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">Email Address <span class="text-danger">*</span></label>
           <input 
+            v-model="localForm.email" 
             type="email" 
-            class="form-control" 
-            v-model="localForm.email"
+            class="form-control"
             :readonly="readOnly"
             required
           >
         </div>
-        <div class="col-md-3" v-if="!isEditing && !readOnly">
+        <div
+          v-if="!isEditing && !readOnly"
+          class="col-md-3"
+        >
           <label class="form-label">Password <span class="text-danger">*</span></label>
           <input 
+            v-model="localForm.password" 
             type="password" 
-            class="form-control" 
-            v-model="localForm.password"
+            class="form-control"
             required
           >
         </div>
         <div class="col-md-3">
           <label class="form-label">Status</label>
           <select 
-            class="form-select" 
-            v-model="localForm.status"
+            v-model="localForm.status" 
+            class="form-select"
             :disabled="readOnly"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="active">
+              Active
+            </option>
+            <option value="inactive">
+              Inactive
+            </option>
           </select>
         </div>
       </div>
@@ -117,85 +132,121 @@
     <!-- Role & Professional Information -->
     <div class="mb-4">
       <h6 class="text-primary fw-bold mb-3">
-        <i class="bi bi-briefcase me-2"></i>Role & Professional Information
+        <i class="bi bi-briefcase me-2" />Role & Professional Information
       </h6>
       <div class="row g-3">
         <div class="col-md-4">
           <label class="form-label">Role <span class="text-danger">*</span></label>
           <select 
-            class="form-select" 
-            v-model="localForm.role"
+            v-model="localForm.role" 
+            class="form-select"
             :disabled="readOnly"
             required
           >
-            <option value="">Select Role</option>
-            <option value="admin">Admin</option>
-            <option value="health_staff">Health Staff</option>
-            <option value="parent">Parent</option>
+            <option value="">
+              Select Role
+            </option>
+            <option value="admin">
+              Admin
+            </option>
+            <option value="health_staff">
+              Health Staff
+            </option>
+            <option value="parent">
+              Parent
+            </option>
           </select>
         </div>
-        <div class="col-md-4" v-if="localForm.role === 'health_staff'">
+        <div
+          v-if="localForm.role === 'health_staff'"
+          class="col-md-4"
+        >
           <label class="form-label">Health Staff Type <span class="text-danger">*</span></label>
           <select 
-            class="form-select" 
-            v-model="localForm.hsType"
+            v-model="localForm.hsType" 
+            class="form-select"
             :disabled="readOnly"
             required
           >
-            <option value="">Select Type</option>
-            <option value="nurse">Nurse</option>
-            <option value="nutritionist">Nutritionist</option>
-            <option value="bhs">Barangay Health Staff</option>
+            <option value="">
+              Select Type
+            </option>
+            <option value="nurse">
+              Nurse
+            </option>
+            <option value="nutritionist">
+              Nutritionist
+            </option>
+            <option value="bhs">
+              Barangay Health Staff
+            </option>
           </select>
         </div>
-        <div class="col-md-4" v-if="localForm.role === 'health_staff' || localForm.role === 'admin'">
+        <div
+          v-if="localForm.role === 'health_staff' || localForm.role === 'admin'"
+          class="col-md-4"
+        >
           <label class="form-label">Employee ID</label>
           <input 
+            v-model="localForm.employeeId" 
             type="text" 
-            class="form-control" 
-            v-model="localForm.employeeId"
+            class="form-control"
             :readonly="readOnly"
           >
         </div>
       </div>
       
       <div class="row g-3 mt-1">
-  <div class="col-md-6" v-if="(localForm.role === 'health_staff' && ['nurse','nutritionist'].includes(localForm.hsType)) || localForm.role === 'admin'">
+        <div
+          v-if="(localForm.role === 'health_staff' && ['nurse','nutritionist'].includes(localForm.hsType)) || localForm.role === 'admin'"
+          class="col-md-6"
+        >
           <label class="form-label">PRC License Number</label>
           <input 
+            v-model="localForm.licenseNumber" 
             type="text" 
-            class="form-control" 
-            v-model="localForm.licenseNumber"
+            class="form-control"
             :readonly="readOnly"
           >
         </div>
         <div class="col-md-6">
           <label class="form-label">Contact Number</label>
           <input 
+            v-model="localForm.contactNumber" 
             type="tel" 
-            class="form-control" 
-            v-model="localForm.contactNumber"
-            @focus="ensureContactPrefix"
-            @input="onContactInput"
+            class="form-control"
             :readonly="readOnly"
             placeholder="+639**-***-****"
+            @focus="ensureContactPrefix"
+            @input="onContactInput"
           >
         </div>
       </div>
     </div>
 
     <!-- Form Actions -->
-    <div class="d-flex justify-content-end gap-2" v-if="!readOnly">
-      <button type="button" class="btn btn-secondary" @click="handleCancel">
-        <i class="bi bi-x-circle me-2"></i>Cancel
+    <div
+      v-if="!readOnly"
+      class="d-flex justify-content-end gap-2"
+    >
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="handleCancel"
+      >
+        <i class="bi bi-x-circle me-2" />Cancel
       </button>
-      <button type="submit" class="btn btn-primary" :disabled="submitting">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :disabled="submitting"
+      >
         <span v-if="submitting">
-          <span class="spinner-border spinner-border-sm me-2"></span>
+          <span class="spinner-border spinner-border-sm me-2" />
           {{ submitLabel || (isEditing ? 'Updating...' : 'Creating...') }}
         </span>
         <span v-else>
-          <i class="bi bi-check-circle me-2"></i>
+          <i class="bi bi-check-circle me-2" />
           {{ submitLabel || (isEditing ? 'Update User' : 'Create User') }}
         </span>
       </button>

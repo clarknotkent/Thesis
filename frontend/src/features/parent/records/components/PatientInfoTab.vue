@@ -54,7 +54,7 @@
     >
       <div class="info-grid">
         <div class="info-section-header">
-          <i class="bi bi-person-badge"></i>
+          <i class="bi bi-person-badge" />
           <span>Guardian Information</span>
         </div>
         <div class="info-item">
@@ -78,7 +78,7 @@
           <span class="info-value">{{ patient?.guardianInfo?.occupation || '—' }}</span>
         </div>
         <div class="info-section-header">
-          <i class="bi bi-person-heart"></i>
+          <i class="bi bi-person-heart" />
           <span>Mother's Information</span>
         </div>
         <div class="info-item">
@@ -94,7 +94,7 @@
           <span class="info-value">{{ patient?.motherInfo?.phone || '—' }}</span>
         </div>
         <div class="info-section-header">
-          <i class="bi bi-person-heart"></i>
+          <i class="bi bi-person-heart" />
           <span>Father's Information</span>
         </div>
         <div class="info-item">

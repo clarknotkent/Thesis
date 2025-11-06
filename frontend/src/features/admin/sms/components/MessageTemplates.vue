@@ -3,7 +3,7 @@
     <!-- Section Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">
-        <i class="bi bi-file-text me-2"></i>SMS Message Templates
+        <i class="bi bi-file-text me-2" />SMS Message Templates
       </h5>
     </div>
 
@@ -12,38 +12,71 @@
       <div class="col-md-3">
         <div class="input-group input-group-sm">
           <input 
+            v-model="searchQuery" 
             type="text" 
-            class="form-control" 
+            class="form-control"
             placeholder="Search templates..."
-            v-model="searchQuery"
           >
-          <button class="btn btn-outline-secondary" type="button">
-            <i class="bi bi-search"></i>
+          <button
+            class="btn btn-outline-secondary"
+            type="button"
+          >
+            <i class="bi bi-search" />
           </button>
         </div>
       </div>
       <div class="col-md-2">
-        <select class="form-select form-select-sm" v-model="filterType">
-          <option value="">Type: All</option>
-          <option v-for="tt in TRIGGER_TYPES" :key="tt.value" :value="tt.value">{{ tt.label }}</option>
+        <select
+          v-model="filterType"
+          class="form-select form-select-sm"
+        >
+          <option value="">
+            Type: All
+          </option>
+          <option
+            v-for="tt in TRIGGER_TYPES"
+            :key="tt.value"
+            :value="tt.value"
+          >
+            {{ tt.label }}
+          </option>
         </select>
       </div>
       <div class="col-md-2">
-        <select class="form-select form-select-sm" v-model="filterStatus">
-          <option value="">Status: All</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+        <select
+          v-model="filterStatus"
+          class="form-select form-select-sm"
+        >
+          <option value="">
+            Status: All
+          </option>
+          <option value="active">
+            Active
+          </option>
+          <option value="inactive">
+            Inactive
+          </option>
         </select>
       </div>
       <div class="col-md-2">
-        <input type="date" class="form-control form-control-sm" placeholder="Date">
+        <input
+          type="date"
+          class="form-control form-control-sm"
+          placeholder="Date"
+        >
       </div>
       <div class="col-md-3 text-end">
-        <button class="btn btn-outline-primary btn-sm me-2" @click="fetchTemplates">
-          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        <button
+          class="btn btn-outline-primary btn-sm me-2"
+          @click="fetchTemplates"
+        >
+          <i class="bi bi-arrow-clockwise me-1" />Refresh
         </button>
-        <button class="btn btn-warning btn-sm" @click="createNewTemplate">
-          <i class="bi bi-pencil-square me-1"></i>Create Template
+        <button
+          class="btn btn-warning btn-sm"
+          @click="createNewTemplate"
+        >
+          <i class="bi bi-pencil-square me-1" />Create Template
         </button>
       </div>
     </div>
@@ -57,64 +90,99 @@
       >
         <div class="card h-100 shadow-sm hover-card">
           <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span class="badge" :class="getTypeBadgeClass(template.trigger_type)">
-                      {{ formatTriggerType(template.trigger_type) }}
-                    </span>
-                  </div>
-                  <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-secondary" @click="viewTemplate(template)" title="View">
-                      <i class="bi bi-eye"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="editTemplate(template)" title="Edit">
-                      <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="duplicateTemplate(template)" title="Duplicate">
-                      <i class="bi bi-files"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" @click="deleteTemplate(template)" title="Delete">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </div>
-                </div>
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <span
+                  class="badge"
+                  :class="getTypeBadgeClass(template.trigger_type)"
+                >
+                  {{ formatTriggerType(template.trigger_type) }}
+                </span>
+              </div>
+              <div class="btn-group">
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  title="View"
+                  @click="viewTemplate(template)"
+                >
+                  <i class="bi bi-eye" />
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Edit"
+                  @click="editTemplate(template)"
+                >
+                  <i class="bi bi-pencil" />
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Duplicate"
+                  @click="duplicateTemplate(template)"
+                >
+                  <i class="bi bi-files" />
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  title="Delete"
+                  @click="deleteTemplate(template)"
+                >
+                  <i class="bi bi-trash" />
+                </button>
+              </div>
+            </div>
 
-                <h6 class="card-title">{{ template.name }}</h6>
+            <h6 class="card-title">
+              {{ template.name }}
+            </h6>
                 
-                <div class="template-preview bg-light rounded p-3 mb-3" style="min-height: 100px;">
-                  <small class="text-muted d-block mb-2">Preview:</small>
-                  <small class="font-monospace">{{ getCardPreview(template) }}</small>
-                </div>
+            <div
+              class="template-preview bg-light rounded p-3 mb-3"
+              style="min-height: 100px;"
+            >
+              <small class="text-muted d-block mb-2">Preview:</small>
+              <small class="font-monospace">{{ getCardPreview(template) }}</small>
+            </div>
 
-                <div class="d-flex justify-content-between align-items-center">
-                  <small class="text-muted">
-                    <i class="bi bi-clock me-1"></i>
-                    {{ formatTimeRange(template.time_range) }}
-                  </small>
-                  <div class="form-check form-switch">
-                    <input 
-                      class="form-check-input" 
-                      type="checkbox" 
-                      :id="`active-${template.id}`"
-                      v-model="template.is_active"
-                      @change="toggleTemplateStatus(template)"
-                    >
-                    <label class="form-check-label" :for="`active-${template.id}`">
-                      Active
-                    </label>
-                  </div>
-                </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <small class="text-muted">
+                <i class="bi bi-clock me-1" />
+                {{ formatTimeRange(template.time_range) }}
+              </small>
+              <div class="form-check form-switch">
+                <input 
+                  :id="`active-${template.id}`" 
+                  v-model="template.is_active" 
+                  class="form-check-input"
+                  type="checkbox"
+                  @change="toggleTemplateStatus(template)"
+                >
+                <label
+                  class="form-check-label"
+                  :for="`active-${template.id}`"
+                >
+                  Active
+                </label>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
       <!-- Empty State -->
-      <div v-if="filteredTemplates.length === 0" class="col-12">
+      <div
+        v-if="filteredTemplates.length === 0"
+        class="col-12"
+      >
         <div class="text-center py-5">
-          <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
-          <p class="text-muted mb-3">No message templates found</p>
-          <button class="btn btn-primary" @click="createNewTemplate">
-            <i class="bi bi-plus-lg me-2"></i>Create Your First Template
+          <i class="bi bi-inbox fs-1 text-muted d-block mb-3" />
+          <p class="text-muted mb-3">
+            No message templates found
+          </p>
+          <button
+            class="btn btn-primary"
+            @click="createNewTemplate"
+          >
+            <i class="bi bi-plus-lg me-2" />Create Your First Template
           </button>
         </div>
       </div>
@@ -122,10 +190,10 @@
 
     <!-- Template Editor Modal -->
     <div 
-      class="modal fade" 
       id="templateEditorModal" 
-      tabindex="-1" 
-      ref="editorModal"
+      ref="editorModal" 
+      class="modal fade" 
+      tabindex="-1"
       data-bs-backdrop="static"
     >
       <div class="modal-dialog modal-lg">
@@ -134,7 +202,11 @@
             <h5 class="modal-title">
               {{ editingTemplate?.id ? 'Edit Template' : 'Create Template' }}
             </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            />
           </div>
           <div class="modal-body">
             <form @submit.prevent="saveTemplate">
@@ -142,9 +214,9 @@
               <div class="mb-3">
                 <label class="form-label">Template Name</label>
                 <input 
+                  v-model="editingTemplate.name" 
                   type="text" 
-                  class="form-control" 
-                  v-model="editingTemplate.name"
+                  class="form-control"
                   placeholder="e.g., 1 Week Vaccination Reminder"
                   required
                 >
@@ -153,18 +225,38 @@
               <!-- Trigger Type -->
               <div class="mb-3">
                 <label class="form-label">Trigger Type</label>
-                <select class="form-select" v-model="editingTemplate.trigger_type" required>
-                  <option value="">Select trigger...</option>
-                  <option v-for="tt in TRIGGER_TYPES" :key="tt.value" :value="tt.value">{{ tt.label }}</option>
+                <select
+                  v-model="editingTemplate.trigger_type"
+                  class="form-select"
+                  required
+                >
+                  <option value="">
+                    Select trigger...
+                  </option>
+                  <option
+                    v-for="tt in TRIGGER_TYPES"
+                    :key="tt.value"
+                    :value="tt.value"
+                  >
+                    {{ tt.label }}
+                  </option>
                 </select>
               </div>
 
               <!-- Time Range -->
               <div class="mb-3">
                 <label class="form-label">Time of Day</label>
-                <select class="form-select" v-model="editingTemplate.time_range" required>
-                  <option value="day">Day (6:00 AM - 5:59 PM)</option>
-                  <option value="evening">Evening (6:00 PM - 5:59 AM)</option>
+                <select
+                  v-model="editingTemplate.time_range"
+                  class="form-select"
+                  required
+                >
+                  <option value="day">
+                    Day (6:00 AM - 5:59 PM)
+                  </option>
+                  <option value="evening">
+                    Evening (6:00 PM - 5:59 AM)
+                  </option>
                 </select>
               </div>
 
@@ -174,24 +266,24 @@
                 <div class="alert alert-info">
                   <small>
                     <strong>Available Variables:</strong><br>
-                    <code>{{'{'}}{greeting{{'}'}}</code> - Good Day/Evening<br>
-                    <code>{{'{'}}{greeting_time{{'}'}}</code> - Good Day/Evening (auto, based on send time)<br>
-                    <code>{{'{'}}{title{{'}'}}</code> - Mr./Ms.<br>
-                    <code>{{'{'}}{guardian_name{{'}'}}</code> - Guardian name<br>
-                    <code>{{'{'}}{patient_name{{'}'}}</code> - Patient name<br>
-                    <code>{{'{'}}{scheduled_date{{'}'}}</code> - Vaccination date<br>
-                    <code>{{'{'}}{vaccine_name{{'}'}}</code> - Vaccine name<br>
-                    <code>{{'{'}}{dose_number{{'}'}}</code> - Dose number<br>
-                    <code>{{'{'}}{vaccine_lines{{'}'}}</code> - Multi-line list (e.g., Antigen — Dose 1,\nAntigen — Dose 2)
+                    <code>{{ '{' }}{greeting{{ '}' }}</code> - Good Day/Evening<br>
+                    <code>{{ '{' }}{greeting_time{{ '}' }}</code> - Good Day/Evening (auto, based on send time)<br>
+                    <code>{{ '{' }}{title{{ '}' }}</code> - Mr./Ms.<br>
+                    <code>{{ '{' }}{guardian_name{{ '}' }}</code> - Guardian name<br>
+                    <code>{{ '{' }}{patient_name{{ '}' }}</code> - Patient name<br>
+                    <code>{{ '{' }}{scheduled_date{{ '}' }}</code> - Vaccination date<br>
+                    <code>{{ '{' }}{vaccine_name{{ '}' }}</code> - Vaccine name<br>
+                    <code>{{ '{' }}{dose_number{{ '}' }}</code> - Dose number<br>
+                    <code>{{ '{' }}{vaccine_lines{{ '}' }}</code> - Multi-line list (e.g., Antigen — Dose 1,\nAntigen — Dose 2)
                   </small>
                 </div>
                 <textarea 
-                  class="form-control font-monospace" 
+                  v-model="editingTemplate.template" 
+                  class="form-control font-monospace"
                   rows="6"
-                  v-model="editingTemplate.template"
                   placeholder="Enter your message template..."
                   required
-                ></textarea>
+                />
                 <small class="text-muted">
                   Characters: {{ editingTemplate.template?.length || 0 }} / 160
                 </small>
@@ -201,7 +293,10 @@
               <div class="mb-3">
                 <label class="form-label">Preview</label>
                 <div class="border rounded p-3 bg-light">
-                  <pre class="mb-0" style="white-space: pre-wrap;">{{ previewMessage }}</pre>
+                  <pre
+                    class="mb-0"
+                    style="white-space: pre-wrap;"
+                  >{{ previewMessage }}</pre>
                 </div>
               </div>
 
@@ -209,12 +304,15 @@
               <div class="mb-3">
                 <div class="form-check form-switch">
                   <input 
-                    class="form-check-input" 
-                    type="checkbox" 
-                    id="templateActive"
-                    v-model="editingTemplate.is_active"
+                    id="templateActive" 
+                    v-model="editingTemplate.is_active" 
+                    class="form-check-input"
+                    type="checkbox"
                   >
-                  <label class="form-check-label" for="templateActive">
+                  <label
+                    class="form-check-label"
+                    for="templateActive"
+                  >
                     Activate this template
                   </label>
                 </div>
@@ -222,11 +320,19 @@
             </form>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
               Cancel
             </button>
-            <button type="button" class="btn btn-primary" @click="saveTemplate">
-              <i class="bi bi-save me-2"></i>Save Template
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="saveTemplate"
+            >
+              <i class="bi bi-save me-2" />Save Template
             </button>
           </div>
         </div>
@@ -234,22 +340,43 @@
     </div>
 
     <!-- Viewer Modal -->
-    <div class="modal fade" id="templateViewerModal" tabindex="-1" ref="viewerModal">
+    <div
+      id="templateViewerModal"
+      ref="viewerModal"
+      class="modal fade"
+      tabindex="-1"
+    >
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title"><i class="bi bi-eye me-2"></i>View Template</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title">
+              <i class="bi bi-eye me-2" />View Template
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            />
           </div>
-          <div class="modal-body" v-if="viewingTemplate">
+          <div
+            v-if="viewingTemplate"
+            class="modal-body"
+          >
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="text-muted small mb-1">Name</label>
-                <div class="fw-semibold">{{ viewingTemplate.name }}</div>
+                <div class="fw-semibold">
+                  {{ viewingTemplate.name }}
+                </div>
               </div>
               <div class="col-md-3">
                 <label class="text-muted small mb-1">Trigger</label>
-                <div><span class="badge" :class="getTypeBadgeClass(viewingTemplate.trigger_type)">{{ formatTriggerType(viewingTemplate.trigger_type) }}</span></div>
+                <div>
+                  <span
+                    class="badge"
+                    :class="getTypeBadgeClass(viewingTemplate.trigger_type)"
+                  >{{ formatTriggerType(viewingTemplate.trigger_type) }}</span>
+                </div>
               </div>
               <div class="col-md-3">
                 <label class="text-muted small mb-1">Time</label>
@@ -259,7 +386,10 @@
             <div class="mb-2">
               <label class="text-muted small mb-1">Template</label>
               <div class="border rounded bg-light p-3">
-                <pre class="mb-0" style="white-space: pre-wrap;">{{ viewingTemplate.template }}</pre>
+                <pre
+                  class="mb-0"
+                  style="white-space: pre-wrap;"
+                >{{ viewingTemplate.template }}</pre>
               </div>
               <small class="text-muted">{{ (viewingTemplate.template || '').length }} characters</small>
             </div>
@@ -270,8 +400,20 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" @click="editFromViewer"><i class="bi bi-pencil me-1"></i>Edit</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="editFromViewer"
+            >
+              <i class="bi bi-pencil me-1" />Edit
+            </button>
           </div>
         </div>
       </div>

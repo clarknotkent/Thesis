@@ -1,10 +1,21 @@
 <template>
-  <div class="messages-list flex-grow-1 p-3 overflow-auto" ref="messagesBox">
-    <div v-if="messages.length === 0" class="text-center py-5">
-      <i class="bi bi-chat-square-dots text-muted mb-2" style="font-size: 2rem;"></i>
-      <p class="text-muted mb-0">No messages yet. Start the conversation!</p>
+  <div
+    ref="messagesBox"
+    class="messages-list flex-grow-1 p-3 overflow-auto"
+  >
+    <div
+      v-if="messages.length === 0"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-chat-square-dots text-muted mb-2"
+        style="font-size: 2rem;"
+      />
+      <p class="text-muted mb-0">
+        No messages yet. Start the conversation!
+      </p>
     </div>
-    <div v-else >
+    <div v-else>
       <div
         v-for="message in messages"
         :key="message.message_id"
@@ -15,7 +26,9 @@
         }"
       >
         <div class="message-bubble">
-          <div class="message-content">{{ message.message_content }}</div>
+          <div class="message-content">
+            {{ message.message_content }}
+          </div>
           <div class="message-time small text-muted mt-1">
             {{ formatTime(message.created_at) }}
           </div>

@@ -1,6 +1,8 @@
 <template>
   <div>
-    <h6 class="mb-2">Vital Signs</h6>
+    <h6 class="mb-2">
+      Vital Signs
+    </h6>
     <div class="row g-3">
       <div class="col-md-4">
         <label class="form-label">Temperature (°C)</label>
@@ -9,8 +11,8 @@
           step="0.1" 
           class="form-control" 
           :value="vitals.temperature" 
-          @input="$emit('update:vitals', { ...vitals, temperature: $event.target.value })"
           :disabled="disabled"
+          @input="$emit('update:vitals', { ...vitals, temperature: $event.target.value })"
         >
       </div>
       <div class="col-md-4">
@@ -20,8 +22,8 @@
           step="0.1" 
           class="form-control" 
           :value="vitals.muac" 
-          @input="$emit('update:vitals', { ...vitals, muac: $event.target.value })"
           :disabled="disabled"
+          @input="$emit('update:vitals', { ...vitals, muac: $event.target.value })"
         >
       </div>
       <div class="col-md-4">
@@ -30,8 +32,8 @@
           type="number" 
           class="form-control" 
           :value="vitals.respiration" 
-          @input="$emit('update:vitals', { ...vitals, respiration: $event.target.value })"
           :disabled="disabled"
+          @input="$emit('update:vitals', { ...vitals, respiration: $event.target.value })"
         >
       </div>
       <div class="col-md-4">
@@ -41,8 +43,8 @@
           step="0.01" 
           class="form-control" 
           :value="vitals.weight" 
-          @input="$emit('update:vitals', { ...vitals, weight: $event.target.value })"
           :disabled="disabled"
+          @input="$emit('update:vitals', { ...vitals, weight: $event.target.value })"
         >
       </div>
       <div class="col-md-4">
@@ -52,8 +54,8 @@
           step="0.1" 
           class="form-control" 
           :value="vitals.height" 
-          @input="$emit('update:vitals', { ...vitals, height: $event.target.value })"
           :disabled="disabled"
+          @input="$emit('update:vitals', { ...vitals, height: $event.target.value })"
         >
       </div>
     </div>

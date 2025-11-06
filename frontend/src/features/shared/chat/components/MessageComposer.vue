@@ -3,26 +3,35 @@
     <div class="d-flex gap-2 align-items-end">
       <div class="flex-grow-1">
         <textarea
-          :value="modelValue"
-          @input="handleInput"
-          @keydown="handleKeyDown"
           ref="textarea"
+          :value="modelValue"
           class="form-control message-input"
           placeholder="Type your message..."
           rows="1"
           style="resize: none; min-height: 40px; max-height: 120px; overflow-y: auto;"
-        ></textarea>
+          @input="handleInput"
+          @keydown="handleKeyDown"
+        />
       </div>
       <button
         class="btn btn-primary send-button"
-        @click="$emit('send')"
         :disabled="!modelValue.trim() || sending"
+        @click="$emit('send')"
       >
-        <i v-if="sending" class="bi bi-hourglass-split fa-spin"></i>
-        <i v-else class="bi bi-send-fill"></i>
+        <i
+          v-if="sending"
+          class="bi bi-hourglass-split fa-spin"
+        />
+        <i
+          v-else
+          class="bi bi-send-fill"
+        />
       </button>
     </div>
-    <div class="text-muted small mt-2" v-if="modelValue.length > 800">
+    <div
+      v-if="modelValue.length > 800"
+      class="text-muted small mt-2"
+    >
       {{ modelValue.length }}/1000 characters
     </div>
   </div>

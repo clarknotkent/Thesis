@@ -1,7 +1,7 @@
 <template>
   <div class="form-section visit-selector-section">
     <h3 class="section-title">
-      <i class="bi bi-journal-medical"></i>
+      <i class="bi bi-journal-medical" />
       Visit
     </h3>
 
@@ -14,7 +14,7 @@
             :value="'new'" 
             :checked="visitMode === 'new'"
             @change="handleNewModeSelect"
-          />
+          >
           <span>Create new visit</span>
         </label>
         <label class="radio-label">
@@ -23,24 +23,32 @@
             :value="'existing'" 
             :checked="visitMode === 'existing'"
             @change="handleExistingModeSelect"
-          />
+          >
           <span>Use existing visit</span>
         </label>
       </div>
-      <small v-if="visitMode === 'existing'" class="form-hint">
+      <small
+        v-if="visitMode === 'existing'"
+        class="form-hint"
+      >
         Select a recent visit for this patient (preferably created by BHS)
       </small>
     </div>
 
-    <div v-if="visitMode === 'existing'" class="form-group">
+    <div
+      v-if="visitMode === 'existing'"
+      class="form-group"
+    >
       <label class="form-label">Existing Visits</label>
       <select 
         class="form-input" 
         :value="existingVisitId"
-        @change="$emit('update:existingVisitId', $event.target.value)"
         :disabled="loadingVisits"
+        @change="$emit('update:existingVisitId', $event.target.value)"
       >
-        <option value="">{{ loadingVisits ? 'Loading visits...' : 'Select a visit' }}</option>
+        <option value="">
+          {{ loadingVisits ? 'Loading visits...' : 'Select a visit' }}
+        </option>
         <option 
           v-for="visit in availableVisits" 
           :key="visit.visit_id" 
@@ -49,7 +57,10 @@
           {{ formatDate(visit.visit_date) }} — {{ visit.service_rendered || 'No services yet' }}
         </option>
       </select>
-      <small v-if="availableVisits.length === 0 && !loadingVisits" class="form-hint text-warning">
+      <small
+        v-if="availableVisits.length === 0 && !loadingVisits"
+        class="form-hint text-warning"
+      >
         No recent visits found. Consider creating a new visit instead.
       </small>
     </div>

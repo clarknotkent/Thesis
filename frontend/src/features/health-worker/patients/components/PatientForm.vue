@@ -3,72 +3,143 @@
     <form @submit.prevent="handleSubmit">
       <!-- Patient Basic Information -->
       <div class="form-section mb-4">
-        <h6 class="section-title">Patient Information</h6>
+        <h6 class="section-title">
+          Patient Information
+        </h6>
         <div class="form-fields">
           <div class="row g-3">
             <div class="col-12">
-              <label for="surname" class="form-label">Surname *</label>
-              <input type="text" class="form-control" id="surname" v-model="localForm.surname" required>
+              <label
+                for="surname"
+                class="form-label"
+              >Surname *</label>
+              <input
+                id="surname"
+                v-model="localForm.surname"
+                type="text"
+                class="form-control"
+                required
+              >
             </div>
             <div class="col-12">
-              <label for="firstname" class="form-label">First Name *</label>
-              <input type="text" class="form-control" id="firstname" v-model="localForm.firstname" required>
+              <label
+                for="firstname"
+                class="form-label"
+              >First Name *</label>
+              <input
+                id="firstname"
+                v-model="localForm.firstname"
+                type="text"
+                class="form-control"
+                required
+              >
             </div>
             <div class="col-12">
-              <label for="middlename" class="form-label">Middle Name</label>
-              <input type="text" class="form-control" id="middlename" v-model="localForm.middlename">
+              <label
+                for="middlename"
+                class="form-label"
+              >Middle Name</label>
+              <input
+                id="middlename"
+                v-model="localForm.middlename"
+                type="text"
+                class="form-control"
+              >
             </div>
             <div class="col-12">
-              <label for="sex" class="form-label">Sex *</label>
-              <select class="form-select" id="sex" v-model="localForm.sex" required>
-                <option value="">Select Sex</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+              <label
+                for="sex"
+                class="form-label"
+              >Sex *</label>
+              <select
+                id="sex"
+                v-model="localForm.sex"
+                class="form-select"
+                required
+              >
+                <option value="">
+                  Select Sex
+                </option>
+                <option value="Male">
+                  Male
+                </option>
+                <option value="Female">
+                  Female
+                </option>
               </select>
             </div>
             <div class="col-12">
-              <label for="date_of_birth" class="form-label">Date of Birth *</label>
+              <label
+                for="date_of_birth"
+                class="form-label"
+              >Date of Birth *</label>
               <div class="position-relative date-input-container">
                 <input 
-                  type="text" 
-                  class="form-control" 
                   id="date_of_birth" 
-                  v-model="displayDate"
-                  @input="handleDateInput"
-                  @blur="validateAndFormatDate"
+                  v-model="displayDate" 
+                  type="text" 
+                  class="form-control"
                   placeholder="MM/DD/YYYY"
                   maxlength="10"
                   required
+                  @input="handleDateInput"
+                  @blur="validateAndFormatDate"
                 >
                 <button 
                   type="button" 
                   class="btn btn-outline-secondary calendar-btn"
                   @click="showDatePicker = !showDatePicker"
                 >
-                  <i class="bi bi-calendar3"></i>
+                  <i class="bi bi-calendar3" />
                 </button>
                 <input 
                   v-if="showDatePicker"
-                  type="date" 
-                  class="form-control date-picker-input"
+                  ref="datePickerRef" 
                   v-model="localForm.date_of_birth"
+                  type="date"
+                  class="form-control date-picker-input"
                   @change="onDatePickerChange"
                   @blur="showDatePicker = false"
-                  ref="datePickerRef"
                 >
               </div>
             </div>
             <div class="col-12">
-              <label for="address" class="form-label">Address *</label>
-              <textarea class="form-control" id="address" rows="3" v-model="localForm.address" required></textarea>
+              <label
+                for="address"
+                class="form-label"
+              >Address *</label>
+              <textarea
+                id="address"
+                v-model="localForm.address"
+                class="form-control"
+                rows="3"
+                required
+              />
             </div>
             <div class="col-12">
-              <label for="barangay" class="form-label">Barangay *</label>
-              <input type="text" class="form-control" id="barangay" v-model="localForm.barangay" required>
+              <label
+                for="barangay"
+                class="form-label"
+              >Barangay *</label>
+              <input
+                id="barangay"
+                v-model="localForm.barangay"
+                type="text"
+                class="form-control"
+                required
+              >
             </div>
             <div class="col-12">
-              <label for="health_center" class="form-label">Health Center</label>
-              <input type="text" class="form-control" id="health_center" v-model="localForm.health_center">
+              <label
+                for="health_center"
+                class="form-label"
+              >Health Center</label>
+              <input
+                id="health_center"
+                v-model="localForm.health_center"
+                type="text"
+                class="form-control"
+              >
             </div>
           </div>
         </div>
@@ -76,21 +147,26 @@
 
       <!-- Guardian Information -->
       <div class="form-section mb-4">
-        <h6 class="section-title">Guardian Information</h6>
+        <h6 class="section-title">
+          Guardian Information
+        </h6>
         <div class="form-fields">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label" for="guardian_id">Guardian *</label>
+              <label
+                class="form-label"
+                for="guardian_id"
+              >Guardian *</label>
               <div class="position-relative">
                 <input
+                  v-model="guardianSearchTerm"
                   type="text"
                   class="form-control"
-                  v-model="guardianSearchTerm"
-                  @focus="showGuardianDropdown = true"
-                  @blur="hideGuardianDropdown"
                   :placeholder="selectedGuardianName || 'Search and select guardian...'"
                   autocomplete="off"
-                />
+                  @focus="showGuardianDropdown = true"
+                  @blur="hideGuardianDropdown"
+                >
                 <div
                   v-if="showGuardianDropdown && filteredGuardians.length > 0"
                   class="dropdown-menu show w-100 position-absolute"
@@ -116,36 +192,67 @@
                   style="z-index: 1000;"
                 >
                   <div class="dropdown-item-text text-muted text-center py-3">
-                    <i class="bi bi-search"></i>
+                    <i class="bi bi-search" />
                     No guardians found
                   </div>
                 </div>
               </div>
-              <input type="hidden" v-model="localForm.guardian_id" required>
+              <input
+                v-model="localForm.guardian_id"
+                type="hidden"
+                required
+              >
             </div>
             <div class="col-12">
-              <label for="family_number" class="form-label">Family Number</label>
+              <label
+                for="family_number"
+                class="form-label"
+              >Family Number</label>
               <input 
-                type="text" 
-                class="form-control" 
                 id="family_number" 
-                v-model="localForm.family_number"
+                v-model="localForm.family_number" 
+                type="text" 
+                class="form-control"
                 :readonly="localForm.guardian_id && guardians.find(g => g.guardian_id === localForm.guardian_id)?.family_number"
               >
-              <div class="form-text text-success" v-if="localForm.guardian_id && guardians.find(g => g.guardian_id === localForm.guardian_id)?.family_number">
+              <div
+                v-if="localForm.guardian_id && guardians.find(g => g.guardian_id === localForm.guardian_id)?.family_number"
+                class="form-text text-success"
+              >
                 Auto-populated from selected guardian
               </div>
             </div>
             <div class="col-12">
-              <label for="guardian_relationship" class="form-label">Relationship to Guardian</label>
-              <select class="form-select" id="guardian_relationship" v-model="localForm.guardian_relationship">
-                <option value="">Select relationship</option>
-                <option value="Mother">Mother</option>
-                <option value="Father">Father</option>
-                <option value="Grandparent">Grandparent</option>
-                <option value="Aunt/Uncle">Aunt/Uncle</option>
-                <option value="Sibling">Sibling</option>
-                <option value="Other">Other</option>
+              <label
+                for="guardian_relationship"
+                class="form-label"
+              >Relationship to Guardian</label>
+              <select
+                id="guardian_relationship"
+                v-model="localForm.guardian_relationship"
+                class="form-select"
+              >
+                <option value="">
+                  Select relationship
+                </option>
+                <option value="Mother">
+                  Mother
+                </option>
+                <option value="Father">
+                  Father
+                </option>
+                <option value="Grandparent">
+                  Grandparent
+                </option>
+                <option value="Aunt/Uncle">
+                  Aunt/Uncle
+                </option>
+                <option value="Sibling">
+                  Sibling
+                </option>
+                <option value="Other">
+                  Other
+                </option>
               </select>
             </div>
           </div>
@@ -154,47 +261,87 @@
 
       <!-- Parent Information -->
       <div class="form-section mb-4">
-        <h6 class="section-title">Parent Information</h6>
+        <h6 class="section-title">
+          Parent Information
+        </h6>
         <div class="form-fields">
           <div class="row g-3">
             <div class="col-12">
-              <label for="mother_name" class="form-label">Mother's Name *</label>
+              <label
+                for="mother_name"
+                class="form-label"
+              >Mother's Name *</label>
               <input
-                type="text"
-                class="form-control"
                 id="mother_name"
                 v-model="localForm.mother_name"
+                type="text"
+                class="form-control"
                 list="hw-parent-names"
                 placeholder="Type to search existing guardians..."
                 required
               >
             </div>
             <div class="col-12">
-              <label for="mother_occupation" class="form-label">Mother's Occupation</label>
-              <input type="text" class="form-control" id="mother_occupation" v-model="localForm.mother_occupation">
-            </div>
-            <div class="col-12">
-              <label for="mother_contact_number" class="form-label">Mother's Contact Number</label>
-              <input type="tel" class="form-control" id="mother_contact_number" v-model="localForm.mother_contact_number">
-            </div>
-            <div class="col-12">
-              <label for="father_name" class="form-label">Father's Name</label>
+              <label
+                for="mother_occupation"
+                class="form-label"
+              >Mother's Occupation</label>
               <input
+                id="mother_occupation"
+                v-model="localForm.mother_occupation"
                 type="text"
                 class="form-control"
+              >
+            </div>
+            <div class="col-12">
+              <label
+                for="mother_contact_number"
+                class="form-label"
+              >Mother's Contact Number</label>
+              <input
+                id="mother_contact_number"
+                v-model="localForm.mother_contact_number"
+                type="tel"
+                class="form-control"
+              >
+            </div>
+            <div class="col-12">
+              <label
+                for="father_name"
+                class="form-label"
+              >Father's Name</label>
+              <input
                 id="father_name"
                 v-model="localForm.father_name"
+                type="text"
+                class="form-control"
                 list="hw-parent-names"
                 placeholder="Type to search existing guardians..."
               >
             </div>
             <div class="col-12">
-              <label for="father_occupation" class="form-label">Father's Occupation</label>
-              <input type="text" class="form-control" id="father_occupation" v-model="localForm.father_occupation">
+              <label
+                for="father_occupation"
+                class="form-label"
+              >Father's Occupation</label>
+              <input
+                id="father_occupation"
+                v-model="localForm.father_occupation"
+                type="text"
+                class="form-control"
+              >
             </div>
             <div class="col-12">
-              <label for="father_contact_number" class="form-label">Father's Contact Number</label>
-              <input type="tel" class="form-control" id="father_contact_number" v-model="localForm.father_contact_number">
+              <label
+                for="father_contact_number"
+                class="form-label"
+              >Father's Contact Number</label>
+              <input
+                id="father_contact_number"
+                v-model="localForm.father_contact_number"
+                type="tel"
+                class="form-control"
+              >
             </div>
           </div>
         </div>
@@ -202,20 +349,48 @@
 
       <!-- Additional Information -->
       <div class="form-section mb-4">
-        <h6 class="section-title">Additional Information</h6>
+        <h6 class="section-title">
+          Additional Information
+        </h6>
         <div class="form-fields">
           <div class="row g-3">
             <div class="col-12">
-              <label for="birth_weight" class="form-label">Birth Weight (kg)</label>
-              <input type="number" step="0.1" class="form-control" id="birth_weight" v-model="localForm.birth_weight">
+              <label
+                for="birth_weight"
+                class="form-label"
+              >Birth Weight (kg)</label>
+              <input
+                id="birth_weight"
+                v-model="localForm.birth_weight"
+                type="number"
+                step="0.1"
+                class="form-control"
+              >
             </div>
             <div class="col-12">
-              <label for="birth_height" class="form-label">Birth Height (cm)</label>
-              <input type="number" step="0.1" class="form-control" id="birth_height" v-model="localForm.birth_height">
+              <label
+                for="birth_height"
+                class="form-label"
+              >Birth Height (cm)</label>
+              <input
+                id="birth_height"
+                v-model="localForm.birth_height"
+                type="number"
+                step="0.1"
+                class="form-control"
+              >
             </div>
             <div class="col-12">
-              <label for="place_of_birth" class="form-label">Place of Birth</label>
-              <input type="text" class="form-control" id="place_of_birth" v-model="localForm.place_of_birth">
+              <label
+                for="place_of_birth"
+                class="form-label"
+              >Place of Birth</label>
+              <input
+                id="place_of_birth"
+                v-model="localForm.place_of_birth"
+                type="text"
+                class="form-control"
+              >
             </div>
           </div>
         </div>
@@ -223,7 +398,11 @@
 
       <!-- Shared datalist for parent names suggestions -->
       <datalist id="hw-parent-names">
-        <option v-for="g in guardians" :key="g.guardian_id" :value="g.full_name"></option>
+        <option
+          v-for="g in guardians"
+          :key="g.guardian_id"
+          :value="g.full_name"
+        />
       </datalist>
     </form>
   </div>

@@ -4,15 +4,29 @@
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h4 mb-1 fw-semibold text-dark">Messages</h1>
-          <p class="text-muted mb-0 small">Admin messaging center</p>
+          <h1 class="h4 mb-1 fw-semibold text-dark">
+            Messages
+          </h1>
+          <p class="text-muted mb-0 small">
+            Admin messaging center
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-primary" @click="showModal = true">
-            <i class="bi bi-plus-circle me-2"></i>New Chat
+          <button
+            class="btn btn-primary"
+            @click="showModal = true"
+          >
+            <i class="bi bi-plus-circle me-2" />New Chat
           </button>
-          <button class="btn btn-outline-secondary" @click="refreshConversations" :disabled="loading">
-            <i class="bi bi-arrow-clockwise" :class="{ 'fa-spin': loading }"></i>
+          <button
+            class="btn btn-outline-secondary"
+            :disabled="loading"
+            @click="refreshConversations"
+          >
+            <i
+              class="bi bi-arrow-clockwise"
+              :class="{ 'fa-spin': loading }"
+            />
             <span class="d-none d-sm-inline ms-1">Refresh</span>
           </button>
         </div>
@@ -24,9 +38,9 @@
           <!-- Conversations Sidebar -->
           <div class="col-lg-4 col-md-5 border-end d-flex flex-column h-100">
             <ConversationsList
+              v-model:search-query="searchQuery"
               :conversations="filteredConversations"
               :selected-id="selectedConversation?.conversation_id"
-              v-model:search-query="searchQuery"
               @select="selectConversation"
             />
           </div>
@@ -34,19 +48,35 @@
           <!-- Chat Area -->
           <div class="col-lg-8 col-md-7 d-flex flex-column h-100">
             <!-- Empty State -->
-            <div v-if="!selectedConversation" class="empty-chat d-flex align-items-center justify-content-center h-100">
+            <div
+              v-if="!selectedConversation"
+              class="empty-chat d-flex align-items-center justify-content-center h-100"
+            >
               <div class="text-center">
-                <i class="bi bi-chat-dots text-muted mb-3" style="font-size: 4rem;"></i>
-                <h5 class="text-muted mb-2">Select a conversation</h5>
-                <p class="text-muted mb-4">Choose a conversation from the sidebar to start chatting</p>
-                <button class="btn btn-primary" @click="showModal = true">
-                  <i class="bi bi-plus-circle me-2"></i>Start New Chat
+                <i
+                  class="bi bi-chat-dots text-muted mb-3"
+                  style="font-size: 4rem;"
+                />
+                <h5 class="text-muted mb-2">
+                  Select a conversation
+                </h5>
+                <p class="text-muted mb-4">
+                  Choose a conversation from the sidebar to start chatting
+                </p>
+                <button
+                  class="btn btn-primary"
+                  @click="showModal = true"
+                >
+                  <i class="bi bi-plus-circle me-2" />Start New Chat
                 </button>
               </div>
             </div>
 
             <!-- Active Chat -->
-            <div v-else class="d-flex flex-column h-100">
+            <div
+              v-else
+              class="d-flex flex-column h-100"
+            >
               <ChatHeader
                 :conversation="selectedConversation"
                 :participant-list="participantList"
@@ -56,7 +86,10 @@
                 @close="selectedConversation = null"
               />
 
-              <div class="flex-grow-1 d-flex flex-column" style="min-height: 0;">
+              <div
+                class="flex-grow-1 d-flex flex-column"
+                style="min-height: 0;"
+              >
                 <MessagesList
                   ref="messagesList"
                   :messages="messages"

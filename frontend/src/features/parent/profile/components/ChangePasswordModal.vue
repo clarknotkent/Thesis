@@ -1,11 +1,21 @@
 <template>
   <div>
-    <div class="modal fade show" tabindex="-1" style="display: block;">
+    <div
+      class="modal fade show"
+      tabindex="-1"
+      style="display: block;"
+    >
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Change Password</h5>
-            <button type="button" class="btn-close" @click="$emit('close')"></button>
+            <h5 class="modal-title">
+              Change Password
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="$emit('close')"
+            />
           </div>
           <div class="modal-body">
             <div class="mb-2">
@@ -15,7 +25,7 @@
                 type="password" 
                 class="form-control"
                 placeholder="Enter current password" 
-              />
+              >
             </div>
             <div class="mb-2">
               <label class="form-label">New Password</label>
@@ -24,7 +34,7 @@
                 type="password" 
                 class="form-control"
                 placeholder="Enter new password"
-              />
+              >
               <small class="text-muted">Minimum 8 characters</small>
             </div>
             <div class="mb-2">
@@ -34,36 +44,50 @@
                 type="password" 
                 class="form-control"
                 placeholder="Re-enter new password"
-              />
+              >
             </div>
             
             <!-- Password strength indicator -->
-            <div v-if="localPwd.next" class="mt-2">
+            <div
+              v-if="localPwd.next"
+              class="mt-2"
+            >
               <small :class="passwordStrengthClass">
                 {{ passwordStrengthText }}
               </small>
             </div>
             
             <!-- Validation messages -->
-            <div v-if="validationError" class="alert alert-warning py-2 px-3 mt-2 mb-0">
+            <div
+              v-if="validationError"
+              class="alert alert-warning py-2 px-3 mt-2 mb-0"
+            >
               <small>{{ validationError }}</small>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
+            <button
+              class="btn btn-secondary"
+              @click="$emit('close')"
+            >
+              Cancel
+            </button>
             <button 
               class="btn btn-primary" 
               :disabled="changing || !isValid" 
               @click="handleSave"
             >
-              <i v-if="changing" class="bi bi-hourglass-split fa-spin me-1"></i>
+              <i
+                v-if="changing"
+                class="bi bi-hourglass-split fa-spin me-1"
+              />
               Change Password
             </button>
           </div>
         </div>
       </div>
     </div>
-    <div class="modal-backdrop fade show"></div>
+    <div class="modal-backdrop fade show" />
   </div>
 </template>
 

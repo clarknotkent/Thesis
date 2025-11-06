@@ -1,14 +1,26 @@
 <template>
   <div>
-    <div class="modal fade show" tabindex="-1" style="display: block;">
+    <div
+      class="modal fade show"
+      tabindex="-1"
+      style="display: block;"
+    >
       <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Edit Profile</h5>
-            <button type="button" class="btn-close btn-close-white" @click="$emit('close')"></button>
+            <h5 class="modal-title">
+              Edit Profile
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              @click="$emit('close')"
+            />
           </div>
           <div class="modal-body">
-            <h6 class="section-header">Account Information</h6>
+            <h6 class="section-header">
+              Account Information
+            </h6>
             
             <div class="info-display">
               <div class="info-row">
@@ -34,21 +46,30 @@
             </div>
 
             <div class="action-buttons">
-              <button class="btn btn-outline-primary w-100 mb-2" @click="$emit('edit-form')">
-                <i class="bi bi-pencil me-2"></i>Edit Profile
+              <button
+                class="btn btn-outline-primary w-100 mb-2"
+                @click="$emit('edit-form')"
+              >
+                <i class="bi bi-pencil me-2" />Edit Profile
               </button>
-              <button class="btn btn-outline-secondary w-100 mb-2" @click="$emit('change-password')">
-                <i class="bi bi-key me-2"></i>Change Password
+              <button
+                class="btn btn-outline-secondary w-100 mb-2"
+                @click="$emit('change-password')"
+              >
+                <i class="bi bi-key me-2" />Change Password
               </button>
-              <button class="btn btn-outline-danger w-100" @click="$emit('logout')">
-                <i class="bi bi-box-arrow-right me-2"></i>Logout
+              <button
+                class="btn btn-outline-danger w-100"
+                @click="$emit('logout')"
+              >
+                <i class="bi bi-box-arrow-right me-2" />Logout
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="modal-backdrop fade show"></div>
+    <div class="modal-backdrop fade show" />
   </div>
 </template>
 

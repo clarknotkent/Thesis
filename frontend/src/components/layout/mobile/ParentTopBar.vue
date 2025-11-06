@@ -1,8 +1,11 @@
 <template>
   <nav class="mobile-top-bar navbar navbar-expand-lg navbar-dark navbar-custom">
     <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#">
-        <i class="bi bi-shield-check me-2"></i>
+      <a
+        class="navbar-brand fw-bold"
+        href="#"
+      >
+        <i class="bi bi-shield-check me-2" />
         {{ title || 'My Portal' }}
       </a>
 
@@ -17,8 +20,11 @@
           class="nav-link position-relative me-3"
           aria-label="Notifications"
         >
-          <i class="bi bi-bell"></i>
-          <span v-if="notificationCount > 0" class="badge bg-danger position-absolute top-0 start-100 translate-middle">
+          <i class="bi bi-bell" />
+          <span
+            v-if="notificationCount > 0"
+            class="badge bg-danger position-absolute top-0 start-100 translate-middle"
+          >
             {{ notificationCount }}
           </span>
         </router-link>
@@ -28,7 +34,7 @@
           style="cursor: not-allowed; opacity: 0.5;"
           title="Notifications not available offline"
         >
-          <i class="bi bi-bell"></i>
+          <i class="bi bi-bell" />
         </span>
 
         <!-- Messages (disabled when offline) -->
@@ -38,8 +44,11 @@
           class="nav-link position-relative"
           aria-label="Messages"
         >
-          <i class="bi bi-chat-dots"></i>
-          <span v-if="messageCount > 0" class="badge bg-danger position-absolute top-0 start-100 translate-middle">
+          <i class="bi bi-chat-dots" />
+          <span
+            v-if="messageCount > 0"
+            class="badge bg-danger position-absolute top-0 start-100 translate-middle"
+          >
             {{ messageCount }}
           </span>
         </router-link>
@@ -49,7 +58,7 @@
           style="cursor: not-allowed; opacity: 0.5;"
           title="Messaging not available offline"
         >
-          <i class="bi bi-chat-dots"></i>
+          <i class="bi bi-chat-dots" />
         </span>
       </div>
     </div>

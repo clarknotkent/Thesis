@@ -2,48 +2,83 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Vaccine Inventory</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Vaccine Inventory
+          </li>
         </ol>
       </nav>
 
       <!-- Header -->
       <div class="mb-4">
         <h2 class="mb-1">
-          <i class="bi bi-capsule me-2"></i>Vaccine Inventory Management
+          <i class="bi bi-capsule me-2" />Vaccine Inventory Management
         </h2>
-        <p class="text-muted mb-0">Manage vaccine stock, receiving reports, and schedules</p>
+        <p class="text-muted mb-0">
+          Manage vaccine stock, receiving reports, and schedules
+        </p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading inventory data...</span>
         </div>
-        <p class="text-muted mt-2">Loading inventory information...</p>
+        <p class="text-muted mt-2">
+          Loading inventory information...
+        </p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
+      <div
+        v-else-if="error"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
         {{ error }}
       </div>
 
       <!-- Inventory Summary Cards -->
-      <div v-if="!loading" class="row g-3 mb-4">
+      <div
+        v-if="!loading"
+        class="row g-3 mb-4"
+      >
         <!-- Total Types -->
         <div class="col-md-3">
           <div class="card border border-primary border-3 shadow h-100 py-2">
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Types</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalTypes }}</div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                    Total Types
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.totalTypes }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-collection text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-collection text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -56,11 +91,18 @@
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Total Doses</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.totalDoses }}</div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                    Total Doses
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.totalDoses }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-capsule text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-capsule text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -73,11 +115,18 @@
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">Low Stock</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.lowStock }}</div>
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                    Low Stock
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.lowStock }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-exclamation-triangle text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -90,11 +139,18 @@
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Expiring Soon</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ stats.expiringSoon }}</div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">
+                    Expiring Soon
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ stats.expiringSoon }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-calendar-x text-danger" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-calendar-x text-danger"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -103,7 +159,10 @@
       </div>
 
       <!-- Inventory Management with Tabs -->
-      <div v-if="!loading && !error" class="row">
+      <div
+        v-if="!loading && !error"
+        class="row"
+      >
         <!-- Main Content with Tabs -->
         <div class="col-lg-12 mb-4">
           <div class="card shadow">
@@ -116,7 +175,7 @@
                     :class="{ active: activeTab === 'stock' }"
                     @click="activeTab = 'stock'"
                   >
-                    <i class="bi bi-capsule me-2"></i>Vaccine Stock
+                    <i class="bi bi-capsule me-2" />Vaccine Stock
                   </button>
                 </li>
                 <li class="nav-item">
@@ -125,7 +184,7 @@
                     :class="{ active: activeTab === 'receiving' }"
                     @click="activeTab = 'receiving'"
                   >
-                    <i class="bi bi-box-seam me-2"></i>Receiving Reports
+                    <i class="bi bi-box-seam me-2" />Receiving Reports
                   </button>
                 </li>
                 <li class="nav-item">
@@ -134,7 +193,7 @@
                     :class="{ active: activeTab === 'schedule' }"
                     @click="activeTab = 'schedule'"
                   >
-                    <i class="bi bi-calendar-check me-2"></i>Vaccine Schedule
+                    <i class="bi bi-calendar-check me-2" />Vaccine Schedule
                   </button>
                 </li>
               </ul>

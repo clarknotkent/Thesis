@@ -12,22 +12,34 @@
       showAddButton: false
     }"
     @filter="showFilterSheet = !showFilterSheet"
-    @update:searchQuery="searchTerm = $event"
+    @update:search-query="searchTerm = $event"
   >
     <!-- Filter Sheet -->
-    <div v-if="showFilterSheet" class="filter-sheet-overlay" @click="showFilterSheet = false">
-      <div class="filter-sheet" @click.stop>
+    <div
+      v-if="showFilterSheet"
+      class="filter-sheet-overlay"
+      @click="showFilterSheet = false"
+    >
+      <div
+        class="filter-sheet"
+        @click.stop
+      >
         <div class="filter-sheet-header">
           <h3>Filters & Sort</h3>
-          <button class="btn-close-sheet" @click="showFilterSheet = false">
-            <i class="bi bi-x-lg"></i>
+          <button
+            class="btn-close-sheet"
+            @click="showFilterSheet = false"
+          >
+            <i class="bi bi-x-lg" />
           </button>
         </div>
         
         <div class="filter-sheet-body">
           <!-- Type Filter Section -->
           <div class="filter-section">
-            <h4 class="filter-section-title">Vaccine Type</h4>
+            <h4 class="filter-section-title">
+              Vaccine Type
+            </h4>
             <div class="filter-options">
               <button 
                 class="filter-option-btn"
@@ -55,7 +67,9 @@
 
           <!-- Status Filter Section -->
           <div class="filter-section">
-            <h4 class="filter-section-title">Stock Status</h4>
+            <h4 class="filter-section-title">
+              Stock Status
+            </h4>
             <div class="filter-options">
               <button 
                 class="filter-option-btn"
@@ -97,52 +111,60 @@
 
           <!-- Sort Section -->
           <div class="filter-section">
-            <h4 class="filter-section-title">Sort By</h4>
+            <h4 class="filter-section-title">
+              Sort By
+            </h4>
             <div class="filter-options">
               <button 
                 class="filter-option-btn"
                 :class="{ active: currentSort === 'Name A-Z' }"
                 @click="selectSort('Name A-Z')"
               >
-                <i class="bi bi-sort-alpha-down me-2"></i>Name A-Z
+                <i class="bi bi-sort-alpha-down me-2" />Name A-Z
               </button>
               <button 
                 class="filter-option-btn"
                 :class="{ active: currentSort === 'Name Z-A' }"
                 @click="selectSort('Name Z-A')"
               >
-                <i class="bi bi-sort-alpha-up me-2"></i>Name Z-A
+                <i class="bi bi-sort-alpha-up me-2" />Name Z-A
               </button>
               <button 
                 class="filter-option-btn"
                 :class="{ active: currentSort === 'Quantity Low-High' }"
                 @click="selectSort('Quantity Low-High')"
               >
-                <i class="bi bi-sort-numeric-down me-2"></i>Quantity Low-High
+                <i class="bi bi-sort-numeric-down me-2" />Quantity Low-High
               </button>
               <button 
                 class="filter-option-btn"
                 :class="{ active: currentSort === 'Quantity High-Low' }"
                 @click="selectSort('Quantity High-Low')"
               >
-                <i class="bi bi-sort-numeric-up me-2"></i>Quantity High-Low
+                <i class="bi bi-sort-numeric-up me-2" />Quantity High-Low
               </button>
               <button 
                 class="filter-option-btn"
                 :class="{ active: currentSort === 'Expiry Date' }"
                 @click="selectSort('Expiry Date')"
               >
-                <i class="bi bi-calendar-event me-2"></i>Expiry Date
+                <i class="bi bi-calendar-event me-2" />Expiry Date
               </button>
             </div>
           </div>
         </div>
 
         <div class="filter-sheet-footer">
-          <button class="btn-clear-filters" @click="clearAllFilters">
+          <button
+            class="btn-clear-filters"
+            @click="clearAllFilters"
+          >
             Clear All Filters
           </button>
-          <button class="btn-apply-filters" @click="showFilterSheet = false">
+          <button
+            class="btn-apply-filters"
+            @click="showFilterSheet = false"
+          >
             Apply
           </button>
         </div>
@@ -152,13 +174,21 @@
     <!-- Page Content Wrapper -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-container">
-        <div class="spinner"></div>
-        <p class="loading-text">Loading vaccine stock...</p>
+      <div
+        v-if="loading"
+        class="loading-container"
+      >
+        <div class="spinner" />
+        <p class="loading-text">
+          Loading vaccine stock...
+        </p>
       </div>
 
       <!-- Inventory List -->
-      <div v-else-if="paginatedInventory.length > 0" class="inventory-list">
+      <div
+        v-else-if="paginatedInventory.length > 0"
+        class="inventory-list"
+      >
         <InventoryCard
           v-for="item in paginatedInventory" 
           :key="item.inventory_id || item.id"
@@ -168,14 +198,24 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="empty-state">
-        <i class="bi bi-inbox empty-icon"></i>
-        <h4 class="empty-title">No vaccine stock found</h4>
-        <p class="empty-text">Try adjusting your search or filter criteria.</p>
+      <div
+        v-else
+        class="empty-state"
+      >
+        <i class="bi bi-inbox empty-icon" />
+        <h4 class="empty-title">
+          No vaccine stock found
+        </h4>
+        <p class="empty-text">
+          Try adjusting your search or filter criteria.
+        </p>
       </div>
 
       <!-- Pagination -->
-      <div v-if="!loading && totalPages > 1" class="pagination-container">
+      <div
+        v-if="!loading && totalPages > 1"
+        class="pagination-container"
+      >
         <AppPagination
           :current-page="currentPage"
           :total-pages="totalPages"

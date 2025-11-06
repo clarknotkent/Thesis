@@ -8,18 +8,22 @@
       <div class="header-content">
         <div class="patient-identity">
           <div class="patient-avatar">
-            <i :class="`bi bi-person-${patient.childInfo.sex === 'Male' ? 'fill' : 'fill'}`"></i>
+            <i :class="`bi bi-person-${patient.childInfo.sex === 'Male' ? 'fill' : 'fill'}`" />
           </div>
           <div class="patient-info">
-            <h6 class="card-title">{{ patient.childInfo.name }}</h6>
-            <p class="card-subtitle">ID: {{ patient.patient_id || patient.id }}</p>
+            <h6 class="card-title">
+              {{ patient.childInfo.name }}
+            </h6>
+            <p class="card-subtitle">
+              ID: {{ patient.patient_id || patient.id }}
+            </p>
           </div>
         </div>
         <div class="header-actions">
           <span :class="statusBadgeClass">
             {{ statusText }}
           </span>
-          <i class="bi bi-chevron-right text-muted"></i>
+          <i class="bi bi-chevron-right text-muted" />
         </div>
       </div>
     </div>

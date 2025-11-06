@@ -1,27 +1,35 @@
 <template>
-  <AppModal :show="show" :title="title" @close="$emit('close')">
+  <AppModal
+    :show="show"
+    :title="title"
+    @close="$emit('close')"
+  >
     <form @submit.prevent="$emit('submit', formData)">
-      <div v-for="field in fields" :key="field.key" class="mb-3">
+      <div
+        v-for="field in fields"
+        :key="field.key"
+        class="mb-3"
+      >
         <label class="form-label">{{ field.label }}</label>
         
         <!-- Text Input -->
         <input 
           v-if="field.type === 'text' || field.type === 'email' || field.type === 'tel'"
-          :type="field.type"
           v-model="formData[field.key]"
+          :type="field.type"
           class="form-control"
           :required="field.required"
           :placeholder="field.placeholder"
-        />
+        >
         
         <!-- Date Input -->
         <input 
           v-else-if="field.type === 'date'"
-          type="date"
           v-model="formData[field.key]"
+          type="date"
           class="form-control"
           :required="field.required"
-        />
+        >
         
         <!-- Select Input -->
         <select 
@@ -30,7 +38,11 @@
           class="form-select"
           :required="field.required"
         >
-          <option v-for="option in field.options" :key="option.value" :value="option.value">
+          <option
+            v-for="option in field.options"
+            :key="option.value"
+            :value="option.value"
+          >
             {{ option.label }}
           </option>
         </select>
@@ -43,14 +55,21 @@
           :required="field.required"
           :placeholder="field.placeholder"
           :rows="field.rows || 3"
-        ></textarea>
+        />
       </div>
       
       <div class="d-flex gap-2">
-        <AppButton type="submit" variant="primary" :loading="loading">
+        <AppButton
+          type="submit"
+          variant="primary"
+          :loading="loading"
+        >
           {{ submitText }}
         </AppButton>
-        <AppButton variant="secondary" @click="$emit('close')">
+        <AppButton
+          variant="secondary"
+          @click="$emit('close')"
+        >
           Cancel
         </AppButton>
       </div>

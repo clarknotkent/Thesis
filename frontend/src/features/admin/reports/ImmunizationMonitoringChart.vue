@@ -2,7 +2,7 @@
   <div class="card shadow">
     <div class="card-header bg-primary text-white py-3">
       <h5 class="mb-0">
-        <i class="bi bi-graph-up-arrow me-2"></i>
+        <i class="bi bi-graph-up-arrow me-2" />
         Immunization Monitoring Chart - {{ year }} (Full Year)
       </h5>
     </div>
@@ -11,28 +11,64 @@
       <div class="row g-3 align-items-end mb-3">
         <div class="col-md-2">
           <label class="form-label fw-semibold">Year</label>
-          <select class="form-select" v-model.number="year">
-            <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+          <select
+            v-model.number="year"
+            class="form-select"
+          >
+            <option
+              v-for="y in years"
+              :key="y"
+              :value="y"
+            >
+              {{ y }}
+            </option>
           </select>
         </div>
         <div class="col-md-3">
           <label class="form-label fw-semibold">As of Month</label>
-          <select class="form-select" v-model.number="asOfMonth">
-            <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
+          <select
+            v-model.number="asOfMonth"
+            class="form-select"
+          >
+            <option
+              v-for="m in months"
+              :key="m.value"
+              :value="m.value"
+            >
+              {{ m.label }}
+            </option>
           </select>
         </div>
         <div class="col-md-2">
           <label class="form-label fw-semibold">Eligible Target</label>
-          <input type="number" class="form-control" v-model.number="eligiblePopulation" />
+          <input
+            v-model.number="eligiblePopulation"
+            type="number"
+            class="form-control"
+          >
         </div>
         <div class="col-md-2">
           <label class="form-label fw-semibold">Total Population</label>
-          <input type="number" class="form-control" v-model.number="totalPopulation" />
+          <input
+            v-model.number="totalPopulation"
+            type="number"
+            class="form-control"
+          >
         </div>
         <div class="col-md-3 text-md-end">
-          <button class="btn btn-primary w-100 w-md-auto" @click="loadData" :disabled="loading">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-            <i v-else class="bi bi-arrow-clockwise me-2"></i>
+          <button
+            class="btn btn-primary w-100 w-md-auto"
+            :disabled="loading"
+            @click="loadData"
+          >
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            />
+            <i
+              v-else
+              class="bi bi-arrow-clockwise me-2"
+            />
             Refresh Data
           </button>
         </div>
@@ -43,23 +79,51 @@
         <div class="col-lg-3">
           <div class="meta-card p-3 border rounded h-100">
             <div class="d-flex align-items-center mb-2">
-              <div class="rounded-circle bg-success-subtle text-success p-2 me-2"><i class="bi bi-clipboard-data"></i></div>
-              <h6 class="mb-0">Area Details</h6>
+              <div class="rounded-circle bg-success-subtle text-success p-2 me-2">
+                <i class="bi bi-clipboard-data" />
+              </div>
+              <h6 class="mb-0">
+                Area Details
+              </h6>
             </div>
-            <div class="small text-muted">You can tailor these labels in Settings later.</div>
-            <hr />
-            <div class="mb-2"><strong>Year:</strong> {{ year }}</div>
-            <div class="mb-2"><strong>Province:</strong> {{ province }}</div>
-            <div class="mb-2"><strong>City/Municipality:</strong> {{ city }}</div>
-            <div class="mb-2"><strong>RHU/BHS:</strong> {{ facility }}</div>
-            <div class="mb-2"><strong>Total Population:</strong> {{ number(totalPopulation) }}</div>
-            <div class="mb-2"><strong>Eligible Population:</strong> {{ number(eligiblePopulation) }}</div>
-            <hr />
-            <div class="mb-1"><span class="legend-box bg-target me-2"></span>Target (100%)</div>
-            <div class="mb-1"><span class="legend-dot bg-penta1 me-2"></span>Penta 1</div>
-            <div class="mb-1"><span class="legend-dot bg-penta3 me-2"></span>Penta 3</div>
-            <div class="mb-1"><span class="legend-dot bg-mcv1 me-2"></span>MCV 1</div>
-            <div class="mb-1"><span class="legend-dot bg-mcv2 me-2"></span>MCV 2</div>
+            <div class="small text-muted">
+              You can tailor these labels in Settings later.
+            </div>
+            <hr>
+            <div class="mb-2">
+              <strong>Year:</strong> {{ year }}
+            </div>
+            <div class="mb-2">
+              <strong>Province:</strong> {{ province }}
+            </div>
+            <div class="mb-2">
+              <strong>City/Municipality:</strong> {{ city }}
+            </div>
+            <div class="mb-2">
+              <strong>RHU/BHS:</strong> {{ facility }}
+            </div>
+            <div class="mb-2">
+              <strong>Total Population:</strong> {{ number(totalPopulation) }}
+            </div>
+            <div class="mb-2">
+              <strong>Eligible Population:</strong> {{ number(eligiblePopulation) }}
+            </div>
+            <hr>
+            <div class="mb-1">
+              <span class="legend-box bg-target me-2" />Target (100%)
+            </div>
+            <div class="mb-1">
+              <span class="legend-dot bg-penta1 me-2" />Penta 1
+            </div>
+            <div class="mb-1">
+              <span class="legend-dot bg-penta3 me-2" />Penta 3
+            </div>
+            <div class="mb-1">
+              <span class="legend-dot bg-mcv1 me-2" />MCV 1
+            </div>
+            <div class="mb-1">
+              <span class="legend-dot bg-mcv2 me-2" />MCV 2
+            </div>
           </div>
         </div>
 
@@ -68,40 +132,124 @@
           <div class="chart-wrap border rounded p-3">
             <div class="chart-inner">
               <!-- SVG Grid and Lines -->
-              <svg :viewBox="`0 0 ${width} ${height}`" preserveAspectRatio="none" class="w-100" style="height:420px;">
+              <svg
+                :viewBox="`0 0 ${width} ${height}`"
+                preserveAspectRatio="none"
+                class="w-100"
+                style="height:420px;"
+              >
                 <!-- Grid -->
                 <g>
-                  <line v-for="i in 10" :key="'h-'+i" :x1="margin.left" :x2="width - margin.right" :y1="yPercent(i*10)" :y2="yPercent(i*10)" stroke="#e9ecef" stroke-width="1" />
-                  <line v-for="(m, idx) in 12" :key="'v-'+idx" :x1="x(idx+1)" :x2="x(idx+1)" :y1="margin.top" :y2="height - margin.bottom" stroke="#f1f3f5" stroke-width="1" />
+                  <line
+                    v-for="i in 10"
+                    :key="'h-'+i"
+                    :x1="margin.left"
+                    :x2="width - margin.right"
+                    :y1="yPercent(i*10)"
+                    :y2="yPercent(i*10)"
+                    stroke="#e9ecef"
+                    stroke-width="1"
+                  />
+                  <line
+                    v-for="(m, idx) in 12"
+                    :key="'v-'+idx"
+                    :x1="x(idx+1)"
+                    :x2="x(idx+1)"
+                    :y1="margin.top"
+                    :y2="height - margin.bottom"
+                    stroke="#f1f3f5"
+                    stroke-width="1"
+                  />
                 </g>
                 
                 <!-- Target line -->
-                <polyline :points="points(targetCumulative)" class="line-target" />
+                <polyline
+                  :points="points(targetCumulative)"
+                  class="line-target"
+                />
 
                 <!-- Series lines -->
-                <polyline :points="points(series.penta1)" class="line-penta1" />
-                <polyline :points="points(series.penta3)" class="line-penta3" />
-                <polyline :points="points(series.mcv1)" class="line-mcv1" />
-                <polyline :points="points(series.mcv2)" class="line-mcv2" />
+                <polyline
+                  :points="points(series.penta1)"
+                  class="line-penta1"
+                />
+                <polyline
+                  :points="points(series.penta3)"
+                  class="line-penta3"
+                />
+                <polyline
+                  :points="points(series.mcv1)"
+                  class="line-mcv1"
+                />
+                <polyline
+                  :points="points(series.mcv2)"
+                  class="line-mcv2"
+                />
 
                 <!-- Markers -->
-                <g v-for="(val, i) in series.penta1" :key="'mk1-'+i">
-                  <circle :cx="x(i+1)" :cy="yValue(val)" r="3" class="dot-penta1" />
+                <g
+                  v-for="(val, i) in series.penta1"
+                  :key="'mk1-'+i"
+                >
+                  <circle
+                    :cx="x(i+1)"
+                    :cy="yValue(val)"
+                    r="3"
+                    class="dot-penta1"
+                  />
                 </g>
-                <g v-for="(val, i) in series.penta3" :key="'mk3-'+i">
-                  <circle :cx="x(i+1)" :cy="yValue(val)" r="3" class="dot-penta3" />
+                <g
+                  v-for="(val, i) in series.penta3"
+                  :key="'mk3-'+i"
+                >
+                  <circle
+                    :cx="x(i+1)"
+                    :cy="yValue(val)"
+                    r="3"
+                    class="dot-penta3"
+                  />
                 </g>
-                <g v-for="(val, i) in series.mcv1" :key="'mk4-'+i">
-                  <circle :cx="x(i+1)" :cy="yValue(val)" r="3" class="dot-mcv1" />
+                <g
+                  v-for="(val, i) in series.mcv1"
+                  :key="'mk4-'+i"
+                >
+                  <circle
+                    :cx="x(i+1)"
+                    :cy="yValue(val)"
+                    r="3"
+                    class="dot-mcv1"
+                  />
                 </g>
-                <g v-for="(val, i) in series.mcv2" :key="'mk5-'+i">
-                  <circle :cx="x(i+1)" :cy="yValue(val)" r="3" class="dot-mcv2" />
+                <g
+                  v-for="(val, i) in series.mcv2"
+                  :key="'mk5-'+i"
+                >
+                  <circle
+                    :cx="x(i+1)"
+                    :cy="yValue(val)"
+                    r="3"
+                    class="dot-mcv2"
+                  />
                 </g>
 
                 <!-- Axes labels -->
                 <g>
-                  <text v-for="(m, i) in months" :key="'lbl-'+i" :x="x(i+1)" :y="height - 6" text-anchor="middle" class="axis-label">{{ m.label.slice(0,3) }}</text>
-                  <text v-for="i in 10" :key="'pct-'+i" :x="margin.left - 6" :y="yPercent(i*10) + 3" text-anchor="end" class="axis-label">{{ i*10 }}%</text>
+                  <text
+                    v-for="(m, i) in months"
+                    :key="'lbl-'+i"
+                    :x="x(i+1)"
+                    :y="height - 6"
+                    text-anchor="middle"
+                    class="axis-label"
+                  >{{ m.label.slice(0,3) }}</text>
+                  <text
+                    v-for="i in 10"
+                    :key="'pct-'+i"
+                    :x="margin.left - 6"
+                    :y="yPercent(i*10) + 3"
+                    text-anchor="end"
+                    class="axis-label"
+                  >{{ i*10 }}%</text>
                 </g>
               </svg>
             </div>
@@ -115,27 +263,64 @@
           <thead class="table-light">
             <tr>
               <th>Month</th>
-              <th class="text-center">Penta 1</th>
-              <th class="text-center">Cumulative</th>
-              <th class="text-center">Penta 3</th>
-              <th class="text-center">Cumulative</th>
-              <th class="text-center">MCV 1</th>
-              <th class="text-center">Cumulative</th>
-              <th class="text-center">MCV 2</th>
-              <th class="text-center">Cumulative</th>
+              <th class="text-center">
+                Penta 1
+              </th>
+              <th class="text-center">
+                Cumulative
+              </th>
+              <th class="text-center">
+                Penta 3
+              </th>
+              <th class="text-center">
+                Cumulative
+              </th>
+              <th class="text-center">
+                MCV 1
+              </th>
+              <th class="text-center">
+                Cumulative
+              </th>
+              <th class="text-center">
+                MCV 2
+              </th>
+              <th class="text-center">
+                Cumulative
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(m, idx) in 12" :key="'row-'+idx">
-              <td class="fw-semibold">{{ months[idx].label }}</td>
-              <td class="text-center">{{ monthly.penta1[idx] || 0 }}</td>
-              <td class="text-center text-primary fw-semibold">{{ series.penta1[idx] || 0 }}</td>
-              <td class="text-center">{{ monthly.penta3[idx] || 0 }}</td>
-              <td class="text-center text-primary fw-semibold">{{ series.penta3[idx] || 0 }}</td>
-              <td class="text-center">{{ monthly.mcv1[idx] || 0 }}</td>
-              <td class="text-center text-primary fw-semibold">{{ series.mcv1[idx] || 0 }}</td>
-              <td class="text-center">{{ monthly.mcv2[idx] || 0 }}</td>
-              <td class="text-center text-primary fw-semibold">{{ series.mcv2[idx] || 0 }}</td>
+            <tr
+              v-for="(m, idx) in 12"
+              :key="'row-'+idx"
+            >
+              <td class="fw-semibold">
+                {{ months[idx].label }}
+              </td>
+              <td class="text-center">
+                {{ monthly.penta1[idx] || 0 }}
+              </td>
+              <td class="text-center text-primary fw-semibold">
+                {{ series.penta1[idx] || 0 }}
+              </td>
+              <td class="text-center">
+                {{ monthly.penta3[idx] || 0 }}
+              </td>
+              <td class="text-center text-primary fw-semibold">
+                {{ series.penta3[idx] || 0 }}
+              </td>
+              <td class="text-center">
+                {{ monthly.mcv1[idx] || 0 }}
+              </td>
+              <td class="text-center text-primary fw-semibold">
+                {{ series.mcv1[idx] || 0 }}
+              </td>
+              <td class="text-center">
+                {{ monthly.mcv2[idx] || 0 }}
+              </td>
+              <td class="text-center text-primary fw-semibold">
+                {{ series.mcv2[idx] || 0 }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -143,55 +328,124 @@
 
       <!-- Debug: Antigen names encountered -->
       <div class="mt-3">
-        <button class="btn btn-sm btn-outline-secondary" @click="showDebug = !showDebug">
-          <i class="bi" :class="showDebug ? 'bi-bug-fill' : 'bi-bug'"></i>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          @click="showDebug = !showDebug"
+        >
+          <i
+            class="bi"
+            :class="showDebug ? 'bi-bug-fill' : 'bi-bug'"
+          />
           {{ showDebug ? 'Hide' : 'Show' }} raw antigen names (debug)
         </button>
-        <div v-if="showDebug" class="alert alert-secondary mt-2 small">
-          <div class="fw-semibold mb-1">Antigen names seen this year (as-is):</div>
-          <div v-if="debugAntigenNamesArr.length === 0" class="text-muted">— none yet —</div>
-          <ul v-else class="mb-2">
-            <li v-for="n in debugAntigenNamesArr" :key="n">{{ n }}</li>
+        <div
+          v-if="showDebug"
+          class="alert alert-secondary mt-2 small"
+        >
+          <div class="fw-semibold mb-1">
+            Antigen names seen this year (as-is):
+          </div>
+          <div
+            v-if="debugAntigenNamesArr.length === 0"
+            class="text-muted"
+          >
+            — none yet —
+          </div>
+          <ul
+            v-else
+            class="mb-2"
+          >
+            <li
+              v-for="n in debugAntigenNamesArr"
+              :key="n"
+            >
+              {{ n }}
+            </li>
           </ul>
-          <div class="fw-semibold mb-1">Upper-cased variants (for matching):</div>
-          <div v-if="debugAntigenUpperArr.length === 0" class="text-muted">— none yet —</div>
+          <div class="fw-semibold mb-1">
+            Upper-cased variants (for matching):
+          </div>
+          <div
+            v-if="debugAntigenUpperArr.length === 0"
+            class="text-muted"
+          >
+            — none yet —
+          </div>
           <ul v-else>
-            <li v-for="n in debugAntigenUpperArr" :key="'u-'+n">{{ n }}</li>
+            <li
+              v-for="n in debugAntigenUpperArr"
+              :key="'u-'+n"
+            >
+              {{ n }}
+            </li>
           </ul>
-          <hr />
-          <div class="fw-semibold mb-2">Quantities detected (aggregated up to As of Month):</div>
-          <div v-if="debugCountList.length === 0" class="text-muted">— none yet —</div>
-          <div v-else class="table-responsive">
+          <hr>
+          <div class="fw-semibold mb-2">
+            Quantities detected (aggregated up to As of Month):
+          </div>
+          <div
+            v-if="debugCountList.length === 0"
+            class="text-muted"
+          >
+            — none yet —
+          </div>
+          <div
+            v-else
+            class="table-responsive"
+          >
             <table class="table table-sm table-bordered">
               <thead class="table-light">
                 <tr>
                   <th>Antigen (upper)</th>
-                  <th class="text-end">Quantity</th>
+                  <th class="text-end">
+                    Quantity
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in debugCountList" :key="row.name">
+                <tr
+                  v-for="row in debugCountList"
+                  :key="row.name"
+                >
                   <td>{{ row.name }}</td>
-                  <td class="text-end">{{ row.count }}</td>
+                  <td class="text-end">
+                    {{ row.count }}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div v-if="debugDoseRows.length" class="table-responsive mt-2">
-            <div class="fw-semibold mb-2">Per-dose breakdown:</div>
+          <div
+            v-if="debugDoseRows.length"
+            class="table-responsive mt-2"
+          >
+            <div class="fw-semibold mb-2">
+              Per-dose breakdown:
+            </div>
             <table class="table table-sm table-bordered">
               <thead class="table-light">
                 <tr>
                   <th>Antigen (upper)</th>
-                  <th class="text-end">Dose</th>
-                  <th class="text-end">Count</th>
+                  <th class="text-end">
+                    Dose
+                  </th>
+                  <th class="text-end">
+                    Count
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="r in debugDoseRows" :key="r.name + '-' + r.dose">
+                <tr
+                  v-for="r in debugDoseRows"
+                  :key="r.name + '-' + r.dose"
+                >
                   <td>{{ r.name }}</td>
-                  <td class="text-end">{{ r.dose }}</td>
-                  <td class="text-end">{{ r.count }}</td>
+                  <td class="text-end">
+                    {{ r.dose }}
+                  </td>
+                  <td class="text-end">
+                    {{ r.count }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -333,7 +587,7 @@ async function loadData() {
       }
       if (r.debug) {
         // Also log for quick inspection in DevTools
-        // eslint-disable-next-line no-console
+         
         console.log(`Month ${i + 1} debug`, r.debug)
         // Aggregate counts
         if (r.debug.countByAntigenUpper) {

@@ -1,29 +1,44 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click="$emit('close')">
-    <div class="modal-content" @click.stop>
+  <div
+    v-if="show"
+    class="modal-overlay"
+    @click="$emit('close')"
+  >
+    <div
+      class="modal-content"
+      @click.stop
+    >
       <div class="modal-header">
         <h5>New Conversation</h5>
-        <button @click="$emit('close')" class="close-btn">
-          <i class="bi bi-x"></i>
+        <button
+          class="close-btn"
+          @click="$emit('close')"
+        >
+          <i class="bi bi-x" />
         </button>
       </div>
       <div class="modal-body">
         <!-- Loading users state -->
-        <div v-if="availableUsers.length === 0 && !creating" class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
+        <div
+          v-if="availableUsers.length === 0 && !creating"
+          class="alert alert-info"
+        >
+          <i class="bi bi-info-circle me-2" />
           Loading available users...
         </div>
         
         <div class="form-group">
           <label for="recipient">Recipient: <span class="text-danger">*</span></label>
           <select 
+            id="recipient"
             :value="recipientId"
-            @change="$emit('update:recipientId', $event.target.value)"
-            id="recipient" 
-            class="form-control"
+            class="form-control" 
             :disabled="creating"
+            @change="$emit('update:recipientId', $event.target.value)"
           >
-            <option value="">Select recipient...</option>
+            <option value="">
+              Select recipient...
+            </option>
             <option 
               v-for="user in availableUsers" 
               :key="user.user_id" 
@@ -32,50 +47,65 @@
               {{ user.full_name || `${user.firstname} ${user.surname}` }} ({{ user.role }})
             </option>
           </select>
-          <small v-if="availableUsers.length === 0" class="text-muted">
+          <small
+            v-if="availableUsers.length === 0"
+            class="text-muted"
+          >
             No users available. Please refresh or contact support.
           </small>
         </div>
         <div class="form-group">
           <label for="subject">Subject (optional):</label>
           <input 
+            id="subject"
             :value="subject"
-            @input="$emit('update:subject', $event.target.value)"
             type="text" 
-            id="subject" 
-            class="form-control"
+            class="form-control" 
             placeholder="Enter conversation subject..."
             :disabled="creating"
             maxlength="200"
+            @input="$emit('update:subject', $event.target.value)"
           >
         </div>
         <div class="form-group">
           <label for="message">First Message (optional):</label>
           <textarea 
+            id="message"
             :value="message"
-            @input="$emit('update:message', $event.target.value)"
-            id="message" 
-            class="form-control"
+            class="form-control" 
             rows="4"
             placeholder="Type your message here or leave blank to start conversation..."
             :disabled="creating"
             maxlength="1000"
-          ></textarea>
+            @input="$emit('update:message', $event.target.value)"
+          />
           <small class="text-muted">
             {{ message.length }}/1000 characters
           </small>
         </div>
       </div>
       <div class="modal-footer">
-        <button @click="$emit('close')" class="btn btn-secondary" :disabled="creating">Cancel</button>
-        <button 
-          @click="$emit('create-conversation')" 
-          class="btn btn-primary" 
-          :disabled="creating || !canCreate"
-          title="Send message"
+        <button
+          class="btn btn-secondary"
+          :disabled="creating"
+          @click="$emit('close')"
         >
-          <i v-if="creating" class="bi bi-hourglass-split me-1"></i>
-          <i v-else class="bi bi-send me-1"></i>
+          Cancel
+        </button>
+        <button 
+          class="btn btn-primary" 
+          :disabled="creating || !canCreate" 
+          title="Send message"
+          @click="$emit('create-conversation')"
+        >
+          <i
+            v-if="creating"
+            class="bi bi-hourglass-split me-1"
+          />
+          <i
+            v-else
+            class="bi bi-send me-1"
+          />
           {{ creating ? 'Sending...' : 'Send' }}
         </button>
       </div>

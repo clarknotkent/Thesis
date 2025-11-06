@@ -82,7 +82,7 @@ export function useMedicalRecordEditor(props) {
     const dewormingCount = services.filter(s => s.deworming_type).length;
     const vitaminACount = services.filter(s => s.vitamin_a_type).length;
     
-    let findings = [];
+    const findings = [];
     if (vaccineCount > 0) findings.push(`${vaccineCount} vaccine${vaccineCount > 1 ? 's' : ''} administered`);
     if (dewormingCount > 0) findings.push(`${dewormingCount} deworming treatment${dewormingCount > 1 ? 's' : ''} given`);
     if (vitaminACount > 0) findings.push(`${vitaminACount} vitamin A supplement${vitaminACount > 1 ? 's' : ''} provided`);
@@ -98,7 +98,7 @@ export function useMedicalRecordEditor(props) {
     const dewormingCount = services.filter(s => s.deworming_type).length;
     const vitaminACount = services.filter(s => s.vitamin_a_type).length;
     
-    let servicesRendered = [];
+    const servicesRendered = [];
     if (vaccineCount > 0) servicesRendered.push(`Vaccination (${vaccineCount} dose${vaccineCount > 1 ? 's' : ''})`);
     if (dewormingCount > 0) servicesRendered.push(`Deworming (${dewormingCount} treatment${dewormingCount > 1 ? 's' : ''})`);
     if (vitaminACount > 0) servicesRendered.push(`Vitamin A supplementation (${vitaminACount} dose${vitaminACount > 1 ? 's' : ''})`);

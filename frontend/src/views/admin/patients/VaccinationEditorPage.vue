@@ -1,7 +1,6 @@
 <template>
   <AdminLayout>
     <div class="container-fluid py-3">
-
       <VaccinationRecordEditor
         :embedded-page="true"
         :patient-id="$route.params.id"
@@ -12,7 +11,7 @@
       />
     </div>
   </AdminLayout>
-  </template>
+</template>
 
 <script setup>
 import { ref, computed } from 'vue'

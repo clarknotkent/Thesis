@@ -4,12 +4,20 @@
     <div class="patient-details-header-section">
       <!-- Patient Details Header Bar -->
       <div class="details-header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Patient Details</h1>
-        <button class="add-button" @click="goToAddImmunization">
-          <i class="bi bi-plus-lg"></i>
+        <h1 class="page-title">
+          Patient Details
+        </h1>
+        <button
+          class="add-button"
+          @click="goToAddImmunization"
+        >
+          <i class="bi bi-plus-lg" />
         </button>
       </div>
 
@@ -29,7 +37,10 @@
     <!-- Content wrapper (same pattern as PatientRecords) -->
     <div class="page-content-wrapper">
       <!-- Patient Information Tab -->
-      <div v-if="activeTab === 'patient-info'" class="tab-content">
+      <div
+        v-if="activeTab === 'patient-info'"
+        class="tab-content"
+      >
         <!-- QR Code Card -->
         <PatientQRCodeCard :patient="patient" />
 
@@ -117,7 +128,7 @@
               <span class="info-value">{{ patient?.guardianInfo?.family_number || '—' }}</span>
             </div>
             <div class="info-section-header">
-              <i class="bi bi-person-heart"></i>
+              <i class="bi bi-person-heart" />
               <span>Mother's Information</span>
             </div>
             <div class="info-item">
@@ -133,7 +144,7 @@
               <span class="info-value">{{ patient?.motherInfo?.phone || '—' }}</span>
             </div>
             <div class="info-section-header">
-              <i class="bi bi-person-heart"></i>
+              <i class="bi bi-person-heart" />
               <span>Father's Information</span>
             </div>
             <div class="info-item">
@@ -208,16 +219,28 @@
       </div>
 
       <!-- Vaccination History Tab -->
-      <div v-else-if="activeTab === 'vaccination-history'" class="tab-content">
+      <div
+        v-else-if="activeTab === 'vaccination-history'"
+        class="tab-content"
+      >
         <!-- Loading State -->
-        <div v-if="loading" class="loading-container">
-          <div class="spinner-border text-primary" role="status">
+        <div
+          v-if="loading"
+          class="loading-container"
+        >
+          <div
+            class="spinner-border text-primary"
+            role="status"
+          >
             <span class="visually-hidden">Loading...</span>
           </div>
         </div>
 
         <!-- Vaccination Accordion List -->
-        <div v-else-if="groupedVaccinations.length > 0" class="vaccination-accordion-list">
+        <div
+          v-else-if="groupedVaccinations.length > 0"
+          class="vaccination-accordion-list"
+        >
           <VaccinationRecordCard
             v-for="(group, index) in groupedVaccinations"
             :key="group.vaccineName"
@@ -230,24 +253,45 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else class="empty-state">
-          <i class="bi bi-shield-exclamation empty-icon"></i>
-          <h4 class="empty-title">No Vaccination Records</h4>
-          <p class="empty-text">This patient has no vaccination history yet.</p>
+        <div
+          v-else
+          class="empty-state"
+        >
+          <i class="bi bi-shield-exclamation empty-icon" />
+          <h4 class="empty-title">
+            No Vaccination Records
+          </h4>
+          <p class="empty-text">
+            This patient has no vaccination history yet.
+          </p>
         </div>
       </div>
 
       <!-- Scheduled Vaccinations Tab -->
-      <div v-else-if="activeTab === 'scheduled-vaccinations'" class="tab-content">
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
+      <div
+        v-else-if="activeTab === 'scheduled-vaccinations'"
+        class="tab-content"
+      >
+        <div
+          v-if="loading"
+          class="loading-state"
+        >
+          <div class="spinner" />
           <p>Loading scheduled vaccinations...</p>
         </div>
-        <div v-else-if="scheduledVaccinations.length === 0" class="empty-state">
-          <i class="bi bi-calendar-check empty-icon"></i>
-          <p class="empty-text">No scheduled vaccinations found</p>
+        <div
+          v-else-if="scheduledVaccinations.length === 0"
+          class="empty-state"
+        >
+          <i class="bi bi-calendar-check empty-icon" />
+          <p class="empty-text">
+            No scheduled vaccinations found
+          </p>
         </div>
-        <div v-else class="vaccines-list">
+        <div
+          v-else
+          class="vaccines-list"
+        >
           <ScheduledVaccineCard
             v-for="(vaccine, index) in scheduledVaccinations"
             :key="vaccine.schedule_id || index"
@@ -262,16 +306,30 @@
       </div>
 
       <!-- Medical History Tab -->
-      <div v-else-if="activeTab === 'medical-history'" class="tab-content">
-        <div v-if="loading" class="loading-state">
-          <div class="spinner"></div>
+      <div
+        v-else-if="activeTab === 'medical-history'"
+        class="tab-content"
+      >
+        <div
+          v-if="loading"
+          class="loading-state"
+        >
+          <div class="spinner" />
           <p>Loading medical history...</p>
         </div>
-        <div v-else-if="medicalHistory.length === 0" class="empty-state">
-          <i class="bi bi-clipboard2-pulse empty-icon"></i>
-          <p class="empty-text">No medical history found</p>
+        <div
+          v-else-if="medicalHistory.length === 0"
+          class="empty-state"
+        >
+          <i class="bi bi-clipboard2-pulse empty-icon" />
+          <p class="empty-text">
+            No medical history found
+          </p>
         </div>
-        <div v-else class="history-list">
+        <div
+          v-else
+          class="history-list"
+        >
           <MedicalHistoryCard
             v-for="(visit, index) in medicalHistory"
             :key="visit.visit_id || index"
@@ -300,49 +358,99 @@
 
     <!-- Modals: placed inside the main template so they render correctly -->
     <!-- Edit Scheduled Vaccination Modal -->
-    <div v-if="showEditModal" class="modal fade show" tabindex="-1" style="display: block;">
+    <div
+      v-if="showEditModal"
+      class="modal fade show"
+      tabindex="-1"
+      style="display: block;"
+    >
       <div class="modal-dialog modal-sm">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Edit Scheduled Date</h5>
-            <button type="button" class="btn-close" @click="closeEditModal"></button>
+            <h5 class="modal-title">
+              Edit Scheduled Date
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="closeEditModal"
+            />
           </div>
           <div class="modal-body">
             <label class="form-label">Scheduled date</label>
-            <input type="date" class="form-control" v-model="editScheduledDate" />
+            <input
+              v-model="editScheduledDate"
+              type="date"
+              class="form-control"
+            >
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeEditModal">Cancel</button>
-            <button class="btn btn-primary" @click="saveScheduleEdit">Save</button>
+            <button
+              class="btn btn-secondary"
+              @click="closeEditModal"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn btn-primary"
+              @click="saveScheduleEdit"
+            >
+              Save
+            </button>
           </div>
         </div>
       </div>
     </div>
-    <div v-if="showEditModal" class="modal-backdrop fade show"></div>
+    <div
+      v-if="showEditModal"
+      class="modal-backdrop fade show"
+    />
 
     <!-- Calendar / Read-only modal for completed schedules -->
-    <div v-if="showCalendarModal" class="modal fade show" tabindex="-1" style="display: block;">
+    <div
+      v-if="showCalendarModal"
+      class="modal fade show"
+      tabindex="-1"
+      style="display: block;"
+    >
       <div class="modal-dialog modal-sm">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Scheduled Date</h5>
-            <button type="button" class="btn-close" @click="closeCalendarModal"></button>
+            <h5 class="modal-title">
+              Scheduled Date
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="closeCalendarModal"
+            />
           </div>
           <div class="modal-body text-center">
             <div class="calendar-visual mb-3">
-              <div class="month">{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).toLocaleString('en-PH', { month: 'short', year: 'numeric' }) : '') : '' }}</div>
-              <div class="day">{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).getDate() : '') : '' }}</div>
+              <div class="month">
+                {{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).toLocaleString('en-PH', { month: 'short', year: 'numeric' }) : '') : '' }}
+              </div>
+              <div class="day">
+                {{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).getDate() : '') : '' }}
+              </div>
             </div>
             <div>{{ calendarTarget ? (calendarTarget.scheduled_date ? new Date(calendarTarget.scheduled_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—') : '—' }}</div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary" @click="closeCalendarModal">Close</button>
+            <button
+              class="btn btn-primary"
+              @click="closeCalendarModal"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
     </div>
-    <div v-if="showCalendarModal" class="modal-backdrop fade show"></div>
-
+    <div
+      v-if="showCalendarModal"
+      class="modal-backdrop fade show"
+    />
   </HealthWorkerLayout>
 </template>
 

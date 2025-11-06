@@ -18,16 +18,31 @@
       <table class="table table-hover">
         <thead>
           <tr>
-            <th v-for="column in columns" :key="column.key">
+            <th
+              v-for="column in columns"
+              :key="column.key"
+            >
               {{ column.label }}
             </th>
-            <th v-if="actions.length > 0">Actions</th>
+            <th v-if="actions.length > 0">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in data" :key="item[keyField]">
-            <td v-for="column in columns" :key="column.key">
-              <slot :name="`cell-${column.key}`" :item="item" :value="item[column.key]">
+          <tr
+            v-for="item in data"
+            :key="item[keyField]"
+          >
+            <td
+              v-for="column in columns"
+              :key="column.key"
+            >
+              <slot
+                :name="`cell-${column.key}`"
+                :item="item"
+                :value="item[column.key]"
+              >
                 {{ item[column.key] }}
               </slot>
             </td>
@@ -46,7 +61,10 @@
             </td>
           </tr>
           <tr v-if="data.length === 0">
-            <td :colspan="columns.length + (actions.length > 0 ? 1 : 0)" class="text-center text-muted py-4">
+            <td
+              :colspan="columns.length + (actions.length > 0 ? 1 : 0)"
+              class="text-center text-muted py-4"
+            >
               <slot name="empty">
                 No data available
               </slot>

@@ -146,7 +146,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
     // Step 2: For each child, fetch detailed data SEQUENTIALLY (transactional writes per child)
     for (const patient of patients) {
       const patientId = patient.id || patient.patient_id
-      let localCounts = { immunizations: 0, visits: 0, vitals: 0, schedules: 0 }
+      const localCounts = { immunizations: 0, visits: 0, vitals: 0, schedules: 0 }
 
       // 2.1 Details (also lets interceptor cache nested immunizations/schedule)
       try {
@@ -161,7 +161,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
 
       // 2.2 Visits and vitals (sequential; accumulate writes then one transaction)
       let visitRows = []
-      let vitalRows = []
+      const vitalRows = []
       try {
         const visitsResponse = await api.get(`/parent/children/${patientId}/visits`)
         let visits = []

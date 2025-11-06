@@ -2,11 +2,27 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">View Details</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            View Details
+          </li>
         </ol>
       </nav>
 
@@ -14,36 +30,60 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 class="mb-1">
-            <i class="bi bi-person-circle me-2"></i>Patient Details
+            <i class="bi bi-person-circle me-2" />Patient Details
           </h2>
-          <p class="text-muted mb-0">View patient information and vaccination history</p>
+          <p class="text-muted mb-0">
+            View patient information and vaccination history
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/dashboard" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/dashboard"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading patient data...</span>
         </div>
-        <p class="text-muted mt-2">Loading patient information...</p>
+        <p class="text-muted mt-2">
+          Loading patient information...
+        </p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        {{ error }} <router-link to="/admin/patients">Go back to patient list</router-link>
+      <div
+        v-else-if="error"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        {{ error }} <router-link to="/admin/patients">
+          Go back to patient list
+        </router-link>
       </div>
 
       <!-- Patient Details -->
-      <div v-else class="row">
+      <div
+        v-else
+        class="row"
+      >
         <!-- Patient Information with Tabs -->
         <div class="col-lg-8 mb-4">
           <div class="card shadow">
@@ -56,7 +96,7 @@
                     :class="{ active: activeTab === 'info' }"
                     @click="activeTab = 'info'"
                   >
-                    <i class="bi bi-person-circle me-2"></i>Patient Information
+                    <i class="bi bi-person-circle me-2" />Patient Information
                   </button>
                 </li>
                 <li class="nav-item">
@@ -65,7 +105,7 @@
                     :class="{ active: activeTab === 'vaccinations' }"
                     @click="activeTab = 'vaccinations'"
                   >
-                    <i class="bi bi-shield-check me-2"></i>Vaccination History
+                    <i class="bi bi-shield-check me-2" />Vaccination History
                   </button>
                 </li>
                 <li class="nav-item">
@@ -74,7 +114,7 @@
                     :class="{ active: activeTab === 'scheduled' }"
                     @click="activeTab = 'scheduled'"
                   >
-                    <i class="bi bi-calendar-check me-2"></i>Scheduled Vaccinations
+                    <i class="bi bi-calendar-check me-2" />Scheduled Vaccinations
                   </button>
                 </li>
                 <li class="nav-item">
@@ -83,7 +123,7 @@
                     :class="{ active: activeTab === 'visits' }"
                     @click="activeTab = 'visits'"
                   >
-                    <i class="bi bi-clipboard-pulse me-2"></i>Medical History
+                    <i class="bi bi-clipboard-pulse me-2" />Medical History
                   </button>
                 </li>
               </ul>
@@ -103,7 +143,7 @@
                     :to="{ name: 'EditPatient', params: { id: patientId } }"
                     class="btn btn-primary btn-sm"
                   >
-                    <i class="bi bi-pencil-square me-2"></i>Edit Patient Information
+                    <i class="bi bi-pencil-square me-2" />Edit Patient Information
                   </router-link>
                 </div>
               </div>
@@ -120,9 +160,11 @@
 
               <!-- Medical History Tab -->
               <div v-if="activeTab === 'visits'">
-                <MedicalHistory :patient-id="patientId" :embedded-page="true" />
-                <div class="d-flex justify-content-end mt-3">
-                </div>
+                <MedicalHistory
+                  :patient-id="patientId"
+                  :embedded-page="true"
+                />
+                <div class="d-flex justify-content-end mt-3" />
               </div>
             </div>
           </div>
@@ -133,7 +175,9 @@
           <!-- Patient Stats Card -->
           <div class="card shadow mb-4 flex-grow-1">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Patient Summary</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Patient Summary
+              </h6>
             </div>
             <div class="card-body">
               <div class="mb-3">
@@ -150,19 +194,31 @@
               </div>
               <div class="mb-3">
                 <small class="text-muted d-block mb-1">Sex</small>
-                <span class="badge" :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'">
+                <span
+                  class="badge"
+                  :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'"
+                >
                   {{ patientData.sex }}
                 </span>
               </div>
-              <div class="mb-3" v-if="patientData.family_number">
+              <div
+                v-if="patientData.family_number"
+                class="mb-3"
+              >
                 <small class="text-muted d-block mb-1">Family Number</small>
                 <strong>{{ patientData.family_number }}</strong>
               </div>
-              <div class="mb-3" v-if="lastVaccination">
+              <div
+                v-if="lastVaccination"
+                class="mb-3"
+              >
                 <small class="text-muted d-block mb-1">Last Vaccination</small>
                 <strong>{{ formatDate(lastVaccination) }}</strong>
               </div>
-              <div v-else class="mb-3">
+              <div
+                v-else
+                class="mb-3"
+              >
                 <small class="text-muted d-block mb-1">Last Vaccination</small>
                 <span class="text-warning">No vaccination records</span>
               </div>
@@ -172,14 +228,37 @@
           <!-- QR Code Card -->
           <div class="card shadow flex-grow-1">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Patient QR Code</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Patient QR Code
+              </h6>
             </div>
             <div class="card-body text-center d-flex flex-column justify-content-center">
-              <canvas ref="qrCanvas" width="200" height="200" style="border: 1px solid #ccc; margin: 0 auto;"></canvas>
-              <p class="mt-3 mb-2"><small class="text-muted">Scan to access vaccination records</small></p>
-              <p v-if="patientData.qr" class="mt-2 mb-2"><small><a :href="patientData.qr.url" target="_blank" rel="noreferrer">Open QR link</a></small></p>
-              <button v-if="patientData.qr" class="btn btn-sm btn-outline-primary mt-2 mx-auto" style="max-width: 150px;" @click="refreshQr">
-                <i class="bi bi-arrow-clockwise me-1"></i>Refresh QR
+              <canvas
+                ref="qrCanvas"
+                width="200"
+                height="200"
+                style="border: 1px solid #ccc; margin: 0 auto;"
+              />
+              <p class="mt-3 mb-2">
+                <small class="text-muted">Scan to access vaccination records</small>
+              </p>
+              <p
+                v-if="patientData.qr"
+                class="mt-2 mb-2"
+              >
+                <small><a
+                  :href="patientData.qr.url"
+                  target="_blank"
+                  rel="noreferrer"
+                >Open QR link</a></small>
+              </p>
+              <button
+                v-if="patientData.qr"
+                class="btn btn-sm btn-outline-primary mt-2 mx-auto"
+                style="max-width: 150px;"
+                @click="refreshQr"
+              >
+                <i class="bi bi-arrow-clockwise me-1" />Refresh QR
               </button>
             </div>
           </div>

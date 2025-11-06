@@ -6,19 +6,28 @@
         <AppCard class="parent-card">
           <div class="text-center">
             <div class="child-avatar-large mb-3">
-              <i class="bi bi-person-circle text-primary" style="font-size: 5rem;"></i>
+              <i
+                class="bi bi-person-circle text-primary"
+                style="font-size: 5rem;"
+              />
             </div>
-            <h3 class="fw-bold mb-1">{{ childInfo.name }}</h3>
-            <p class="text-muted mb-2">Patient ID: {{ childInfo.id }}</p>
+            <h3 class="fw-bold mb-1">
+              {{ childInfo.name }}
+            </h3>
+            <p class="text-muted mb-2">
+              Patient ID: {{ childInfo.id }}
+            </p>
             <div class="d-flex justify-content-center gap-2 mb-3">
               <span class="badge bg-info fs-6 px-3 py-2">{{ childInfo.ageDisplay }}</span>
               <span class="badge bg-secondary fs-6 px-3 py-2">{{ childInfo.gender }}</span>
             </div>
             <div class="vaccination-status-card">
               <div class="d-flex align-items-center justify-content-center">
-                <i class="bi bi-shield-check text-success me-2 fs-4"></i>
+                <i class="bi bi-shield-check text-success me-2 fs-4" />
                 <div>
-                  <div class="fw-bold">{{ vaccinationSummary.completed }}/{{ vaccinationSummary.total }} Vaccines</div>
+                  <div class="fw-bold">
+                    {{ vaccinationSummary.completed }}/{{ vaccinationSummary.total }} Vaccines
+                  </div>
                   <small class="text-muted">{{ vaccinationSummary.percentage }}% Complete</small>
                 </div>
               </div>
@@ -31,26 +40,38 @@
       <div class="quick-actions-bar mb-4">
         <div class="row g-2">
           <div class="col-6 col-md-3">
-            <button class="action-btn" @click="viewVaccinationSchedule">
-              <i class="bi bi-calendar-check"></i>
+            <button
+              class="action-btn"
+              @click="viewVaccinationSchedule"
+            >
+              <i class="bi bi-calendar-check" />
               <span>Schedule</span>
             </button>
           </div>
           <div class="col-6 col-md-3">
-            <button class="action-btn" @click="downloadRecords">
-              <i class="bi bi-download"></i>
+            <button
+              class="action-btn"
+              @click="downloadRecords"
+            >
+              <i class="bi bi-download" />
               <span>Records</span>
             </button>
           </div>
           <div class="col-6 col-md-3">
-            <button class="action-btn" @click="scheduleAppointment">
-              <i class="bi bi-calendar-plus"></i>
+            <button
+              class="action-btn"
+              @click="scheduleAppointment"
+            >
+              <i class="bi bi-calendar-plus" />
               <span>Book Visit</span>
             </button>
           </div>
           <div class="col-6 col-md-3">
-            <button class="action-btn" @click="contactDoctor">
-              <i class="bi bi-chat-dots"></i>
+            <button
+              class="action-btn"
+              @click="contactDoctor"
+            >
+              <i class="bi bi-chat-dots" />
               <span>Message</span>
             </button>
           </div>
@@ -62,7 +83,7 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-success text-white">
-              <i class="bi bi-heart-pulse me-2"></i>
+              <i class="bi bi-heart-pulse me-2" />
               Health Overview
             </div>
           </template>
@@ -71,16 +92,23 @@
             <div class="col-md-6">
               <div class="health-indicator">
                 <div class="indicator-icon bg-success">
-                  <i class="bi bi-check-circle-fill"></i>
+                  <i class="bi bi-check-circle-fill" />
                 </div>
                 <div class="indicator-content">
-                  <h6 class="mb-1">Vaccination Status</h6>
-                  <p class="mb-0 small">{{ vaccinationSummary.completed }} of {{ vaccinationSummary.total }} vaccines completed</p>
-                  <div class="progress mt-2" style="height: 6px;">
+                  <h6 class="mb-1">
+                    Vaccination Status
+                  </h6>
+                  <p class="mb-0 small">
+                    {{ vaccinationSummary.completed }} of {{ vaccinationSummary.total }} vaccines completed
+                  </p>
+                  <div
+                    class="progress mt-2"
+                    style="height: 6px;"
+                  >
                     <div
                       class="progress-bar bg-success"
                       :style="{ width: vaccinationSummary.percentage + '%' }"
-                    ></div>
+                    />
                   </div>
                 </div>
               </div>
@@ -88,11 +116,15 @@
             <div class="col-md-6">
               <div class="health-indicator">
                 <div class="indicator-icon bg-info">
-                  <i class="bi bi-calendar-event"></i>
+                  <i class="bi bi-calendar-event" />
                 </div>
                 <div class="indicator-content">
-                  <h6 class="mb-1">Next Check-up</h6>
-                  <p class="mb-0 small">Regular health monitoring</p>
+                  <h6 class="mb-1">
+                    Next Check-up
+                  </h6>
+                  <p class="mb-0 small">
+                    Regular health monitoring
+                  </p>
                   <small class="text-muted">Schedule your next visit</small>
                 </div>
               </div>
@@ -106,34 +138,58 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-primary text-white">
-              <i class="bi bi-info-circle me-2"></i>
+              <i class="bi bi-info-circle me-2" />
               Basic Information
             </div>
           </template>
           <div class="parent-info-grid">
             <div class="parent-info-item">
-              <div class="parent-info-label">Full Name</div>
-              <div class="parent-info-value">{{ childInfo.name }}</div>
+              <div class="parent-info-label">
+                Full Name
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.name }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Date of Birth</div>
-              <div class="parent-info-value">{{ childInfo.dateOfBirth }}</div>
+              <div class="parent-info-label">
+                Date of Birth
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.dateOfBirth }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Age</div>
-              <div class="parent-info-value">{{ childInfo.ageDisplay }}</div>
+              <div class="parent-info-label">
+                Age
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.ageDisplay }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Gender</div>
-              <div class="parent-info-value">{{ childInfo.gender }}</div>
+              <div class="parent-info-label">
+                Gender
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.gender }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Blood Type</div>
-              <div class="parent-info-value">{{ childInfo.bloodType }}</div>
+              <div class="parent-info-label">
+                Blood Type
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.bloodType }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Barangay</div>
-              <div class="parent-info-value">{{ childInfo.barangay }}</div>
+              <div class="parent-info-label">
+                Barangay
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.barangay }}
+              </div>
             </div>
           </div>
         </AppCard>
@@ -144,34 +200,58 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-info text-white">
-              <i class="bi bi-baby me-2"></i>
+              <i class="bi bi-baby me-2" />
               Birth Information
             </div>
           </template>
           <div class="parent-info-grid">
             <div class="parent-info-item">
-              <div class="parent-info-label">Birth Weight</div>
-              <div class="parent-info-value">{{ childInfo.weight }}</div>
+              <div class="parent-info-label">
+                Birth Weight
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.weight }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Birth Length</div>
-              <div class="parent-info-value">{{ childInfo.height }}</div>
+              <div class="parent-info-label">
+                Birth Length
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.height }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Place of Birth</div>
-              <div class="parent-info-value">{{ childInfo.placeOfBirth || 'Not recorded' }}</div>
+              <div class="parent-info-label">
+                Place of Birth
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.placeOfBirth || 'Not recorded' }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Birth Attendant</div>
-              <div class="parent-info-value">{{ childInfo.birthAttendant || 'Not recorded' }}</div>
+              <div class="parent-info-label">
+                Birth Attendant
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.birthAttendant || 'Not recorded' }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Type of Delivery</div>
-              <div class="parent-info-value">{{ childInfo.deliveryType || 'Not recorded' }}</div>
+              <div class="parent-info-label">
+                Type of Delivery
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.deliveryType || 'Not recorded' }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Newborn Screening</div>
-              <div class="parent-info-value">{{ childInfo.newbornScreening || 'Not recorded' }}</div>
+              <div class="parent-info-label">
+                Newborn Screening
+              </div>
+              <div class="parent-info-value">
+                {{ childInfo.newbornScreening || 'Not recorded' }}
+              </div>
             </div>
           </div>
         </AppCard>
@@ -182,34 +262,58 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-success text-white">
-              <i class="bi bi-person-hearts me-2"></i>
+              <i class="bi bi-person-hearts me-2" />
               Parent/Guardian Information
             </div>
           </template>
           <div class="parent-info-grid">
             <div class="parent-info-item">
-              <div class="parent-info-label">Guardian Name</div>
-              <div class="parent-info-value">{{ parentInfo.name }}</div>
+              <div class="parent-info-label">
+                Guardian Name
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.name }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Relationship</div>
-              <div class="parent-info-value">{{ parentInfo.relationship }}</div>
+              <div class="parent-info-label">
+                Relationship
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.relationship }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Phone Number</div>
-              <div class="parent-info-value">{{ parentInfo.phone }}</div>
+              <div class="parent-info-label">
+                Phone Number
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.phone }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Email Address</div>
-              <div class="parent-info-value">{{ parentInfo.email }}</div>
+              <div class="parent-info-label">
+                Email Address
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.email }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Address</div>
-              <div class="parent-info-value">{{ parentInfo.address }}</div>
+              <div class="parent-info-label">
+                Address
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.address }}
+              </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Emergency Contact</div>
-              <div class="parent-info-value">{{ parentInfo.emergencyContact }}</div>
+              <div class="parent-info-label">
+                Emergency Contact
+              </div>
+              <div class="parent-info-value">
+                {{ parentInfo.emergencyContact }}
+              </div>
             </div>
           </div>
         </AppCard>
@@ -220,15 +324,20 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-warning text-dark">
-              <i class="bi bi-heart-pulse me-2"></i>
+              <i class="bi bi-heart-pulse me-2" />
               Medical Information
             </div>
           </template>
           <div class="parent-info-grid">
             <div class="parent-info-item">
-              <div class="parent-info-label">Allergies</div>
+              <div class="parent-info-label">
+                Allergies
+              </div>
               <div class="parent-info-value">
-                <span v-if="childInfo.allergies.length === 0" class="text-muted">None reported</span>
+                <span
+                  v-if="childInfo.allergies.length === 0"
+                  class="text-muted"
+                >None reported</span>
                 <div v-else>
                   <span
                     v-for="(allergy, index) in childInfo.allergies"
@@ -241,9 +350,14 @@
               </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Medical Conditions</div>
+              <div class="parent-info-label">
+                Medical Conditions
+              </div>
               <div class="parent-info-value">
-                <span v-if="childInfo.conditions.length === 0" class="text-muted">None reported</span>
+                <span
+                  v-if="childInfo.conditions.length === 0"
+                  class="text-muted"
+                >None reported</span>
                 <div v-else>
                   <span
                     v-for="(condition, index) in childInfo.conditions"
@@ -256,11 +370,20 @@
               </div>
             </div>
             <div class="parent-info-item">
-              <div class="parent-info-label">Medications</div>
+              <div class="parent-info-label">
+                Medications
+              </div>
               <div class="parent-info-value">
-                <span v-if="childInfo.medications.length === 0" class="text-muted">None</span>
+                <span
+                  v-if="childInfo.medications.length === 0"
+                  class="text-muted"
+                >None</span>
                 <div v-else>
-                  <div v-for="(medication, index) in childInfo.medications" :key="index" class="mb-1">
+                  <div
+                    v-for="(medication, index) in childInfo.medications"
+                    :key="index"
+                    class="mb-1"
+                  >
                     <strong>{{ medication.name }}</strong> - {{ medication.dosage }}
                   </div>
                 </div>
@@ -275,14 +398,19 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-success text-white">
-              <i class="bi bi-check-circle me-2"></i>
+              <i class="bi bi-check-circle me-2" />
               Recent Vaccinations
             </div>
           </template>
 
-          <div v-if="childInfo.recentVaccinations && childInfo.recentVaccinations.length === 0" class="text-center py-3 text-muted">
-            <i class="bi bi-calendar-x fs-2 mb-2"></i>
-            <p class="mb-0">No recent vaccinations</p>
+          <div
+            v-if="childInfo.recentVaccinations && childInfo.recentVaccinations.length === 0"
+            class="text-center py-3 text-muted"
+          >
+            <i class="bi bi-calendar-x fs-2 mb-2" />
+            <p class="mb-0">
+              No recent vaccinations
+            </p>
           </div>
 
           <div v-else-if="childInfo.recentVaccinations">
@@ -293,11 +421,15 @@
             >
               <div class="d-flex align-items-center">
                 <div class="vaccination-icon me-3">
-                  <i class="bi bi-check-circle-fill text-success"></i>
+                  <i class="bi bi-check-circle-fill text-success" />
                 </div>
                 <div class="flex-grow-1">
-                  <h6 class="mb-1">{{ vaccination.name }}</h6>
-                  <p class="mb-0 small text-muted">{{ vaccination.date }}</p>
+                  <h6 class="mb-1">
+                    {{ vaccination.name }}
+                  </h6>
+                  <p class="mb-0 small text-muted">
+                    {{ vaccination.date }}
+                  </p>
                 </div>
                 <span class="badge bg-success">Completed</span>
               </div>
@@ -311,17 +443,22 @@
         <AppCard class="parent-card">
           <template #header>
             <div class="bg-info text-white">
-              <i class="bi bi-graph-up me-2"></i>
+              <i class="bi bi-graph-up me-2" />
               Growth & Development
             </div>
           </template>
 
           <div class="text-center py-3">
-            <i class="bi bi-graph-up fs-1 text-info mb-2"></i>
+            <i class="bi bi-graph-up fs-1 text-info mb-2" />
             <h6>Growth Tracking</h6>
-            <p class="text-muted small">Monitor your child's physical and developmental milestones</p>
-            <AppButton variant="outline-info" @click="viewGrowthChart">
-              <i class="bi bi-bar-chart me-1"></i>
+            <p class="text-muted small">
+              Monitor your child's physical and developmental milestones
+            </p>
+            <AppButton
+              variant="outline-info"
+              @click="viewGrowthChart"
+            >
+              <i class="bi bi-bar-chart me-1" />
               View Growth Chart
             </AppButton>
           </div>

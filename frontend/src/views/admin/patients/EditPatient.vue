@@ -2,11 +2,27 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Edit Patient</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Edit Patient
+          </li>
         </ol>
       </nav>
 
@@ -14,38 +30,64 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 class="mb-1">
-            <i class="bi bi-pencil-square me-2"></i>Edit Patient
+            <i class="bi bi-pencil-square me-2" />Edit Patient
           </h2>
-          <p class="text-muted mb-0">Update patient information</p>
+          <p class="text-muted mb-0">
+            Update patient information
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/dashboard" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/dashboard"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading patient data...</span>
         </div>
-        <p class="text-muted mt-2">Loading patient information...</p>
+        <p class="text-muted mt-2">
+          Loading patient information...
+        </p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        {{ error }} <router-link to="/admin/patients">Go back to patient list</router-link>
+      <div
+        v-else-if="error"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        {{ error }} <router-link to="/admin/patients">
+          Go back to patient list
+        </router-link>
       </div>
 
       <!-- Form Card -->
-      <div v-else class="card shadow">
+      <div
+        v-else
+        class="card shadow"
+      >
         <div class="card-header py-3">
-          <h6 class="m-0 fw-bold text-primary">Patient Information Form</h6>
+          <h6 class="m-0 fw-bold text-primary">
+            Patient Information Form
+          </h6>
         </div>
         <div class="card-body p-4">
           <PatientForm
