@@ -47,26 +47,29 @@
             </div>
 
             <h6 class="mb-2">Vital Signs</h6>
+            <div v-if="existingVisitMode && todayVisitId && todayVisitHasVitals" class="alert alert-info py-2 px-3 mb-2">
+              Vitals prefilled from today’s existing visit and locked.
+            </div>
             <div class="row g-3 mb-3">
               <div class="col-md-4">
                 <label class="form-label">Temperature (°C)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="vitalsReadOnly">
               </div>
               <div class="col-md-4">
                 <label class="form-label">MUAC (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="vitalsReadOnly">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Respiration (Beats/min)</label>
-                <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+                <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="vitalsReadOnly">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Weight (kg)</label>
-                <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+                <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="vitalsReadOnly">
               </div>
               <div class="col-md-4">
                 <label class="form-label">Height (cm)</label>
-                <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+                <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="vitalsReadOnly">
               </div>
             </div>
 
@@ -179,26 +182,29 @@
         </div>
 
         <h6 class="mb-2">Vital Signs</h6>
+        <div v-if="existingVisitMode && todayVisitId && todayVisitHasVitals" class="alert alert-info py-2 px-3 mb-2">
+          Vitals prefilled from today’s existing visit and locked.
+        </div>
         <div class="row g-3 mb-3">
           <div class="col-md-4">
             <label class="form-label">Temperature (°C)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.temperature" :disabled="vitalsReadOnly">
           </div>
           <div class="col-md-4">
             <label class="form-label">MUAC (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.muac" :disabled="vitalsReadOnly">
           </div>
           <div class="col-md-4">
             <label class="form-label">Respiration (breaths/min)</label>
-            <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+            <input type="number" class="form-control" v-model="form.vitals.respiration" :disabled="vitalsReadOnly">
           </div>
           <div class="col-md-4">
             <label class="form-label">Weight (kg)</label>
-            <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+            <input type="number" step="0.01" class="form-control" v-model="form.vitals.weight" :disabled="vitalsReadOnly">
           </div>
           <div class="col-md-4">
             <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="viewOnly || (existingVisitMode && !props.editMode)">
+            <input type="number" step="0.1" class="form-control" v-model="form.vitals.height" :disabled="vitalsReadOnly">
           </div>
         </div>
 
@@ -308,7 +314,7 @@
                 <select class="form-select" v-model="vaccinationForm.healthWorkerId" required>
                   <option value="">Select health staff</option>
                   <option v-for="nurse in nurses" :key="nurse.user_id || nurse.id" :value="nurse.user_id || nurse.id">
-                    {{ nurse.fullname }} ({{ nurse.hs_type || nurse.hw_type || nurse.role || nurse.type }})
+                    {{ nurse.fullname }}
                   </option>
                   <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
                 </select>
@@ -423,8 +429,12 @@ const emit = defineEmits(['close', 'saved', 'open-vaccination', 'open-deworm', '
 
 // Derived flags
 const viewOnly = computed(() => !!props.viewMode)
-const existingVisitMode = computed(() => !!props.existingVisitId)
-const lockPatientEffective = computed(() => props.lockPatient || !!props.existingVisitId)
+// Admin parity with Health Worker: auto-adopt today's existing visit for the selected patient
+const todayVisitId = ref('')
+const todayVisitHasVitals = ref(false)
+const effectiveExistingVisitId = computed(() => String(props.existingVisitId || todayVisitId.value || ''))
+const existingVisitMode = computed(() => !!effectiveExistingVisitId.value)
+const lockPatientEffective = computed(() => props.lockPatient || !!effectiveExistingVisitId.value)
 
 const patients = ref([])
 const patientSearch = ref('')
@@ -530,6 +540,13 @@ const form = ref({
   findings: '',
   service_rendered: ''
 })
+// Normalize an ID: return a digits-only string or empty string if invalid
+const normalizeId = (val) => {
+  if (val === null || val === undefined) return ''
+  const s = String(val).trim()
+  return /^\d+$/.test(s) ? s : ''
+}
+
 
 const vaccinationForm = ref({
   inventoryId: '',
@@ -644,21 +661,32 @@ const fetchHealthWorkers = async () => {
       return r || 'Health Staff'
     }
 
-    // For visit form (recorded_by): show Health Staff roles
-    healthWorkers.value = list
-      .filter(hw => isHealthStaffRole(rawRole(hw)))
-      .map(hw => ({
-        user_id: hw.user_id || hw.id || hw.health_worker_id,
-        fullname: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        hs_type: displayRole(rawRole(hw))
-      }))
-    
-    // For vaccination form (administered_by): show Nurses and Nutritionists
+    // For visit form (recorded_by): include ALL health staff (any HS type),
+    // and append HS type next to their name for clarity.
+    const allStaffMapped = list.map(hw => ({
+      user_id: hw.user_id || hw.id || hw.health_worker_id,
+      // Show HS type beside the name in the label used by SearchableSelect
+      hs_type: displayRole(rawRole(hw)),
+      base_name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
+    }))
+    // Deduplicate by user_id in case the API returns duplicates
+    const dedup = new Map()
+    for (const s of allStaffMapped) {
+      if (!s.user_id) continue
+      dedup.set(String(s.user_id), s)
+    }
+    healthWorkers.value = Array.from(dedup.values()).map(s => ({
+      user_id: String(s.user_id),
+      fullname: s.base_name ? `${s.base_name} (${s.hs_type})` : `(${s.hs_type})`,
+      hs_type: s.hs_type
+    }))
+
+    // For vaccination form (administered_by): show ONLY Nurses and Nutritionists
     nurses.value = list
       .filter(hw => isNurseOrNutritionistRole(rawRole(hw)))
       .map(hw => ({
         user_id: hw.user_id || hw.id || hw.health_worker_id,
-        fullname: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
+        fullname: ([hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname) + ` (${displayRole(rawRole(hw))})`,
         hs_type: displayRole(rawRole(hw))
       }))
     
@@ -820,6 +848,42 @@ const fetchSelectedPatientData = async (patientId) => {
       response: error.response?.data
     })
     selectedPatientData.value = null
+  }
+}
+
+// Vitals readonly logic: lock when viewing, or when adopting today's visit that already has vitals
+const vitalsReadOnly = computed(() => {
+  if (viewOnly.value) return true
+  if (existingVisitMode.value && todayVisitId.value) {
+    return todayVisitHasVitals.value || !props.editMode
+  }
+  if (existingVisitMode.value && !props.editMode) return true
+  return false
+})
+
+// Check if a visit already exists for today for this patient and auto-adopt it
+const checkTodayVisitAndAdopt = async (patientId) => {
+  if (!patientId || props.existingVisitId) return
+  try {
+    const visitDateIso = new Date().toISOString()
+    const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
+    if (data && data.exists) {
+      todayVisitId.value = String(data.visit_id || '')
+      // Load existing visit details to prefill vitals
+      await fetchExistingVisit(todayVisitId.value)
+      const v = form.value?.vitals || {}
+      const hasAny = [v.temperature, v.muac, v.respiration, v.weight, v.height]
+        .some(x => x !== '' && x !== null && typeof x !== 'undefined')
+      todayVisitHasVitals.value = !!hasAny
+      addToast({ title: 'Using today\'s visit', message: 'An existing visit for today was found and will be used.', type: 'info' })
+    } else {
+      todayVisitId.value = ''
+      todayVisitHasVitals.value = false
+    }
+  } catch (e) {
+    // Silent fail; backend will still block duplicate via 409
+    todayVisitId.value = ''
+    todayVisitHasVitals.value = false
   }
 }
 
@@ -1158,13 +1222,14 @@ const saveVisit = async () => {
       }
     }
 
-    // If adding to existing visit, save services directly or update visit if editMode
-    if (props.existingVisitId) {
-      console.log('🔄 [VISIT_SAVE_FRONTEND] Updating existing visit:', props.existingVisitId)
+    // If adding to existing visit (explicit or auto-adopted), save services directly or update visit
+    const targetExistingId = effectiveExistingVisitId.value
+    if (targetExistingId) {
+      console.log('🔄 [VISIT_SAVE_FRONTEND] Updating existing visit:', targetExistingId)
 
       // Prepare update payload for visit (exclude vitals)
       const updatePayload = {
-        recorded_by: form.value.recorded_by,
+        recorded_by: normalizeId(form.value.recorded_by) || undefined,
         visit_date: form.value.visit_date,
         findings: form.value.findings,
         service_rendered: form.value.service_rendered,
@@ -1172,11 +1237,11 @@ const saveVisit = async () => {
       }
 
       // Update the visit
-      await api.put(`/visits/${props.existingVisitId}`, updatePayload)
+  await api.put(`/visits/${targetExistingId}`, updatePayload)
 
       // Update vitals separately
       try {
-        await api.put(`/vitals/${props.existingVisitId}`, form.value.vitals)
+  await api.put(`/vitals/${targetExistingId}`, form.value.vitals)
         console.log('✅ [VISIT_SAVE_FRONTEND] Vitals updated successfully')
       } catch (vitalsErr) {
         console.warn('⚠️ [VISIT_SAVE_FRONTEND] Failed to update vitals:', vitalsErr)
@@ -1188,7 +1253,7 @@ const saveVisit = async () => {
         const promises = localCollectedVaccinations.value.map(vacc => 
           api.post('/immunizations', {
             ...vacc,
-            visit_id: props.existingVisitId,
+            visit_id: targetExistingId,
             patient_id: form.value.patient_id
           })
         )
@@ -1206,7 +1271,7 @@ const saveVisit = async () => {
     const visitPayload = {
       ...form.value,
       // In recordMode, omit findings/service_rendered and recorded_by if empty
-      ...(props.recordMode ? { recorded_by: form.value.recorded_by || undefined, findings: undefined, service_rendered: undefined, vitals: form.value.vitals || {} } : {}),
+      ...(props.recordMode ? { recorded_by: normalizeId(form.value.recorded_by) || undefined, findings: undefined, service_rendered: undefined, vitals: form.value.vitals || {} } : { recorded_by: normalizeId(form.value.recorded_by) || undefined }),
   collectedVaccinations: localCollectedVaccinations.value || [],
       services: [] // Add services array for future use (deworming, etc.)
     }
@@ -1214,7 +1279,20 @@ const saveVisit = async () => {
     console.log('🔄 [VISIT_SAVE_FRONTEND] Preparing to save visit with payload:', visitPayload)
 
     // Save the visit (this will handle all related data atomically)
-    const visitResponse = await api.post('/visits', visitPayload)
+    let visitResponse
+    try {
+      visitResponse = await api.post('/visits', visitPayload)
+    } catch (e) {
+      const code = e?.response?.data?.code || e?.response?.data?.errorCode
+      const existingId = e?.response?.data?.existing_visit_id
+      if (code === 'VISIT_DUPLICATE_PER_DAY' && existingId) {
+        todayVisitId.value = String(existingId)
+        addToast({ title: 'Existing visit today', message: 'We found an existing visit for today. Switching to update that visit.', type: 'info' })
+        loading.value = false
+        return await saveVisit()
+      }
+      throw e
+    }
     const visitData = visitResponse.data
     console.log('✅ [VISIT_SAVE_FRONTEND] Visit created successfully:', visitData)
 
@@ -1305,6 +1383,8 @@ watch(() => form.value.patient_id, (newPatientId) => {
   })
   if (newPatientId) {
     fetchSelectedPatientData(newPatientId)
+    // Enforce one-visit-per-day: adopt today's visit if it exists
+    checkTodayVisitAndAdopt(String(newPatientId))
   } else {
     selectedPatientData.value = null
   }
@@ -1494,6 +1574,11 @@ watch(() => props.existingVisitId, async (newId) => {
     }
     console.log('🔄 [VISIT_EDITOR] All data loaded, now fetching visit with:', String(newId))
     fetchExistingVisit(String(newId))
+    // Parent dictates existing visit; reflect in today-visit state
+    todayVisitId.value = String(newId)
+    const v = form.value?.vitals || {}
+    todayVisitHasVitals.value = [v.temperature, v.muac, v.respiration, v.weight, v.height]
+      .some(x => x !== '' && x !== null && typeof x !== 'undefined')
   }
 }, { immediate: true })
 
@@ -1560,6 +1645,8 @@ watch(() => props.initialPatientId, (newPatientId, oldPatientId) => {
     console.log('📝 [VISIT_EDITOR] Setting form.patient_id to:', String(newPatientId))
     form.value.patient_id = String(newPatientId)
     fetchSelectedPatientData(newPatientId)
+    // Also adopt today\'s visit if present
+    checkTodayVisitAndAdopt(String(newPatientId))
   }
 }, { immediate: true })
 </script>

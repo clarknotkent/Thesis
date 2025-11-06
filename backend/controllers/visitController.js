@@ -46,15 +46,24 @@ const postVisit = async (req, res) => {
     const payload = req.body || {};
     const supabase = getSupabaseForRequest(req);
     const actorId = getActorId(req) || null;
-    // Ensure created_by and updated_by have values; do not override recorded_by
+    // Always stamp updated_by with the actor; created_by falls back to actor if missing
     if (payload.created_by === undefined || payload.created_by === null || payload.created_by === '') {
       payload.created_by = actorId;
     }
-    if (payload.updated_by === undefined || payload.updated_by === null || payload.updated_by === '') {
-      payload.updated_by = actorId;
-    }
+    payload.updated_by = actorId;
     // Also pass actor_id explicitly so model can fallback when recorded_by is null
     payload.actor_id = actorId;
+
+    // Validate recorded_by: must be a numeric user_id if provided
+    if (payload.recorded_by !== undefined && payload.recorded_by !== null && payload.recorded_by !== '') {
+      const rb = String(payload.recorded_by).trim();
+      if (!/^\d+$/.test(rb)) {
+        return res.status(400).json({
+          message: 'recorded_by must be a numeric user_id (not a name). Please reselect the staff from the list.',
+          code: 'INVALID_RECORDED_BY',
+        });
+      }
+    }
 
     const created = await createVisit(payload, supabase);
     res.status(201).json(created);
@@ -75,10 +84,26 @@ const updateVisit = async (req, res) => {
   try {
     const { id } = req.params;
     const payload = req.body || {};
+    // Debug payload types for troubleshooting bigint issues
+    try {
+      const dbg = { ...payload };
+      for (const k of Object.keys(dbg)) {
+        dbg[k] = typeof dbg[k];
+      }
+      console.debug('[updateVisit] payload field types:', dbg);
+    } catch(_) {}
     
-    // Set updated_by to current user if not provided or empty
-    if (!payload.updated_by || payload.updated_by === '') {
-      payload.updated_by = getActorId(req);
+    // Always stamp updated_by as the acting user
+    payload.updated_by = getActorId(req) || null;
+    // Validate recorded_by: must be a numeric user_id if provided
+    if (payload.recorded_by !== undefined && payload.recorded_by !== null && payload.recorded_by !== '') {
+      const rb = String(payload.recorded_by).trim();
+      if (!/^\d+$/.test(rb)) {
+        return res.status(400).json({
+          message: 'recorded_by must be a numeric user_id (not a name). Please reselect the staff from the list.',
+          code: 'INVALID_RECORDED_BY',
+        });
+      }
     }
     
     const supabase = getSupabaseForRequest(req);
@@ -87,7 +112,15 @@ const updateVisit = async (req, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Error updating visit', error);
-    res.status(500).json({ message: 'Failed to update visit' });
+    // Friendly handling for Postgres bigint parse errors
+    if (error && error.code === '22P02') {
+      return res.status(400).json({
+        message: 'Invalid data for one or more ID fields (expected a numeric ID, got text). Please reselect the staff/patient and try again.',
+        code: 'INVALID_NUMERIC_ID',
+        error: error.message
+      });
+    }
+    res.status(500).json({ message: 'Failed to update visit', error: error?.message || String(error) });
   }
 };
 

@@ -2,7 +2,16 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **🧹 November 6, 2025 - QA RESET TOOL ADDED**
+> **� November 6, 2025 - Admin Visit Parity & Data Integrity**
+>
+> - ✅ Admin UI now enforces **one visit per patient per day** (parity with Health Worker)
+> - ✅ Same‑day existing visit is auto‑adopted; vitals **auto‑fill and are read‑only**
+> - ✅ Staff dropdown mapping fixed; `hs_type` values normalized
+> - ✅ DOB change rules: lock when any vaccine completed; otherwise async schedule rewrite (no timeouts)
+> - ✅ SMS reschedule guard: no SMS when new scheduled date is already in the past
+> - ✅ Data integrity: `recorded_by` must be numeric `user_id`; `updated_by` stamped by server (prevents 22P02)
+>
+> **�🧹 November 6, 2025 - QA RESET TOOL ADDED**
 >
 > - ✅ New non-production QA reset script with full backup, deep cleanup, ID resequencing, and admin/FAQ re-log
 > - 📄 See: `docs/RESET_QA_INSTRUCTIONS.md` and `backend/scripts/reset_clean_for_QA.sql`
@@ -114,7 +123,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4** ⭐ Complete Offline Parent Portal + SMS/Toast Fixes
 - Previous Branch: system-prototype-v3
-- Version: 4.3 (SMS & Toast Notification Fixes + Bulk Prefetch + Supabase-Mirrored Offline)
+- Version: 4.4 (Admin Visit Parity, Data Integrity, DOB Rewrite Async, SMS Past-Date Guard)
 - Last Updated: November 6, 2025
 - Status: Active Development - **Parent Portal Complete**, SMS System Fixed, Health Worker/Admin In Progress
 
@@ -1129,8 +1138,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 Project: Immunization Management System
-Version: 4.3 (system-prototype-v4) ⭐ Offline-First PWA
-Last Updated: November 5, 2025
+Version: 4.4 (system-prototype-v4) ⭐ Offline-First PWA
+Last Updated: November 6, 2025
 Maintained by: Clark Kent (clarknotkent), JapethDee and RobertBite15
 License: Academic Thesis Project
 

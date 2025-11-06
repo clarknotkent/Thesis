@@ -27,6 +27,40 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 - Requires helper function `public.resequence_table` to exist.
 - See `docs/RESET_QA_INSTRUCTIONS.md` for usage and verification steps.
 
+### 🩺 Admin Visit Parity, Data Integrity, and SMS Behavior (November 6, 2025)
+
+#### ✨ Added / Changed
+- Admin portal now mirrors Health Worker rule: **one visit per patient per day**
+  - Existing same‑day visit is auto‑adopted; creating another returns 409 with friendly UI message
+  - When a same‑day visit exists, **vitals auto‑fill and are read‑only**
+- Staff dropdown mapping unified and labels standardized; health staff type (`hs_type`) values normalized
+- Patient DOB change rules enforced:
+  - If any vaccine is completed: DOB becomes read‑only (locked)
+  - If none completed: rewriting of vaccine schedules runs **asynchronously**, preserving IDs and avoiding timeouts
+  - SMS creation for rewritten/inserted schedules is **skipped** when new scheduled date is already in the past
+- SMS reschedule guard: if a schedule is moved to a past date, **no reschedule SMS** is linked/created; normal unlink/refresh still occurs
+
+#### 🛡️ Data Integrity Fixes (22P02 prevention)
+- `recorded_by` is validated and stored strictly as a numeric `user_id` (no names); friendly `400 INVALID_RECORDED_BY` if invalid
+- `updated_by` is always stamped by the server as the acting user (client no longer sends it)
+- Bigint fields (e.g., `patient_id`, `recorded_by`, `created_by`, `updated_by`) are coerced safely to numeric on create/update to avoid PostgreSQL 22P02 errors
+
+#### 🧩 Files Touched (highlights)
+- Backend
+  - `backend/controllers/visitController.js` — validation for `recorded_by`, server‑side `updated_by` stamping, clearer errors
+  - `backend/models/visitModel.js` — bigint coercions for create/update
+  - `backend/services/smsReminderService.js` — past‑date guard for reschedule cascade
+  - `backend/controllers/patientController.js` — DOB rewrite skips SMS for past‑dated inserts; async rewrite
+- Frontend
+  - `frontend/src/features/admin/patients/VisitEditor.vue` — ensures staff select emits `user_id`, normalizes `recorded_by`, stops sending `updated_by`
+  - `frontend/src/components/ui/form/SearchableSelect.vue` — confirms value binding to `user_id`
+
+#### ✅ Outcomes
+- Eliminates invalid bigint errors from name strings sent as `recorded_by`
+- Consistent Admin/Health Worker behavior for same‑day visits and vitals
+- More predictable SMS behavior for schedules moved to past dates
+- Faster, non‑blocking DOB schedule rewrites
+
 ## [system-prototype-v4] - 2025-11-05
 
 ### 🚀 Parent Portal Offline Optimization (November 5, 2025)

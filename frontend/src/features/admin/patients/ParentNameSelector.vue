@@ -4,6 +4,8 @@
       type="text"
       class="form-control"
       v-model="searchTerm"
+      @input="onInput"
+      @keydown.enter.prevent="confirmTyped"
       @focus="showDropdown = true"
       @blur="hideDropdown"
       :placeholder="placeholder || 'Search and select...'"
@@ -98,6 +100,17 @@ const selectOption = (opt) => {
 
 const hideDropdown = () => {
   setTimeout(() => { showDropdown.value = false }, 200)
+}
+
+// NEW: Allow free-typed names to flow upstream without forcing a selection
+const onInput = () => {
+  emit('update:modelValue', searchTerm.value || '')
+}
+
+// Optional UX: pressing Enter confirms the typed value and closes the dropdown
+const confirmTyped = () => {
+  emit('update:modelValue', searchTerm.value || '')
+  showDropdown.value = false
 }
 
 // Reflect external v-model into input
