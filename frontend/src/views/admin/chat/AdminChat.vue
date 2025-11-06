@@ -253,21 +253,31 @@ const handleLeave = async () => {
 
 const fetchAvailableUsers = async (search = '') => {
   try {
-    const response = await getUsers({ search, limit: 50 });
-    const raw = response.data.users || response.data || [];
+    // getUsers returns the response.data directly (not the axios response)
+    const data = await getUsers({ search, limit: 50 });
+    const raw = Array.isArray(data)
+      ? data
+      : (data?.users || data?.items || data?.data || []);
+
     const getUserKey = (u) => u?.user_id ?? u?.id ?? u?.userId ?? null;
     const currentId = getUserKey({ user_id: currentUserId.value, id: currentUserId.value });
-    
+
     availableUsers.value = raw
       .map(u => ({
         ...u,
         __id: getUserKey(u),
-        full_name: u.full_name || `${u.firstname || u.first_name || ''} ${u.surname || u.last_name || ''}`.trim(),
+        full_name: u.full_name || u.name || `${u.firstname || u.first_name || ''} ${u.surname || u.last_name || ''}`.trim(),
       }))
-      .filter(u => u.__id !== null && u.__id !== currentId);
+      .filter(u => u.__id !== null && String(u.__id) !== String(currentId));
+
+    // Optional: notify when no users are available
+    if (availableUsers.value.length === 0) {
+      console.warn('[AdminChat] No users available for selection');
+    }
   } catch (error) {
     console.error('Failed to fetch users:', error);
-    addToast({ title: 'Error', message: 'Failed to fetch users.', type: 'error' });
+    const msg = error?.response?.data?.message || error?.message || 'Unknown error';
+    addToast({ title: 'Error', message: `Failed to fetch users: ${msg}` , type: 'error' });
   }
 };
 

@@ -50,30 +50,19 @@
       </div>
 
       <!-- Notifications List -->
-      <div
-        v-else-if="isOnline"
-        class="notifications-list"
-      >
-        <div 
-          v-for="notification in notifications" 
-          :key="notification.id"
-          class="notification-item"
-          :class="{ unread: !notification.read }"
-          @click="handleClick(notification)"
-        >
-          <div class="notification-icon">
-            <i :class="getNotificationIcon(notification.type)" />
-          </div>
-          <div class="notification-content">
-            <h6 class="notification-title">
-              {{ notification.title }}
-            </h6>
-            <p class="notification-message">
-              {{ notification.message }}
-            </p>
-            <span class="notification-time">{{ formatTime(notification.created_at) }}</span>
-          </div>
-        </div>
+      <div v-else-if="isOnline" class="notifications-list">
+        <NotificationItem
+          v-for="n in notifications"
+          :key="n.id"
+          :id="n.id"
+          :title="n.title"
+          :message="n.message"
+          :type="n.type"
+          :time="n.created_at"
+          :channel="n.channel"
+          :read="n.read"
+          @click="handleClick(n)"
+        />
       </div>
     </div>
   </ParentLayout>
@@ -82,6 +71,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
+import NotificationItem from '@/features/shared/notifications/NotificationItem.vue'
 import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 import { useOnlineStatus } from '@/composables/useOnlineStatus'
@@ -112,6 +102,7 @@ const fetchNotifications = async () => {
         title: n.title || n.template_code || 'Notification',
         message: n.message || n.message_body || '',
         type: n.type || n.related_entity_type || n.channel || 'info',
+        channel: n.channel || n.delivery_channel || n.channel_type || null,
         created_at: n.created_at || n.sent_at || n.scheduled_at,
         read: Boolean(n.read_at || n.is_read)
       }))

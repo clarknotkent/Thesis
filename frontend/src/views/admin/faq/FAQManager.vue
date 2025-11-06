@@ -13,146 +13,147 @@
       </div>
 
       <div class="faq-manager container py-0">
-        <div class="row g-4">
-          <div class="col-md-5">
-            <div class="card shadow">
-              <div class="card-header bg-success text-white">
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-plus-circle me-2" />
-                  <strong>{{ editing ? 'Edit FAQ' : 'New FAQ' }}</strong>
+        <div class="faq-shell">
+          <div class="row g-4 align-items-stretch h-100">
+            <div class="col-lg-5">
+              <div class="card shadow h-100 d-flex flex-column">
+                <div class="card-header bg-success text-white">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    <strong>{{ editing ? 'Edit FAQ' : 'New FAQ' }}</strong>
+                  </div>
                 </div>
-              </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <label class="form-label fw-bold">
-                    <i class="bi bi-question-circle text-primary me-1" />Question
-                  </label>
-                  <input
-                    v-model="newQuestion"
-                    class="form-control"
-                    placeholder="Enter the question..."
-                  >
-                </div>
-                <div class="mb-3">
-                  <label class="form-label fw-bold">
-                    <i class="bi bi-chat-quote text-success me-1" />Answer
-                  </label>
-                  <textarea
-                    v-model="newAnswer"
-                    class="form-control"
-                    rows="8"
-                    placeholder="Provide a detailed answer..."
-                  />
-                </div>
-                <div class="d-flex justify-content-end gap-2">
-                  <button
-                    v-if="editing"
-                    class="btn btn-secondary"
-                    @click="cancelEdit"
-                  >
-                    <i class="bi bi-x-circle me-1" />Cancel
-                  </button>
-                  <button
-                    class="btn btn-success"
-                    @click="create"
-                  >
-                    <i class="bi bi-check-circle me-1" />{{ editing ? 'Update' : 'Create' }} FAQ
-                  </button>
+                <div class="card-body d-flex flex-column grow">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-question-circle text-primary me-1"></i>Question
+                    </label>
+                    <input v-model.trim="newQuestion" class="form-control" placeholder="Enter the question..." />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">
+                      <i class="bi bi-chat-quote text-success me-1"></i>Answer
+                    </label>
+                    <textarea v-model.trim="newAnswer" class="form-control" rows="8" placeholder="Provide a detailed answer..."></textarea>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center gap-2 mt-auto pt-2">
+                    <small class="text-muted" v-if="editing">Editing ID: {{ editing?.faq_id }}</small>
+                    <button class="btn btn-secondary" v-if="editing" @click="cancelEdit">
+                      <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button class="btn btn-success" :disabled="!newQuestion || !newAnswer || saving" @click="create">
+                      <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                      <i class="bi bi-check-circle me-1"></i>{{ editing ? 'Update' : 'Create' }} FAQ
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="col-md-7">
-            <div class="card shadow">
-              <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-list-check me-2" />
-                  <strong>FAQ List</strong>
-                </div>
-                <button
-                  class="btn btn-sm btn-light"
-                  @click="load"
-                >
-                  <i class="bi bi-arrow-clockwise me-1" />Refresh
-                </button>
-              </div>
-              <div class="card-body p-0">
-                <div class="p-3 border-bottom bg-light">
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <i class="bi bi-search" />
-                    </span>
-                    <input
-                      v-model="searchQuery"
-                      class="form-control"
-                      placeholder="Search FAQs..."
-                      @input="filterFAQs"
-                    >
+            <div class="col-lg-7">
+              <div class="card shadow h-100 faq-list-card d-flex flex-column">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-list-check"></i>
+                    <strong>FAQ Library</strong>
+                    <span class="chip chip-light">Total: {{ faqs.length }}</span>
+                    <span class="chip chip-accent">Showing: {{ filteredFAQs.length }}</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm w-auto" v-model="sortOption" @change="applySort">
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="az">A → Z</option>
+                      <option value="za">Z → A</option>
+                    </select>
+                    <select class="form-select form-select-sm w-auto" v-model.number="pageSize">
+                      <option :value="5">5 / page</option>
+                      <option :value="10">10 / page</option>
+                      <option :value="20">20 / page</option>
+                    </select>
+                    <button class="btn btn-sm btn-light" @click="load" :disabled="loading">
+                      <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
                   </div>
                 </div>
-                <div style="max-height:500px; overflow:auto">
-                  <div
-                    v-if="filteredFAQs.length === 0"
-                    class="text-center py-5"
-                  >
-                    <i
-                      class="bi bi-question-circle text-muted"
-                      style="font-size: 3rem;"
-                    />
-                    <h6 class="text-muted mt-3">
-                      No FAQs found
-                    </h6>
-                    <p class="text-muted small">
-                      Create your first FAQ or adjust your search
-                    </p>
+                <div class="card-body p-0 d-flex flex-column">
+                  <div class="search-bar p-2 border-bottom bg-light sticky-top">
+                    <div class="input-group">
+                      <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                      </span>
+                      <input v-model="searchQuery" class="form-control" placeholder="Search FAQs..." @input="debouncedSearch">
+                      <button class="btn btn-outline-secondary" type="button" @click="clearSearch" :disabled="!searchQuery">
+                        <i class="bi bi-x-circle"></i>
+                      </button>
+                    </div>
                   </div>
-                  <div
-                    v-for="f in filteredFAQs"
-                    :key="f.faq_id"
-                    class="faq-item border-bottom p-3"
-                  >
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                      <div class="flex-grow-1">
-                        <div class="d-flex align-items-center mb-2">
-                          <i class="bi bi-question-circle text-primary me-2" />
-                          <h6 class="mb-0 fw-bold">
-                            {{ f.question }}
-                          </h6>
-                        </div>
-                        <div class="text-muted small mb-2">
-                          {{ truncate(f.answer, 150) }}
-                        </div>
-                        <div class="d-flex align-items-center text-muted small">
-                          <i class="bi bi-calendar-event me-1" />
-                          Created {{ formatDate(f.created_at) }}
+                  <div class="faq-list">
+                    <div v-if="loading" class="p-3">
+                      <div class="placeholder-glow">
+                        <div class="placeholder col-12 mb-2" style="height:24px"></div>
+                        <div class="placeholder col-10 mb-2" style="height:18px"></div>
+                        <div class="placeholder col-8 mb-2" style="height:18px"></div>
+                      </div>
+                    </div>
+                    <div v-else-if="filteredFAQs.length === 0" class="text-center py-5">
+                      <i class="bi bi-question-circle text-muted" style="font-size: 3rem;"></i>
+                      <h6 class="text-muted mt-3">No FAQs found</h6>
+                      <p class="text-muted small">Create your first FAQ or adjust your search</p>
+                    </div>
+                    <div v-else v-for="f in pagedFAQs" :key="f.faq_id" class="faq-item border-bottom p-3">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <button class="btn btn-link text-start p-0 grow" @click="toggleExpand(f.faq_id)" :aria-expanded="expandedId===f.faq_id">
+                          <div class="d-flex align-items-center mb-1">
+                            <i :class="['me-2', expandedId===f.faq_id ? 'bi bi-caret-down-square' : 'bi bi-caret-right-square']"></i>
+                            <h6 class="mb-0 fw-bold">{{ f.question }}</h6>
+                          </div>
+                        </button>
+                        <div class="btn-group ms-3">
+                          <button class="btn btn-sm btn-outline-primary" @click="edit(f)" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-danger" @click="remove(f.faq_id)" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
                         </div>
                       </div>
-                      <div class="btn-group ms-3">
-                        <button
-                          class="btn btn-sm btn-outline-primary"
-                          title="Edit"
-                          @click="edit(f)"
-                        >
-                          <i class="bi bi-pencil" />
-                        </button>
-                        <button
-                          class="btn btn-sm btn-outline-danger"
-                          title="Delete"
-                          @click="remove(f.faq_id)"
-                        >
-                          <i class="bi bi-trash" />
-                        </button>
-                      </div>
+                      <transition name="fade">
+                        <div v-if="expandedId===f.faq_id" class="mt-2">
+                          <div class="text-muted">{{ f.answer }}</div>
+                        </div>
+                      </transition>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="card-footer bg-light text-muted small">
-                <i class="bi bi-info-circle me-1" />
-                Total FAQs: {{ faqs.length }}
+                <div class="card-footer bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <div class="text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <template v-if="filteredFAQs.length > 0">
+                      Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredFAQs.length) }} of {{ filteredFAQs.length }} FAQs
+                    </template>
+                    <template v-else>
+                      No FAQs to show
+                    </template>
+                  </div>
+                  <nav aria-label="FAQ pagination">
+                    <ul class="pagination mb-0 pagination-sm">
+                      <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                        <button class="page-link" @click="prevPage" :disabled="currentPage === 1">Prev</button>
+                      </li>
+                      <li v-for="n in totalPages" :key="'p'+n" class="page-item" :class="{ active: n === currentPage }">
+                        <button class="page-link" @click="goToPage(n)">{{ n }}</button>
+                      </li>
+                      <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                        <button class="page-link" @click="nextPage" :disabled="currentPage === totalPages">Next</button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
@@ -161,9 +162,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/api'
+import { getFaqs, createFaq, updateFaq, deleteFaq } from '@/services/faqService'
 import { useToast } from '@/composables/useToast'
 
 const faqs = ref([])
@@ -173,13 +174,31 @@ const newAnswer = ref('')
 const editing = ref(null)
 const searchQuery = ref('')
 const { addToast } = useToast()
+const loading = ref(false)
+const saving = ref(false)
+const sortOption = ref('newest')
+const expandedId = ref(null)
+const pageSize = ref(5)
+const currentPage = ref(1)
+
+const totalPages = computed(() => {
+  const total = Math.ceil((filteredFAQs.value?.length || 0) / pageSize.value)
+  return Math.max(1, total)
+})
+
+const pagedFAQs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredFAQs.value.slice(start, start + pageSize.value)
+})
 
 const load = async () => {
   try {
-    const res = await api.get('/faqs')
-    faqs.value = res.data.items || res.data || []
+    loading.value = true
+    const res = await getFaqs()
+    faqs.value = Array.isArray(res?.data) ? res.data : []
     filterFAQs()
-  } catch (e) { addToast({ title: 'Error', message: 'Failed to load faqs', type: 'error' }) }
+  } catch (e) { addToast({ title: 'Error', message: 'Failed to load FAQs', type: 'error' }) }
+  finally { loading.value = false }
 }
 
 const filterFAQs = () => {
@@ -192,21 +211,25 @@ const filterFAQs = () => {
       (faq.answer || '').toLowerCase().includes(query)
     )
   }
+  applySort()
 }
 
 const create = async () => {
   try {
+    if (!newQuestion.value || !newAnswer.value) return
+    saving.value = true
     if (editing.value) {
-      await api.put(`/faqs/${editing.value.faq_id}`, { question: newQuestion.value, answer: newAnswer.value })
+      await updateFaq(editing.value.faq_id, { question: newQuestion.value, answer: newAnswer.value })
       editing.value = null
     } else {
-      await api.post('/faqs', { question: newQuestion.value, answer: newAnswer.value })
+      await createFaq({ question: newQuestion.value, answer: newAnswer.value })
     }
     newQuestion.value = ''
     newAnswer.value = ''
     await load()
     addToast({ title: 'Saved', message: 'FAQ saved', type: 'success' })
-  } catch (e) { addToast({ title: 'Error', message: 'Failed to save faq', type: 'error' }) }
+  } catch (e) { addToast({ title: 'Error', message: 'Failed to save FAQ', type: 'error' }) }
+  finally { saving.value = false }
 }
 
 const edit = (f) => {
@@ -224,10 +247,10 @@ const cancelEdit = () => {
 const remove = async (id) => {
   try {
     if (!confirm('Delete this FAQ?')) return
-    await api.delete(`/faqs/${id}`)
+    await deleteFaq(id)
     await load()
     addToast({ title: 'Deleted', message: 'FAQ removed', type: 'success' })
-  } catch (e) { addToast({ title: 'Error', message: 'Failed to delete faq', type: 'error' }) }
+  } catch (e) { addToast({ title: 'Error', message: 'Failed to delete FAQ', type: 'error' }) }
 }
 
 const truncate = (s, n) => s && s.length > n ? s.slice(0,n) + '…' : s
@@ -235,13 +258,77 @@ const truncate = (s, n) => s && s.length > n ? s.slice(0,n) + '…' : s
 const formatDate = (s) => s ? new Date(s).toLocaleDateString() : 'Unknown'
 
 onMounted(load)
+
+// UX helpers
+let searchTimer
+const debouncedSearch = () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(filterFAQs, 300)
+}
+
+const applySort = () => {
+  const arr = [...filteredFAQs.value]
+  switch (sortOption.value) {
+    case 'oldest':
+      arr.sort((a,b) => new Date(a.created_at || a.updated_at || 0) - new Date(b.created_at || b.updated_at || 0))
+      break
+    case 'az':
+      arr.sort((a,b) => (a.question||'').localeCompare(b.question||''))
+      break
+    case 'za':
+      arr.sort((a,b) => (b.question||'').localeCompare(a.question||''))
+      break
+    case 'newest':
+    default:
+      arr.sort((a,b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0))
+  }
+  filteredFAQs.value = arr
+  currentPage.value = 1
+}
+
+const toggleExpand = (id) => {
+  expandedId.value = (expandedId.value === id ? null : id)
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
+  filterFAQs()
+}
+
+// pagination handlers
+const goToPage = (n) => {
+  const target = Math.min(Math.max(1, n), totalPages.value)
+  currentPage.value = target
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value += 1
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value -= 1
+}
+
+// keep current page valid when filtered list changes
+watch(filteredFAQs, () => {
+  if ((currentPage.value - 1) * pageSize.value >= filteredFAQs.value.length) {
+    currentPage.value = 1
+  }
+})
 </script>
 
 <style scoped>
 .faq-manager {
   background: var(--bs-body-bg);
-  min-height: 100vh;
-  padding: 2rem 0;
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Fixed-height shell similar to chat layout so only internal list scrolls */
+.faq-shell {
+  height: calc(100vh - 200px);
+  min-height: 600px;
+  overflow: hidden;
 }
 
 .faq-container {
@@ -275,8 +362,8 @@ onMounted(load)
 }
 
 .search-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  border-color: none !important;
+  box-shadow: none !important;
 }
 
 .faq-grid {
@@ -285,6 +372,9 @@ onMounted(load)
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
+
+/* Ensure cards fill the shell height in this view */
+.faq-manager .card { height: 100% !important; }
 
 .faq-card {
   background: rgba(255, 255, 255, 0.95);
@@ -372,6 +462,11 @@ onMounted(load)
   font-weight: 600;
 }
 
+.search-bar {
+  border: 1px solid #dee2e6;
+  height: auto;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -434,6 +529,43 @@ onMounted(load)
   padding: 3rem;
   color: #6c757d;
 }
+
+.fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Keep list layout tidy without internal scrolling */
+.faq-list-card .card-body { display: flex; flex-direction: column; }
+
+/* Header polish */
+.faq-list-card .card-header.bg-primary {
+  background: linear-gradient(135deg, #0d6efd 0%, #3b82f6 100%);
+}
+.card-header.bg-success {
+  background: linear-gradient(135deg, #198754 0%, #22c55e 100%);
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.chip-light { background: rgba(255,255,255,0.9); color: #0f172a; }
+.chip-accent { background: rgba(13,110,253,0.15); color: #0d6efd; }
+
+/* Tidy link appearance and beautify list */
+.faq-manager a { text-decoration: none; }
+.faq-manager a:hover, .faq-manager a:focus { text-decoration: none; }
+
+.faq-item { transition: background-color .15s ease, box-shadow .15s ease; border-bottom: 1px solid #eef1f4; border-radius: 8px; }
+.faq-item:hover { background-color: #f8fafc; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
+.faq-item .btn-link { text-decoration: none; color: inherit; }
+.faq-item .btn-link:hover, .faq-item .btn-link:focus { text-decoration: none; color: var(--bs-primary); }
+.faq-item .btn-group .btn { border-radius: 8px; }
 
 .empty-state i {
   font-size: 4rem;

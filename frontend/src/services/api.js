@@ -88,6 +88,9 @@ export const notificationAPI = {
   // Create notification
   create: (data) => api.post('/notifications', data),
 
+  // Broadcast notification by recipient group (admins/healthstaff/guardians/all-users)
+  broadcast: (data) => api.post('/notifications/broadcast', data),
+
   // Get user's notifications (inbox)
   getMyNotifications: (params = {}) => api.get('/notifications', { params }),
 
@@ -119,7 +122,10 @@ export const conversationAPI = {
   startWithMessage: (data) => api.post('/conversations/start', data),
 
   // Leave a conversation
-  leave: (conversationId) => api.post(`/conversations/${conversationId}/leave`)
+  leave: (conversationId) => api.post(`/conversations/${conversationId}/leave`),
+
+  // Get total unread count for current user (fast path)
+  getUnreadCount: () => api.get('/conversations/unread/count')
 }
 
 /**

@@ -472,7 +472,9 @@ const vaccineModel = {
           brand_name,
           manufacturer,
           vaccine_type,
-          category
+          category,
+          disease_prevented,
+          is_nip
         )
       `).eq('inventory_id', inventory_id).single();
       if (selErr) throw selErr;
@@ -532,7 +534,9 @@ const vaccineModel = {
             brand_name,
             manufacturer,
             vaccine_type,
-            category
+            category,
+            disease_prevented,
+            is_nip
           )
         `).eq('inventory_id', existing.inventory_id).single();
         if (error) throw error;
@@ -562,7 +566,9 @@ const vaccineModel = {
           brand_name,
           manufacturer,
           vaccine_type,
-          category
+          category,
+          disease_prevented,
+          is_nip
         )
       `).eq('inventory_id', insertedData.inventory_id).single();
       if (error) throw error;
@@ -587,7 +593,9 @@ const vaccineModel = {
             brand_name,
             manufacturer,
             vaccine_type,
-            category
+            category,
+            disease_prevented,
+            is_nip
           )
         `)
         .eq('inventory_id', id)
@@ -648,7 +656,9 @@ const vaccineModel = {
           brand_name,
           manufacturer,
           vaccine_type,
-          category
+          category,
+          disease_prevented,
+          is_nip
         )
       `).eq('inventory_id', id).single();
       if (error) throw error;

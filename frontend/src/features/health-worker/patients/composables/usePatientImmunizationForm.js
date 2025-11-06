@@ -55,10 +55,10 @@ export function usePatientImmunizationForm(patientId) {
       // Read from Dexie patients table
       const localPatients = await db.patients.toArray()
       patients.value = localPatients || []
-      
-      // Find and set the current patient
+
+      // Find and set the current patient (Dexie stores primary key as patient_id)
       if (formData.value.patient_id) {
-        currentPatient.value = patients.value.find(p => p.id === formData.value.patient_id)
+        currentPatient.value = patients.value.find(p => String(p.patient_id) === String(formData.value.patient_id))
       }
       
       console.log('✅ Loaded patients from Dexie:', patients.value.length)
@@ -79,15 +79,37 @@ export function usePatientImmunizationForm(patientId) {
     
     try {
       loading.value = true
-      // Query Dexie patients table by ID
+      // 1) Try Dexie by primary key patient_id
       const patient = await db.patients.get(formData.value.patient_id)
-      currentPatient.value = patient || null
-      
-      if (!patient) {
-        throw new Error('Patient not found in local database')
+      if (patient) {
+        currentPatient.value = patient
+        console.log('✅ Loaded patient from Dexie:', patient.patient_id || patient.id)
+        return
       }
-      
-      console.log('✅ Loaded patient from Dexie:', patient.id)
+
+      // 2) Fallback to live API when not cached
+      try {
+        const res = await api.get(`/patients/${formData.value.patient_id}`)
+        const data = res?.data?.data || res?.data || null
+        if (data) {
+          currentPatient.value = data
+          console.log('🌐 Loaded patient from API:', data.patient_id || data.id)
+          // 3) Best-effort cache into Dexie for offline use (if schema present)
+          try {
+            await db.patients.put({ ...data, patient_id: data.patient_id || data.id })
+            console.log('💾 Cached patient to Dexie')
+          } catch (cacheErr) {
+            console.warn('Failed to cache patient (non-blocking):', cacheErr?.message || cacheErr)
+          }
+          return
+        }
+      } catch (apiErr) {
+        console.error('Error fetching patient from API:', apiErr)
+      }
+
+      // If still not found
+      currentPatient.value = null
+      throw new Error('Patient not found')
     } catch (error) {
       console.error('Error fetching patient:', error)
       throw new Error('Failed to load patient information.')

@@ -51,7 +51,7 @@
               class="vaccine-search-wrapper"
               @click.stop
             >
-              <input 
+              <input
                 v-model="vaccineSearchTerm"
                 type="text"
                 class="form-input"
@@ -65,42 +65,53 @@
                 v-if="showVaccineDropdown"
                 class="vaccine-dropdown"
               >
-                <template v-if="filteredVaccineOptions.length > 0">
-                  <button
-                    v-for="vaccine in filteredVaccineOptions"
-                    :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
-                    type="button"
-                    class="vaccine-option"
-                    :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
-                    :disabled="!outsideMode && vaccine.isExpired"
-                    @click.stop="selectVaccine(vaccine)"
-                  >
-                    <div class="vaccine-option-main">
-                      <strong>{{ vaccine.antigen_name }}</strong>
-                      <span
-                        v-if="!outsideMode"
-                        class="vaccine-brand"
-                      >{{ vaccine.manufacturer }}</span>
-                    </div>
-                    <div
-                      v-if="!outsideMode"
-                      class="vaccine-option-details"
-                    >
-                      <span>Lot: {{ vaccine.lot_number }}</span>
-                      <span>Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
-                      <span
-                        v-if="vaccine.isExpired"
-                        class="vaccine-expired"
-                      >EXPIRED</span>
-                    </div>
-                  </button>
+                <template v-if="vaccineLoading">
+                  <div class="vaccine-no-results">
+                    Loading vaccines...
+                  </div>
                 </template>
-                <div
-                  v-else
-                  class="vaccine-no-results"
-                >
-                  {{ (outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0 ? 'Loading vaccines...' : 'No vaccines found' }}
-                </div>
+                <template v-else>
+                  <template v-if="(outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0">
+                    <div class="vaccine-no-results">
+                      No vaccines available
+                    </div>
+                  </template>
+                  <template v-else-if="filteredVaccineOptions.length > 0">
+                    <button
+                      v-for="vaccine in filteredVaccineOptions"
+                      :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
+                      type="button"
+                      class="vaccine-option"
+                      :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
+                      :disabled="!outsideMode && vaccine.isExpired"
+                      @click.stop="selectVaccine(vaccine)"
+                    >
+                      <div class="vaccine-option-main">
+                        <strong>{{ vaccine.antigen_name }}</strong>
+                        <span
+                          v-if="!outsideMode"
+                          class="vaccine-brand"
+                        >{{ vaccine.manufacturer }}</span>
+                      </div>
+                      <div
+                        v-if="!outsideMode"
+                        class="vaccine-option-details"
+                      >
+                        <span>Lot: {{ vaccine.lot_number }}</span>
+                        <span>Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
+                        <span
+                          v-if="vaccine.isExpired"
+                          class="vaccine-expired"
+                        >EXPIRED</span>
+                      </div>
+                    </button>
+                  </template>
+                  <template v-else>
+                    <div class="vaccine-no-results">
+                      No vaccines found
+                    </div>
+                  </template>
+                </template>
               </div>
             </div>
           </div>
@@ -201,17 +212,20 @@
                 <option value="">
                   Select a site
                 </option>
-                <option value="left-deltoid">
-                  Left Deltoid
+                <option value="Left arm (deltoid)">
+                  Left arm (deltoid)
                 </option>
-                <option value="right-deltoid">
-                  Right Deltoid
+                <option value="Right arm (deltoid)">
+                  Right arm (deltoid)
                 </option>
-                <option value="left-thigh">
-                  Left Thigh
+                <option value="Left thigh (anterolateral)">
+                  Left thigh (anterolateral)
                 </option>
-                <option value="right-thigh">
-                  Right Thigh
+                <option value="Right thigh (anterolateral)">
+                  Right thigh (anterolateral)
+                </option>
+                <option value="Oral">
+                  Oral
                 </option>
               </select>
             </div>
@@ -281,6 +295,7 @@ import { watch, onMounted, onBeforeUnmount } from 'vue'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
+import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   show: {
@@ -315,6 +330,7 @@ const {
   availableDoses,
   autoSelectHint,
   serviceForm,
+  vaccineLoading,
   filteredVaccineOptions,
   refreshVaccineSources,
   onVaccineSearch,
@@ -531,6 +547,13 @@ watch(() => props.show, (val) => {
   if (!val) {
     // When closing, reset form
     resetServiceForm()
+  }
+  if (val) {
+    // Set default date to today if empty on open, then recompute age
+    if (!serviceForm.value.dateAdministered) {
+      serviceForm.value.dateAdministered = getCurrentPHDate()
+      updateAgeCalculation()
+    }
   }
 })
 

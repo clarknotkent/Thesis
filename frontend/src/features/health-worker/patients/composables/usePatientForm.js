@@ -104,7 +104,9 @@ export function usePatientForm() {
    */
   const getContactForName = (name, type) => {
     const opts = type === 'mother' ? motherOptions.value : fatherOptions.value
-    const found = opts.find(o => ((o.full_name || '').trim()) === String(name).trim())
+    const norm = (v) => (v ?? '').toString().trim().replace(/\s+/g, ' ').toLowerCase()
+    const target = norm(name)
+    const found = opts.find(o => norm(o.full_name) === target)
     return found?.contact_number || null
   }
 
@@ -163,30 +165,47 @@ export function usePatientForm() {
       const chosenName = normalizeName(chosenNameRaw)
       if (!chosenName) return
 
-      // Query local patients table for co-parent
+      // 1) Try backend co-parent inference (admin UI logic)
+      try {
+        const res = await api.get('/patients/parents/coparent', { params: { type: isMother ? 'mother' : 'father', name: chosenName } })
+        const suggestion = res?.data?.data?.name
+        const suggestedContact = res?.data?.data?.contact_number
+        const suggestedOccupation = res?.data?.data?.occupation
+        const target = isMother ? 'father' : 'mother'
+        if (suggestion && !formData.value[`${target}_name`]) {
+          formData.value[`${target}_name`] = suggestion
+          const fromApi = suggestedContact || null
+          const fromOptions = getContactForName(suggestion, target)
+          const finalContact = fromApi || fromOptions || null
+          if (finalContact && !formData.value[`${target}_contact_number`]) {
+            formData.value[`${target}_contact_number`] = finalContact
+          }
+          if (suggestedOccupation && !formData.value[`${target}_occupation`]) {
+            formData.value[`${target}_occupation`] = suggestedOccupation
+          }
+          return
+        }
+      } catch (apiErr) {
+        // non-blocking: fall back to offline heuristic
+      }
+
+      // 2) Offline fallback: infer from local patients table
+      const normalizeLower = (v) => (v ?? '').toString().trim().replace(/\s+/g, ' ').toLowerCase()
       const allPatients = await db.patients.toArray()
       const parentField = isMother ? 'mother_name' : 'father_name'
       const coParentField = isMother ? 'father_name' : 'mother_name'
       const coParentContactField = isMother ? 'father_contact_number' : 'mother_contact_number'
       const coParentOccupationField = isMother ? 'father_occupation' : 'mother_occupation'
-      
-      // Find a patient record with matching parent name
-      const matchingPatient = allPatients.find(p => 
-        normalizeName(p[parentField]) === chosenName.toLowerCase()
-      )
-
+      const matchingPatient = allPatients.find(p => normalizeLower(p[parentField]) === normalizeLower(chosenNameRaw))
       const suggestion = matchingPatient?.[coParentField] || null
       const suggestedContact = matchingPatient?.[coParentContactField] || null
       const suggestedOccupation = matchingPatient?.[coParentOccupationField] || null
       const target = isMother ? 'father' : 'mother'
-
       if (suggestion && !formData.value[`${target}_name`]) {
         formData.value[`${target}_name`] = suggestion
-        
         const fromLocal = suggestedContact || null
         const fromOptions = getContactForName(suggestion, target)
         const finalContact = fromLocal || fromOptions || null
-        
         if (finalContact && !formData.value[`${target}_contact_number`]) {
           formData.value[`${target}_contact_number`] = finalContact
         }
@@ -280,15 +299,40 @@ export function usePatientForm() {
    */
   const loadGuardianDetails = async (guardianId) => {
     try {
-      // Query Dexie guardians table by ID
-      const g = await db.guardians.get(guardianId)
+      // 1) Try Dexie first for speed
+      let g = null
+      try {
+        g = await db.guardians.get(guardianId)
+      } catch (dexieErr) {
+        console.warn('Dexie guardian read failed (non-blocking):', dexieErr?.message || dexieErr)
+      }
+
+      // 2) If missing or lacking occupation, fetch from API as authoritative
+      if (!g || g.occupation == null) {
+        try {
+          const res = await api.get(`/guardians/${guardianId}`)
+          const fromApi = res?.data?.data || res?.data || null
+          if (fromApi) {
+            // Upsert into Dexie for future offline use
+            try {
+              await db.guardians.put({ ...fromApi, guardian_id: fromApi.guardian_id || guardianId })
+            } catch (cacheErr) {
+              console.warn('Dexie guardian cache put failed (non-blocking):', cacheErr?.message || cacheErr)
+            }
+            g = fromApi
+          }
+        } catch (apiErr) {
+          console.warn('API guardian fetch failed (non-blocking):', apiErr?.message || apiErr)
+        }
+      }
+
       if (g) {
         selectedGuardian.value = {
           ...(selectedGuardian.value || {}),
           occupation: g.occupation || selectedGuardian.value?.occupation,
           contact_number: selectedGuardian.value?.contact_number || g.contact_number
         }
-        // Re-apply autofill now that we have occupation
+        // Re-apply autofill now that we have richer data
         applyParentAutofill(selectedGuardian.value, formData.value.relationship_to_guardian, true)
       }
     } catch (e) {
@@ -371,21 +415,102 @@ export function usePatientForm() {
 
   /**
    * Fetch guardians list
-   * OFFLINE-FIRST: Read from local Dexie database
+   * ONLINE-FIRST when network is available; otherwise fall back to Dexie cache.
+   * If cache exists and we're online, show cache immediately then refresh from API in-place.
    */
   const fetchGuardians = async () => {
     try {
       loadingGuardians.value = true
-      // Read from local Dexie guardians table
-      const localGuardians = await db.guardians.toArray()
-      guardians.value = localGuardians || []
-      console.log('✅ Loaded guardians from Dexie:', localGuardians.length)
+
+      // 1) Read from local cache to render something fast
+      let localCount = 0
+      try {
+        const localGuardians = await db.guardians.toArray()
+        if (Array.isArray(localGuardians) && localGuardians.length > 0) {
+          guardians.value = normalizeGuardians(localGuardians)
+          localCount = guardians.value.length
+          console.log('✅ Loaded guardians from Dexie (warm cache):', localCount)
+        }
+      } catch (dexieErr) {
+        console.warn('Dexie read failed (non-blocking):', dexieErr?.message || dexieErr)
+      }
+
+      // 2) Decide online/offline
+      const isOnline = (typeof navigator === 'undefined') ? true : !!navigator.onLine
+
+      if (isOnline) {
+        // 2a) Online: fetch fresh list from API and overwrite UI + cache
+        try {
+          const res = await api.get('/guardians')
+          const fromApi = res?.data?.data || res?.data || []
+          const normalized = normalizeGuardians(Array.isArray(fromApi) ? fromApi : [])
+          guardians.value = normalized
+          console.log('🌐 Loaded guardians from API:', guardians.value.length)
+
+          // Upsert into Dexie for offline use
+          if (normalized.length > 0) {
+            try {
+              await db.guardians.bulkPut(normalized)
+              console.log('💾 Cached guardians to Dexie (refreshed)')
+            } catch (cacheErr) {
+              console.warn('Failed to cache guardians (non-blocking):', cacheErr?.message || cacheErr)
+            }
+          }
+        } catch (apiErr) {
+          console.error('Error fetching guardians from API (falling back to cache):', apiErr?.message || apiErr)
+          // If we have no local data at all, ensure array shape
+          if (!localCount) guardians.value = []
+        }
+      } else {
+        // 2b) Offline: rely on whatever cache provided
+        if (!localCount) {
+          guardians.value = []
+          console.log('📴 Offline and no guardians in cache')
+        } else {
+          console.log('📴 Offline - using cached guardians:', localCount)
+        }
+      }
     } catch (error) {
       console.error('Error fetching guardians:', error)
       throw error
     } finally {
       loadingGuardians.value = false
     }
+  }
+
+  // Ensure dropdown gets clean, unique, displayable items
+  const normalizeGuardians = (list) => {
+    const byId = new Map()
+    for (const g of list || []) {
+      const id = g?.guardian_id
+      if (!id) continue // ignore entries without a valid guardian_id
+      // Build a human-friendly name if missing
+      const fullName = g.full_name && String(g.full_name).trim()
+        ? g.full_name
+        : (() => {
+            const sname = g.surname || ''
+            const fname = g.firstname || ''
+            const mname = g.middlename || ''
+            const fm = [fname, mname].filter(Boolean).join(' ').trim()
+            return [sname, fm].filter(Boolean).join(', ').trim()
+          })()
+      const normalized = {
+        guardian_id: id,
+        user_id: g.user_id || null,
+        surname: g.surname || null,
+        firstname: g.firstname || null,
+        middlename: g.middlename || null,
+        sex: g.sex || null,
+        contact_number: g.contact_number || null,
+        email: g.email || null,
+        address: g.address || null,
+        family_number: g.family_number || g.guardian_family_number || '',
+        occupation: g.occupation || null,
+        full_name: fullName || '—'
+      }
+      if (!byId.has(id)) byId.set(id, normalized)
+    }
+    return Array.from(byId.values()).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
   }
 
   /**
@@ -522,34 +647,121 @@ export function usePatientForm() {
       }
 
       const patientData = preparePatientData()
+      const isOnline = (typeof navigator === 'undefined') ? true : !!navigator.onLine
       
-      // Generate a temporary UUID for the patient (will be replaced by Supabase UUID on sync)
-      const tempId = `temp_patient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      // ONLINE-FIRST: if network is available, submit directly to API
+      if (isOnline) {
+        try {
+          // Align payload with admin API contract (expects birthhistory block)
+          const serverPayload = {
+            surname: patientData.surname,
+            firstname: patientData.firstname,
+            middlename: patientData.middlename,
+            sex: patientData.sex,
+            date_of_birth: patientData.date_of_birth,
+            address: patientData.address,
+            barangay: patientData.barangay,
+            health_center: patientData.health_center,
+            guardian_id: patientData.guardian_id,
+            relationship_to_guardian: patientData.relationship_to_guardian,
+            family_number: patientData.family_number,
+            mother_name: patientData.mother_name,
+            mother_occupation: patientData.mother_occupation,
+            mother_contact_number: patientData.mother_contact_number,
+            father_name: patientData.father_name,
+            father_occupation: patientData.father_occupation,
+            father_contact_number: patientData.father_contact_number,
+            // Some backends also accept these at top-level; include for compatibility
+            birth_weight: patientData.medical_history?.birth_weight ?? null,
+            birth_length: patientData.medical_history?.birth_length ?? null,
+            place_of_birth: patientData.medical_history?.place_of_birth ?? null,
+            birthhistory: {
+              birth_weight: patientData.medical_history?.birth_weight ?? null,
+              birth_length: patientData.medical_history?.birth_length ?? null,
+              place_of_birth: patientData.medical_history?.place_of_birth ?? null,
+              time_of_birth: patientData.medical_history?.time_of_birth ?? null,
+              attendant_at_birth: patientData.medical_history?.attendant_at_birth ?? null,
+              type_of_delivery: patientData.medical_history?.type_of_delivery ?? null,
+              ballards_score: patientData.medical_history?.ballards_score ?? null,
+              newborn_screening_result: patientData.medical_history?.newborn_screening_result ?? null,
+              hearing_test_date: patientData.medical_history?.hearing_test_date ?? null,
+              newborn_screening_date: patientData.medical_history?.newborn_screening_date ?? null
+            }
+          }
+
+          const res = await api.post('/patients', serverPayload)
+          const serverRecord = res?.data?.data || res?.data || null
+
+          // Best-effort: cache minimal patient to Dexie for parent portal views
+          try {
+            const pid = serverRecord?.patient_id || serverRecord?.id
+            if (pid) {
+              const full_name = [serverRecord?.firstname || patientData.firstname, serverRecord?.middlename || patientData.middlename, serverRecord?.surname || patientData.surname].filter(Boolean).join(' ').trim()
+              await db.patients.put({
+                patient_id: String(pid),
+                surname: serverRecord?.surname || patientData.surname,
+                firstname: serverRecord?.firstname || patientData.firstname,
+                middlename: serverRecord?.middlename || patientData.middlename,
+                full_name,
+                date_of_birth: serverRecord?.date_of_birth || patientData.date_of_birth,
+                guardian_id: serverRecord?.guardian_id || patientData.guardian_id,
+                family_number: serverRecord?.family_number || patientData.family_number
+              })
+            }
+          } catch (cacheErr) {
+            // Non-blocking cache write failure
+            console.warn('Dexie cache put failed (non-blocking):', cacheErr?.message || cacheErr)
+          }
+
+          return serverRecord
+        } catch (apiErr) {
+          console.warn('Online submit failed, falling back to offline path (will sync later if supported):', apiErr?.message || apiErr)
+          // Continue to offline path
+        }
+      }
+      
+  // Generate a temporary UUID for the patient (will be replaced by Supabase UUID on sync)
+  const tempId = `temp_patient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
       // Add metadata for offline-first
+      const buildFullName = (p) => {
+        const parts = [p.firstname, p.middlename, p.surname].filter(Boolean)
+        return parts.join(' ').trim()
+      }
+
       const localPatientRecord = {
-        id: tempId,
+        // IMPORTANT: Dexie schema primary key is patient_id
+        patient_id: tempId,
         ...patientData,
+        full_name: buildFullName(patientData),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         _pending: true, // Flag to indicate this hasn't been synced yet
         _temp_id: tempId // Keep track of temp ID for later reference
       }
 
-      // STEP 1: Save to local Dexie database (patients table)
+  // STEP 1: Save to local Dexie database (patients table)
       await db.patients.add(localPatientRecord)
       console.log('✅ Patient saved to local Dexie database:', tempId)
 
-      // STEP 2: Add task to pending_uploads (Outbox Pattern)
-      await db.pending_uploads.add({
-        type: 'patient',
-        operation: 'create',
-        data: patientData,
-        local_id: tempId,
-        created_at: new Date().toISOString(),
-        status: 'pending'
-      })
-      console.log('✅ Patient queued for sync in pending_uploads')
+      // STEP 2: Add task to pending_uploads (Outbox Pattern) if available in this build
+      try {
+        if (db.pending_uploads && typeof db.pending_uploads.add === 'function') {
+          await db.pending_uploads.add({
+            type: 'patient',
+            operation: 'create',
+            data: patientData,
+            local_id: tempId,
+            created_at: new Date().toISOString(),
+            status: 'pending'
+          })
+          console.log('✅ Patient queued for sync in pending_uploads')
+        } else {
+          console.warn('ℹ️ pending_uploads table not available in current offline DB schema; skipping outbox queue (non-blocking).')
+        }
+      } catch (outboxErr) {
+        console.warn('Failed to queue patient in pending_uploads (non-blocking):', outboxErr?.message || outboxErr)
+      }
 
       // Return the local record so the UI can use it immediately
       return localPatientRecord
