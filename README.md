@@ -2,6 +2,12 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
+> **🧹 November 6, 2025 - QA RESET TOOL ADDED**
+>
+> - ✅ New non-production QA reset script with full backup, deep cleanup, ID resequencing, and admin/FAQ re-log
+> - 📄 See: `docs/RESET_QA_INSTRUCTIONS.md` and `backend/scripts/reset_clean_for_QA.sql`
+> - ⚠️ Safe to run only in QA/Staging — creates `backup_reset_YYYYMMDD_HHMM` snapshot automatically
+>
 > **🎉 November 5, 2025 - SMS & TOAST NOTIFICATIONS FIXED!**
 > 
 > **Critical System Fixes:**
@@ -109,7 +115,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - Current Branch: **system-prototype-v4** ⭐ Complete Offline Parent Portal + SMS/Toast Fixes
 - Previous Branch: system-prototype-v3
 - Version: 4.3 (SMS & Toast Notification Fixes + Bulk Prefetch + Supabase-Mirrored Offline)
-- Last Updated: November 5, 2025
+- Last Updated: November 6, 2025
 - Status: Active Development - **Parent Portal Complete**, SMS System Fixed, Health Worker/Admin In Progress
 
 ---
@@ -972,6 +978,7 @@ This project has been successfully converted to a Progressive Web App (PWA) with
   - OFFLINE_ARCHITECTURE.md - System architecture
   - TESTING_GUIDE.md - Testing procedures
   - (7 comprehensive guides total)
+- RESET_QA_INSTRUCTIONS.md ⭐ NEW (Nov 6) - QA data reset instructions
 - RAILWAY_DEPLOYMENT_GUIDE.md - Railway deployment instructions
 - DEPLOYMENT.md - General deployment reference and best practices
 - CLEANUP_FOR_V3.md - System cleanup checklist for v3 branch

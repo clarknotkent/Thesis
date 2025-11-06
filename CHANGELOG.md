@@ -4,6 +4,29 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ---
 
+## [system-prototype-v4] - 2025-11-06
+
+### ✨ Added
+
+- QA Reset script for non-production data cleanup and resequencing:
+  - File: `backend/scripts/reset_clean_for_QA.sql`
+  - Creates a timestamped backup schema `backup_reset_YYYYMMDD_HHMM` (structure + data)
+  - Runs inside a single transaction with `SET CONSTRAINTS ALL DEFERRED`
+  - Purges Guardian/Health Staff accounts and all dependent data (patients, visits, vitals, immunizations, schedules)
+  - Clears vaccine domain data (inventory, requests, receiving reports/items, transactions, vaccinemaster)
+  - Clears logs (notifications, sms_logs, activitylogs, conversations/messages if desired)
+  - Resequences IDs across affected tables with `public.resequence_table`
+  - Re-logs Admin users and FAQs to `activitylogs` for a clean baseline
+
+- Documentation:
+  - `docs/RESET_QA_INSTRUCTIONS.md` — how to run via psql or Supabase SQL editor, safety notes, and rollback approach.
+
+### ⚠️ Notes
+
+- Intended for NON-PRODUCTION environments only.
+- Requires helper function `public.resequence_table` to exist.
+- See `docs/RESET_QA_INSTRUCTIONS.md` for usage and verification steps.
+
 ## [system-prototype-v4] - 2025-11-05
 
 ### 🚀 Parent Portal Offline Optimization (November 5, 2025)

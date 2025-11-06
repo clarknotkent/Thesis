@@ -308,6 +308,17 @@ const createSMSTemplate = async (req, res) => {
       .select()
       .single();
     if (error) throw error;
+    // Activity log: SMS template created
+    try {
+      await logActivity({
+        action_type: ACTIVITY.SMS_TEMPLATE.CREATE,
+        description: `Created SMS template ${data.id}`,
+        user_id: actorId,
+        entity_type: 'sms_template',
+        entity_id: data.id,
+        new_value: { name: data.name, trigger_type: data.trigger_type }
+      });
+    } catch (_) { /* ignore activity log failures */ }
     res.status(201).json({ success: true, message: 'Template created successfully', data });
   } catch (error) {
     console.error('Error creating SMS template:', error);

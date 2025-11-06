@@ -80,7 +80,8 @@ const handleSubmit = async (formData) => {
       role: formData.role,
       hs_type: formData.hsType || formData.hwType || null,
       status: formData.status,
-      license_number: formData.licenseNumber || null,
+      // Backend expects professional_license_no
+      professional_license_no: formData.licenseNumber || null,
       employee_id: formData.employeeId || null,
       contact_number: formData.contactNumber || null,
       sex: formData.sex || null,
