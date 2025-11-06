@@ -3,23 +3,40 @@
     <div class="container-fluid py-3">
       <div class="d-flex align-items-center mb-3">
         <h3 class="mb-0">
-          <i class="bi bi-info-circle me-2"></i>
+          <i class="bi bi-info-circle me-2" />
           Activity Log Details
         </h3>
-        <button class="btn btn-outline-secondary ms-auto" @click="$router.back()">Back</button>
+        <button
+          class="btn btn-outline-secondary ms-auto"
+          @click="$router.back()"
+        >
+          Back
+        </button>
       </div>
 
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
-      <div v-else-if="!log" class="alert alert-warning">
+      <div
+        v-else-if="!log"
+        class="alert alert-warning"
+      >
         Log not found or inaccessible.
       </div>
 
-      <div v-else class="card shadow-sm">
+      <div
+        v-else
+        class="card shadow-sm"
+      >
         <div class="card-body">
           <div class="row g-3">
             <div class="col-md-6">
@@ -29,18 +46,31 @@
             <div class="col-md-6">
               <strong>User:</strong><br>
               <span class="text-muted">
-                <i :class="getRoleIcon(log.userRole)" :style="{ color: getRoleColor(log.userRole) }" class="me-1"></i>
+                <i
+                  :class="getRoleIcon(log.userRole)"
+                  :style="{ color: getRoleColor(log.userRole) }"
+                  class="me-1"
+                />
                 {{ log.userFullName }}
-                <span class="badge role-badge ms-2" :class="getRoleBadgeClass(log.userRole)">{{ formatUserRole(log.userRole) }}</span>
+                <span
+                  class="badge role-badge ms-2"
+                  :class="getRoleBadgeClass(log.userRole)"
+                >{{ formatUserRole(log.userRole) }}</span>
               </span>
             </div>
             <div class="col-md-6">
               <strong>Action:</strong><br>
-              <span class="badge" :class="getActionBadgeClass(log.actionType)">{{ log.displayAction }}</span>
+              <span
+                class="badge"
+                :class="getActionBadgeClass(log.actionType)"
+              >{{ log.displayAction }}</span>
             </div>
             <div class="col-md-6">
               <strong>Status:</strong><br>
-              <span class="badge" :class="log.status === 'success' ? 'bg-success' : 'bg-danger'">{{ log.status }}</span>
+              <span
+                class="badge"
+                :class="log.status === 'success' ? 'bg-success' : 'bg-danger'"
+              >{{ log.status }}</span>
             </div>
             <div class="col-md-6">
               <strong>IP Address:</strong><br>
@@ -54,16 +84,27 @@
               <strong>Resource:</strong><br>
               <span class="text-muted">{{ log.displayResource }}</span>
             </div>
-            <div class="col-12" v-if="log.description">
+            <div
+              v-if="log.description"
+              class="col-12"
+            >
               <strong>Description:</strong><br>
-              <p class="text-muted">{{ log.displayDescription }}</p>
+              <p class="text-muted">
+                {{ log.displayDescription }}
+              </p>
             </div>
             <div class="col-12">
-              <button class="btn btn-sm btn-outline-secondary" @click="showRaw = !showRaw">
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                @click="showRaw = !showRaw"
+              >
                 {{ showRaw ? 'Hide raw backend payload' : 'Show raw backend payload' }}
               </button>
             </div>
-            <div class="col-12" v-if="showRaw">
+            <div
+              v-if="showRaw"
+              class="col-12"
+            >
               <strong>Raw Backend Payload:</strong>
               <pre class="bg-light p-3 rounded small"><code>{{ formatJSON(log.rawOriginal) }}</code></pre>
             </div>

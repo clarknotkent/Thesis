@@ -3,54 +3,73 @@
     <!-- Fixed Header Section -->
     <div class="vaccine-details-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">{{ vaccineName }}</h1>
+        <h1 class="page-title">
+          {{ vaccineName }}
+        </h1>
         <!-- Removed menu button for read-only -->
-        <div class="header-spacer"></div>
+        <div class="header-spacer" />
       </div>
     </div>
 
     <!-- Page Content -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading vaccine details...</p>
       </div>
 
       <!-- Content -->
-      <div v-else-if="allDoses && allDoses.length > 0" class="vaccine-content">
+      <div
+        v-else-if="allDoses && allDoses.length > 0"
+        class="vaccine-content"
+      >
         <VaccineInfoCard 
-          :vaccineName="vaccineName"
-          :diseasePrevented="allDoses[0].disease_prevented || allDoses[0].diseasePrevented"
-          :totalDoses="allDoses.length"
+          :vaccine-name="vaccineName"
+          :disease-prevented="allDoses[0].disease_prevented || allDoses[0].diseasePrevented"
+          :total-doses="allDoses.length"
         />
 
         <DoseCard
           v-for="(dose, index) in sortedDoses" 
           :key="dose.immunization_id || index"
-          :doseNumber="dose.dose_number || dose.doseNumber || dose.dose || index + 1"
+          :dose-number="dose.dose_number || dose.doseNumber || dose.dose || index + 1"
           :status="dose.status"
-          :statusClass="getStatusClass(dose.status)"
-          :formattedDate="formatDate(dose.administered_date || dose.date_administered || dose.dateAdministered)"
-          :ageAtAdministration="dose.age_at_administration || dose.ageAtAdministration"
-          :administeredBy="getAdministeredBy(dose)"
+          :status-class="getStatusClass(dose.status)"
+          :formatted-date="formatDate(dose.administered_date || dose.date_administered || dose.dateAdministered)"
+          :age-at-administration="dose.age_at_administration || dose.ageAtAdministration"
+          :administered-by="getAdministeredBy(dose)"
           :facility="getFacility(dose)"
           :site="dose.site || dose.administration_site"
-          :batchNumber="dose.batch_number || dose.batchNumber || dose.lot_number || dose.lotNumber"
-          :isOutside="dose.outside"
+          :batch-number="dose.batch_number || dose.batchNumber || dose.lot_number || dose.lotNumber"
+          :is-outside="dose.outside"
           :remarks="dose.remarks || dose.notes"
         />
       </div>
 
       <!-- Error State -->
-      <div v-else class="error-state">
-        <i class="bi bi-exclamation-triangle error-icon"></i>
-        <p class="error-text">Failed to load vaccine details</p>
-        <button class="retry-button" @click="fetchVaccineDetails">
-          <i class="bi bi-arrow-clockwise"></i>
+      <div
+        v-else
+        class="error-state"
+      >
+        <i class="bi bi-exclamation-triangle error-icon" />
+        <p class="error-text">
+          Failed to load vaccine details
+        </p>
+        <button
+          class="retry-button"
+          @click="fetchVaccineDetails"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>

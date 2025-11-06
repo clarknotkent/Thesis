@@ -3,12 +3,17 @@
     <!-- Fixed Header Section -->
     <div class="visit-summary-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Visit Summary</h1>
+        <h1 class="page-title">
+          Visit Summary
+        </h1>
         <button class="menu-button">
-          <i class="bi bi-three-dots-vertical"></i>
+          <i class="bi bi-three-dots-vertical" />
         </button>
       </div>
     </div>
@@ -16,23 +21,29 @@
     <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading visit summary...</p>
       </div>
 
       <!-- Content -->
-      <div v-else-if="visit" class="visit-content">
+      <div
+        v-else-if="visit"
+        class="visit-content"
+      >
         <!-- Visit Information Card -->
         <div class="info-card">
           <div class="card-header primary">
-            <i class="bi bi-clipboard-data"></i>
+            <i class="bi bi-clipboard-data" />
             <h2>Visit Information</h2>
           </div>
           <div class="card-body">
             <div class="info-item">
               <div class="info-icon">
-                <i class="bi bi-person-circle text-primary"></i>
+                <i class="bi bi-person-circle text-primary" />
               </div>
               <div class="info-content">
                 <span class="info-label">Patient</span>
@@ -41,7 +52,7 @@
             </div>
             <div class="info-item">
               <div class="info-icon">
-                <i class="bi bi-calendar-event text-success"></i>
+                <i class="bi bi-calendar-event text-success" />
               </div>
               <div class="info-content">
                 <span class="info-label">Visit Date</span>
@@ -50,7 +61,7 @@
             </div>
             <div class="info-item">
               <div class="info-icon">
-                <i class="bi bi-person-badge text-info"></i>
+                <i class="bi bi-person-badge text-info" />
               </div>
               <div class="info-content">
                 <span class="info-label">Health Staff</span>
@@ -59,7 +70,7 @@
             </div>
             <div class="info-item">
               <div class="info-icon">
-                <i :class="hasOutsideServices ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'"></i>
+                <i :class="hasOutsideServices ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'" />
               </div>
               <div class="info-content">
                 <span class="info-label">Service Location</span>
@@ -68,13 +79,18 @@
                 </span>
               </div>
             </div>
-            <div v-if="visit?.findings" class="info-item findings">
+            <div
+              v-if="visit?.findings"
+              class="info-item findings"
+            >
               <div class="info-icon">
-                <i class="bi bi-journal-text text-info"></i>
+                <i class="bi bi-journal-text text-info" />
               </div>
               <div class="info-content">
                 <span class="info-label">Clinical Findings</span>
-                <p class="findings-text">{{ visit.findings }}</p>
+                <p class="findings-text">
+                  {{ visit.findings }}
+                </p>
               </div>
             </div>
           </div>
@@ -89,61 +105,82 @@
         />
 
         <!-- Vital Signs Card -->
-        <div v-if="hasVitalSigns" class="info-card">
+        <div
+          v-if="hasVitalSigns"
+          class="info-card"
+        >
           <div class="card-header info">
-            <i class="bi bi-heart-pulse"></i>
+            <i class="bi bi-heart-pulse" />
             <h2>Vital Signs</h2>
           </div>
           <div class="card-body">
             <div class="vitals-grid">
-              <div v-if="vitals.temperature" class="vital-box">
+              <div
+                v-if="vitals.temperature"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-thermometer-half text-danger"></i>
+                  <i class="bi bi-thermometer-half text-danger" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">Temperature</span>
                   <span class="vital-value">{{ vitals.temperature }}°C</span>
                 </div>
               </div>
-              <div v-if="vitals.weight" class="vital-box">
+              <div
+                v-if="vitals.weight"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-speedometer2 text-primary"></i>
+                  <i class="bi bi-speedometer2 text-primary" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">Weight</span>
                   <span class="vital-value">{{ vitals.weight }} kg</span>
                 </div>
               </div>
-              <div v-if="vitals.height" class="vital-box">
+              <div
+                v-if="vitals.height"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-arrows-vertical text-info"></i>
+                  <i class="bi bi-arrows-vertical text-info" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">Height</span>
                   <span class="vital-value">{{ vitals.height }} cm</span>
                 </div>
               </div>
-              <div v-if="vitals.muac" class="vital-box">
+              <div
+                v-if="vitals.muac"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-rulers text-warning"></i>
+                  <i class="bi bi-rulers text-warning" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">MUAC</span>
                   <span class="vital-value">{{ vitals.muac }} cm</span>
                 </div>
               </div>
-              <div v-if="vitals.respiration" class="vital-box">
+              <div
+                v-if="vitals.respiration"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-lungs text-success"></i>
+                  <i class="bi bi-lungs text-success" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">Respiration</span>
                   <span class="vital-value">{{ vitals.respiration }} /min</span>
                 </div>
               </div>
-              <div v-if="vitals.heart_rate" class="vital-box">
+              <div
+                v-if="vitals.heart_rate"
+                class="vital-box"
+              >
                 <div class="vital-icon">
-                  <i class="bi bi-heart text-danger"></i>
+                  <i class="bi bi-heart text-danger" />
                 </div>
                 <div class="vital-content">
                   <span class="vital-label">Heart Rate</span>
@@ -155,18 +192,31 @@
         </div>
 
         <!-- No Services Message -->
-        <div v-if="!hasServices && !hasVitalSigns" class="empty-state">
-          <i class="bi bi-info-circle empty-icon"></i>
-          <p class="empty-text">No additional services or vitals recorded for this visit</p>
+        <div
+          v-if="!hasServices && !hasVitalSigns"
+          class="empty-state"
+        >
+          <i class="bi bi-info-circle empty-icon" />
+          <p class="empty-text">
+            No additional services or vitals recorded for this visit
+          </p>
         </div>
       </div>
 
       <!-- Error State -->
-      <div v-else class="error-state">
-        <i class="bi bi-exclamation-triangle error-icon"></i>
-        <p class="error-text">Failed to load visit summary</p>
-        <button class="retry-button" @click="fetchVisitData">
-          <i class="bi bi-arrow-clockwise"></i>
+      <div
+        v-else
+        class="error-state"
+      >
+        <i class="bi bi-exclamation-triangle error-icon" />
+        <p class="error-text">
+          Failed to load visit summary
+        </p>
+        <button
+          class="retry-button"
+          @click="fetchVisitData"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>

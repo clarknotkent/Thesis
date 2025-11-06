@@ -4,22 +4,38 @@
       <!-- Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Vaccine Inventory</h1>
-          <p class="text-muted mb-0">Manage vaccine types and track vaccine stock levels</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Vaccine Inventory
+          </h1>
+          <p class="text-muted mb-0">
+            Manage vaccine types and track vaccine stock levels
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <router-link class="btn btn-outline-warning" to="/admin/vaccines/edit-vaccine-type">
-            <i class="bi bi-pencil-square me-2"></i>Edit Vaccine Type
+          <router-link
+            class="btn btn-outline-warning"
+            to="/admin/vaccines/edit-vaccine-type"
+          >
+            <i class="bi bi-pencil-square me-2" />Edit Vaccine Type
           </router-link>
-          <button class="btn btn-primary" @click="goToCreateReceiving">
-            <i class="bi bi-plus-circle me-2"></i>New Receiving Report
+          <button
+            class="btn btn-primary"
+            @click="goToCreateReceiving"
+          >
+            <i class="bi bi-plus-circle me-2" />New Receiving Report
           </button>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
@@ -30,18 +46,18 @@
 
         <!-- Inventory Table -->
         <InventoryTable
-          :paginatedVaccines="paginatedVaccines"
-          :searchTerm="searchTerm"
-          :currentFilter="currentFilter"
-          :currentSort="currentSort"
-          :currentPage="currentPage"
-          :totalPages="totalPages"
-          :totalItems="filteredVaccines.length"
-          :itemsPerPage="itemsPerPage"
-          :formatDate="formatDate"
-          :getQuantityClass="getQuantityClass"
-          :getStatusBadgeClass="getStatusBadgeClass"
-          @update:searchTerm="searchTerm = $event; watchSearchTerm()"
+          :paginated-vaccines="paginatedVaccines"
+          :search-term="searchTerm"
+          :current-filter="currentFilter"
+          :current-sort="currentSort"
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :total-items="filteredVaccines.length"
+          :items-per-page="itemsPerPage"
+          :format-date="formatDate"
+          :get-quantity-class="getQuantityClass"
+          :get-status-badge-class="getStatusBadgeClass"
+          @update:search-term="searchTerm = $event; watchSearchTerm()"
           @filter-change="setFilter"
           @sort-change="setSort"
           @delete="deleteVaccine"
@@ -53,13 +69,13 @@
 
         <!-- Receiving Reports Section -->
         <ReceivingReportsTable
-          :receivingList="receivingList"
+          :receiving-list="receivingList"
           :loading="receivingLoading"
-          :searchTerm="receivingSearch"
+          :search-term="receivingSearch"
           :status="receivingStatus"
-          :formatDate="formatDate"
-          :getReceivingBadgeClass="getReceivingBadgeClass"
-          @update:searchTerm="receivingSearch = $event; fetchReceivingList()"
+          :format-date="formatDate"
+          :get-receiving-badge-class="getReceivingBadgeClass"
+          @update:search-term="receivingSearch = $event; fetchReceivingList()"
           @update:status="receivingStatus = $event; fetchReceivingList()"
           @refresh="fetchReceivingList"
           @view="goToViewReceiving"

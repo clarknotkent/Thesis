@@ -1,23 +1,34 @@
 <template>
   <div>
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading vaccination history...</span>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="vaccinations.length === 0" class="text-center py-5">
-      <i class="bi bi-shield-x display-1 text-muted"></i>
-      <p class="text-muted mt-3">No vaccination records found</p>
+    <div
+      v-else-if="vaccinations.length === 0"
+      class="text-center py-5"
+    >
+      <i class="bi bi-shield-x display-1 text-muted" />
+      <p class="text-muted mt-3">
+        No vaccination records found
+      </p>
     </div>
 
     <!-- Vaccination Table -->
     <div v-else>
       <div class="mb-3 d-flex justify-content-between align-items-center">
         <h6 class="mb-0 text-primary">
-          <i class="bi bi-list-check me-2"></i>Vaccination Records
+          <i class="bi bi-list-check me-2" />Vaccination Records
         </h6>
         <span class="badge bg-info">{{ vaccinations.length }} Record(s)</span>
       </div>
@@ -26,17 +37,55 @@
         <table class="table table-bordered">
           <thead class="table-light">
             <tr>
-              <th style="width: 20%;" class="text-center">Vaccine Name</th>
-              <th style="width: 15%;" class="text-center">Disease Prevented</th>
-              <th style="width: 8%;" class="text-center">Doses</th>
-              <th style="width: 25%;" class="text-center">Date Administered<br><small class="text-muted">MM/DD/YYYY</small></th>
-              <th style="width: 15%;" class="text-center">Age at Administration</th>
-              <th style="width: 10%;" class="text-center">Status</th>
-              <th style="width: 7%;" class="text-center">Action</th>
+              <th
+                style="width: 20%;"
+                class="text-center"
+              >
+                Vaccine Name
+              </th>
+              <th
+                style="width: 15%;"
+                class="text-center"
+              >
+                Disease Prevented
+              </th>
+              <th
+                style="width: 8%;"
+                class="text-center"
+              >
+                Doses
+              </th>
+              <th
+                style="width: 25%;"
+                class="text-center"
+              >
+                Date Administered<br><small class="text-muted">MM/DD/YYYY</small>
+              </th>
+              <th
+                style="width: 15%;"
+                class="text-center"
+              >
+                Age at Administration
+              </th>
+              <th
+                style="width: 10%;"
+                class="text-center"
+              >
+                Status
+              </th>
+              <th
+                style="width: 7%;"
+                class="text-center"
+              >
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="group in groupedVaccinations" :key="group.vaccineName">
+            <tr
+              v-for="group in groupedVaccinations"
+              :key="group.vaccineName"
+            >
               <td class="text-center align-middle">
                 <strong>{{ group.vaccineName }}</strong>
               </td>
@@ -54,14 +103,21 @@
                     class="dose-box-small"
                     :class="getDoseBoxClass(dose)"
                   >
-                    <div class="dose-number-small">Dose {{ dose.doseNumber }}</div>
-                    <div class="dose-date-small">{{ formatShortDate(dose.administeredDate) }}</div>
+                    <div class="dose-number-small">
+                      Dose {{ dose.doseNumber }}
+                    </div>
+                    <div class="dose-date-small">
+                      {{ formatShortDate(dose.administeredDate) }}
+                    </div>
                   </div>
                 </div>
               </td>
               <td class="p-0 align-middle">
                 <!-- Single dose: Display directly -->
-                <div v-if="group.totalDoses === 1" class="px-3 py-2 text-center">
+                <div
+                  v-if="group.totalDoses === 1"
+                  class="px-3 py-2 text-center"
+                >
                   <small>{{ group.doses[0].ageAtAdministration || '—' }}</small>
                 </div>
                 <!-- Multiple doses: Display with dividers -->
@@ -78,7 +134,10 @@
               </td>
               <td class="p-0 align-middle">
                 <!-- Single dose: Display directly -->
-                <div v-if="group.totalDoses === 1" class="px-3 py-2 text-center">
+                <div
+                  v-if="group.totalDoses === 1"
+                  class="px-3 py-2 text-center"
+                >
                   <span :class="['badge', 'badge-sm', getStatusBadgeClass(group.doses[0].status)]">
                     {{ group.doses[0].status || 'Completed' }}
                   </span>
@@ -101,17 +160,17 @@
                 <div class="d-flex flex-column gap-2">
                   <button 
                     class="btn btn-sm btn-primary"
-                    @click="viewVaccineDetails(group)"
                     title="View Details"
+                    @click="viewVaccineDetails(group)"
                   >
-                    <i class="bi bi-eye me-1"></i>View
+                    <i class="bi bi-eye me-1" />View
                   </button>
                   <button 
                     class="btn btn-sm btn-outline-primary"
-                    @click="editVaccineRecords(group)"
                     title="Edit All Doses"
+                    @click="editVaccineRecords(group)"
                   >
-                    <i class="bi bi-pencil me-1"></i>Edit
+                    <i class="bi bi-pencil me-1" />Edit
                   </button>
                 </div>
               </td>

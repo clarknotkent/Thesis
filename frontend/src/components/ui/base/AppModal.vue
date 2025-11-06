@@ -1,15 +1,32 @@
 <template>
-  <div v-if="show" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.3);">
-    <div class="modal-dialog" :class="sizeClass">
+  <div
+    v-if="show"
+    class="modal fade show d-block"
+    tabindex="-1"
+    style="background:rgba(0,0,0,0.3);"
+  >
+    <div
+      class="modal-dialog"
+      :class="sizeClass"
+    >
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ title }}</h5>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <h5 class="modal-title">
+            {{ title }}
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            @click="$emit('close')"
+          />
         </div>
         <div class="modal-body">
           <slot />
         </div>
-        <div v-if="$slots.footer" class="modal-footer">
+        <div
+          v-if="$slots.footer"
+          class="modal-footer"
+        >
           <slot name="footer" />
         </div>
       </div>

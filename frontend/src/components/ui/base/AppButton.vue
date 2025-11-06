@@ -2,11 +2,17 @@
   <button 
     :class="buttonClasses" 
     :disabled="disabled || loading"
-    @click="$emit('click', $event)"
     :type="type"
+    @click="$emit('click', $event)"
   >
-    <i v-if="loading" class="bi bi-arrow-clockwise me-2 spin"></i>
-    <i v-else-if="icon" :class="`bi ${icon} me-2`"></i>
+    <i
+      v-if="loading"
+      class="bi bi-arrow-clockwise me-2 spin"
+    />
+    <i
+      v-else-if="icon"
+      :class="`bi ${icon} me-2`"
+    />
     <slot />
   </button>
 </template>

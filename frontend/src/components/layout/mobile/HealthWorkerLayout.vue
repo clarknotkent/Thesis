@@ -9,7 +9,7 @@
       @filter="$emit('filter')"
       @scan="$emit('scan')"
       @add="$emit('add')"
-      @update:searchQuery="$emit('update:searchQuery', $event)"
+      @update:search-query="$emit('update:searchQuery', $event)"
     />
 
     <!-- Scrollable Content Area -->
@@ -31,8 +31,8 @@
       :title="confirmState.title"
       :message="confirmState.message"
       :variant="confirmState.variant"
-      :confirmText="confirmState.confirmText"
-      :cancelText="confirmState.cancelText"
+      :confirm-text="confirmState.confirmText"
+      :cancel-text="confirmState.cancelText"
       @confirm="handleConfirm"
       @cancel="handleCancel"
     />

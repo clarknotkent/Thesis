@@ -3,8 +3,11 @@
     <div class="notifications-container">
       <!-- Back Button -->
       <div class="back-button-container">
-        <button @click="goBack" class="back-button">
-          <i class="bi bi-arrow-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-arrow-left" />
           <span>Back</span>
         </button>
       </div>
@@ -13,33 +16,36 @@
       <div class="notifications-header">
         <div class="header-top">
           <h4 class="mb-0">
-            <i class="bi bi-bell me-2"></i>
+            <i class="bi bi-bell me-2" />
             Notifications
           </h4>
           <div class="header-actions">
             <button 
               v-if="unreadCount > 0" 
               class="btn btn-sm btn-outline-primary" 
-              @click="markAllAsRead"
               title="Mark all as read"
+              @click="markAllAsRead"
             >
-              <i class="bi bi-check2-all"></i>
+              <i class="bi bi-check2-all" />
             </button>
             <button 
               v-if="readCount > 0" 
               class="btn btn-sm btn-outline-danger" 
-              @click="handleClearAll"
               title="Clear all read"
+              @click="handleClearAll"
             >
-              <i class="bi bi-trash"></i>
+              <i class="bi bi-trash" />
             </button>
             <button 
               class="btn btn-sm btn-outline-secondary" 
-              @click="loadNotifications"
               :disabled="loading"
               title="Refresh"
+              @click="loadNotifications"
             >
-              <i class="bi bi-arrow-clockwise" :class="{ 'spin': loading }"></i>
+              <i
+                class="bi bi-arrow-clockwise"
+                :class="{ 'spin': loading }"
+              />
             </button>
           </div>
         </div>
@@ -71,15 +77,26 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading && notifications.length === 0" class="loading-state">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading && notifications.length === 0"
+        class="loading-state"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="mt-2">Loading notifications...</p>
+        <p class="mt-2">
+          Loading notifications...
+        </p>
       </div>
 
       <!-- Notifications List -->
-      <div v-else-if="filteredNotifications.length > 0" class="notifications-list">
+      <div
+        v-else-if="filteredNotifications.length > 0"
+        class="notifications-list"
+      >
         <div 
           v-for="notification in filteredNotifications" 
           :key="notification.id"
@@ -87,24 +104,31 @@
           :class="{ 'unread': !notification.read }"
           @click="handleNotificationClick(notification)"
         >
-          <div class="notification-icon" :class="notification.type">
-            <i :class="getNotificationIcon(notification.type)"></i>
+          <div
+            class="notification-icon"
+            :class="notification.type"
+          >
+            <i :class="getNotificationIcon(notification.type)" />
           </div>
           <div class="notification-content">
             <div class="notification-header">
-              <h6 class="notification-title">{{ notification.title }}</h6>
+              <h6 class="notification-title">
+                {{ notification.title }}
+              </h6>
               <div class="notification-actions">
                 <small class="notification-time">{{ notification.time }}</small>
                 <button 
                   class="delete-btn" 
-                  @click="handleDelete(notification, $event)"
                   title="Delete"
+                  @click="handleDelete(notification, $event)"
                 >
-                  <i class="bi bi-x"></i>
+                  <i class="bi bi-x" />
                 </button>
               </div>
             </div>
-            <p class="notification-message">{{ notification.message }}</p>
+            <p class="notification-message">
+              {{ notification.message }}
+            </p>
             <div class="notification-footer">
               <span class="notification-channel">
                 <i 
@@ -113,23 +137,29 @@
                     'bi bi-envelope': notification.channel === 'email',
                     'bi bi-chat': notification.channel === 'sms'
                   }"
-                ></i>
+                />
                 {{ notification.channel }}
               </span>
             </div>
-            <span v-if="!notification.read" class="unread-indicator"></span>
+            <span
+              v-if="!notification.read"
+              class="unread-indicator"
+            />
           </div>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else class="empty-state">
-        <i class="bi bi-bell-fill empty-icon"></i>
+      <div
+        v-else
+        class="empty-state"
+      >
+        <i class="bi bi-bell-fill empty-icon" />
         <h5>No notifications</h5>
         <p class="text-muted">
           {{ filter === 'unread' ? "You're all caught up!" : 
-             filter === 'read' ? "No read notifications" : 
-             "You're all caught up!" }}
+            filter === 'read' ? "No read notifications" : 
+            "You're all caught up!" }}
         </p>
       </div>
     </div>

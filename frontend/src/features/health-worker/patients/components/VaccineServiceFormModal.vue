@@ -1,13 +1,23 @@
 <template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-container" @click.stop>
+  <div
+    v-if="show"
+    class="modal-overlay"
+    @click.self="closeModal"
+  >
+    <div
+      class="modal-container"
+      @click.stop
+    >
       <div class="modal-header">
         <h3>
-          <i class="bi bi-syringe-fill"></i>
+          <i class="bi bi-syringe-fill" />
           {{ editingIndex !== null ? 'Edit' : 'Add' }} Vaccine Service
         </h3>
-        <button class="btn-close" @click="closeModal">
-          <i class="bi bi-x-lg"></i>
+        <button
+          class="btn-close"
+          @click="closeModal"
+        >
+          <i class="bi bi-x-lg" />
         </button>
       </div>
 
@@ -20,27 +30,41 @@
             <!-- Top toggles: NIP-only and Outside -->
             <div class="form-toggles">
               <label class="checkbox-label">
-                <input type="checkbox" v-model="showNipOnly" @change="handleNipChange" />
+                <input
+                  v-model="showNipOnly"
+                  type="checkbox"
+                  @change="handleNipChange"
+                >
                 <span>NIP only</span>
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" v-model="outsideMode" @change="handleOutsideToggle" />
+                <input
+                  v-model="outsideMode"
+                  type="checkbox"
+                  @change="handleOutsideToggle"
+                >
                 <span>Outside facility</span>
               </label>
             </div>
 
-            <div class="vaccine-search-wrapper" @click.stop>
+            <div
+              class="vaccine-search-wrapper"
+              @click.stop
+            >
               <input 
+                v-model="vaccineSearchTerm"
                 type="text"
                 class="form-input"
-                v-model="vaccineSearchTerm"
-                @input="onVaccineSearch"
-                @focus="showVaccineDropdown = true"
                 :placeholder="outsideMode ? 'Search antigen (outside record)...' : 'Type to search vaccine (inventory)...'"
                 autocomplete="off"
                 required
-              />
-              <div v-if="showVaccineDropdown" class="vaccine-dropdown">
+                @input="onVaccineSearch"
+                @focus="showVaccineDropdown = true"
+              >
+              <div
+                v-if="showVaccineDropdown"
+                class="vaccine-dropdown"
+              >
                 <template v-if="filteredVaccineOptions.length > 0">
                   <button
                     v-for="vaccine in filteredVaccineOptions"
@@ -48,21 +72,33 @@
                     type="button"
                     class="vaccine-option"
                     :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
-                    @click.stop="selectVaccine(vaccine)"
                     :disabled="!outsideMode && vaccine.isExpired"
+                    @click.stop="selectVaccine(vaccine)"
                   >
                     <div class="vaccine-option-main">
                       <strong>{{ vaccine.antigen_name }}</strong>
-                      <span v-if="!outsideMode" class="vaccine-brand">{{ vaccine.manufacturer }}</span>
+                      <span
+                        v-if="!outsideMode"
+                        class="vaccine-brand"
+                      >{{ vaccine.manufacturer }}</span>
                     </div>
-                    <div v-if="!outsideMode" class="vaccine-option-details">
+                    <div
+                      v-if="!outsideMode"
+                      class="vaccine-option-details"
+                    >
                       <span>Lot: {{ vaccine.lot_number }}</span>
                       <span>Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
-                      <span v-if="vaccine.isExpired" class="vaccine-expired">EXPIRED</span>
+                      <span
+                        v-if="vaccine.isExpired"
+                        class="vaccine-expired"
+                      >EXPIRED</span>
                     </div>
                   </button>
                 </template>
-                <div v-else class="vaccine-no-results">
+                <div
+                  v-else
+                  class="vaccine-no-results"
+                >
                   {{ (outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0 ? 'Loading vaccines...' : 'No vaccines found' }}
                 </div>
               </div>
@@ -70,35 +106,53 @@
           </div>
 
           <!-- Disease Prevented (readonly) -->
-          <div v-if="serviceForm.diseasePrevented" class="form-group">
+          <div
+            v-if="serviceForm.diseasePrevented"
+            class="form-group"
+          >
             <label class="form-label">Disease Prevented</label>
             <input 
+              v-model="serviceForm.diseasePrevented"
               type="text"
               class="form-input"
-              v-model="serviceForm.diseasePrevented"
               readonly
-            />
+            >
           </div>
 
           <!-- Dose Number & Date -->
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Dose Number *</label>
-              <select class="form-input" v-model.number="serviceForm.doseNumber" required>
-                <option value="">Select dose</option>
-                <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
+              <select
+                v-model.number="serviceForm.doseNumber"
+                class="form-input"
+                required
+              >
+                <option value="">
+                  Select dose
+                </option>
+                <option
+                  v-for="dose in availableDoses"
+                  :key="dose"
+                  :value="dose"
+                >
+                  Dose {{ dose }}
+                </option>
               </select>
-              <small v-if="autoSelectHint" class="form-hint success">{{ autoSelectHint }}</small>
+              <small
+                v-if="autoSelectHint"
+                class="form-hint success"
+              >{{ autoSelectHint }}</small>
             </div>
             <div class="form-group">
               <label class="form-label">Date Administered *</label>
               <input 
+                v-model="serviceForm.dateAdministered"
                 type="date"
                 class="form-input"
-                v-model="serviceForm.dateAdministered"
-                @change="updateAgeCalculation"
                 required
-              />
+                @change="updateAgeCalculation"
+              >
             </div>
           </div>
 
@@ -112,17 +166,17 @@
                 :value="serviceForm.ageAtAdmin"
                 placeholder="Auto-calculated"
                 readonly
-              />
+              >
             </div>
             <div class="form-group">
               <label class="form-label">Manufacturer</label>
               <input 
+                v-model="serviceForm.manufacturer"
                 type="text"
                 class="form-input"
-                v-model="serviceForm.manufacturer"
                 :readonly="!outsideMode"
                 :placeholder="outsideMode ? 'Enter manufacturer (optional)' : 'Auto-filled from inventory'"
-              />
+              >
             </div>
           </div>
 
@@ -131,65 +185,88 @@
             <div class="form-group">
               <label class="form-label">Lot Number</label>
               <input 
+                v-model="serviceForm.lotNumber"
                 type="text"
                 class="form-input"
-                v-model="serviceForm.lotNumber"
                 :readonly="!outsideMode"
                 :placeholder="outsideMode ? 'Enter lot number (optional)' : 'Auto-filled from inventory'"
-              />
+              >
             </div>
             <div class="form-group">
               <label class="form-label">Site of Administration</label>
-              <select class="form-input" v-model="serviceForm.site">
-                <option value="">Select a site</option>
-                <option value="left-deltoid">Left Deltoid</option>
-                <option value="right-deltoid">Right Deltoid</option>
-                <option value="left-thigh">Left Thigh</option>
-                <option value="right-thigh">Right Thigh</option>
+              <select
+                v-model="serviceForm.site"
+                class="form-input"
+              >
+                <option value="">
+                  Select a site
+                </option>
+                <option value="left-deltoid">
+                  Left Deltoid
+                </option>
+                <option value="right-deltoid">
+                  Right Deltoid
+                </option>
+                <option value="left-thigh">
+                  Left Thigh
+                </option>
+                <option value="right-thigh">
+                  Right Thigh
+                </option>
               </select>
             </div>
           </div>
 
           <!-- Administered By (Outside only) -->
-          <div class="form-group" v-if="outsideMode">
+          <div
+            v-if="outsideMode"
+            class="form-group"
+          >
             <label class="form-label">Administered By (Name)</label>
             <input
+              v-model="serviceForm.healthStaff"
               type="text"
               class="form-input"
-              v-model="serviceForm.healthStaff"
               placeholder="Enter name of administering staff"
-            />
+            >
           </div>
 
           <!-- Facility Name -->
           <div class="form-group">
             <label class="form-label">Facility Name</label>
             <input 
+              v-model="serviceForm.facilityName"
               type="text"
               class="form-input"
-              v-model="serviceForm.facilityName"
               placeholder="Enter facility name"
-            />
+            >
           </div>
 
           <!-- Remarks -->
           <div class="form-group">
             <label class="form-label">Remarks</label>
             <textarea 
+              v-model="serviceForm.remarks" 
               class="form-input" 
-              rows="3" 
-              v-model="serviceForm.remarks"
+              rows="3"
               placeholder="Enter any remarks or notes..."
-            ></textarea>
+            />
           </div>
 
           <!-- Form Actions -->
           <div class="modal-actions">
-            <button type="button" class="btn-secondary" @click="closeModal">
+            <button
+              type="button"
+              class="btn-secondary"
+              @click="closeModal"
+            >
               Cancel
             </button>
-            <button type="submit" class="btn-primary">
-              <i class="bi bi-check-lg"></i>
+            <button
+              type="submit"
+              class="btn-primary"
+            >
+              <i class="bi bi-check-lg" />
               {{ editingIndex !== null ? 'Update' : 'Add' }} Service
             </button>
           </div>

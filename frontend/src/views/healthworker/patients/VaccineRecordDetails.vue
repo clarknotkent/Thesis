@@ -3,12 +3,17 @@
     <!-- Fixed Header Section -->
     <div class="vaccine-details-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">{{ vaccineName }}</h1>
+        <h1 class="page-title">
+          {{ vaccineName }}
+        </h1>
         <button class="menu-button">
-          <i class="bi bi-three-dots-vertical"></i>
+          <i class="bi bi-three-dots-vertical" />
         </button>
       </div>
     </div>
@@ -16,17 +21,23 @@
     <!-- Page Content -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading vaccine details...</p>
       </div>
 
       <!-- Content -->
-      <div v-else-if="allDoses && allDoses.length > 0" class="vaccine-content">
+      <div
+        v-else-if="allDoses && allDoses.length > 0"
+        class="vaccine-content"
+      >
         <!-- Vaccine Information Card -->
         <div class="info-card">
           <div class="card-header primary">
-            <i class="bi bi-shield-fill-check"></i>
+            <i class="bi bi-shield-fill-check" />
             <h2>Vaccine Information</h2>
           </div>
           <div class="card-body">
@@ -58,7 +69,7 @@
           class="info-card"
         >
           <div class="card-header info">
-            <i class="bi bi-calendar-check"></i>
+            <i class="bi bi-calendar-check" />
             <h2>Dose {{ dose.dose_number || dose.doseNumber || dose.dose || index + 1 }}</h2>
             <span :class="['status-badge-small', getStatusClass(dose.status)]">
               {{ dose.status || 'Completed' }}
@@ -81,17 +92,26 @@
               <span class="detail-label">Facility</span>
               <span class="detail-value">{{ getFacility(dose) }}</span>
             </div>
-            <div v-if="dose.site || dose.administration_site" class="detail-item">
+            <div
+              v-if="dose.site || dose.administration_site"
+              class="detail-item"
+            >
               <span class="detail-label">Site</span>
               <span class="detail-value">{{ dose.site || dose.administration_site || '—' }}</span>
             </div>
-            <div v-if="dose.batch_number || dose.batchNumber || dose.lot_number || dose.lotNumber" class="detail-item">
+            <div
+              v-if="dose.batch_number || dose.batchNumber || dose.lot_number || dose.lotNumber"
+              class="detail-item"
+            >
               <span class="detail-label">Batch Number</span>
               <span class="detail-value">
                 <span class="batch-badge">{{ dose.batch_number || dose.batchNumber || dose.lot_number || dose.lotNumber }}</span>
               </span>
             </div>
-            <div v-if="dose.outside !== undefined" class="detail-item">
+            <div
+              v-if="dose.outside !== undefined"
+              class="detail-item"
+            >
               <span class="detail-label">Location Type</span>
               <span class="detail-value">
                 <span :class="dose.outside ? 'location-badge outside' : 'location-badge'">
@@ -99,7 +119,10 @@
                 </span>
               </span>
             </div>
-            <div v-if="dose.remarks || dose.notes" class="detail-item remarks-item">
+            <div
+              v-if="dose.remarks || dose.notes"
+              class="detail-item remarks-item"
+            >
               <span class="detail-label">Remarks</span>
               <span class="detail-value remarks-text">{{ dose.remarks || dose.notes }}</span>
             </div>
@@ -108,11 +131,19 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="error-state">
-        <i class="bi bi-exclamation-triangle error-icon"></i>
-        <p class="error-text">Failed to load vaccine details</p>
-        <button class="retry-button" @click="fetchVaccineDetails">
-          <i class="bi bi-arrow-clockwise"></i>
+      <div
+        v-else
+        class="error-state"
+      >
+        <i class="bi bi-exclamation-triangle error-icon" />
+        <p class="error-text">
+          Failed to load vaccine details
+        </p>
+        <button
+          class="retry-button"
+          @click="fetchVaccineDetails"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Retry
         </button>
       </div>

@@ -1,5 +1,9 @@
 <template>
-  <div ref="container" class="svg-bar-chart" :style="{ height: height + 'px' }">
+  <div
+    ref="container"
+    class="svg-bar-chart"
+    :style="{ height: height + 'px' }"
+  >
     <svg
       :viewBox="`0 0 ${svgWidth} ${height}`"
       preserveAspectRatio="xMidYMid meet"
@@ -9,20 +13,52 @@
       tabindex="0"
     >
       <title :id="titleId">{{ title }}</title>
-      <desc v-if="description" :id="descId">{{ description }}</desc>
+      <desc
+        v-if="description"
+        :id="descId"
+      >{{ description }}</desc>
 
       <!-- subtle background -->
-      <rect :x="0" :y="0" :width="svgWidth" :height="height" fill="transparent" />
+      <rect
+        :x="0"
+        :y="0"
+        :width="svgWidth"
+        :height="height"
+        fill="transparent"
+      />
 
       <!-- horizontal grid lines and y labels -->
-      <g class="grid" v-if="showGrid">
-        <line v-for="(tick, i) in yTicks" :key="i" :x1="leftPad" :x2="svgWidth - rightPad" :y1="yPosFromTick(tick)" :y2="yPosFromTick(tick)" stroke="#e9ecef" stroke-width="1" />
-        <text v-for="(tick, i) in yTicks" :key="'t'+i" :x="leftPad - 12" :y="yPosFromTick(tick) + 4" text-anchor="end" :font-size="fontSizeTicks" fill="#6c757d">{{ formatTick(tick) }}</text>
+      <g
+        v-if="showGrid"
+        class="grid"
+      >
+        <line
+          v-for="(tick, i) in yTicks"
+          :key="i"
+          :x1="leftPad"
+          :x2="svgWidth - rightPad"
+          :y1="yPosFromTick(tick)"
+          :y2="yPosFromTick(tick)"
+          stroke="#e9ecef"
+          stroke-width="1"
+        />
+        <text
+          v-for="(tick, i) in yTicks"
+          :key="'t'+i"
+          :x="leftPad - 12"
+          :y="yPosFromTick(tick) + 4"
+          text-anchor="end"
+          :font-size="fontSizeTicks"
+          fill="#6c757d"
+        >{{ formatTick(tick) }}</text>
       </g>
 
       <!-- bars -->
       <g class="bars">
-        <g v-for="(d, i) in chartData" :key="i">
+        <g
+          v-for="(d, i) in chartData"
+          :key="i"
+        >
           <rect
             :class="['bar-rect', entered ? 'entered' : '']"
             :x="barX(i)"
@@ -56,15 +92,28 @@
             :font-size="fontSizeLabel"
             fill="#6c757d"
           >
-            <tspan v-for="(ln, li) in splitLabelLines(d.label)" :key="li" :x="barX(i) + barWidth/2" :dy="li === 0 ? 0 : lineHeight">{{ ln }}</tspan>
+            <tspan
+              v-for="(ln, li) in splitLabelLines(d.label)"
+              :key="li"
+              :x="barX(i) + barWidth/2"
+              :dy="li === 0 ? 0 : lineHeight"
+            >{{ ln }}</tspan>
           </text>
         </g>
       </g>
     </svg>
 
     <!-- screen-reader-friendly data list -->
-    <ul class="sr-only" :id="dataListId">
-      <li v-for="(d, i) in chartData" :key="i">{{ d.label }}: {{ d.value }}</li>
+    <ul
+      :id="dataListId"
+      class="sr-only"
+    >
+      <li
+        v-for="(d, i) in chartData"
+        :key="i"
+      >
+        {{ d.label }}: {{ d.value }}
+      </li>
     </ul>
   </div>
 </template>

@@ -1,11 +1,22 @@
 <template>
   <div>
-    <div class="modal fade show" tabindex="-1" style="display: block;" v-if="show">
+    <div
+      v-if="show"
+      class="modal fade show"
+      tabindex="-1"
+      style="display: block;"
+    >
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Start a new chat</h5>
-            <button type="button" class="btn-close" @click="$emit('close')"></button>
+            <h5 class="modal-title">
+              Start a new chat
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="$emit('close')"
+            />
           </div>
           <div class="modal-body">
             <!-- Mode toggle: Team vs Staff -->
@@ -16,7 +27,7 @@
                   :class="{ active: mode === 'team' }" 
                   @click="$emit('update:mode', 'team')"
                 >
-                  <i class="bi bi-people me-1"></i> Message Health Center
+                  <i class="bi bi-people me-1" /> Message Health Center
                 </button>
               </li>
               <li class="nav-item">
@@ -25,23 +36,34 @@
                   :class="{ active: mode === 'staff' }" 
                   @click="$emit('update:mode', 'staff')"
                 >
-                  <i class="bi bi-person-badge me-1"></i> Choose Staff
+                  <i class="bi bi-person-badge me-1" /> Choose Staff
                 </button>
               </li>
             </ul>
 
-            <div v-if="mode === 'team'" class="alert alert-info py-2">
+            <div
+              v-if="mode === 'team'"
+              class="alert alert-info py-2"
+            >
               We'll route your message to an available health worker from your health center.
             </div>
 
-            <div v-if="mode === 'staff'" class="mb-3">
+            <div
+              v-if="mode === 'staff'"
+              class="mb-3"
+            >
               <label class="form-label">Select staff</label>
               <select 
                 class="form-select" 
                 :value="selectedStaffId" 
                 @input="$emit('update:selectedStaffId', $event.target.value)"
               >
-                <option value="" disabled>Select a staff member</option>
+                <option
+                  value=""
+                  disabled
+                >
+                  Select a staff member
+                </option>
                 <option 
                   v-for="u in staffOptions" 
                   :key="u.__id" 
@@ -56,25 +78,42 @@
               <label class="form-label">Message</label>
               <textarea 
                 :value="message" 
-                @input="$emit('update:message', $event.target.value)"
-                class="form-control" 
+                class="form-control"
                 rows="3" 
-                placeholder="Type your message..."
-              ></textarea>
-              <div class="text-muted small mt-1">{{ message.length }}/1000</div>
+                placeholder="Type your message..." 
+                @input="$emit('update:message', $event.target.value)"
+              />
+              <div class="text-muted small mt-1">
+                {{ message.length }}/1000
+              </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-            <button class="btn btn-primary" :disabled="isDisabled" @click="$emit('create')">
-              <i v-if="creating" class="bi bi-hourglass-split fa-spin me-1"></i>
+            <button
+              class="btn btn-secondary"
+              @click="$emit('close')"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn btn-primary"
+              :disabled="isDisabled"
+              @click="$emit('create')"
+            >
+              <i
+                v-if="creating"
+                class="bi bi-hourglass-split fa-spin me-1"
+              />
               Start
             </button>
           </div>
         </div>
       </div>
     </div>
-    <div v-if="show" class="modal-backdrop fade show"></div>
+    <div
+      v-if="show"
+      class="modal-backdrop fade show"
+    />
   </div>
 </template>
 

@@ -1,9 +1,16 @@
 <template>
-  <div :class="['stats-card', bgClass]" @click="$emit('click')">
+  <div
+    :class="['stats-card', bgClass]"
+    @click="$emit('click')"
+  >
     <div class="stats-card-content">
-      <i :class="['bi', iconClass, 'stats-icon']"></i>
-      <h6 class="stats-title">{{ title }}</h6>
-      <h2 class="stats-value">{{ value }}</h2>
+      <i :class="['bi', iconClass, 'stats-icon']" />
+      <h6 class="stats-title">
+        {{ title }}
+      </h6>
+      <h2 class="stats-value">
+        {{ value }}
+      </h2>
     </div>
   </div>
 </template>

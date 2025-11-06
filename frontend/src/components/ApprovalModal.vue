@@ -2,19 +2,44 @@
   <div class="approval-backdrop">
     <div class="approval-modal">
       <h3>Require approval</h3>
-      <p class="hint">Enter approver credentials (not the current user, and not a guardian or BHS staff)</p>
+      <p class="hint">
+        Enter approver credentials (not the current user, and not a guardian or BHS staff)
+      </p>
       <div class="form-group">
         <label>Identifier (email, username, or phone)</label>
-        <input type="text" v-model="identifier" class="form-input" />
+        <input
+          v-model="identifier"
+          type="text"
+          class="form-input"
+        >
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" v-model="password" class="form-input" />
+        <input
+          v-model="password"
+          type="password"
+          class="form-input"
+        >
       </div>
-      <div class="error" v-if="error">{{ error }}</div>
+      <div
+        v-if="error"
+        class="error"
+      >
+        {{ error }}
+      </div>
       <div class="actions">
-        <button class="btn" @click="onCancel" :disabled="loading">Cancel</button>
-        <button class="btn btn-primary" @click="onConfirm" :disabled="loading">
+        <button
+          class="btn"
+          :disabled="loading"
+          @click="onCancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn-primary"
+          :disabled="loading"
+          @click="onConfirm"
+        >
           <span v-if="!loading">Confirm</span>
           <span v-else>Checking...</span>
         </button>

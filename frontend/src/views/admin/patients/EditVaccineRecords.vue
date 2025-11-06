@@ -2,12 +2,32 @@
   <AdminLayout>
     <div class="container-fluid py-3">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item"><router-link :to="`/admin/patients/view/${patientId}`">Patient Details</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Edit Vaccination Records</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link :to="`/admin/patients/view/${patientId}`">
+              Patient Details
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Edit Vaccination Records
+          </li>
         </ol>
       </nav>
 
@@ -15,33 +35,53 @@
       <div class="d-flex align-items-center mb-4">
         <div>
           <h3 class="mb-1">
-            <i class="bi bi-pencil-square me-2"></i>{{ vaccineName }} - Vaccination Records
+            <i class="bi bi-pencil-square me-2" />{{ vaccineName }} - Vaccination Records
           </h3>
-          <p class="text-muted mb-0" v-if="patientData">
+          <p
+            v-if="patientData"
+            class="text-muted mb-0"
+          >
             Patient: <strong>{{ patientData.firstname }} {{ patientData.surname }}</strong>
           </p>
         </div>
-        <button class="btn btn-outline-secondary ms-auto" @click="goBack">
-          <i class="bi bi-arrow-left me-2"></i>Back
+        <button
+          class="btn btn-outline-secondary ms-auto"
+          @click="goBack"
+        >
+          <i class="bi bi-arrow-left me-2" />Back
         </button>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="text-muted mt-3">Loading vaccination records...</p>
+        <p class="text-muted mt-3">
+          Loading vaccination records...
+        </p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
+      <div
+        v-else-if="error"
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
         {{ error }}
       </div>
 
       <!-- Edit Form -->
-      <div v-else class="card shadow-sm">
+      <div
+        v-else
+        class="card shadow-sm"
+      >
         <div class="card-body p-4">
           <!-- Vaccine Info Card -->
           <div class="alert alert-info mb-4">
@@ -57,12 +97,22 @@
 
           <!-- Dose Records -->
           <form @submit.prevent="handleSubmit">
-            <div v-for="(dose, index) in doseRecords" :key="dose.id" class="dose-card mb-4">
+            <div
+              v-for="(dose, index) in doseRecords"
+              :key="dose.id"
+              class="dose-card mb-4"
+            >
               <div class="dose-header">
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="badge bg-primary">Dose {{ dose.doseNumber }}</span>
-                  <span class="badge" :class="dose.isOutside ? 'bg-warning text-dark' : 'bg-success'">
-                    <i class="bi" :class="dose.isOutside ? 'bi-geo-alt' : 'bi-building'"></i>
+                  <span
+                    class="badge"
+                    :class="dose.isOutside ? 'bg-warning text-dark' : 'bg-success'"
+                  >
+                    <i
+                      class="bi"
+                      :class="dose.isOutside ? 'bi-geo-alt' : 'bi-building'"
+                    />
                     {{ dose.isOutside ? 'Outside' : 'In-facility' }}
                   </span>
                 </div>
@@ -70,7 +120,10 @@
               
               <div class="row g-3 mt-2">
                 <!-- Vaccine Inventory Selection -->
-                <div class="col-md-6" v-if="!dose.isOutside">
+                <div
+                  v-if="!dose.isOutside"
+                  class="col-md-6"
+                >
                   <label class="form-label">Vaccine Inventory: <span class="text-danger">*</span></label>
                   <SearchableSelect
                     v-model="dose.selectedInventoryId"
@@ -80,7 +133,7 @@
                     value-key="id"
                     :max-results="0"
                     :required="true"
-                    @update:modelValue="onInventoryChange(index, $event)"
+                    @update:model-value="onInventoryChange(index, $event)"
                   />
                   <small class="text-muted">Select vaccine inventory to update manufacturer and lot number</small>
                 </div>
@@ -91,7 +144,7 @@
                   <DateInput
                     v-model="dose.dateAdministered"
                     :required="true"
-                    @update:modelValue="calculateAge(index)"
+                    @update:model-value="calculateAge(index)"
                   />
                 </div>
 
@@ -99,16 +152,19 @@
                 <div class="col-md-6">
                   <label class="form-label">Age at Administration:</label>
                   <input 
+                    v-model="dose.ageAtAdministration" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.ageAtAdministration"
+                    class="form-control"
                     readonly
                   >
                   <small class="text-muted">Automatically calculated</small>
                 </div>
 
                 <!-- Administered By -->
-                <div class="col-md-6" v-if="!dose.isOutside">
+                <div
+                  v-if="!dose.isOutside"
+                  class="col-md-6"
+                >
                   <label class="form-label">Administered By: <span class="text-danger">*</span></label>
                   <SearchableSelect
                     v-model="dose.administeredBy"
@@ -121,12 +177,15 @@
                   />
                   <small class="text-muted">Cannot be edited for existing records</small>
                 </div>
-                <div class="col-md-6" v-else>
+                <div
+                  v-else
+                  class="col-md-6"
+                >
                   <label class="form-label">Administered By:</label>
                   <input 
+                    v-model="dose.administeredByDisplay" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.administeredByDisplay"
+                    class="form-control"
                     placeholder="Name of vaccinator or provider"
                   >
                   <small class="text-muted">Editable for outside records; included in remarks on save</small>
@@ -136,9 +195,9 @@
                 <div class="col-md-6">
                   <label class="form-label">Site of Administration:</label>
                   <input 
+                    v-model="dose.siteOfAdministration" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.siteOfAdministration"
+                    class="form-control"
                     placeholder="e.g., Left deltoid, Right thigh"
                   >
                 </div>
@@ -147,9 +206,9 @@
                 <div class="col-md-6">
                   <label class="form-label">Facility Name:</label>
                   <input 
+                    v-model="dose.facilityName" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.facilityName"
+                    class="form-control"
                   >
                 </div>
 
@@ -157,39 +216,51 @@
                 <div class="col-md-6">
                   <label class="form-label">Manufacturer:</label>
                   <input 
+                    v-model="dose.manufacturer" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.manufacturer"
+                    class="form-control"
                     placeholder="Vaccine manufacturer"
                     :readonly="!dose.isOutside"
                   >
-                  <small class="text-muted" v-if="!dose.isOutside">Auto-filled from selected inventory</small>
-                  <small class="text-muted" v-else>Editable for outside records; included in remarks on save</small>
+                  <small
+                    v-if="!dose.isOutside"
+                    class="text-muted"
+                  >Auto-filled from selected inventory</small>
+                  <small
+                    v-else
+                    class="text-muted"
+                  >Editable for outside records; included in remarks on save</small>
                 </div>
 
                 <!-- Lot Number -->
                 <div class="col-md-6">
                   <label class="form-label">Lot Number:</label>
                   <input 
+                    v-model="dose.lotNumber" 
                     type="text" 
-                    class="form-control" 
-                    v-model="dose.lotNumber"
+                    class="form-control"
                     placeholder="Vaccine lot/batch number"
                     :readonly="!dose.isOutside"
                   >
-                  <small class="text-muted" v-if="!dose.isOutside">Auto-filled from selected inventory</small>
-                  <small class="text-muted" v-else>Editable for outside records; included in remarks on save</small>
+                  <small
+                    v-if="!dose.isOutside"
+                    class="text-muted"
+                  >Auto-filled from selected inventory</small>
+                  <small
+                    v-else
+                    class="text-muted"
+                  >Editable for outside records; included in remarks on save</small>
                 </div>
 
                 <!-- Remarks -->
                 <div class="col-12">
                   <label class="form-label">Remarks:</label>
                   <textarea 
-                    class="form-control" 
-                    v-model="dose.remarks"
+                    v-model="dose.remarks" 
+                    class="form-control"
                     rows="2"
                     placeholder="Additional notes or observations"
-                  ></textarea>
+                  />
                 </div>
               </div>
             </div>
@@ -199,8 +270,8 @@
               <button 
                 type="button" 
                 class="btn btn-outline-secondary"
-                @click="goBack"
                 :disabled="saving"
+                @click="goBack"
               >
                 Cancel
               </button>
@@ -210,11 +281,14 @@
                 :disabled="saving || !isFormValid"
               >
                 <span v-if="saving">
-                  <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  />
                   Saving...
                 </span>
                 <span v-else>
-                  <i class="bi bi-check-circle me-2"></i>Save All Changes
+                  <i class="bi bi-check-circle me-2" />Save All Changes
                 </span>
               </button>
             </div>
@@ -224,7 +298,11 @@
     </div>
   </AdminLayout>
   <!-- Approval modal for second approver (admin/staff, not current user, not guardian/BHS) -->
-  <ApprovalModal v-if="showApproval" @approved="onApproverApproved" @cancel="onApproverCancel" />
+  <ApprovalModal
+    v-if="showApproval"
+    @approved="onApproverApproved"
+    @cancel="onApproverCancel"
+  />
 </template>
 
 <script setup>

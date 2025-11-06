@@ -4,10 +4,12 @@
       <!-- Vaccine Icon and Name -->
       <div class="vaccine-header">
         <div class="vaccine-icon-container">
-          <i class="bi bi-calendar-check vaccine-icon"></i>
+          <i class="bi bi-calendar-check vaccine-icon" />
         </div>
         <div class="vaccine-info">
-          <h3 class="vaccine-name">{{ vaccineName }}</h3>
+          <h3 class="vaccine-name">
+            {{ vaccineName }}
+          </h3>
           <span class="dose-badge">{{ doseLabel }}</span>
         </div>
       </div>

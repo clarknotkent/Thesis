@@ -2,8 +2,13 @@
   <div class="detail-card mb-3">
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center">
-        <h6 class="patient-title mb-0">{{ patient.childInfo.name }}</h6>
-        <span class="badge status-badge" :class="getStatusBadgeClass(status)">
+        <h6 class="patient-title mb-0">
+          {{ patient.childInfo.name }}
+        </h6>
+        <span
+          class="badge status-badge"
+          :class="getStatusBadgeClass(status)"
+        >
           {{ status }}
         </span>
       </div>

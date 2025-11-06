@@ -13,7 +13,7 @@
       @filter="$emit('filter')"
       @scan="$emit('scan')"
       @add="$emit('add')"
-      @update:searchQuery="$emit('update:searchQuery', $event)"
+      @update:search-query="$emit('update:searchQuery', $event)"
     />
   </header>
 </template>

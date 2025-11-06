@@ -2,29 +2,41 @@
   <div class="summary-cards">
     <div class="summary-card">
       <div class="card-icon bg-primary">
-        <i class="bi bi-people-fill"></i>
+        <i class="bi bi-people-fill" />
       </div>
       <div class="card-content">
-        <div class="card-value">{{ totalChildren }}</div>
-        <div class="card-label">My Children</div>
+        <div class="card-value">
+          {{ totalChildren }}
+        </div>
+        <div class="card-label">
+          My Children
+        </div>
       </div>
     </div>
     <div class="summary-card">
       <div class="card-icon bg-info">
-        <i class="bi bi-calendar-check-fill"></i>
+        <i class="bi bi-calendar-check-fill" />
       </div>
       <div class="card-content">
-        <div class="card-value">{{ dueVaccines }}</div>
-        <div class="card-label">Due Vaccines</div>
+        <div class="card-value">
+          {{ dueVaccines }}
+        </div>
+        <div class="card-label">
+          Due Vaccines
+        </div>
       </div>
     </div>
     <div class="summary-card">
       <div class="card-icon bg-success">
-        <i class="bi bi-check-circle-fill"></i>
+        <i class="bi bi-check-circle-fill" />
       </div>
       <div class="card-content">
-        <div class="card-value">{{ completedVaccines }}</div>
-        <div class="card-label">Completed</div>
+        <div class="card-value">
+          {{ completedVaccines }}
+        </div>
+        <div class="card-label">
+          Completed
+        </div>
       </div>
     </div>
   </div>

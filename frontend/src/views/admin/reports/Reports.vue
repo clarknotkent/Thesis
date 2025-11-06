@@ -8,14 +8,25 @@
       >
         <template #actions>
           <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" @click="resetFilters">
-              <i class="bi bi-arrow-counterclockwise me-2"></i>Reset
+            <button
+              class="btn btn-outline-secondary"
+              @click="resetFilters"
+            >
+              <i class="bi bi-arrow-counterclockwise me-2" />Reset
             </button>
-            <button class="btn btn-outline-primary" @click="generateReport" :disabled="loading">
-              <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+            <button
+              class="btn btn-outline-primary"
+              :disabled="loading"
+              @click="generateReport"
+            >
+              <i class="bi bi-arrow-clockwise me-2" />Refresh
             </button>
-            <button class="btn btn-primary" @click="exportReport" :disabled="loading || !reportData">
-              <i class="bi bi-file-earmark-excel me-2"></i>Export CSV
+            <button
+              class="btn btn-primary"
+              :disabled="loading || !reportData"
+              @click="exportReport"
+            >
+              <i class="bi bi-file-earmark-excel me-2" />Export CSV
             </button>
           </div>
         </template>
@@ -25,7 +36,7 @@
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
           <button class="nav-link active">
-            <i class="bi bi-table me-2"></i>Monthly Report
+            <i class="bi bi-table me-2" />Monthly Report
           </button>
         </li>
       </ul>
@@ -45,22 +56,48 @@
           <div class="row g-3 align-items-end">
             <div class="col-md-3">
               <label class="form-label fw-semibold">Month</label>
-              <select class="form-select" v-model="filters.month">
-                <option v-for="month in months" :key="month.value" :value="month.value">
+              <select
+                v-model="filters.month"
+                class="form-select"
+              >
+                <option
+                  v-for="month in months"
+                  :key="month.value"
+                  :value="month.value"
+                >
                   {{ month.label }}
                 </option>
               </select>
             </div>
             <div class="col-md-3">
               <label class="form-label fw-semibold">Year</label>
-              <select class="form-select" v-model="filters.year">
-                <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+              <select
+                v-model="filters.year"
+                class="form-select"
+              >
+                <option
+                  v-for="y in years"
+                  :key="y"
+                  :value="y"
+                >
+                  {{ y }}
+                </option>
               </select>
             </div>
             <div class="col-md-3">
-              <button class="btn btn-primary w-100" @click="generateReport" :disabled="loading">
-                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-search me-2"></i>
+              <button
+                class="btn btn-primary w-100"
+                :disabled="loading"
+                @click="generateReport"
+              >
+                <span
+                  v-if="loading"
+                  class="spinner-border spinner-border-sm me-2"
+                />
+                <i
+                  v-else
+                  class="bi bi-search me-2"
+                />
                 Generate Report
               </button>
             </div>
@@ -72,7 +109,7 @@
       <div class="card shadow">
         <div class="card-header bg-primary text-white py-3">
           <h5 class="mb-0">
-            <i class="bi bi-file-earmark-text me-2"></i>
+            <i class="bi bi-file-earmark-text me-2" />
             Monthly Immunization Report - {{ selectedMonthName }} {{ filters.year }}
           </h5>
         </div>
@@ -80,14 +117,24 @@
           <!-- Report Header Info -->
           <div class="row mb-4">
             <div class="col-md-6">
-              <p class="mb-1"><strong>Report Period:</strong> {{ selectedMonthName }} {{ filters.year }}</p>
-              <p class="mb-1"><strong>Generated On:</strong> {{ formatDate(new Date()) }}</p>
+              <p class="mb-1">
+                <strong>Report Period:</strong> {{ selectedMonthName }} {{ filters.year }}
+              </p>
+              <p class="mb-1">
+                <strong>Generated On:</strong> {{ formatDate(new Date()) }}
+              </p>
             </div>
             <div class="col-md-6 text-end">
               <div class="d-inline-block text-start">
-                <p class="mb-1"><strong>Total Newborns/Infants Vaccinated:</strong> {{ totals.totalVaccinated }}</p>
-                <p class="mb-1"><strong>Fully Immunized Children:</strong> {{ reportData?.fullyImmunizedCount || 0 }}</p>
-                <p class="mb-1"><strong>Completely Immunized (13-23 months):</strong> {{ reportData?.completelyImmunizedCount || 0 }}</p>
+                <p class="mb-1">
+                  <strong>Total Newborns/Infants Vaccinated:</strong> {{ totals.totalVaccinated }}
+                </p>
+                <p class="mb-1">
+                  <strong>Fully Immunized Children:</strong> {{ reportData?.fullyImmunizedCount || 0 }}
+                </p>
+                <p class="mb-1">
+                  <strong>Completely Immunized (13-23 months):</strong> {{ reportData?.completelyImmunizedCount || 0 }}
+                </p>
               </div>
             </div>
           </div>
@@ -97,27 +144,71 @@
             <table class="table table-bordered table-hover">
               <thead class="table-light">
                 <tr>
-                  <th class="text-center align-middle" style="width: 35%;">Vaccine / Service</th>
-                  <th class="text-center align-middle" style="width: 15%;">Male</th>
-                  <th class="text-center align-middle" style="width: 15%;">Female</th>
-                  <th class="text-center align-middle bg-info bg-opacity-10" style="width: 15%;">Total</th>
-                  <th class="text-center align-middle" style="width: 20%;">Coverage</th>
+                  <th
+                    class="text-center align-middle"
+                    style="width: 35%;"
+                  >
+                    Vaccine / Service
+                  </th>
+                  <th
+                    class="text-center align-middle"
+                    style="width: 15%;"
+                  >
+                    Male
+                  </th>
+                  <th
+                    class="text-center align-middle"
+                    style="width: 15%;"
+                  >
+                    Female
+                  </th>
+                  <th
+                    class="text-center align-middle bg-info bg-opacity-10"
+                    style="width: 15%;"
+                  >
+                    Total
+                  </th>
+                  <th
+                    class="text-center align-middle"
+                    style="width: 20%;"
+                  >
+                    Coverage
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <!-- Section Heading -->
                 <tr class="table-secondary">
-                  <td class="fw-bold" colspan="5">Immunization and Nutrition Services · Newborns/Infants vaccinated with</td>
+                  <td
+                    class="fw-bold"
+                    colspan="5"
+                  >
+                    Immunization and Nutrition Services · Newborns/Infants vaccinated with
+                  </td>
                 </tr>
 
                 <!-- Render rows from backend response -->
-                <tr v-for="row in vaccinesToRender" :key="row.label">
-                  <td class="fw-semibold">{{ row.label }}</td>
-                  <td class="text-center">{{ row.data().male }}</td>
-                  <td class="text-center">{{ row.data().female }}</td>
-                  <td class="text-center bg-info bg-opacity-10 fw-semibold">{{ row.data().total }}</td>
+                <tr
+                  v-for="row in vaccinesToRender"
+                  :key="row.label"
+                >
+                  <td class="fw-semibold">
+                    {{ row.label }}
+                  </td>
                   <td class="text-center">
-                    <span class="badge" :class="getCoverageBadge(row.data().coverage)">
+                    {{ row.data().male }}
+                  </td>
+                  <td class="text-center">
+                    {{ row.data().female }}
+                  </td>
+                  <td class="text-center bg-info bg-opacity-10 fw-semibold">
+                    {{ row.data().total }}
+                  </td>
+                  <td class="text-center">
+                    <span
+                      class="badge"
+                      :class="getCoverageBadge(row.data().coverage)"
+                    >
                       {{ row.data().coverage }}%
                     </span>
                   </td>
@@ -126,22 +217,40 @@
                 <!-- Totals Section -->
                 <tr class="table-secondary fw-bold">
                   <td>Fully Immunized Child</td>
-                  <td class="text-center">{{ reportData?.fullyImmunizedMale || 0 }}</td>
-                  <td class="text-center">{{ reportData?.fullyImmunizedFemale || 0 }}</td>
-                  <td class="text-center bg-info bg-opacity-10">{{ reportData?.fullyImmunizedCount || 0 }}</td>
                   <td class="text-center">
-                    <span class="badge" :class="getCoverageBadge(reportData?.fullyImmunizedCoverage || 0)">
+                    {{ reportData?.fullyImmunizedMale || 0 }}
+                  </td>
+                  <td class="text-center">
+                    {{ reportData?.fullyImmunizedFemale || 0 }}
+                  </td>
+                  <td class="text-center bg-info bg-opacity-10">
+                    {{ reportData?.fullyImmunizedCount || 0 }}
+                  </td>
+                  <td class="text-center">
+                    <span
+                      class="badge"
+                      :class="getCoverageBadge(reportData?.fullyImmunizedCoverage || 0)"
+                    >
                       {{ reportData?.fullyImmunizedCoverage || 0 }}%
                     </span>
                   </td>
                 </tr>
                 <tr class="table-secondary fw-bold">
                   <td>Completely Immunized Child (13-23 months)</td>
-                  <td class="text-center">{{ reportData?.completelyImmunizedMale || 0 }}</td>
-                  <td class="text-center">{{ reportData?.completelyImmunizedFemale || 0 }}</td>
-                  <td class="text-center bg-info bg-opacity-10">{{ reportData?.completelyImmunizedCount || 0 }}</td>
                   <td class="text-center">
-                    <span class="badge" :class="getCoverageBadge(reportData?.completelyImmunizedCoverage || 0)">
+                    {{ reportData?.completelyImmunizedMale || 0 }}
+                  </td>
+                  <td class="text-center">
+                    {{ reportData?.completelyImmunizedFemale || 0 }}
+                  </td>
+                  <td class="text-center bg-info bg-opacity-10">
+                    {{ reportData?.completelyImmunizedCount || 0 }}
+                  </td>
+                  <td class="text-center">
+                    <span
+                      class="badge"
+                      :class="getCoverageBadge(reportData?.completelyImmunizedCoverage || 0)"
+                    >
                       {{ reportData?.completelyImmunizedCoverage || 0 }}%
                     </span>
                   </td>
@@ -457,7 +566,7 @@ async function augmentFicCicFromPatientTags(selMonth, selYear) {
     }
   } catch (e) {
     // Non-blocking: if patient fetch fails, leave as-is
-    // eslint-disable-next-line no-console
+     
     console.warn('FIC/CIC tag augmentation skipped:', e?.response?.data || e.message)
   }
 }

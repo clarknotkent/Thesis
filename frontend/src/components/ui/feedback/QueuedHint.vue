@@ -1,10 +1,17 @@
 <template>
-  <div v-if="!isOnline" class="queued-hint d-flex align-items-center mt-2" :class="variantClass">
-    <i class="bi bi-wifi-off me-2"></i>
+  <div
+    v-if="!isOnline"
+    class="queued-hint d-flex align-items-center mt-2"
+    :class="variantClass"
+  >
+    <i class="bi bi-wifi-off me-2" />
     <span class="small">{{ message }}</span>
   </div>
-  <div v-else class="queued-hint d-flex align-items-center mt-2 text-success">
-    <i class="bi bi-wifi me-2"></i>
+  <div
+    v-else
+    class="queued-hint d-flex align-items-center mt-2 text-success"
+  >
+    <i class="bi bi-wifi me-2" />
     <span class="small">Connected - Data caches automatically</span>
   </div>
 </template>

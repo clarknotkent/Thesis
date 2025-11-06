@@ -4,15 +4,15 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-person-fill me-2"></i>Patient Information
+          <i class="bi bi-person-fill me-2" />Patient Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">First Name: <span class="text-danger">*</span></label>
             <input 
+              v-model="formData.firstname" 
               type="text" 
               class="form-control" 
-              v-model="formData.firstname" 
               :disabled="readOnly"
               required
             >
@@ -20,18 +20,18 @@
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Middle Name:</label>
             <input 
+              v-model="formData.middlename" 
               type="text" 
-              class="form-control" 
-              v-model="formData.middlename"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Surname: <span class="text-danger">*</span></label>
             <input 
+              v-model="formData.surname" 
               type="text" 
               class="form-control" 
-              v-model="formData.surname" 
               :disabled="readOnly"
               required
             >
@@ -39,14 +39,20 @@
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Sex: <span class="text-danger">*</span></label>
             <select 
-              class="form-select" 
               v-model="formData.sex" 
+              class="form-select" 
               :disabled="readOnly"
               required
             >
-              <option value="">Select Sex</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
+              <option value="">
+                Select Sex
+              </option>
+              <option value="Male">
+                Male
+              </option>
+              <option value="Female">
+                Female
+              </option>
             </select>
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
@@ -57,17 +63,20 @@
               :required="true"
               output-format="iso"
             />
-            <div v-if="dobLocked" class="form-text text-warning d-flex align-items-center mt-1">
-              <i class="bi bi-lock-fill me-1"></i>
+            <div
+              v-if="dobLocked"
+              class="form-text text-warning d-flex align-items-center mt-1"
+            >
+              <i class="bi bi-lock-fill me-1" />
               Birthdate cannot be edited because at least one vaccine is already completed.
             </div>
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Barangay: <span class="text-danger">*</span></label>
             <input 
+              v-model="formData.barangay" 
               type="text" 
-              class="form-control" 
-              v-model="formData.barangay"
+              class="form-control"
               :disabled="readOnly"
               required
             >
@@ -75,9 +84,9 @@
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Health Center: <span class="text-danger">*</span></label>
             <input 
+              v-model="formData.health_center" 
               type="text" 
-              class="form-control" 
-              v-model="formData.health_center"
+              class="form-control"
               :disabled="readOnly"
               required
             >
@@ -85,12 +94,12 @@
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Address: <span class="text-danger">*</span></label>
             <textarea 
+              v-model="formData.address" 
               class="form-control" 
-              rows="2" 
-              v-model="formData.address"
+              rows="2"
               :disabled="readOnly"
               required
-            ></textarea>
+            />
           </div>
         </div>
       </div>
@@ -100,7 +109,7 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-people-fill me-2"></i>Guardian & Family Information
+          <i class="bi bi-people-fill me-2" />Guardian & Family Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-4 col-lg-6 col-md-6">
@@ -117,37 +126,49 @@
           <div class="col-xl-4 col-lg-6 col-md-6">
             <label class="form-label">Relationship to Guardian: <span class="text-danger">*</span></label>
             <select 
-              class="form-select" 
-              v-model="formData.relationship_to_guardian"
+              v-model="formData.relationship_to_guardian" 
+              class="form-select"
               :disabled="readOnly"
               required
             >
-              <option value="">Select relationship</option>
-              <option value="Mother">Mother</option>
-              <option value="Father">Father</option>
-              <option value="Guardian">Guardian</option>
-              <option value="Other">Other</option>
+              <option value="">
+                Select relationship
+              </option>
+              <option value="Mother">
+                Mother
+              </option>
+              <option value="Father">
+                Father
+              </option>
+              <option value="Guardian">
+                Guardian
+              </option>
+              <option value="Other">
+                Other
+              </option>
             </select>
           </div>
           <div class="col-xl-4 col-lg-6 col-md-6">
             <label class="form-label">Family Number:</label>
             <div class="input-group">
               <input 
+                v-model="formData.family_number" 
                 type="text" 
                 class="form-control" 
-                v-model="formData.family_number" 
                 readonly 
                 placeholder="Auto-generated from selected guardian"
-              />
+              >
               <span 
                 v-if="formData.family_number" 
                 class="input-group-text bg-success text-white" 
                 title="Auto-populated from guardian"
               >
-                <i class="bi bi-check-circle"></i>
+                <i class="bi bi-check-circle" />
               </span>
             </div>
-            <div class="form-text text-muted">Auto-generated from selected guardian.</div>
+            <div class="form-text text-muted">
+              Auto-generated from selected guardian.
+            </div>
           </div>
         </div>
       </div>
@@ -157,7 +178,9 @@
     <div class="row g-4 mb-4">
       <div class="col-xl-6 col-lg-6 col-md-6">
         <div class="p-3 border-start border-primary border-3 h-100">
-          <h6 class="text-primary fw-bold mb-3">Mother's Information</h6>
+          <h6 class="text-primary fw-bold mb-3">
+            Mother's Information
+          </h6>
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Name: <span class="text-danger">*</span></label>
@@ -173,18 +196,18 @@
             <div class="col-12">
               <label class="form-label">Occupation:</label>
               <input 
+                v-model="formData.mother_occupation" 
                 type="text" 
-                class="form-control" 
-                v-model="formData.mother_occupation"
+                class="form-control"
                 :disabled="readOnly"
               >
             </div>
             <div class="col-12">
               <label class="form-label">Contact Number:</label>
               <input 
+                v-model="formData.mother_contact_number" 
                 type="tel" 
-                class="form-control" 
-                v-model="formData.mother_contact_number"
+                class="form-control"
                 :disabled="readOnly"
               >
             </div>
@@ -193,7 +216,9 @@
       </div>
       <div class="col-xl-6 col-lg-6 col-md-6">
         <div class="p-3 border-start border-info border-3 h-100">
-          <h6 class="text-info fw-bold mb-3">Father's Information</h6>
+          <h6 class="text-info fw-bold mb-3">
+            Father's Information
+          </h6>
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label">Name:</label>
@@ -208,18 +233,18 @@
             <div class="col-12">
               <label class="form-label">Occupation:</label>
               <input 
+                v-model="formData.father_occupation" 
                 type="text" 
-                class="form-control" 
-                v-model="formData.father_occupation"
+                class="form-control"
                 :disabled="readOnly"
               >
             </div>
             <div class="col-12">
               <label class="form-label">Contact Number:</label>
               <input 
+                v-model="formData.father_contact_number" 
                 type="tel" 
-                class="form-control" 
-                v-model="formData.father_contact_number"
+                class="form-control"
                 :disabled="readOnly"
               >
             </div>
@@ -234,11 +259,14 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-heart-pulse me-2"></i>Birth History
+          <i class="bi bi-heart-pulse me-2" />Birth History
         </h6>
         <div class="row g-4">
           <div class="col-xl-3 col-lg-4 col-md-6">
-            <label class="form-label">Time of Birth: <span class="text-danger" v-if="!isEditing">*</span></label>
+            <label class="form-label">Time of Birth: <span
+              v-if="!isEditing"
+              class="text-danger"
+            >*</span></label>
             <TimeInput 
               v-model="formData.time_of_birth"
               :disabled="readOnly"
@@ -246,74 +274,90 @@
             />
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
-            <label class="form-label">Attendant at Birth: <span class="text-danger" v-if="!isEditing">*</span></label>
+            <label class="form-label">Attendant at Birth: <span
+              v-if="!isEditing"
+              class="text-danger"
+            >*</span></label>
             <input 
+              v-model="formData.attendant_at_birth" 
               type="text" 
-              class="form-control" 
-              v-model="formData.attendant_at_birth"
+              class="form-control"
               :disabled="readOnly"
               :required="!isEditing"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
-            <label class="form-label">Type of Delivery: <span class="text-danger" v-if="!isEditing">*</span></label>
+            <label class="form-label">Type of Delivery: <span
+              v-if="!isEditing"
+              class="text-danger"
+            >*</span></label>
             <select 
-              class="form-select" 
-              v-model="formData.type_of_delivery"
+              v-model="formData.type_of_delivery" 
+              class="form-select"
               :disabled="readOnly"
               :required="!isEditing"
             >
-              <option value="">Select delivery type</option>
-              <option value="Normal">Normal</option>
-              <option value="Cesarean">Cesarean</option>
-              <option value="Assisted">Assisted</option>
-              <option value="Other">Other</option>
+              <option value="">
+                Select delivery type
+              </option>
+              <option value="Normal">
+                Normal
+              </option>
+              <option value="Cesarean">
+                Cesarean
+              </option>
+              <option value="Assisted">
+                Assisted
+              </option>
+              <option value="Other">
+                Other
+              </option>
             </select>
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Birth Weight (kg):</label>
             <input 
+              v-model="formData.birth_weight" 
               type="number" 
               step="0.1" 
-              class="form-control" 
-              v-model="formData.birth_weight"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Birth Length (cm):</label>
             <input 
+              v-model="formData.birth_length" 
               type="number" 
               step="0.1" 
-              class="form-control" 
-              v-model="formData.birth_length"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Place of Birth:</label>
             <input 
+              v-model="formData.place_of_birth" 
               type="text" 
-              class="form-control" 
-              v-model="formData.place_of_birth"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Ballard's Score:</label>
             <input 
+              v-model="formData.ballards_score" 
               type="text" 
-              class="form-control" 
-              v-model="formData.ballards_score"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Newborn Screening Result:</label>
             <input 
+              v-model="formData.newborn_screening_result" 
               type="text" 
-              class="form-control" 
-              v-model="formData.newborn_screening_result"
+              class="form-control"
               :disabled="readOnly"
             >
           </div>
@@ -338,24 +382,33 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="d-flex justify-content-end gap-2" v-if="!readOnly">
+    <div
+      v-if="!readOnly"
+      class="d-flex justify-content-end gap-2"
+    >
       <button 
         type="button" 
         class="btn btn-secondary" 
+        :disabled="submitting"
         @click="$emit('cancel')"
+      >
+        <i class="bi bi-x-circle me-2" />Cancel
+      </button>
+      <button 
+        type="submit" 
+        class="btn btn-primary"
         :disabled="submitting"
       >
-        <i class="bi bi-x-circle me-2"></i>Cancel
+        <span
+          v-if="submitting"
+          class="spinner-border spinner-border-sm me-2"
+        />
+        <i
+          v-else
+          class="bi bi-check-circle me-2"
+        />
+        Save Record
       </button>
-        <button 
-          type="submit" 
-          class="btn btn-primary"
-          :disabled="submitting"
-        >
-          <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-          <i v-else class="bi bi-check-circle me-2"></i>
-          Save Record
-        </button>
     </div>
     <!-- Inline offline queued hint under actions -->
     <QueuedHint class="mt-2" />

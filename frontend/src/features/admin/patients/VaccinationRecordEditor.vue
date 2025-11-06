@@ -1,21 +1,37 @@
 <template>
   <!-- Page mode: render the editor as a full page (no modal chrome) -->
-  <div v-if="embeddedPage" class="vaccination-editor-page container-fluid py-3">
+  <div
+    v-if="embeddedPage"
+    class="vaccination-editor-page container-fluid py-3"
+  >
     <div class="d-flex align-items-center mb-3">
       <h3 class="mb-0">
-        <i class="bi bi-shield-check me-2"></i>
+        <i class="bi bi-shield-check me-2" />
         Manage Vaccination Records
       </h3>
-      <button class="btn btn-outline-secondary ms-auto" @click="onClose">Back</button>
+      <button
+        class="btn btn-outline-secondary ms-auto"
+        @click="onClose"
+      >
+        Back
+      </button>
     </div>
     <div class="card shadow-sm">
       <div class="card-body p-3">
         <!-- Loading State -->
-        <div v-if="loading" class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
+        <div
+          v-if="loading"
+          class="text-center py-5"
+        >
+          <div
+            class="spinner-border text-primary"
+            role="status"
+          >
             <span class="visually-hidden">Loading...</span>
           </div>
-          <p class="text-muted mt-3">Loading vaccination records...</p>
+          <p class="text-muted mt-3">
+            Loading vaccination records...
+          </p>
         </div>
 
         <!-- Main Interface: Only show when NOT in visit context -->
@@ -31,8 +47,11 @@
             </div>
 
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-success" @click="startInFacilityAdd">
-                <i class="bi bi-plus-circle me-1"></i> Add Vaccination Record
+              <button
+                class="btn btn-success"
+                @click="startInFacilityAdd"
+              >
+                <i class="bi bi-plus-circle me-1" /> Add Vaccination Record
               </button>
             </div>
           </div>
@@ -51,9 +70,9 @@
 
           <!-- Vaccination Schedule Table -->
           <VaccinationScheduleTable
+            v-model:new-schedule-date="newScheduleDate"
             :upcoming-schedules="upcomingSchedules"
             :editing-schedule-index="editingScheduleIndex"
-            v-model:new-schedule-date="newScheduleDate"
             :saving="saving"
             :format-date="formatDate"
             :get-status-badge-class="getStatusBadgeClass"
@@ -69,10 +88,10 @@
 
     <!-- Vaccination Form Modal -->
     <VaccinationFormModal
-      :show="showNewVaccinationModal || showEditVaccinationModal"
-      :is-edit="showEditVaccinationModal"
       v-model:form="vaccinationForm"
       v-model:outside-immunization="outsideImmunization"
+      :show="showNewVaccinationModal || showEditVaccinationModal"
+      :is-edit="showEditVaccinationModal"
       :vaccine-options="vaccineOptions"
       :vaccine-catalog="vaccineCatalog"
       :available-doses="availableDoses"
@@ -98,10 +117,19 @@
     />
 
     <!-- Embedded Visit View (read-only + services active) -->
-    <div v-if="showVisitView" class="card border-primary mt-3">
+    <div
+      v-if="showVisitView"
+      class="card border-primary mt-3"
+    >
       <div class="card-header d-flex align-items-center justify-content-between">
-        <h6 class="mb-0">Visit Details</h6>
-        <button type="button" class="btn-close" @click="closeVisitView"></button>
+        <h6 class="mb-0">
+          Visit Details
+        </h6>
+        <button
+          type="button"
+          class="btn-close"
+          @click="closeVisitView"
+        />
       </div>
       <div class="card-body p-0">
         <div class="p-3">
@@ -124,27 +152,48 @@
   </div>
 
   <!-- Modal mode: keep previous behaviour for backward compatibility -->
-  <div v-else class="modal fade" :class="{ show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
+  <div
+    v-else
+    class="modal fade"
+    :class="{ show }"
+    :style="{ display: show ? 'block' : 'none' }"
+    tabindex="-1"
+  >
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
-            <i class="bi bi-shield-check me-2"></i>
+            <i class="bi bi-shield-check me-2" />
             Manage Vaccination Records
           </h5>
-          <button type="button" class="btn-close" @click="closeMainModal"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="closeMainModal"
+          />
         </div>
 
         <!-- Loading State -->
-        <div v-if="loading" class="modal-body text-center py-5">
-          <div class="spinner-border text-primary" role="status">
+        <div
+          v-if="loading"
+          class="modal-body text-center py-5"
+        >
+          <div
+            class="spinner-border text-primary"
+            role="status"
+          >
             <span class="visually-hidden">Loading...</span>
           </div>
-          <p class="text-muted mt-3">Loading vaccination records...</p>
+          <p class="text-muted mt-3">
+            Loading vaccination records...
+          </p>
         </div>
 
         <!-- Main Interface: Only show when NOT in visit context -->
-        <div v-else-if="!visitContext" class="modal-body">
+        <div
+          v-else-if="!visitContext"
+          class="modal-body"
+        >
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h6 class="mb-0">
@@ -156,8 +205,11 @@
             </div>
 
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-success" @click="startInFacilityAdd">
-                <i class="bi bi-plus-circle me-1"></i> Add Vaccination Record
+              <button
+                class="btn btn-success"
+                @click="startInFacilityAdd"
+              >
+                <i class="bi bi-plus-circle me-1" /> Add Vaccination Record
               </button>
             </div>
           </div>
@@ -176,9 +228,9 @@
 
           <!-- Vaccination Schedule Table -->
           <VaccinationScheduleTable
+            v-model:new-schedule-date="newScheduleDate"
             :upcoming-schedules="upcomingSchedules"
             :editing-schedule-index="editingScheduleIndex"
-            v-model:new-schedule-date="newScheduleDate"
             :saving="saving"
             :format-date="formatDate"
             :get-status-badge-class="getStatusBadgeClass"
@@ -191,7 +243,13 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="closeMainModal">Close</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="closeMainModal"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -199,10 +257,10 @@
 
   <!-- Vaccination Form Modal -->
   <VaccinationFormModal
-    :show="showNewVaccinationModal || showEditVaccinationModal"
-    :is-edit="showEditVaccinationModal"
     v-model:form="vaccinationForm"
     v-model:outside-immunization="outsideImmunization"
+    :show="showNewVaccinationModal || showEditVaccinationModal"
+    :is-edit="showEditVaccinationModal"
     :vaccine-options="vaccineOptions"
     :vaccine-catalog="vaccineCatalog"
     :available-doses="availableDoses"
@@ -228,13 +286,25 @@
   />
 
   <!-- Modal Backdrop only for main modal -->
-  <div v-if="show && !embeddedPage" class="modal-backdrop fade show"></div>
+  <div
+    v-if="show && !embeddedPage"
+    class="modal-backdrop fade show"
+  />
 
   <!-- Embedded Visit View (read-only + services active) -->
-  <div v-if="showVisitView" class="card border-primary mt-3">
+  <div
+    v-if="showVisitView"
+    class="card border-primary mt-3"
+  >
     <div class="card-header d-flex align-items-center justify-content-between">
-      <h6 class="mb-0">Visit Details</h6>
-      <button type="button" class="btn-close" @click="closeVisitView"></button>
+      <h6 class="mb-0">
+        Visit Details
+      </h6>
+      <button
+        type="button"
+        class="btn-close"
+        @click="closeVisitView"
+      />
     </div>
     <div class="card-body p-0">
       <div class="p-3">

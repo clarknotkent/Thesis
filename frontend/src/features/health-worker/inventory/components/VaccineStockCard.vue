@@ -5,16 +5,24 @@
   >
     <div class="d-flex justify-content-between align-items-start">
       <div class="vaccine-info">
-        <h6 class="vaccine-name mb-1">{{ vaccine.vaccineName }}</h6>
+        <h6 class="vaccine-name mb-1">
+          {{ vaccine.vaccineName }}
+        </h6>
         <p class="vaccine-details mb-0">
           {{ vaccine.manufacturer }} • {{ vaccine.quantity }} doses
         </p>
       </div>
       <div class="d-flex align-items-center">
-        <span class="badge me-2" :class="getStatusBadgeClass(vaccine.status)">
+        <span
+          class="badge me-2"
+          :class="getStatusBadgeClass(vaccine.status)"
+        >
           {{ vaccine.status }}
         </span>
-        <i class="bi bi-chevron-right text-muted" style="font-size: 0.9rem;"></i>
+        <i
+          class="bi bi-chevron-right text-muted"
+          style="font-size: 0.9rem;"
+        />
       </div>
     </div>
   </div>

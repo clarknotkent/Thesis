@@ -4,63 +4,88 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-box-seam me-2"></i>Stock Information
+          <i class="bi bi-box-seam me-2" />Stock Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="vaccineSelect" class="form-label">Select Vaccine Type: <span class="text-danger">*</span></label>
+            <label
+              for="vaccineSelect"
+              class="form-label"
+            >Select Vaccine Type: <span class="text-danger">*</span></label>
             <select 
+              id="vaccineSelect" 
+              v-model="localForm.vaccine_id"
               class="form-select" 
-              id="vaccineSelect"
-              v-model="localForm.vaccine_id" 
-              @change="onVaccineSelect"
               :disabled="isEditing || readOnly"
               required
+              @change="onVaccineSelect"
             >
-              <option value="">-- Select a Vaccine Type --</option>
-              <option v-for="vaccine in vaccines" :key="vaccine.id" :value="vaccine.id">
+              <option value="">
+                -- Select a Vaccine Type --
+              </option>
+              <option
+                v-for="vaccine in vaccines"
+                :key="vaccine.id"
+                :value="vaccine.id"
+              >
                 {{ vaccine.antigen_name }} - {{ vaccine.brand_name }}
               </option>
             </select>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="brandName" class="form-label">Brand Name:</label>
+            <label
+              for="brandName"
+              class="form-label"
+            >Brand Name:</label>
             <input 
-              type="text" 
-              class="form-control bg-light" 
-              id="brandName"
+              id="brandName" 
               v-model="localForm.brandName" 
+              type="text"
+              class="form-control bg-light" 
               readonly
               placeholder="Auto-populated from selected vaccine"
             >
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="manufacturer" class="form-label">Manufacturer: <span class="text-danger">*</span></label>
+            <label
+              for="manufacturer"
+              class="form-label"
+            >Manufacturer: <span class="text-danger">*</span></label>
             <input 
-              type="text" 
-              class="form-control" 
-              id="manufacturer"
+              id="manufacturer" 
               v-model="localForm.manufacturer" 
+              type="text"
+              class="form-control" 
               :readonly="readOnly"
               required
               list="manufacturerOptionsList"
               placeholder="e.g., Pfizer Inc., Moderna Inc."
             >
             <datalist id="manufacturerOptionsList">
-              <option v-for="m in manufacturerOptions" :key="m" :value="m"></option>
+              <option
+                v-for="m in manufacturerOptions"
+                :key="m"
+                :value="m"
+              />
             </datalist>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="quantity" class="form-label">
+            <label
+              for="quantity"
+              class="form-label"
+            >
               {{ isEditing ? 'Current Stock Quantity:' : 'Stock Quantity:' }} 
-              <span v-if="!isEditing" class="text-danger">*</span>
+              <span
+                v-if="!isEditing"
+                class="text-danger"
+              >*</span>
             </label>
             <input 
-              type="number" 
-              class="form-control" 
-              :class="{ 'bg-light': isEditing || readOnly }"
-              id="quantity"
+              id="quantity" 
               v-model.number="localForm.quantity" 
+              type="number"
+              class="form-control"
+              :class="{ 'bg-light': isEditing || readOnly }" 
               min="0"
               :readonly="isEditing || readOnly"
               :required="!isEditing"
@@ -75,23 +100,29 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-archive me-2"></i>Batch & Storage Information
+          <i class="bi bi-archive me-2" />Batch & Storage Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="lotNumber" class="form-label">Lot Number: <span class="text-danger">*</span></label>
+            <label
+              for="lotNumber"
+              class="form-label"
+            >Lot Number: <span class="text-danger">*</span></label>
             <input 
-              type="text" 
-              class="form-control" 
-              id="lotNumber"
+              id="lotNumber" 
               v-model="localForm.lotNumber" 
+              type="text"
+              class="form-control" 
               :readonly="readOnly"
               required
               placeholder="e.g., LOT123456"
             >
           </div>
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="expirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
+            <label
+              for="expirationDate"
+              class="form-label"
+            >Expiration Date: <span class="text-danger">*</span></label>
             <DateInput 
               v-model="localForm.expirationDate"
               :disabled="readOnly"
@@ -99,18 +130,27 @@
             />
           </div>
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="storageLocation" class="form-label">Storage Location:</label>
+            <label
+              for="storageLocation"
+              class="form-label"
+            >Storage Location:</label>
             <input
-              type="text"
-              class="form-control"
               id="storageLocation"
               v-model="localForm.storageLocation"
+              type="text"
+              class="form-control"
               :readonly="readOnly"
               list="storageLocations"
               placeholder="e.g., Cold Room A, Refrigerator 1"
             >
             <datalist id="storageLocations">
-              <option v-for="opt in storageLocationOptions" :key="opt" :value="opt">{{ opt }}</option>
+              <option
+                v-for="opt in storageLocationOptions"
+                :key="opt"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
             </datalist>
           </div>
         </div>
@@ -118,13 +158,30 @@
     </div>
 
     <!-- Form Actions -->
-    <div v-if="!readOnly" class="d-flex justify-content-end gap-2 mt-4">
-      <button type="button" class="btn btn-secondary" @click="$emit('cancel')">
-        <i class="bi bi-x-circle me-2"></i>Cancel
+    <div
+      v-if="!readOnly"
+      class="d-flex justify-content-end gap-2 mt-4"
+    >
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="$emit('cancel')"
+      >
+        <i class="bi bi-x-circle me-2" />Cancel
       </button>
-      <button type="submit" class="btn btn-primary" :disabled="submitting">
-        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-        <i v-else class="bi bi-check-circle me-2"></i>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        :disabled="submitting"
+      >
+        <span
+          v-if="submitting"
+          class="spinner-border spinner-border-sm me-2"
+        />
+        <i
+          v-else
+          class="bi bi-check-circle me-2"
+        />
         {{ submitLabel }}
       </button>
     </div>

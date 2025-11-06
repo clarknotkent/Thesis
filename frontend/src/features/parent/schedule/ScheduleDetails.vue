@@ -3,52 +3,80 @@
     <!-- Fixed Header Section -->
     <div class="schedule-details-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">{{ pageTitle }}</h1>
+        <h1 class="page-title">
+          {{ pageTitle }}
+        </h1>
         <!-- Empty spacer for alignment -->
-        <div class="header-spacer"></div>
+        <div class="header-spacer" />
       </div>
     </div>
 
     <!-- Content wrapper -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading vaccination schedule...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="error-state">
-        <i class="bi bi-exclamation-triangle error-icon"></i>
-        <p class="error-text">{{ error }}</p>
-        <button class="retry-button" @click="fetchSchedule">
-          <i class="bi bi-arrow-clockwise"></i>
+      <div
+        v-else-if="error"
+        class="error-state"
+      >
+        <i class="bi bi-exclamation-triangle error-icon" />
+        <p class="error-text">
+          {{ error }}
+        </p>
+        <button
+          class="retry-button"
+          @click="fetchSchedule"
+        >
+          <i class="bi bi-arrow-clockwise" />
           Try Again
         </button>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="schedules.length === 0" class="empty-state">
-        <i class="bi bi-calendar-check empty-icon"></i>
-        <h3 class="empty-title">No Scheduled Vaccinations</h3>
+      <div
+        v-else-if="schedules.length === 0"
+        class="empty-state"
+      >
+        <i class="bi bi-calendar-check empty-icon" />
+        <h3 class="empty-title">
+          No Scheduled Vaccinations
+        </h3>
         <p class="empty-text">
           There are no vaccinations scheduled for {{ childName }} at this time.
         </p>
       </div>
 
       <!-- Schedule List -->
-      <div v-else class="schedule-content">
+      <div
+        v-else
+        class="schedule-content"
+      >
         <!-- Child Info Summary -->
         <div class="child-info-card">
           <div class="info-icon">
-            <i class="bi bi-person-circle"></i>
+            <i class="bi bi-person-circle" />
           </div>
           <div class="info-details">
-            <h3 class="child-name">{{ childName }}</h3>
-            <p class="schedule-count">{{ schedules.length }} scheduled vaccination{{ schedules.length !== 1 ? 's' : '' }}</p>
+            <h3 class="child-name">
+              {{ childName }}
+            </h3>
+            <p class="schedule-count">
+              {{ schedules.length }} scheduled vaccination{{ schedules.length !== 1 ? 's' : '' }}
+            </p>
           </div>
         </div>
 

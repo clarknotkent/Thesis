@@ -1,12 +1,18 @@
 <template>
   <div class="detail-card mb-3">
-    <div class="card-header dropdown-header" @click="toggleExpanded">
+    <div
+      class="card-header dropdown-header"
+      @click="toggleExpanded"
+    >
       <h6 class="mb-0 d-flex justify-content-between align-items-center">
         <span>Contact Information</span>
-        <i :class="isExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+        <i :class="isExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" />
       </h6>
     </div>
-    <div v-show="isExpanded" class="card-body">
+    <div
+      v-show="isExpanded"
+      class="card-body"
+    >
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Guardian</span>

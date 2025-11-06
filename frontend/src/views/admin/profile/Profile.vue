@@ -3,16 +3,34 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Profile Settings</h1>
-          <p class="text-muted mb-0">Manage your account information and preferences</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Profile Settings
+          </h1>
+          <p class="text-muted mb-0">
+            Manage your account information and preferences
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" @click="editMode = !editMode">
-            <i class="bi bi-pencil me-2"></i>{{ editMode ? 'Cancel Edit' : 'Edit Profile' }}
+          <button
+            class="btn btn-outline-primary"
+            @click="editMode = !editMode"
+          >
+            <i class="bi bi-pencil me-2" />{{ editMode ? 'Cancel Edit' : 'Edit Profile' }}
           </button>
-          <button v-if="editMode" class="btn btn-primary" @click="saveProfile" :disabled="saving">
-            <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
-            <i v-else class="bi bi-check-circle me-2"></i>
+          <button
+            v-if="editMode"
+            class="btn btn-primary"
+            :disabled="saving"
+            @click="saveProfile"
+          >
+            <span
+              v-if="saving"
+              class="spinner-border spinner-border-sm me-2"
+            />
+            <i
+              v-else
+              class="bi bi-check-circle me-2"
+            />
             {{ saving ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>
@@ -28,10 +46,15 @@
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Account Status
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ profile.status || 'Active' }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ profile.status || 'Active' }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-shield-check text-primary" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-shield-check text-primary"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -46,10 +69,15 @@
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Member Since
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ formatMemberSince(profile.createdAt) }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ formatMemberSince(profile.createdAt) }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-calendar-check text-success" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-calendar-check text-success"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -64,10 +92,15 @@
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Last Login
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ formatLastLogin(profile.lastLogin) }}</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ formatLastLogin(profile.lastLogin) }}
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-clock text-info" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-clock text-info"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -82,10 +115,15 @@
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Profile Score
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">{{ profileCompleteness }}%</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ profileCompleteness }}%
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-graph-up text-warning" style="font-size: 2rem;"></i>
+                  <i
+                    class="bi bi-graph-up text-warning"
+                    style="font-size: 2rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -97,7 +135,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-person-circle me-2"></i>
+            <i class="bi bi-person-circle me-2" />
             Personal Information
           </h6>
         </div>
@@ -116,10 +154,10 @@
                   v-if="editMode" 
                   class="btn btn-primary btn-sm position-absolute bottom-0 end-0 rounded-circle"
                   style="width: 35px; height: 35px;"
-                  @click="$refs.fileInput.click()"
                   title="Change Profile Picture"
+                  @click="$refs.fileInput.click()"
                 >
-                  <i class="bi bi-camera"></i>
+                  <i class="bi bi-camera" />
                 </button>
                 <input 
                   ref="fileInput" 
@@ -135,9 +173,9 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">First Name:</label>
               <input 
+                v-model="profileForm.firstName" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.firstName" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -145,9 +183,9 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Middle Name:</label>
               <input 
+                v-model="profileForm.middleName" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.middleName" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -155,9 +193,9 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Last Name:</label>
               <input 
+                v-model="profileForm.lastName" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.lastName" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -165,9 +203,9 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Email Address:</label>
               <input 
+                v-model="profileForm.email" 
                 type="email" 
                 class="form-control" 
-                v-model="profileForm.email" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -175,14 +213,20 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Sex:</label>
               <select 
-                class="form-select" 
+                v-if="editMode" 
                 v-model="profileForm.sex" 
+                class="form-select"
                 :disabled="!editMode"
-                v-if="editMode"
               >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
+                <option value="Male">
+                  Male
+                </option>
+                <option value="Female">
+                  Female
+                </option>
+                <option value="Other">
+                  Other
+                </option>
               </select>
               <input 
                 v-else
@@ -208,9 +252,9 @@
             <div class="col-12">
               <label class="form-label fw-semibold">Address:</label>
               <input 
+                v-model="profileForm.address" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.address" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -223,7 +267,7 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-briefcase me-2"></i>
+            <i class="bi bi-briefcase me-2" />
             Professional Information
           </h6>
         </div>
@@ -238,7 +282,10 @@
                 readonly
               >
             </div>
-            <div class="col-xl-4 col-lg-6 col-md-6" v-if="profile.role === 'health_staff' || profile.role === 'HealthStaff'">
+            <div
+              v-if="profile.role === 'health_staff' || profile.role === 'HealthStaff'"
+              class="col-xl-4 col-lg-6 col-md-6"
+            >
               <label class="form-label fw-semibold">Health Staff Type:</label>
               <input 
                 type="text" 
@@ -250,19 +297,22 @@
             <div class="col-xl-4 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Employee ID:</label>
               <input 
+                v-model="profileForm.employeeId" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.employeeId" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
             </div>
-            <div class="col-xl-6 col-lg-6 col-md-6" v-if="profile.role === 'health_staff' || profile.role === 'admin'">
+            <div
+              v-if="profile.role === 'health_staff' || profile.role === 'admin'"
+              class="col-xl-6 col-lg-6 col-md-6"
+            >
               <label class="form-label fw-semibold">PRC License Number:</label>
               <input 
+                v-model="profileForm.licenseNumber" 
                 type="text" 
                 class="form-control" 
-                v-model="profileForm.licenseNumber" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -270,9 +320,9 @@
             <div class="col-xl-6 col-lg-6 col-md-6">
               <label class="form-label fw-semibold">Contact Number:</label>
               <input 
+                v-model="profileForm.contactNumber" 
                 type="tel" 
                 class="form-control" 
-                v-model="profileForm.contactNumber" 
                 :readonly="!editMode"
                 :class="{ 'form-control-plaintext border-0': !editMode }"
               >
@@ -285,15 +335,18 @@
       <div class="card shadow mb-4">
         <div class="card-header py-3">
           <h6 class="m-0 fw-bold text-primary">
-            <i class="bi bi-shield-lock me-2"></i>
+            <i class="bi bi-shield-lock me-2" />
             Security Settings
           </h6>
         </div>
         <div class="card-body">
           <div class="row g-4">
             <div class="col-12">
-              <button class="btn btn-outline-warning" @click="showPasswordModal = true">
-                <i class="bi bi-key me-2"></i>
+              <button
+                class="btn btn-outline-warning"
+                @click="showPasswordModal = true"
+              >
+                <i class="bi bi-key me-2" />
                 Change Password
               </button>
               <small class="text-muted ms-3">Last changed: {{ formatDate(profile.passwordChangedAt) || 'Never' }}</small>
@@ -301,13 +354,16 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="twoFactorAuth" 
-                  v-model="profileForm.twoFactorEnabled"
+                  v-model="profileForm.twoFactorEnabled" 
+                  class="form-check-input" 
+                  type="checkbox"
                   :disabled="!editMode"
                 >
-                <label class="form-check-label" for="twoFactorAuth">
+                <label
+                  class="form-check-label"
+                  for="twoFactorAuth"
+                >
                   Enable Two-Factor Authentication
                 </label>
               </div>
@@ -315,13 +371,16 @@
             <div class="col-12">
               <div class="form-check form-switch">
                 <input 
-                  class="form-check-input" 
-                  type="checkbox" 
                   id="emailNotifications" 
-                  v-model="profileForm.emailNotifications"
+                  v-model="profileForm.emailNotifications" 
+                  class="form-check-input" 
+                  type="checkbox"
                   :disabled="!editMode"
                 >
-                <label class="form-check-label" for="emailNotifications">
+                <label
+                  class="form-check-label"
+                  for="emailNotifications"
+                >
                   Receive email notifications
                 </label>
               </div>
@@ -331,64 +390,88 @@
       </div>
 
       <!-- Change Password Modal -->
-      <div class="modal fade" :class="{ show: showPasswordModal }" :style="{ display: showPasswordModal ? 'block' : 'none' }" tabindex="-1">
+      <div
+        class="modal fade"
+        :class="{ show: showPasswordModal }"
+        :style="{ display: showPasswordModal ? 'block' : 'none' }"
+        tabindex="-1"
+      >
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-key me-2"></i>
+                <i class="bi bi-key me-2" />
                 Change Password
               </h5>
-              <button type="button" class="btn-close" @click="closePasswordModal"></button>
+              <button
+                type="button"
+                class="btn-close"
+                @click="closePasswordModal"
+              />
             </div>
             <div class="modal-body">
               <form @submit.prevent="changePassword">
                 <div class="mb-3">
                   <label class="form-label">Current Password:</label>
                   <input 
+                    v-model="passwordForm.currentPassword" 
                     type="password" 
                     class="form-control" 
-                    v-model="passwordForm.currentPassword" 
                     required
                   >
                 </div>
                 <div class="mb-3">
                   <label class="form-label">New Password:</label>
                   <input 
+                    v-model="passwordForm.newPassword" 
                     type="password" 
                     class="form-control" 
-                    v-model="passwordForm.newPassword" 
                     required
                     minlength="8"
                   >
-                  <div class="form-text">Password must be at least 8 characters long.</div>
+                  <div class="form-text">
+                    Password must be at least 8 characters long.
+                  </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Confirm New Password:</label>
                   <input 
+                    v-model="passwordForm.confirmPassword" 
                     type="password" 
                     class="form-control" 
-                    v-model="passwordForm.confirmPassword" 
                     required
                   >
-                  <div v-if="passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword" class="text-danger small">
+                  <div
+                    v-if="passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword"
+                    class="text-danger small"
+                  >
                     Passwords do not match
                   </div>
                 </div>
               </form>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closePasswordModal">
-                <i class="bi bi-x-circle me-2"></i>Cancel
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="closePasswordModal"
+              >
+                <i class="bi bi-x-circle me-2" />Cancel
               </button>
               <button 
                 type="button" 
                 class="btn btn-primary" 
-                @click="changePassword" 
-                :disabled="changingPassword || passwordForm.newPassword !== passwordForm.confirmPassword"
+                :disabled="changingPassword || passwordForm.newPassword !== passwordForm.confirmPassword" 
+                @click="changePassword"
               >
-                <span v-if="changingPassword" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-check-circle me-2"></i>
+                <span
+                  v-if="changingPassword"
+                  class="spinner-border spinner-border-sm me-2"
+                />
+                <i
+                  v-else
+                  class="bi bi-check-circle me-2"
+                />
                 {{ changingPassword ? 'Changing...' : 'Change Password' }}
               </button>
             </div>
@@ -397,7 +480,10 @@
       </div>
 
       <!-- Modal Backdrop -->
-      <div v-if="showPasswordModal" class="modal-backdrop fade show"></div>
+      <div
+        v-if="showPasswordModal"
+        class="modal-backdrop fade show"
+      />
     </div>
   </AdminLayout>
 </template>
@@ -611,7 +697,7 @@ const formatForInput = (date) => {
 const validateAndFormatDate = (fieldName) => {
   if (!profileForm.value[fieldName]) return
   
-  let dateStr = profileForm.value[fieldName].trim()
+  const dateStr = profileForm.value[fieldName].trim()
   let date = null
   
   if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {

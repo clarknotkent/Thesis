@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Add Vaccine Type</li>
+          <li class="breadcrumb-item active">
+            Add Vaccine Type
+          </li>
         </ol>
       </nav>
 
@@ -18,16 +27,24 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-plus-square me-2"></i>Add New Vaccine Type
+            <i class="bi bi-plus-square me-2" />Add New Vaccine Type
           </h1>
-          <p class="text-muted mb-0">Create a new vaccine type with initial stock</p>
+          <p class="text-muted mb-0">
+            Create a new vaccine type with initial stock
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>

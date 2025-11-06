@@ -3,8 +3,12 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-0 text-gray-800">Create Notification</h1>
-          <p class="text-muted mb-0">Send notifications to users</p>
+          <h1 class="h3 mb-0 text-gray-800">
+            Create Notification
+          </h1>
+          <p class="text-muted mb-0">
+            Send notifications to users
+          </p>
         </div>
       </div>
 
@@ -12,27 +16,54 @@
         <div class="col-lg-8">
           <div class="card shadow">
             <div class="card-header">
-              <h6 class="m-0 font-weight-bold text-primary">Notification Details</h6>
+              <h6 class="m-0 font-weight-bold text-primary">
+                Notification Details
+              </h6>
             </div>
             <div class="card-body">
               <form @submit.prevent="submitNotification">
                 <!-- Recipient Selection -->
                 <div class="mb-3">
                   <label class="form-label">Recipient Type</label>
-                  <select v-model="form.recipientType" class="form-select" @change="onRecipientTypeChange">
-                    <option value="user">Specific User</option>
-                    <option value="guardian">All Guardians</option>
-                    <option value="healthworker">All Health Workers</option>
-                    <option value="admin">All Admins</option>
+                  <select
+                    v-model="form.recipientType"
+                    class="form-select"
+                    @change="onRecipientTypeChange"
+                  >
+                    <option value="user">
+                      Specific User
+                    </option>
+                    <option value="guardian">
+                      All Guardians
+                    </option>
+                    <option value="healthworker">
+                      All Health Workers
+                    </option>
+                    <option value="admin">
+                      All Admins
+                    </option>
                   </select>
                 </div>
 
                 <!-- User Selection (when specific user) -->
-                <div v-if="form.recipientType === 'user'" class="mb-3">
+                <div
+                  v-if="form.recipientType === 'user'"
+                  class="mb-3"
+                >
                   <label class="form-label">Select User</label>
-                  <select v-model="form.recipient_user_id" class="form-select" required>
-                    <option value="">Choose a user...</option>
-                    <option v-for="user in users" :key="user.user_id || user.id" :value="user.user_id || user.id">
+                  <select
+                    v-model="form.recipient_user_id"
+                    class="form-select"
+                    required
+                  >
+                    <option value="">
+                      Choose a user...
+                    </option>
+                    <option
+                      v-for="user in users"
+                      :key="user.user_id || user.id"
+                      :value="user.user_id || user.id"
+                    >
                       {{ user.firstname }} {{ user.surname }} ({{ user.role }})
                     </option>
                   </select>
@@ -41,28 +72,63 @@
                 <!-- Channel -->
                 <div class="mb-3">
                   <label class="form-label">Channel</label>
-                  <select v-model="form.channel" class="form-select" required>
-                    <option value="in-app">In-App</option>
-                    <option value="email">Email</option>
-                    <option value="sms">SMS</option>
+                  <select
+                    v-model="form.channel"
+                    class="form-select"
+                    required
+                  >
+                    <option value="in-app">
+                      In-App
+                    </option>
+                    <option value="email">
+                      Email
+                    </option>
+                    <option value="sms">
+                      SMS
+                    </option>
                   </select>
                 </div>
 
                 <!-- Template Code -->
                 <div class="mb-3">
                   <label class="form-label">Template</label>
-                  <select v-model="form.template_code" class="form-select">
-                    <option value="">Custom Message</option>
-                    <option value="welcome_guardian">Welcome Guardian</option>
-                    <option value="schedule_created">Schedule Created</option>
-                    <option value="vaccination_reminder_14">14-Day Reminder</option>
-                    <option value="vaccination_reminder_7">7-Day Reminder</option>
-                    <option value="vaccination_reminder_0">Due Date Reminder</option>
-                    <option value="vaccination_overdue">Overdue Alert</option>
-                    <option value="immunization_confirmation">Immunization Confirmation</option>
-                    <option value="low_stock_alert">Low Stock Alert</option>
-                    <option value="password_reset">Password Reset</option>
-                    <option value="role_change">Role Change</option>
+                  <select
+                    v-model="form.template_code"
+                    class="form-select"
+                  >
+                    <option value="">
+                      Custom Message
+                    </option>
+                    <option value="welcome_guardian">
+                      Welcome Guardian
+                    </option>
+                    <option value="schedule_created">
+                      Schedule Created
+                    </option>
+                    <option value="vaccination_reminder_14">
+                      14-Day Reminder
+                    </option>
+                    <option value="vaccination_reminder_7">
+                      7-Day Reminder
+                    </option>
+                    <option value="vaccination_reminder_0">
+                      Due Date Reminder
+                    </option>
+                    <option value="vaccination_overdue">
+                      Overdue Alert
+                    </option>
+                    <option value="immunization_confirmation">
+                      Immunization Confirmation
+                    </option>
+                    <option value="low_stock_alert">
+                      Low Stock Alert
+                    </option>
+                    <option value="password_reset">
+                      Password Reset
+                    </option>
+                    <option value="role_change">
+                      Role Change
+                    </option>
                   </select>
                 </div>
 
@@ -75,7 +141,7 @@
                     rows="4"
                     placeholder="Enter notification message..."
                     required
-                  ></textarea>
+                  />
                 </div>
 
                 <!-- Scheduled At (optional) -->
@@ -90,11 +156,21 @@
 
                 <!-- Submit Button -->
                 <div class="d-flex gap-2">
-                  <button type="submit" class="btn btn-primary" :disabled="loading">
-                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    :disabled="loading"
+                  >
+                    <span
+                      v-if="loading"
+                      class="spinner-border spinner-border-sm me-2"
+                    />
                     Send Notification
                   </button>
-                  <router-link to="/admin/notifications-inbox" class="btn btn-secondary">
+                  <router-link
+                    to="/admin/notifications-inbox"
+                    class="btn btn-secondary"
+                  >
                     View Inbox
                   </router-link>
                 </div>
@@ -107,7 +183,9 @@
         <div class="col-lg-4">
           <div class="card shadow">
             <div class="card-header">
-              <h6 class="m-0 font-weight-bold text-primary">Preview</h6>
+              <h6 class="m-0 font-weight-bold text-primary">
+                Preview
+              </h6>
             </div>
             <div class="card-body">
               <div class="alert alert-info">
@@ -135,6 +213,10 @@ export default {
   components: {
     AdminLayout
   },
+  setup() {
+    const { addToast } = useToast()
+    return { addToast }
+  },
   data() {
     return {
       loading: false,
@@ -148,10 +230,6 @@ export default {
         scheduled_at: ''
       }
     }
-  },
-  setup() {
-    const { addToast } = useToast()
-    return { addToast }
   },
   async mounted() {
     await this.loadUsers()

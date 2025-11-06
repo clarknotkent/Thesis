@@ -2,11 +2,27 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Add Patient Immunization Record</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Add Patient Immunization Record
+          </li>
         </ol>
       </nav>
 
@@ -15,17 +31,25 @@
         <div class="d-flex align-items-center">
           <div>
             <h2 class="mb-1">
-              <i class="bi bi-file-medical me-2"></i>Add Patient Immunization Record
+              <i class="bi bi-file-medical me-2" />Add Patient Immunization Record
             </h2>
-            <p class="text-muted mb-0">Record Patient On-Site or Outside Immunization</p>
+            <p class="text-muted mb-0">
+              Record Patient On-Site or Outside Immunization
+            </p>
           </div>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <button class="btn btn-outline-primary" @click="goHome">
-            <i class="bi bi-house me-2"></i>Home
+          <button
+            class="btn btn-outline-primary"
+            @click="goHome"
+          >
+            <i class="bi bi-house me-2" />Home
           </button>
         </div>
       </div>
@@ -34,7 +58,7 @@
       <div class="card shadow">
         <div class="card-header py-3">
           <h5 class="mb-0 text-primary">
-            <i class="bi bi-clipboard-data me-2"></i>
+            <i class="bi bi-clipboard-data me-2" />
             Patient Immunization Form
           </h5>
         </div>

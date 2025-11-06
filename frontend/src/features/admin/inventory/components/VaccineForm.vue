@@ -1,8 +1,11 @@
 <template>
   <form @submit.prevent="handleSubmit">
     <!-- Alert for new vaccine type -->
-    <div v-if="!isEditing" class="alert alert-info mb-4">
-      <i class="bi bi-info-circle me-2"></i>
+    <div
+      v-if="!isEditing"
+      class="alert alert-info mb-4"
+    >
+      <i class="bi bi-info-circle me-2" />
       <strong>Note:</strong> This creates a new vaccine type. Each combination of Antigen Name + Brand Name must be unique.
     </div>
 
@@ -10,75 +13,96 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-shield-check me-2"></i>Vaccine Information
+          <i class="bi bi-shield-check me-2" />Vaccine Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="antigenName" class="form-label">Antigen Name: <span class="text-danger">*</span></label>
+            <label
+              for="antigenName"
+              class="form-label"
+            >Antigen Name: <span class="text-danger">*</span></label>
             <div class="input-group">
               <input
-                type="text"
-                class="form-control"
                 id="antigenName"
                 v-model="localForm.antigen_name"
-                @input="onAntigenInput"
+                type="text"
+                class="form-control"
                 placeholder="e.g., COVID-19, Rotavirus, Measles"
                 required
                 :readonly="readOnly"
+                @input="onAntigenInput"
               >
             </div>
             <small class="text-muted">Type to edit antigen name</small>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="brandName" class="form-label">Brand Name: <span class="text-danger">*</span></label>
+            <label
+              for="brandName"
+              class="form-label"
+            >Brand Name: <span class="text-danger">*</span></label>
             <div class="input-group">
               <select
-                class="form-select"
                 v-model="selectedBrand"
-                @change="onBrandSelect"
+                class="form-select"
                 :disabled="readOnly"
+                @change="onBrandSelect"
               >
-                <option value="">-- Select or type brand --</option>
-                <option v-for="brand in brandOptions" :key="brand" :value="brand">
+                <option value="">
+                  -- Select or type brand --
+                </option>
+                <option
+                  v-for="brand in brandOptions"
+                  :key="brand"
+                  :value="brand"
+                >
                   {{ brand }}
                 </option>
               </select>
               <input
-                type="text"
-                class="form-control"
                 id="brandName"
                 v-model="localForm.brand_name"
-                @input="onBrandInput"
+                type="text"
+                class="form-control"
                 placeholder="e.g., Pfizer, Moderna, Sinovac"
                 required
                 :readonly="readOnly"
+                @input="onBrandInput"
               >
             </div>
             <small class="text-muted">Select from dropdown or type manually to add new brand</small>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="diseasePrevented" class="form-label">Disease Prevented: <span class="text-danger">*</span></label>
+            <label
+              for="diseasePrevented"
+              class="form-label"
+            >Disease Prevented: <span class="text-danger">*</span></label>
             <div class="input-group">
               <select
-                class="form-select"
                 v-model="selectedDisease"
-                @change="onDiseaseSelect"
+                class="form-select"
                 :disabled="readOnly"
+                @change="onDiseaseSelect"
               >
-                <option value="">-- Select or type disease --</option>
-                <option v-for="disease in diseaseOptions" :key="disease" :value="disease">
+                <option value="">
+                  -- Select or type disease --
+                </option>
+                <option
+                  v-for="disease in diseaseOptions"
+                  :key="disease"
+                  :value="disease"
+                >
                   {{ disease }}
                 </option>
               </select>
               <input
-                type="text"
-                class="form-control"
                 id="diseasePrevented"
                 v-model="localForm.disease_prevented"
-                @input="onDiseaseInput"
+                type="text"
+                class="form-control"
                 placeholder="e.g., Tuberculosis, Measles, COVID-19"
                 required
                 :readonly="readOnly"
+                @input="onDiseaseInput"
               >
             </div>
             <small class="text-muted">Select from dropdown or type manually to add new disease</small>
@@ -91,53 +115,82 @@
     <div class="row mb-4">
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-tags me-2"></i>Classification & Category
+          <i class="bi bi-tags me-2" />Classification & Category
         </h6>
         <div class="row g-4">
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="category" class="form-label">Category: <span class="text-danger">*</span></label>
+            <label
+              for="category"
+              class="form-label"
+            >Category: <span class="text-danger">*</span></label>
             <select
-              class="form-select"
               id="category"
               v-model="localForm.category"
-              @change="onCategoryChange"
+              class="form-select"
               required
               :disabled="readOnly"
+              @change="onCategoryChange"
             >
-              <option value="">-- Select Category --</option>
-              <option value="VACCINE">Vaccine</option>
-              <option value="DEWORMING">Deworming</option>
-              <option value="VITAMIN_A">Vitamin A Supplement</option>
+              <option value="">
+                -- Select Category --
+              </option>
+              <option value="VACCINE">
+                Vaccine
+              </option>
+              <option value="DEWORMING">
+                Deworming
+              </option>
+              <option value="VITAMIN_A">
+                Vitamin A Supplement
+              </option>
             </select>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6">
-            <label for="vaccineType" class="form-label">
+            <label
+              for="vaccineType"
+              class="form-label"
+            >
               Vaccine Type: 
-              <span class="text-danger" v-if="localForm.category === 'VACCINE'">*</span>
+              <span
+                v-if="localForm.category === 'VACCINE'"
+                class="text-danger"
+              >*</span>
             </label>
             <select 
-              class="form-select" 
-              id="vaccineType"
+              id="vaccineType" 
               v-model="localForm.vaccine_type"
+              class="form-select"
               :required="localForm.category === 'VACCINE'"
               :disabled="localForm.category !== 'VACCINE' || readOnly"
             >
-              <option value="">-- Select Type --</option>
-              <option value="live">Live Attenuated</option>
-              <option value="inactivated">Inactivated/Killed</option>
+              <option value="">
+                -- Select Type --
+              </option>
+              <option value="live">
+                Live Attenuated
+              </option>
+              <option value="inactivated">
+                Inactivated/Killed
+              </option>
             </select>
-            <small v-if="localForm.category !== 'VACCINE'" class="text-muted">Not applicable for this category</small>
+            <small
+              v-if="localForm.category !== 'VACCINE'"
+              class="text-muted"
+            >Not applicable for this category</small>
           </div>
           <div class="col-xl-6 col-lg-6 col-md-6 d-flex align-items-center">
             <div class="form-check mt-3">
               <input 
-                class="form-check-input" 
-                type="checkbox" 
                 id="isNipCheckbox" 
-                v-model="localForm.is_nip"
+                v-model="localForm.is_nip" 
+                class="form-check-input" 
+                type="checkbox"
                 :disabled="readOnly"
               >
-              <label class="form-check-label" for="isNipCheckbox">
+              <label
+                class="form-check-label"
+                for="isNipCheckbox"
+              >
                 Part of NIP (National Immunization Program)
               </label>
             </div>
@@ -147,46 +200,64 @@
     </div>
 
     <!-- Initial Stock Information (only when creating new type) -->
-    <div v-if="!isEditing && !readOnly" class="row mb-4">
+    <div
+      v-if="!isEditing && !readOnly"
+      class="row mb-4"
+    >
       <div class="col-12">
         <h6 class="text-primary fw-bold mb-3">
-          <i class="bi bi-archive me-2"></i>Initial Stock Information
+          <i class="bi bi-archive me-2" />Initial Stock Information
         </h6>
         <div class="row g-4">
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="lotNumber" class="form-label">Lot Number: <span class="text-danger">*</span></label>
+            <label
+              for="lotNumber"
+              class="form-label"
+            >Lot Number: <span class="text-danger">*</span></label>
             <input 
-              type="text" 
-              class="form-control" 
-              id="lotNumber"
+              id="lotNumber" 
               v-model="localForm.lot_number" 
+              type="text"
+              class="form-control" 
               required
               placeholder="e.g., LOT123456"
             >
           </div>
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="expirationDate" class="form-label">Expiration Date: <span class="text-danger">*</span></label>
-            <DateInput v-model="localForm.expiration_date" output-format="iso" />
+            <label
+              for="expirationDate"
+              class="form-label"
+            >Expiration Date: <span class="text-danger">*</span></label>
+            <DateInput
+              v-model="localForm.expiration_date"
+              output-format="iso"
+            />
           </div>
           <div class="col-xl-4 col-lg-4 col-md-6">
-            <label for="stockLevel" class="form-label">Initial Stock Level: <span class="text-danger">*</span></label>
+            <label
+              for="stockLevel"
+              class="form-label"
+            >Initial Stock Level: <span class="text-danger">*</span></label>
             <input 
-              type="number" 
-              class="form-control" 
-              id="stockLevel"
+              id="stockLevel" 
               v-model.number="localForm.stock_level" 
+              type="number"
+              class="form-control" 
               min="0"
               required
               placeholder="Number of doses"
             >
           </div>
           <div class="col-12">
-            <label for="storageLocation" class="form-label">Storage Location:</label>
+            <label
+              for="storageLocation"
+              class="form-label"
+            >Storage Location:</label>
             <input
-              type="text"
-              class="form-control"
               id="storageLocation"
               v-model="localForm.storage_location"
+              type="text"
+              class="form-control"
               placeholder="e.g., Cold Room A, Refrigerator 1, Freezer Section B"
             >
           </div>
@@ -195,13 +266,30 @@
     </div>
 
     <!-- Form Actions -->
-    <div v-if="!readOnly" class="d-flex justify-content-end gap-2 mt-4">
-      <button type="button" class="btn btn-secondary" @click="$emit('cancel')">
-        <i class="bi bi-x-circle me-2"></i>Cancel
+    <div
+      v-if="!readOnly"
+      class="d-flex justify-content-end gap-2 mt-4"
+    >
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="$emit('cancel')"
+      >
+        <i class="bi bi-x-circle me-2" />Cancel
       </button>
-      <button type="submit" class="btn btn-success" :disabled="submitting">
-        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-        <i v-else class="bi bi-check-circle me-2"></i>
+      <button
+        type="submit"
+        class="btn btn-success"
+        :disabled="submitting"
+      >
+        <span
+          v-if="submitting"
+          class="spinner-border spinner-border-sm me-2"
+        />
+        <i
+          v-else
+          class="bi bi-check-circle me-2"
+        />
         {{ submitLabel }}
       </button>
     </div>

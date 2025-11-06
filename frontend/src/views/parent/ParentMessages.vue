@@ -2,8 +2,12 @@
   <ParentLayout>
     <div class="messages-container">
       <!-- Offline Warning -->
-      <div v-if="!isOnline" class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-wifi-off me-2"></i>
+      <div
+        v-if="!isOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
         <div>
           <strong>Offline Mode - Messaging Disabled</strong><br>
           <small>You must be online to send or view messages. Connect to the internet to access messaging features.</small>
@@ -11,57 +15,89 @@
       </div>
 
       <div class="section-header d-flex justify-content-between align-items-center">
-        <h5 class="section-title mb-0">Messages</h5>
+        <h5 class="section-title mb-0">
+          Messages
+        </h5>
         <button 
           class="btn btn-primary btn-sm" 
-          @click="openNewChat"
           :disabled="!isOnline"
           :title="!isOnline ? 'Not available offline' : 'Start new chat'"
+          @click="openNewChat"
         >
-          <i class="bi bi-plus-circle me-1"></i>
+          <i class="bi bi-plus-circle me-1" />
           New Chat
         </button>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="messages.length === 0" class="empty-state">
+      <div
+        v-else-if="messages.length === 0"
+        class="empty-state"
+      >
         <div class="empty-state-icon">
-          <i class="bi bi-chat-dots"></i>
+          <i class="bi bi-chat-dots" />
         </div>
-        <h6 class="empty-state-title">No Messages</h6>
-        <p class="empty-state-text">You don't have any messages yet.</p>
+        <h6 class="empty-state-title">
+          No Messages
+        </h6>
+        <p class="empty-state-text">
+          You don't have any messages yet.
+        </p>
       </div>
 
       <!-- Messages List -->
-      <div v-else class="messages-list">
+      <div
+        v-else
+        class="messages-list"
+      >
         <div 
           v-for="message in messages" 
           :key="message.id"
           class="message-item"
           :class="{ unread: !message.read, 'disabled-offline': !isOnline }"
-          @click="openConversation(message)"
           :style="{ cursor: isOnline ? 'pointer' : 'not-allowed', opacity: isOnline ? 1 : 0.6 }"
+          @click="openConversation(message)"
         >
           <div class="message-avatar">
-            <i class="bi bi-person-circle"></i>
+            <i class="bi bi-person-circle" />
           </div>
           <div class="message-content">
             <div class="message-header">
               <div style="display:flex;align-items:center;gap:0.5rem;">
-                <h6 class="message-sender" style="margin:0">{{ message.sender }}</h6>
-                <small v-if="message.role" class="sender-role badge bg-primary-subtle text-black me-2" style="font-weight:600; font-size:0.65rem; text-transform:capitalize;">{{ prettyRole(message.role) }}</small>
+                <h6
+                  class="message-sender"
+                  style="margin:0"
+                >
+                  {{ message.sender }}
+                </h6>
+                <small
+                  v-if="message.role"
+                  class="sender-role badge bg-primary-subtle text-black me-2"
+                  style="font-weight:600; font-size:0.65rem; text-transform:capitalize;"
+                >{{ prettyRole(message.role) }}</small>
               </div>
               <span class="message-time">{{ formatTimePH(message.created_at) }}</span>
             </div>
-            <p class="message-text">{{ message.text }}</p>
-            <small v-if="!isOnline" class="text-muted"><i class="bi bi-wifi-off me-1"></i>View online to open</small>
+            <p class="message-text">
+              {{ message.text }}
+            </p>
+            <small
+              v-if="!isOnline"
+              class="text-muted"
+            ><i class="bi bi-wifi-off me-1" />View online to open</small>
           </div>
         </div>
       </div>
@@ -86,7 +122,7 @@
         :creating="creating"
         @close="closeNewChat"
         @update:mode="newChatMode = $event"
-        @update:selectedStaffId="selectedStaffId = $event"
+        @update:selected-staff-id="selectedStaffId = $event"
         @update:message="newMessage = $event"
         @create="createConversation"
       />

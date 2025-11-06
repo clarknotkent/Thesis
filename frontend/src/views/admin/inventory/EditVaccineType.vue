@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Edit Vaccine Type</li>
+          <li class="breadcrumb-item active">
+            Edit Vaccine Type
+          </li>
         </ol>
       </nav>
 
@@ -18,45 +27,65 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-pencil-square me-2"></i>Edit Vaccine Type
+            <i class="bi bi-pencil-square me-2" />Edit Vaccine Type
           </h1>
-          <p class="text-muted mb-0">Select a vaccine type to edit and update its information</p>
+          <p class="text-muted mb-0">
+            Select a vaccine type to edit and update its information
+          </p>
         </div>
-        <router-link to="/admin/vaccines" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left me-2"></i>Back to Inventory
+        <router-link
+          to="/admin/vaccines"
+          class="btn btn-outline-secondary"
+        >
+          <i class="bi bi-arrow-left me-2" />Back to Inventory
         </router-link>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Main Content -->
-      <div v-else class="card shadow">
+      <div
+        v-else
+        class="card shadow"
+      >
         <div class="card-body p-4">
           <!-- Vaccine Type Selection -->
           <div class="row mb-4">
             <div class="col-12">
               <h6 class="text-primary fw-bold mb-3">
-                <i class="bi bi-list-check me-2"></i>Select Vaccine Type to Edit
+                <i class="bi bi-list-check me-2" />Select Vaccine Type to Edit
               </h6>
               <div class="row g-3">
                 <div class="col-xl-6 col-lg-6 col-md-8">
-                  <label for="vaccineSelect" class="form-label">Vaccine Type: <span class="text-danger">*</span></label>
-                  <div class="vaccine-dropdown-wrapper" v-click-outside="() => dropdownOpen = false">
+                  <label
+                    for="vaccineSelect"
+                    class="form-label"
+                  >Vaccine Type: <span class="text-danger">*</span></label>
+                  <div
+                    v-click-outside="() => dropdownOpen = false"
+                    class="vaccine-dropdown-wrapper"
+                  >
                     <input
+                      :ref="el => inputRef = el"
+                      v-model="vaccineSearch"
                       type="text"
                       class="form-control"
-                      v-model="vaccineSearch"
-                      @input="onVaccineInput"
-                      @focus="openDropdown"
                       placeholder="Type or select a vaccine type..."
                       autocomplete="off"
-                      :ref="el => inputRef = el"
-                    />
+                      @input="onVaccineInput"
+                      @focus="openDropdown"
+                    >
                     <div
                       v-if="dropdownOpen"
                       class="vaccine-dropdown-menu"
@@ -85,11 +114,14 @@
           </div>
 
           <!-- Edit Form -->
-          <div v-if="selectedVaccineId && vaccineData" class="row">
+          <div
+            v-if="selectedVaccineId && vaccineData"
+            class="row"
+          >
             <div class="col-12">
               <hr class="my-4">
               <h6 class="text-primary fw-bold mb-3">
-                <i class="bi bi-pencil-square me-2"></i>Edit Vaccine Type Details
+                <i class="bi bi-pencil-square me-2" />Edit Vaccine Type Details
               </h6>
               <VaccineForm
                 :initial-data="vaccineData"
@@ -103,9 +135,14 @@
           </div>
 
           <!-- No Selection State -->
-          <div v-else-if="!selectedVaccineId" class="text-center py-5 text-muted">
-            <i class="bi bi-arrow-up-circle fs-1 mb-3"></i>
-            <p class="mb-0">Please select a vaccine type from the dropdown above to begin editing.</p>
+          <div
+            v-else-if="!selectedVaccineId"
+            class="text-center py-5 text-muted"
+          >
+            <i class="bi bi-arrow-up-circle fs-1 mb-3" />
+            <p class="mb-0">
+              Please select a vaccine type from the dropdown above to begin editing.
+            </p>
           </div>
         </div>
       </div>

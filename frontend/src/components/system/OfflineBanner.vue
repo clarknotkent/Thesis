@@ -1,9 +1,19 @@
 <template>
   <transition name="slide-down">
-    <div v-if="visible" class="offline-banner" :class="isOffline ? 'offline' : 'online'">
+    <div
+      v-if="visible"
+      class="offline-banner"
+      :class="isOffline ? 'offline' : 'online'"
+    >
       <div class="banner-content">
-        <i v-if="isOffline" class="bi bi-wifi-off me-2"></i>
-        <i v-else class="bi bi-wifi me-2"></i>
+        <i
+          v-if="isOffline"
+          class="bi bi-wifi-off me-2"
+        />
+        <i
+          v-else
+          class="bi bi-wifi me-2"
+        />
         <span v-if="isOffline">You're offline. Some features are unavailable.</span>
         <span v-else>Back online.</span>
       </div>

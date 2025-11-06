@@ -1,7 +1,7 @@
 <template>
   <div class="info-card">
     <div class="card-header primary">
-      <i class="bi bi-shield-fill-check"></i>
+      <i class="bi bi-shield-fill-check" />
       <h2>Vaccine Information</h2>
     </div>
     <div class="card-body">

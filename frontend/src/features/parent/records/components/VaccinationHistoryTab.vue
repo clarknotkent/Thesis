@@ -1,14 +1,23 @@
 <template>
   <div class="tab-content">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="loading-container"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
     <!-- Vaccination Accordion List -->
-    <div v-else-if="groupedVaccinations.length > 0" class="vaccination-accordion-list">
+    <div
+      v-else-if="groupedVaccinations.length > 0"
+      class="vaccination-accordion-list"
+    >
       <ParentVaccinationRecordCard
         v-for="(group, index) in groupedVaccinations"
         :key="group.vaccineName"
@@ -20,10 +29,17 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else class="empty-state">
-      <i class="bi bi-shield-exclamation empty-icon"></i>
-      <h4 class="empty-title">No Vaccination Records</h4>
-      <p class="empty-text">This child has no vaccination history yet.</p>
+    <div
+      v-else
+      class="empty-state"
+    >
+      <i class="bi bi-shield-exclamation empty-icon" />
+      <h4 class="empty-title">
+        No Vaccination Records
+      </h4>
+      <p class="empty-text">
+        This child has no vaccination history yet.
+      </p>
     </div>
   </div>
 </template>

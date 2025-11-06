@@ -1,18 +1,35 @@
 <template>
   <div>
-    <div class="modal fade" :class="{ show: show }" :style="{ display: show ? 'block' : 'none', zIndex: 1060 }" tabindex="-1">
+    <div
+      class="modal fade"
+      :class="{ show: show }"
+      :style="{ display: show ? 'block' : 'none', zIndex: 1060 }"
+      tabindex="-1"
+    >
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Select a Visit</h5>
-            <button type="button" class="btn-close" @click="$emit('close')"></button>
+            <h5 class="modal-title">
+              Select a Visit
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              @click="$emit('close')"
+            />
           </div>
           <div class="modal-body">
-            <div v-if="loading" class="text-center py-3">
-              <div class="spinner-border text-primary"></div>
+            <div
+              v-if="loading"
+              class="text-center py-3"
+            >
+              <div class="spinner-border text-primary" />
             </div>
             <div v-else>
-              <div v-if="visits.length === 0" class="text-muted text-center py-3">
+              <div
+                v-if="visits.length === 0"
+                class="text-muted text-center py-3"
+              >
                 No visits found. Create a visit from Add Patient Record (in-facility).
               </div>
               <div class="list-group">
@@ -33,7 +50,7 @@
                   class="btn btn-outline-secondary btn-sm" 
                   @click="$emit('open-outside-record')"
                 >
-                  <i class="bi bi-geo-alt me-1"></i> Outside record
+                  <i class="bi bi-geo-alt me-1" /> Outside record
                 </button>
               </div>
             </div>
@@ -48,7 +65,7 @@
       class="modal-backdrop fade show" 
       :style="{ zIndex: 1050 }" 
       @click="$emit('close')"
-    ></div>
+    />
   </div>
 </template>
 

@@ -2,8 +2,10 @@
   <div class="mobile-controls-card">
     <!-- Page Title Bar -->
     <div class="page-title-bar">
-      <i :class="`bi bi-${icon}`"></i>
-      <h1 class="page-title">{{ title }}</h1>
+      <i :class="`bi bi-${icon}`" />
+      <h1 class="page-title">
+        {{ title }}
+      </h1>
     </div>
 
     <!-- Action Toolbar -->
@@ -11,21 +13,21 @@
       <button 
         v-if="showFilterButton"
         class="toolbar-btn filter-btn"
-        @click="$emit('filter')"
         :class="{ active: hasActiveFilters }"
+        @click="$emit('filter')"
       >
-        <i class="bi bi-funnel"></i>
+        <i class="bi bi-funnel" />
       </button>
 
       <div class="search-container">
-        <i class="bi bi-search search-icon"></i>
+        <i class="bi bi-search search-icon" />
         <input
           type="text"
           class="search-input"
           :placeholder="searchPlaceholder"
           :value="searchQuery"
           @input="$emit('update:searchQuery', $event.target.value)"
-        />
+        >
       </div>
 
       <button 
@@ -33,7 +35,7 @@
         class="toolbar-btn scan-btn"
         @click="$emit('scan')"
       >
-        <i class="bi bi-qr-code-scan"></i>
+        <i class="bi bi-qr-code-scan" />
       </button>
 
       <button 
@@ -41,7 +43,7 @@
         class="toolbar-btn add-btn"
         @click="$emit('add')"
       >
-        <i class="bi bi-plus-lg"></i>
+        <i class="bi bi-plus-lg" />
       </button>
     </div>
   </div>

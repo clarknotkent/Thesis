@@ -1,32 +1,50 @@
 <template>
   <div class="collapsible-service-card">
     <!-- Card Header -->
-    <div class="card-header" @click="toggleExpanded">
+    <div
+      class="card-header"
+      @click="toggleExpanded"
+    >
       <div class="header-content">
-        <i class="bi bi-check-circle-fill"></i>
+        <i class="bi bi-check-circle-fill" />
         <h2>Services Provided</h2>
       </div>
-      <div class="chevron-icon" :class="{ expanded: isExpanded }">
-        <i class="bi bi-chevron-down"></i>
+      <div
+        class="chevron-icon"
+        :class="{ expanded: isExpanded }"
+      >
+        <i class="bi bi-chevron-down" />
       </div>
     </div>
 
     <!-- Card Body -->
     <transition name="expand">
-      <div v-if="isExpanded" class="card-body">
-        <div v-for="(service, index) in services" :key="index" class="service-item">
+      <div
+        v-if="isExpanded"
+        class="card-body"
+      >
+        <div
+          v-for="(service, index) in services"
+          :key="index"
+          class="service-item"
+        >
           <div class="service-icon">
-            <i class="bi bi-shield-check"></i>
+            <i class="bi bi-shield-check" />
           </div>
           <div class="service-content">
-            <h3 class="service-name">{{ service.vaccine_name || service.antigen_name || 'Unknown Vaccine' }}</h3>
+            <h3 class="service-name">
+              {{ service.vaccine_name || service.antigen_name || 'Unknown Vaccine' }}
+            </h3>
             <div class="service-details">
               <span class="service-badge">Vaccination</span>
               <span class="service-dose">Dose {{ service.dose_number || 'N/A' }}</span>
               <span class="service-dot">•</span>
               <span class="service-date">{{ formatDate(service.administered_date) }}</span>
-              <span v-if="service.outside" class="outside-badge">
-                <i class="bi bi-house-door"></i>
+              <span
+                v-if="service.outside"
+                class="outside-badge"
+              >
+                <i class="bi bi-house-door" />
                 Outside Facility
               </span>
             </div>

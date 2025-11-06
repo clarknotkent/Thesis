@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Edit Inventory</li>
+          <li class="breadcrumb-item active">
+            Edit Inventory
+          </li>
         </ol>
       </nav>
 
@@ -18,35 +27,52 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-pencil-square me-2"></i>Edit Inventory
+            <i class="bi bi-pencil-square me-2" />Edit Inventory
           </h1>
-          <p class="text-muted mb-0">Update vaccine details and adjust stock levels</p>
+          <p class="text-muted mb-0">
+            Update vaccine details and adjust stock levels
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Two Column Layout -->
-      <div v-else class="row g-4">
+      <div
+        v-else
+        class="row g-4"
+      >
         <!-- Left Column: Edit Vaccine Details -->
         <div class="col-md-6">
           <div class="card shadow">
             <div class="card-header bg-primary text-white">
               <h5 class="mb-0">
-                <i class="bi bi-info-circle me-2"></i>Vaccine Details
+                <i class="bi bi-info-circle me-2" />Vaccine Details
               </h5>
             </div>
             <div class="card-body">
@@ -67,19 +93,19 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Manufacturer</label>
                   <input 
+                    v-model="detailsForm.manufacturer" 
                     type="text" 
-                    class="form-control" 
-                    v-model="detailsForm.manufacturer"
+                    class="form-control"
                     list="manufacturerList"
                   >
                   <datalist id="manufacturerList">
-                    <option value="Sanofi Pasteur"></option>
-                    <option value="Pfizer"></option>
-                    <option value="Moderna"></option>
-                    <option value="AstraZeneca"></option>
-                    <option value="Johnson & Johnson"></option>
-                    <option value="Sinovac"></option>
-                    <option value="GSK"></option>
+                    <option value="Sanofi Pasteur" />
+                    <option value="Pfizer" />
+                    <option value="Moderna" />
+                    <option value="AstraZeneca" />
+                    <option value="Johnson & Johnson" />
+                    <option value="Sinovac" />
+                    <option value="GSK" />
                   </datalist>
                 </div>
 
@@ -87,9 +113,9 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Lot Number</label>
                   <input 
+                    v-model="detailsForm.lotNumber" 
                     type="text" 
-                    class="form-control" 
-                    v-model="detailsForm.lotNumber"
+                    class="form-control"
                   >
                 </div>
 
@@ -106,18 +132,18 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Storage Location</label>
                   <input 
+                    v-model="detailsForm.storageLocation" 
                     type="text" 
-                    class="form-control" 
-                    v-model="detailsForm.storageLocation"
+                    class="form-control"
                     list="storageList"
                   >
                   <datalist id="storageList">
-                    <option value="Storage A"></option>
-                    <option value="Storage B"></option>
-                    <option value="Cold Storage 1"></option>
-                    <option value="Cold Storage 2"></option>
-                    <option value="Refrigerator 1"></option>
-                    <option value="Refrigerator 2"></option>
+                    <option value="Storage A" />
+                    <option value="Storage B" />
+                    <option value="Cold Storage 1" />
+                    <option value="Cold Storage 2" />
+                    <option value="Refrigerator 1" />
+                    <option value="Refrigerator 2" />
                   </datalist>
                 </div>
 
@@ -136,11 +162,11 @@
                   :disabled="submittingDetails"
                 >
                   <span v-if="submittingDetails">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span class="spinner-border spinner-border-sm me-2" />
                     Saving...
                   </span>
                   <span v-else>
-                    <i class="bi bi-check-circle me-2"></i>Save Details
+                    <i class="bi bi-check-circle me-2" />Save Details
                   </span>
                 </button>
               </form>
@@ -153,7 +179,7 @@
           <div class="card shadow">
             <div class="card-header bg-warning text-dark">
               <h5 class="mb-0">
-                <i class="bi bi-arrow-left-right me-2"></i>Stock Adjustment
+                <i class="bi bi-arrow-left-right me-2" />Stock Adjustment
               </h5>
             </div>
             <div class="card-body">
@@ -168,22 +194,39 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Transaction Type <span class="text-danger">*</span></label>
                   <select 
-                    class="form-select" 
-                    v-model="adjustForm.type"
+                    v-model="adjustForm.type" 
+                    class="form-select"
                     required
                   >
-                    <option value="">-- Select Type --</option>
-                    <option value="ADJUST">ADJUST (Set to exact quantity)</option>
-                    <option value="RETURN">RETURN (Remove from stock)</option>
-                    <option value="EXPIRED">EXPIRED (Mark as expired)</option>
+                    <option value="">
+                      -- Select Type --
+                    </option>
+                    <option value="ADJUST">
+                      ADJUST (Set to exact quantity)
+                    </option>
+                    <option value="RETURN">
+                      RETURN (Remove from stock)
+                    </option>
+                    <option value="EXPIRED">
+                      EXPIRED (Mark as expired)
+                    </option>
                   </select>
-                  <div class="form-text" v-if="adjustForm.type === 'ADJUST'">
+                  <div
+                    v-if="adjustForm.type === 'ADJUST'"
+                    class="form-text"
+                  >
                     ADJUST sets the stock to the exact quantity you enter.
                   </div>
-                  <div class="form-text" v-else-if="adjustForm.type === 'RETURN'">
+                  <div
+                    v-else-if="adjustForm.type === 'RETURN'"
+                    class="form-text"
+                  >
                     RETURN reduces the current stock by the quantity entered.
                   </div>
-                  <div class="form-text" v-else-if="adjustForm.type === 'EXPIRED'">
+                  <div
+                    v-else-if="adjustForm.type === 'EXPIRED'"
+                    class="form-text"
+                  >
                     EXPIRED removes expired stock from inventory.
                   </div>
                 </div>
@@ -192,10 +235,10 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Quantity <span class="text-danger">*</span></label>
                   <input 
-                    type="number" 
-                    min="0"
-                    class="form-control" 
-                    v-model.number="adjustForm.quantity"
+                    v-model.number="adjustForm.quantity" 
+                    type="number"
+                    min="0" 
+                    class="form-control"
                     placeholder="Enter quantity"
                     required
                   >
@@ -216,16 +259,16 @@
                 <div class="mb-3">
                   <label class="form-label fw-semibold">Note (Optional)</label>
                   <textarea 
-                    class="form-control" 
-                    v-model="adjustForm.note"
+                    v-model="adjustForm.note" 
+                    class="form-control"
                     rows="3"
                     placeholder="Reason or remarks for this adjustment"
-                  ></textarea>
+                  />
                 </div>
 
                 <!-- Warning -->
                 <div class="alert alert-warning">
-                  <i class="bi bi-exclamation-triangle me-2"></i>
+                  <i class="bi bi-exclamation-triangle me-2" />
                   <strong>Warning:</strong> This action will update the inventory stock level and cannot be undone.
                 </div>
 
@@ -235,11 +278,11 @@
                   :disabled="submittingAdjust || !adjustForm.type || adjustForm.quantity === 0"
                 >
                   <span v-if="submittingAdjust">
-                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span class="spinner-border spinner-border-sm me-2" />
                     Adjusting...
                   </span>
                   <span v-else>
-                    <i class="bi bi-check-circle me-2"></i>Apply Adjustment
+                    <i class="bi bi-check-circle me-2" />Apply Adjustment
                   </span>
                 </button>
               </form>

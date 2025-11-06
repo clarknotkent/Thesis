@@ -1,12 +1,15 @@
 <template>
   <div class="form-section vitals-section">
     <h3 class="section-title">
-      <i class="bi bi-heart-pulse-fill"></i>
+      <i class="bi bi-heart-pulse-fill" />
       Vital Signs
     </h3>
     
-    <div v-if="readonly" class="form-hint readonly-notice">
-      <i class="bi bi-info-circle"></i>
+    <div
+      v-if="readonly"
+      class="form-hint readonly-notice"
+    >
+      <i class="bi bi-info-circle" />
       Vitals prefilled from selected visit — read-only
     </div>
 
@@ -18,11 +21,11 @@
           step="0.1" 
           class="form-input" 
           :value="modelValue.temperature"
-          @input="updateField('temperature', $event.target.value)"
           placeholder="e.g., 36.5"
           :readonly="readonly"
           :disabled="readonly"
-        />
+          @input="updateField('temperature', $event.target.value)"
+        >
       </div>
 
       <div class="form-group">
@@ -32,11 +35,11 @@
           step="0.1" 
           class="form-input" 
           :value="modelValue.muac"
-          @input="updateField('muac', $event.target.value)"
           placeholder="e.g., 12.5"
           :readonly="readonly"
           :disabled="readonly"
-        />
+          @input="updateField('muac', $event.target.value)"
+        >
       </div>
 
       <div class="form-group">
@@ -45,11 +48,11 @@
           type="number" 
           class="form-input" 
           :value="modelValue.respiration"
-          @input="updateField('respiration', $event.target.value)"
           placeholder="e.g., 20"
           :readonly="readonly"
           :disabled="readonly"
-        />
+          @input="updateField('respiration', $event.target.value)"
+        >
       </div>
 
       <div class="form-group">
@@ -59,11 +62,11 @@
           step="0.1" 
           class="form-input" 
           :value="modelValue.weight"
-          @input="updateField('weight', $event.target.value)"
           placeholder="e.g., 8.5"
           :readonly="readonly"
           :disabled="readonly"
-        />
+          @input="updateField('weight', $event.target.value)"
+        >
       </div>
 
       <div class="form-group">
@@ -73,11 +76,11 @@
           step="0.1" 
           class="form-input" 
           :value="modelValue.height"
-          @input="updateField('height', $event.target.value)"
           placeholder="e.g., 75.0"
           :readonly="readonly"
           :disabled="readonly"
-        />
+          @input="updateField('height', $event.target.value)"
+        >
       </div>
     </div>
   </div>

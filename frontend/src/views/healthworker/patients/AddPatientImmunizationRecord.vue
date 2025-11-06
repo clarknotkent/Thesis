@@ -3,44 +3,64 @@
     <!-- Fixed Header Section -->
     <div class="add-record-header-section">
       <div class="header-bar">
-        <button class="back-button" @click="goBack">
-          <i class="bi bi-chevron-left"></i>
+        <button
+          class="back-button"
+          @click="goBack"
+        >
+          <i class="bi bi-chevron-left" />
         </button>
-        <h1 class="page-title">Add Immunization Record</h1>
-        <div style="width: 40px;"></div>
+        <h1 class="page-title">
+          Add Immunization Record
+        </h1>
+        <div style="width: 40px;" />
       </div>
     </div>
 
     <!-- Page Content -->
     <div class="page-content-wrapper">
       <!-- Loading State -->
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner" />
         <p>Loading form data...</p>
       </div>
 
       <!-- Form Content -->
-      <form v-else @submit.prevent="handleSubmit" class="record-form">
+      <form
+        v-else
+        class="record-form"
+        @submit.prevent="handleSubmit"
+      >
         <!-- Patient Info Display (Read-only) -->
         <div class="form-section patient-info-display">
           <h3 class="section-title">
-            <i class="bi bi-person-fill"></i>
+            <i class="bi bi-person-fill" />
             Patient Information
           </h3>
-          <div v-if="currentPatient" class="patient-details">
+          <div
+            v-if="currentPatient"
+            class="patient-details"
+          >
             <div class="patient-name">
               {{ currentPatient.childInfo?.name || `${currentPatient.firstname} ${currentPatient.surname}` }}
             </div>
             <div class="patient-meta">
               <span v-if="currentPatient.age">
-                <i class="bi bi-calendar3"></i> {{ currentPatient.age }} years old
+                <i class="bi bi-calendar3" /> {{ currentPatient.age }} years old
               </span>
               <span v-if="currentPatient.sex">
-                <i class="bi bi-gender-ambiguous"></i> {{ currentPatient.sex }}
+                <i class="bi bi-gender-ambiguous" /> {{ currentPatient.sex }}
               </span>
             </div>
           </div>
-          <div v-else class="text-muted">Loading patient information...</div>
+          <div
+            v-else
+            class="text-muted"
+          >
+            Loading patient information...
+          </div>
         </div>
 
         <!-- Visit Selection (Nurse/Nutritionist only) -->
@@ -61,10 +81,13 @@
         />
 
         <!-- Services Section -->
-        <div class="form-section" v-if="!isBHS">
+        <div
+          v-if="!isBHS"
+          class="form-section"
+        >
           <div class="section-header">
             <h3 class="section-title">
-              <i class="bi bi-clipboard2-pulse-fill"></i>
+              <i class="bi bi-clipboard2-pulse-fill" />
               Services
             </h3>
             <button 
@@ -72,7 +95,7 @@
               class="btn-add-service" 
               @click="showServiceForm = true"
             >
-              <i class="bi bi-plus-circle-fill"></i>
+              <i class="bi bi-plus-circle-fill" />
               Add Service
             </button>
           </div>
@@ -85,50 +108,65 @@
         </div>
 
         <!-- Findings Card -->
-        <div class="form-section" v-if="!isBHS">
+        <div
+          v-if="!isBHS"
+          class="form-section"
+        >
           <h3 class="section-title">
-            <i class="bi bi-clipboard-data-fill"></i>
+            <i class="bi bi-clipboard-data-fill" />
             Findings
           </h3>
           
           <div class="form-group">
             <label class="form-label">Findings/Notes</label>
             <textarea 
+              v-model="formData.findings" 
               class="form-input" 
-              rows="4" 
-              v-model="formData.findings"
+              rows="4"
               placeholder="Enter findings or notes about this visit..."
-            ></textarea>
+            />
             <small class="form-hint">This field is auto-filled after adding interventions</small>
           </div>
         </div>
 
         <!-- Service Rendered Card -->
-        <div class="form-section" v-if="!isBHS">
+        <div
+          v-if="!isBHS"
+          class="form-section"
+        >
           <h3 class="section-title">
-            <i class="bi bi-check-circle-fill"></i>
+            <i class="bi bi-check-circle-fill" />
             Service Rendered
           </h3>
           
           <div class="form-group">
             <label class="form-label">Service Summary</label>
             <textarea 
+              v-model="formData.service_rendered" 
               class="form-input" 
-              rows="3" 
-              v-model="formData.service_rendered"
+              rows="3"
               readonly
               placeholder="Auto-generated summary of services..."
-            ></textarea>
+            />
           </div>
         </div>
 
         <!-- Submit Button -->
         <div class="form-actions">
-          <button type="button" class="btn-cancel" @click="goBack" :disabled="submitting">
+          <button
+            type="button"
+            class="btn-cancel"
+            :disabled="submitting"
+            @click="goBack"
+          >
             Cancel
           </button>
-          <button type="submit" class="btn-submit" :disabled="submitting || addedServices.length === 0">
-            <i class="bi bi-check2-circle"></i>
+          <button
+            type="submit"
+            class="btn-submit"
+            :disabled="submitting || addedServices.length === 0"
+          >
+            <i class="bi bi-check2-circle" />
             {{ submitting ? 'Saving...' : 'Save Record' }}
           </button>
         </div>

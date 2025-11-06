@@ -1,17 +1,17 @@
 <template>
   <div class="position-relative">
     <input
+      v-model="searchTerm"
       type="text"
       class="form-control"
       :class="{ 'is-invalid': !isValid }"
-      v-model="searchTerm"
-      @focus="showDropdown = true"
-      @blur="hideDropdown"
       :placeholder="'Search and select guardian...'"
       :disabled="disabled"
       :required="required"
       autocomplete="off"
-    />
+      @focus="showDropdown = true"
+      @blur="hideDropdown"
+    >
     
     <!-- Dropdown Menu -->
     <div 
@@ -29,9 +29,9 @@
           <strong>{{ guardian.full_name }}</strong>
           <br>
           <small class="text-muted">
-            <i class="bi bi-telephone me-1"></i>{{ guardian.contact_number || 'No contact' }} 
+            <i class="bi bi-telephone me-1" />{{ guardian.contact_number || 'No contact' }} 
             | 
-            <i class="bi bi-people me-1"></i>Family: {{ guardian.family_number || 'N/A' }}
+            <i class="bi bi-people me-1" />Family: {{ guardian.family_number || 'N/A' }}
           </small>
         </div>
         <span class="badge bg-primary">Guardian</span>
@@ -45,12 +45,15 @@
       style="z-index: 1000;"
     >
       <div class="dropdown-item-text text-muted text-center py-3">
-        <i class="bi bi-search"></i>
+        <i class="bi bi-search" />
         No guardians found matching "{{ searchTerm }}"
       </div>
     </div>
     
-    <div v-if="!isValid" class="invalid-feedback">
+    <div
+      v-if="!isValid"
+      class="invalid-feedback"
+    >
       Please select a guardian
     </div>
   </div>

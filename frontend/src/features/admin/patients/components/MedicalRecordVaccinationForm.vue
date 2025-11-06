@@ -1,33 +1,47 @@
 <template>
   <div class="border rounded p-3 mb-3">
-    <h6 class="mb-3">Add Vaccination Service</h6>
+    <h6 class="mb-3">
+      Add Vaccination Service
+    </h6>
     
     <div class="row g-3">
       <!-- Record Type Toggle (for in-facility records) -->
-      <div v-if="!isOutsideRecord" class="col-12">
-        <div class="btn-group w-100" role="group">
+      <div
+        v-if="!isOutsideRecord"
+        class="col-12"
+      >
+        <div
+          class="btn-group w-100"
+          role="group"
+        >
           <input 
+            id="radio-inside" 
             type="radio" 
             class="btn-check" 
-            id="radio-inside" 
             :checked="!vaccinationForm.is_outside_record" 
-            @change="$emit('update:vaccination-form', { ...vaccinationForm, is_outside_record: false })"
             :disabled="disabled"
+            @change="$emit('update:vaccination-form', { ...vaccinationForm, is_outside_record: false })"
           >
-          <label class="btn btn-outline-primary" for="radio-inside">
-            <i class="bi bi-building"></i> Inside Facility
+          <label
+            class="btn btn-outline-primary"
+            for="radio-inside"
+          >
+            <i class="bi bi-building" /> Inside Facility
           </label>
           
           <input 
+            id="radio-outside" 
             type="radio" 
             class="btn-check" 
-            id="radio-outside" 
             :checked="vaccinationForm.is_outside_record" 
-            @change="$emit('update:vaccination-form', { ...vaccinationForm, is_outside_record: true })"
             :disabled="disabled"
+            @change="$emit('update:vaccination-form', { ...vaccinationForm, is_outside_record: true })"
           >
-          <label class="btn btn-outline-warning" for="radio-outside">
-            <i class="bi bi-house"></i> Outside Facility
+          <label
+            class="btn btn-outline-warning"
+            for="radio-outside"
+          >
+            <i class="bi bi-house" /> Outside Facility
           </label>
         </div>
       </div>
@@ -41,9 +55,9 @@
         <SearchableSelect
           :options="vaccinationForm.is_outside_record ? catalogOptions : vaccineOptions"
           :value="vaccinationForm.is_outside_record ? vaccinationForm.vaccine_catalog_id : vaccinationForm.vaccine_id"
-          @update:value="handleVaccineSelect"
           placeholder="Select vaccine..."
           :disabled="disabled"
+          @update:value="handleVaccineSelect"
         />
       </div>
 
@@ -54,16 +68,19 @@
         </label>
         <DateInput
           :value="vaccinationForm.date_administered"
-          @update:value="$emit('update:vaccination-form', { ...vaccinationForm, date_administered: $event })"
           :disabled="disabled"
+          @update:value="$emit('update:vaccination-form', { ...vaccinationForm, date_administered: $event })"
         />
       </div>
 
       <!-- Age at Date Display -->
-      <div v-if="ageAtDate" class="col-12">
+      <div
+        v-if="ageAtDate"
+        class="col-12"
+      >
         <div class="alert alert-info py-2 mb-0">
           <small>
-            <i class="bi bi-info-circle"></i> 
+            <i class="bi bi-info-circle" /> 
             Patient age at administration: <strong>{{ ageAtDate }}</strong>
           </small>
         </div>
@@ -77,10 +94,12 @@
         <select 
           class="form-select" 
           :value="vaccinationForm.dose_ordinal"
-          @change="$emit('update:vaccination-form', { ...vaccinationForm, dose_ordinal: $event.target.value })"
           :disabled="disabled"
+          @change="$emit('update:vaccination-form', { ...vaccinationForm, dose_ordinal: $event.target.value })"
         >
-          <option value="">Select dose...</option>
+          <option value="">
+            Select dose...
+          </option>
           <option 
             v-for="dose in availableDoses" 
             :key="dose" 
@@ -90,7 +109,10 @@
             <span v-if="nextSuggestedDose && dose === nextSuggestedDose"> (suggested)</span>
           </option>
         </select>
-        <small v-if="nextSuggestedDose" class="text-muted">
+        <small
+          v-if="nextSuggestedDose"
+          class="text-muted"
+        >
           Suggested next dose: {{ nextSuggestedDose }}
         </small>
       </div>
@@ -101,27 +123,42 @@
         <select 
           class="form-select" 
           :value="vaccinationForm.site_of_administration"
-          @change="$emit('update:vaccination-form', { ...vaccinationForm, site_of_administration: $event.target.value })"
           :disabled="disabled"
+          @change="$emit('update:vaccination-form', { ...vaccinationForm, site_of_administration: $event.target.value })"
         >
-          <option value="">Select site...</option>
-          <option value="Left Deltoid">Left Deltoid</option>
-          <option value="Right Deltoid">Right Deltoid</option>
-          <option value="Left Thigh">Left Thigh</option>
-          <option value="Right Thigh">Right Thigh</option>
-          <option value="Oral">Oral</option>
+          <option value="">
+            Select site...
+          </option>
+          <option value="Left Deltoid">
+            Left Deltoid
+          </option>
+          <option value="Right Deltoid">
+            Right Deltoid
+          </option>
+          <option value="Left Thigh">
+            Left Thigh
+          </option>
+          <option value="Right Thigh">
+            Right Thigh
+          </option>
+          <option value="Oral">
+            Oral
+          </option>
         </select>
       </div>
 
       <!-- Health Worker Selection (for outside records) -->
-      <div v-if="vaccinationForm.is_outside_record" class="col-md-6">
+      <div
+        v-if="vaccinationForm.is_outside_record"
+        class="col-md-6"
+      >
         <label class="form-label">Health Worker</label>
         <SearchableSelect
           :options="healthWorkerOptions"
           :value="vaccinationForm.health_worker_id"
-          @update:value="$emit('update:vaccination-form', { ...vaccinationForm, health_worker_id: $event })"
           placeholder="Select health worker..."
           :disabled="disabled"
+          @update:value="$emit('update:vaccination-form', { ...vaccinationForm, health_worker_id: $event })"
         />
       </div>
 
@@ -132,9 +169,9 @@
           class="form-control" 
           rows="2" 
           :value="vaccinationForm.remarks"
-          @input="$emit('update:vaccination-form', { ...vaccinationForm, remarks: $event.target.value })"
           :disabled="disabled"
-        ></textarea>
+          @input="$emit('update:vaccination-form', { ...vaccinationForm, remarks: $event.target.value })"
+        />
       </div>
 
       <!-- Action Buttons -->
@@ -142,18 +179,18 @@
         <button 
           type="button" 
           class="btn btn-primary me-2"
-          @click="$emit('add-vaccination')"
           :disabled="disabled || !isVaccinationFormValid"
+          @click="$emit('add-vaccination')"
         >
-          <i class="bi bi-plus-circle"></i> Add to Services
+          <i class="bi bi-plus-circle" /> Add to Services
         </button>
         <button 
           type="button" 
           class="btn btn-secondary"
-          @click="$emit('clear-vaccination-form')"
           :disabled="disabled"
+          @click="$emit('clear-vaccination-form')"
         >
-          <i class="bi bi-x-circle"></i> Clear
+          <i class="bi bi-x-circle" /> Clear
         </button>
       </div>
     </div>

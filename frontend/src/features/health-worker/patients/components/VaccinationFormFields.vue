@@ -19,14 +19,24 @@
       <select 
         class="form-input" 
         :value="doseNumber"
-        @change="$emit('update:doseNumber', $event.target.value)"
         required
+        @change="$emit('update:doseNumber', $event.target.value)"
       >
-        <option value="">Select dose number</option>
-        <option value="1">Dose 1</option>
-        <option value="2">Dose 2</option>
-        <option value="3">Dose 3</option>
-        <option value="4">Booster</option>
+        <option value="">
+          Select dose number
+        </option>
+        <option value="1">
+          Dose 1
+        </option>
+        <option value="2">
+          Dose 2
+        </option>
+        <option value="3">
+          Dose 3
+        </option>
+        <option value="4">
+          Booster
+        </option>
       </select>
     </div>
 
@@ -37,10 +47,10 @@
         type="date" 
         class="form-input" 
         :value="dateAdministered"
-        @input="$emit('update:dateAdministered', $event.target.value)"
-        @change="$emit('calculate-age')"
         required
         :max="maxDate"
+        @input="$emit('update:dateAdministered', $event.target.value)"
+        @change="$emit('calculate-age')"
       >
     </div>
 
@@ -63,11 +73,13 @@
         <select 
           class="form-input" 
           :value="administeredBy"
-          @change="$emit('update:administeredBy', $event.target.value)"
           required
           :disabled="isOutside"
+          @change="$emit('update:administeredBy', $event.target.value)"
         >
-          <option value="">Select health staff</option>
+          <option value="">
+            Select health staff
+          </option>
           <option 
             v-for="nurse in nurses" 
             :key="nurse.user_id" 
@@ -75,7 +87,12 @@
           >
             {{ nurse.fullname }} ({{ nurse.hs_type }})
           </option>
-          <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+          <option
+            v-if="nurses.length === 0"
+            disabled
+          >
+            No nurses/nutritionists available
+          </option>
         </select>
       </div>
       <div v-else>
@@ -83,9 +100,9 @@
           type="text"
           class="form-input"
           :value="administeredByDisplay"
-          @input="$emit('update:administeredByDisplay', $event.target.value)"
           placeholder="Name of vaccinator or provider"
-        />
+          @input="$emit('update:administeredByDisplay', $event.target.value)"
+        >
         <small class="form-hint">For outside immunizations, enter vaccinator name (will be stored in remarks)</small>
       </div>
     </div>
@@ -98,12 +115,24 @@
         :value="siteOfAdministration"
         @change="$emit('update:siteOfAdministration', $event.target.value)"
       >
-        <option value="">Select a site</option>
-        <option value="Left arm (deltoid)">Left arm (deltoid)</option>
-        <option value="Right arm (deltoid)">Right arm (deltoid)</option>
-        <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
-        <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
-        <option value="Oral">Oral</option>
+        <option value="">
+          Select a site
+        </option>
+        <option value="Left arm (deltoid)">
+          Left arm (deltoid)
+        </option>
+        <option value="Right arm (deltoid)">
+          Right arm (deltoid)
+        </option>
+        <option value="Left thigh (anterolateral)">
+          Left thigh (anterolateral)
+        </option>
+        <option value="Right thigh (anterolateral)">
+          Right thigh (anterolateral)
+        </option>
+        <option value="Oral">
+          Oral
+        </option>
       </select>
     </div>
 
@@ -114,12 +143,18 @@
         type="text" 
         class="form-input" 
         :value="manufacturer"
-        @input="$emit('update:manufacturer', $event.target.value)"
         placeholder="e.g., Sanofi Pasteur"
         :readonly="!isOutside"
+        @input="$emit('update:manufacturer', $event.target.value)"
       >
-      <small class="form-hint" v-if="!isOutside">Auto-filled from inventory / read-only for in-facility</small>
-      <small class="form-hint" v-else>Editable for outside immunizations</small>
+      <small
+        v-if="!isOutside"
+        class="form-hint"
+      >Auto-filled from inventory / read-only for in-facility</small>
+      <small
+        v-else
+        class="form-hint"
+      >Editable for outside immunizations</small>
     </div>
 
     <!-- Lot Number -->
@@ -129,12 +164,18 @@
         type="text" 
         class="form-input" 
         :value="lotNumber"
-        @input="$emit('update:lotNumber', $event.target.value)"
         placeholder="e.g., L123456"
         :readonly="!isOutside"
+        @input="$emit('update:lotNumber', $event.target.value)"
       >
-      <small class="form-hint" v-if="!isOutside">Auto-filled from inventory / read-only for in-facility</small>
-      <small class="form-hint" v-else>Editable for outside immunizations</small>
+      <small
+        v-if="!isOutside"
+        class="form-hint"
+      >Auto-filled from inventory / read-only for in-facility</small>
+      <small
+        v-else
+        class="form-hint"
+      >Editable for outside immunizations</small>
     </div>
 
     <!-- Facility Name -->
@@ -144,8 +185,8 @@
         type="text" 
         class="form-input" 
         :value="facilityName"
-        @input="$emit('update:facilityName', $event.target.value)"
         placeholder="e.g., Barangay Health Center"
+        @input="$emit('update:facilityName', $event.target.value)"
       >
     </div>
 
@@ -155,10 +196,10 @@
       <textarea 
         class="form-input" 
         :value="remarks"
-        @input="$emit('update:remarks', $event.target.value)"
         rows="4"
         placeholder="Additional notes or observations..."
-      ></textarea>
+        @input="$emit('update:remarks', $event.target.value)"
+      />
     </div>
   </div>
 </template>

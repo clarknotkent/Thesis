@@ -1,18 +1,18 @@
 <template>
   <div class="position-relative">
     <input
+      v-model="searchTerm"
       type="text"
       class="form-control"
-      v-model="searchTerm"
-      @input="onInput"
-      @keydown.enter.prevent="confirmTyped"
-      @focus="showDropdown = true"
-      @blur="hideDropdown"
       :placeholder="placeholder || 'Search and select...'"
       :disabled="disabled"
       :required="required"
       autocomplete="off"
-    />
+      @input="onInput"
+      @keydown.enter.prevent="confirmTyped"
+      @focus="showDropdown = true"
+      @blur="hideDropdown"
+    >
 
     <!-- Dropdown Menu -->
     <div
@@ -30,10 +30,13 @@
           <strong>{{ displayName(opt) }}</strong>
           <br>
           <small class="text-muted d-block">
-            <i class="bi bi-telephone me-1"></i>{{ opt.contact_number || 'No contact' }}
+            <i class="bi bi-telephone me-1" />{{ opt.contact_number || 'No contact' }}
           </small>
-          <small class="text-muted" v-if="opt.occupation">
-            <i class="bi bi-briefcase me-1"></i>{{ opt.occupation }}
+          <small
+            v-if="opt.occupation"
+            class="text-muted"
+          >
+            <i class="bi bi-briefcase me-1" />{{ opt.occupation }}
           </small>
         </div>
         <span class="badge bg-secondary">Parent</span>
@@ -46,7 +49,7 @@
       style="z-index: 1000;"
     >
       <div class="dropdown-item-text text-muted text-center py-3">
-        <i class="bi bi-search"></i>
+        <i class="bi bi-search" />
         No matches
       </div>
     </div>

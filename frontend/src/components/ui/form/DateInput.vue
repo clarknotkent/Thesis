@@ -3,34 +3,37 @@
     <div class="input-group">
       <input
         ref="textInput"
+        v-model="displayValue"
         type="text"
         :class="inputClass"
         :placeholder="placeholder"
         :disabled="disabled"
         :required="required"
-        v-model="displayValue"
+        maxlength="10"
         @input="handleInput"
         @blur="handleBlur"
         @keydown="handleKeydown"
-        maxlength="10"
-      />
+      >
       <button
         class="btn btn-outline-secondary"
         type="button"
         :disabled="disabled"
-        @click="openPicker"
         title="Pick date from calendar"
+        @click="openPicker"
       >
-        <i class="bi bi-calendar3"></i>
+        <i class="bi bi-calendar3" />
       </button>
       <input
-        type="date"
         ref="nativePicker"
+        type="date"
         class="native-picker-hidden"
         @change="onNativeChange"
-      />
+      >
     </div>
-    <small v-if="error" class="text-danger d-block mt-1">{{ error }}</small>
+    <small
+      v-if="error"
+      class="text-danger d-block mt-1"
+    >{{ error }}</small>
   </div>
 </template>
 

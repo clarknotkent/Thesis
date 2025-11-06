@@ -1,18 +1,25 @@
 <template>
-  <div class="medical-history-card" @click="handleNavigate">
+  <div
+    class="medical-history-card"
+    @click="handleNavigate"
+  >
     <!-- Card Header (Always Visible - Collapsed State) -->
     <div class="card-header">
       <div class="header-content">
         <div class="header-icon">
-          <i class="bi bi-clipboard2-pulse"></i>
+          <i class="bi bi-clipboard2-pulse" />
         </div>
         <div class="header-info">
-          <h3 class="visit-date">{{ formattedDate }}</h3>
-          <p class="service-type">{{ serviceRendered }}</p>
+          <h3 class="visit-date">
+            {{ formattedDate }}
+          </h3>
+          <p class="service-type">
+            {{ serviceRendered }}
+          </p>
         </div>
       </div>
       <div class="chevron-icon">
-        <i class="bi bi-chevron-right"></i>
+        <i class="bi bi-chevron-right" />
       </div>
     </div>
 
@@ -20,13 +27,16 @@
     <div class="card-preview">
       <!-- Recorded By -->
       <div class="preview-item">
-        <i class="bi bi-person-badge"></i>
-        <span :title="displayedRecordedBy" :aria-label="`Recorded by ${displayedRecordedBy}`">{{ displayedRecordedBy || '—' }}</span>
+        <i class="bi bi-person-badge" />
+        <span
+          :title="displayedRecordedBy"
+          :aria-label="`Recorded by ${displayedRecordedBy}`"
+        >{{ displayedRecordedBy || '—' }}</span>
       </div>
 
       <!-- Summary -->
       <div class="preview-item">
-        <i class="bi bi-info-circle"></i>
+        <i class="bi bi-info-circle" />
         <span>
           <span v-if="hasVitals">{{ vitalsSummary }}</span>
           <span v-if="hasVitals && hasImmunizations"> • </span>
@@ -38,7 +48,7 @@
       <!-- Tap Hint -->
       <div class="tap-hint">
         <span>Tap to view full visit summary</span>
-        <i class="bi bi-chevron-right"></i>
+        <i class="bi bi-chevron-right" />
       </div>
     </div>
   </div>

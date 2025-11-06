@@ -4,53 +4,80 @@
       <!-- Profile Header -->
       <div class="profile-header">
         <div class="profile-avatar">
-          <i class="bi bi-person-circle"></i>
+          <i class="bi bi-person-circle" />
         </div>
         <div class="profile-info">
-          <h4 class="profile-name">{{ userName || 'Health Staff' }}</h4>
-          <p class="profile-role">{{ userRole || 'Health Staff' }}</p>
-          <p class="profile-id">ID: {{ userId || 'HW-001' }}</p>
+          <h4 class="profile-name">
+            {{ userName || 'Health Staff' }}
+          </h4>
+          <p class="profile-role">
+            {{ userRole || 'Health Staff' }}
+          </p>
+          <p class="profile-id">
+            ID: {{ userId || 'HW-001' }}
+          </p>
         </div>
       </div>
 
       <!-- Menu Options -->
       <div class="menu-options">
-        <router-link to="/healthworker/profile" class="menu-item">
+        <router-link
+          to="/healthworker/profile"
+          class="menu-item"
+        >
           <div class="menu-icon">
-            <i class="bi bi-person"></i>
+            <i class="bi bi-person" />
           </div>
           <div class="menu-content">
-            <h6 class="menu-title">Profile</h6>
-            <p class="menu-description">View and edit your profile information</p>
+            <h6 class="menu-title">
+              Profile
+            </h6>
+            <p class="menu-description">
+              View and edit your profile information
+            </p>
           </div>
           <div class="menu-arrow">
-            <i class="bi bi-chevron-right"></i>
+            <i class="bi bi-chevron-right" />
           </div>
         </router-link>
 
-        <router-link to="/healthworker/settings" class="menu-item">
+        <router-link
+          to="/healthworker/settings"
+          class="menu-item"
+        >
           <div class="menu-icon">
-            <i class="bi bi-gear"></i>
+            <i class="bi bi-gear" />
           </div>
           <div class="menu-content">
-            <h6 class="menu-title">Settings</h6>
-            <p class="menu-description">App preferences and configurations</p>
+            <h6 class="menu-title">
+              Settings
+            </h6>
+            <p class="menu-description">
+              App preferences and configurations
+            </p>
           </div>
           <div class="menu-arrow">
-            <i class="bi bi-chevron-right"></i>
+            <i class="bi bi-chevron-right" />
           </div>
         </router-link>
 
-        <div class="menu-item logout-item" @click="logout">
+        <div
+          class="menu-item logout-item"
+          @click="logout"
+        >
           <div class="menu-icon">
-            <i class="bi bi-box-arrow-right"></i>
+            <i class="bi bi-box-arrow-right" />
           </div>
           <div class="menu-content">
-            <h6 class="menu-title">Logout</h6>
-            <p class="menu-description">Sign out of your account</p>
+            <h6 class="menu-title">
+              Logout
+            </h6>
+            <p class="menu-description">
+              Sign out of your account
+            </p>
           </div>
           <div class="menu-arrow">
-            <i class="bi bi-chevron-right"></i>
+            <i class="bi bi-chevron-right" />
           </div>
         </div>
       </div>

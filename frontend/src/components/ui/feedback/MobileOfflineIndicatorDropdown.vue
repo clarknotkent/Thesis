@@ -2,9 +2,9 @@
   <!-- WiFi Status Dropdown in header (always visible for HealthWorker/Parent) -->
   <div class="nav-item dropdown">
     <button 
-      ref="dropdownButton"
-      class="nav-link position-relative border-0 bg-transparent p-0" 
       id="mobileOfflineDropdown"
+      ref="dropdownButton" 
+      class="nav-link position-relative border-0 bg-transparent p-0"
       data-bs-toggle="dropdown" 
       data-bs-auto-close="true"
       data-bs-offset="0,8"
@@ -13,22 +13,34 @@
       @click="toggleDropdown"
     >
       <div class="d-flex align-items-center gap-2">
-        <i :class="statusIcon" :style="{ color: statusColor }" class="fs-5"></i>
-        <span class="last-sync-badge d-none d-sm-inline small text-white-50"></span>
+        <i
+          :class="statusIcon"
+          :style="{ color: statusColor }"
+          class="fs-5"
+        />
+        <span class="last-sync-badge d-none d-sm-inline small text-white-50" />
       </div>
     </button>
     
-    <ul class="dropdown-menu dropdown-menu-end offline-dropdown" aria-labelledby="mobileOfflineDropdown" data-bs-display="static">
-      <li><div class="dropdown-header">
-        <strong>{{ connectionStatus }}</strong>
-      </div></li>
+    <ul
+      class="dropdown-menu dropdown-menu-end offline-dropdown"
+      aria-labelledby="mobileOfflineDropdown"
+      data-bs-display="static"
+    >
+      <li>
+        <div class="dropdown-header">
+          <strong>{{ connectionStatus }}</strong>
+        </div>
+      </li>
       
       <li><hr class="dropdown-divider"></li>
       
-      <li><div class="dropdown-item-text small text-muted">
-        <i class="bi bi-info-circle me-2"></i>
-        Data caches automatically as you navigate
-      </div></li>
+      <li>
+        <div class="dropdown-item-text small text-muted">
+          <i class="bi bi-info-circle me-2" />
+          Data caches automatically as you navigate
+        </div>
+      </li>
     </ul>
   </div>
 </template>

@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Edit Schedule</li>
+          <li class="breadcrumb-item active">
+            Edit Schedule
+          </li>
         </ol>
       </nav>
 
@@ -18,40 +27,57 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-pencil me-2"></i>Edit Vaccine Schedule
+            <i class="bi bi-pencil me-2" />Edit Vaccine Schedule
           </h1>
-          <p class="text-muted mb-0">Modify vaccination schedule and dosage timeline</p>
+          <p class="text-muted mb-0">
+            Modify vaccination schedule and dosage timeline
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Form Card -->
-      <div v-else-if="scheduleLoaded" class="card shadow">
+      <div
+        v-else-if="scheduleLoaded"
+        class="card shadow"
+      >
         <div class="card-body p-4">
           <form @submit.prevent="handleSubmit">
             <div class="mb-3">
               <label class="form-label">Vaccine Type *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    :value="selectedVaccine.antigen_name + ' (' + selectedVaccine.brand_name + ')'" 
-                    readonly
-                    disabled
-                  >
+              <input 
+                type="text" 
+                class="form-control" 
+                :value="selectedVaccine.antigen_name + ' (' + selectedVaccine.brand_name + ')'" 
+                readonly
+                disabled
+              >
             </div>
 
             <div>
@@ -59,22 +85,22 @@
                 <div class="col-md-6">
                   <label class="form-label">Schedule Name *</label>
                   <input 
+                    v-model="schedulingFields.name" 
                     type="text" 
                     class="form-control" 
-                    v-model="schedulingFields.name" 
                     required 
                     placeholder="e.g. NIP BCG Schedule" 
-                  />
+                  >
                   <small class="text-muted">A descriptive name for this schedule.</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Schedule Code</label>
                   <input 
+                    v-model="schedulingFields.code" 
                     type="text" 
                     class="form-control" 
-                    v-model="schedulingFields.code" 
                     placeholder="e.g. NIP-BCG-2025" 
-                  />
+                  >
                   <small class="text-muted">Optional code for reference.</small>
                 </div>
               </div>
@@ -83,31 +109,38 @@
                 <div class="col-md-4">
                   <label class="form-label">Total Doses *</label>
                   <input 
+                    v-model.number="schedulingFields.total_doses" 
                     type="number" 
                     class="form-control" 
-                    v-model.number="schedulingFields.total_doses" 
                     min="1" 
                     required 
                     placeholder="e.g. 3" 
-                  />
+                  >
                   <small class="text-muted">How many doses in this series?</small>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Concurrent Allowed</label>
-                  <select class="form-select" v-model="schedulingFields.concurrent_allowed">
-                    <option :value="true">Yes</option>
-                    <option :value="false">No</option>
+                  <select
+                    v-model="schedulingFields.concurrent_allowed"
+                    class="form-select"
+                  >
+                    <option :value="true">
+                      Yes
+                    </option>
+                    <option :value="false">
+                      No
+                    </option>
                   </select>
                   <small class="text-muted">Can this vaccine be given with others?</small>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Catch-up Strategy</label>
                   <input 
+                    v-model="schedulingFields.catchup_strategy" 
                     type="text" 
                     class="form-control" 
-                    v-model="schedulingFields.catchup_strategy" 
                     placeholder="e.g. Give ASAP if missed" 
-                  />
+                  >
                 </div>
               </div>
 
@@ -115,24 +148,24 @@
                 <div class="col-md-6">
                   <label class="form-label">Minimum Age (days) *</label>
                   <input 
+                    v-model.number="schedulingFields.min_age_days" 
                     type="number" 
                     class="form-control" 
-                    v-model.number="schedulingFields.min_age_days" 
                     min="0" 
                     required 
                     placeholder="e.g. 0 for birth" 
-                  />
+                  >
                   <small class="text-muted">Earliest age (in days) for first dose.</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Maximum Age (days)</label>
                   <input 
+                    v-model.number="schedulingFields.max_age_days" 
                     type="number" 
                     class="form-control" 
-                    v-model.number="schedulingFields.max_age_days" 
                     min="0" 
                     placeholder="e.g. 365 for 1 year" 
-                  />
+                  >
                   <small class="text-muted">Latest age (optional).</small>
                 </div>
               </div>
@@ -140,44 +173,52 @@
               <div class="mb-3 mt-2">
                 <label class="form-label">Notes</label>
                 <textarea 
-                  class="form-control" 
                   v-model="schedulingFields.notes" 
+                  class="form-control" 
                   placeholder="Any extra info or instructions"
                   rows="3"
-                ></textarea>
+                />
               </div>
 
-              <hr />
+              <hr>
               
               <h6 class="mb-3">
-                <i class="bi bi-list-ol me-2"></i>Dose Schedule 
+                <i class="bi bi-list-ol me-2" />Dose Schedule 
                 <span class="text-muted">(Configure each dose)</span>
               </h6>
 
-              <div v-if="schedulingFields.doses.length === 0" class="alert alert-info">
+              <div
+                v-if="schedulingFields.doses.length === 0"
+                class="alert alert-info"
+              >
                 Enter a value in <strong>Total Doses</strong> to create per-dose panels.
               </div>
 
-              <div v-else class="border rounded p-3 mb-3 bg-light">
+              <div
+                v-else
+                class="border rounded p-3 mb-3 bg-light"
+              >
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div>
                     <strong>Dose {{ currentDoseIndex + 1 }} of {{ schedulingFields.total_doses }}</strong>
-                    <div class="text-muted">Use Prev/Next or pick a dose below to navigate</div>
+                    <div class="text-muted">
+                      Use Prev/Next or pick a dose below to navigate
+                    </div>
                   </div>
                   <div>
                     <button 
                       type="button"
                       class="btn btn-sm btn-outline-secondary me-2" 
-                      @click="prevDose" 
-                      :disabled="currentDoseIndex === 0"
+                      :disabled="currentDoseIndex === 0" 
+                      @click="prevDose"
                     >
                       &laquo; Prev
                     </button>
                     <button 
                       type="button"
                       class="btn btn-sm btn-outline-secondary" 
-                      @click="nextDose" 
-                      :disabled="currentDoseIndex >= schedulingFields.total_doses - 1"
+                      :disabled="currentDoseIndex >= schedulingFields.total_doses - 1" 
+                      @click="nextDose"
                     >
                       Next &raquo;
                     </button>
@@ -185,7 +226,10 @@
                 </div>
 
                 <div class="mb-2">
-                  <div class="btn-group" role="group">
+                  <div
+                    class="btn-group"
+                    role="group"
+                  >
                     <button 
                       v-for="n in schedulingFields.total_doses" 
                       :key="n" 
@@ -203,62 +247,66 @@
                   <div class="col-md-2">
                     <label class="form-label">Dose # *</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].dose_number" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].dose_number" 
                       min="1" 
                       required 
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Due After Days *</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].due_after_days" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].due_after_days" 
                       min="0" 
                       required 
                       placeholder="e.g. 0, 42"
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Min Interval</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_days" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_days" 
                       min="0" 
                       placeholder="e.g. 28"
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Max Interval</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].max_interval_days" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].max_interval_days" 
                       min="0" 
                       placeholder="e.g. 90"
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Min Other Vax</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_other_vax" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].min_interval_other_vax" 
                       min="0" 
                       placeholder="e.g. 14"
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Requires Previous</label>
                     <select 
-                      class="form-select" 
-                      v-model="schedulingFields.doses[currentDoseIndex].requires_previous"
+                      v-model="schedulingFields.doses[currentDoseIndex].requires_previous" 
+                      class="form-select"
                     >
-                      <option :value="true">Yes</option>
-                      <option :value="false">No</option>
+                      <option :value="true">
+                        Yes
+                      </option>
+                      <option :value="false">
+                        No
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -267,52 +315,70 @@
                   <div class="col-md-2">
                     <label class="form-label">Skippable</label>
                     <select 
-                      class="form-select" 
-                      v-model="schedulingFields.doses[currentDoseIndex].skippable"
+                      v-model="schedulingFields.doses[currentDoseIndex].skippable" 
+                      class="form-select"
                     >
-                      <option :value="true">Yes</option>
-                      <option :value="false">No</option>
+                      <option :value="true">
+                        Yes
+                      </option>
+                      <option :value="false">
+                        No
+                      </option>
                     </select>
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Grace Period</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].grace_period_days" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].grace_period_days" 
                       min="0" 
                       placeholder="e.g. 7"
-                    />
+                    >
                   </div>
                   <div class="col-md-2">
                     <label class="form-label">Absolute Latest</label>
                     <input 
+                      v-model.number="schedulingFields.doses[currentDoseIndex].absolute_latest_days" 
                       type="number" 
                       class="form-control" 
-                      v-model.number="schedulingFields.doses[currentDoseIndex].absolute_latest_days" 
                       min="0" 
                       placeholder="e.g. 180"
-                    />
+                    >
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Notes</label>
                     <input 
+                      v-model="schedulingFields.doses[currentDoseIndex].notes" 
                       type="text" 
                       class="form-control" 
-                      v-model="schedulingFields.doses[currentDoseIndex].notes" 
                       placeholder="Any special instructions"
-                    />
+                    >
                   </div>
                 </div>
               </div>
 
               <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-secondary" @click="handleCancel">
-                  <i class="bi bi-x-circle me-2"></i>Cancel
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="handleCancel"
+                >
+                  <i class="bi bi-x-circle me-2" />Cancel
                 </button>
-                <button type="submit" class="btn btn-primary" :disabled="submitting">
-                  <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-check-circle me-2"></i>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="submitting"
+                >
+                  <span
+                    v-if="submitting"
+                    class="spinner-border spinner-border-sm me-2"
+                  />
+                  <i
+                    v-else
+                    class="bi bi-check-circle me-2"
+                  />
                   Update Schedule
                 </button>
               </div>
@@ -322,9 +388,14 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        Failed to load schedule data. <router-link to="/admin/vaccines">Go back to inventory</router-link>
+      <div
+        v-else
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        Failed to load schedule data. <router-link to="/admin/vaccines">
+          Go back to inventory
+        </router-link>
       </div>
     </div>
   </AdminLayout>

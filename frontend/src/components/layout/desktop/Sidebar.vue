@@ -1,31 +1,61 @@
 <template>
-  <div class="sidebar" :class="{ show: isOpen }">
+  <div
+    class="sidebar"
+    :class="{ show: isOpen }"
+  >
     <div class="sidebar-content">
       <ul class="nav nav-pills flex-column">
         <!-- Main Section -->
         <template v-if="userRole === 'admin'">
-          <li class="nav-header mt-0">MAIN</li>
-          <li class="nav-item" v-for="item in mainSection" :key="item.name">
-            <router-link :to="item.path" class="nav-link">
-              <i :class="item.icon + ' me-2'"></i>
+          <li class="nav-header mt-0">
+            MAIN
+          </li>
+          <li
+            v-for="item in mainSection"
+            :key="item.name"
+            class="nav-item"
+          >
+            <router-link
+              :to="item.path"
+              class="nav-link"
+            >
+              <i :class="item.icon + ' me-2'" />
               {{ item.label }}
             </router-link>
           </li>
 
           <!-- Patient Management Group -->
-          <li class="nav-header mt-3">PATIENT MANAGEMENT</li>
-          <li class="nav-item" v-for="item in patientManagementGroup" :key="item.name">
-            <router-link :to="item.path" class="nav-link">
-              <i :class="item.icon + ' me-2'"></i>
+          <li class="nav-header mt-3">
+            PATIENT MANAGEMENT
+          </li>
+          <li
+            v-for="item in patientManagementGroup"
+            :key="item.name"
+            class="nav-item"
+          >
+            <router-link
+              :to="item.path"
+              class="nav-link"
+            >
+              <i :class="item.icon + ' me-2'" />
               {{ item.label }}
             </router-link>
           </li>
 
           <!-- System Group -->
-          <li class="nav-header mt-3">SYSTEM</li>
-          <li class="nav-item" v-for="item in systemGroup" :key="item.name">
-            <router-link :to="item.path" class="nav-link">
-              <i :class="item.icon + ' me-2'"></i>
+          <li class="nav-header mt-3">
+            SYSTEM
+          </li>
+          <li
+            v-for="item in systemGroup"
+            :key="item.name"
+            class="nav-item"
+          >
+            <router-link
+              :to="item.path"
+              class="nav-link"
+            >
+              <i :class="item.icon + ' me-2'" />
               {{ item.label }}
             </router-link>
           </li>
@@ -33,9 +63,16 @@
 
         <!-- Healthworker and Parent roles remain unchanged -->
         <template v-else>
-          <li class="nav-item" v-for="item in menuItems" :key="item.name">
-            <router-link :to="item.path" class="nav-link">
-              <i :class="item.icon + ' me-2'"></i>
+          <li
+            v-for="item in menuItems"
+            :key="item.name"
+            class="nav-item"
+          >
+            <router-link
+              :to="item.path"
+              class="nav-link"
+            >
+              <i :class="item.icon + ' me-2'" />
               {{ item.label }}
             </router-link>
           </li>
@@ -43,15 +80,27 @@
       </ul>
 
       <!-- Offline Sync Section (Admin Only) -->
-      <div v-if="userRole === 'admin'" class="offline-section">
-        <div class="offline-header" @click="toggleOfflineDetails">
+      <div
+        v-if="userRole === 'admin'"
+        class="offline-section"
+      >
+        <div
+          class="offline-header"
+          @click="toggleOfflineDetails"
+        >
           <div class="d-flex align-items-center">
-            <i :class="statusIcon" :style="{ color: statusColor }"></i>
+            <i
+              :class="statusIcon"
+              :style="{ color: statusColor }"
+            />
             <span class="ms-2">{{ connectionStatus }}</span>
           </div>
         </div>
         
-        <div v-if="showOfflineDetails" class="offline-details">
+        <div
+          v-if="showOfflineDetails"
+          class="offline-details"
+        >
           <div class="detail-item">
             <small class="text-muted">Status</small>
             <small class="fw-bold">{{ connectionStatus }}</small>
@@ -62,10 +111,17 @@
           </div>
           
           <!-- Storage Stats -->
-          <div v-if="storageStats" class="storage-stats mt-2">
+          <div
+            v-if="storageStats"
+            class="storage-stats mt-2"
+          >
             <small class="text-muted d-block mb-2">Cached Records:</small>
             <div class="stats-grid">
-              <div v-for="(count, store) in storageStats" :key="store" class="stat-item">
+              <div
+                v-for="(count, store) in storageStats"
+                :key="store"
+                class="stat-item"
+              >
                 <small class="text-muted">{{ formatStoreName(store) }}</small>
                 <small class="fw-bold">{{ count }}</small>
               </div>
@@ -76,7 +132,7 @@
             class="btn btn-sm btn-outline-danger w-100 mt-2" 
             @click="handleClearData"
           >
-            <i class="bi bi-trash me-1"></i>
+            <i class="bi bi-trash me-1" />
             Clear Cache
           </button>
         </div>

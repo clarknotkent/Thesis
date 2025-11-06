@@ -1,26 +1,41 @@
 <template>
-  <div class="modal fade" :class="{ show: show }" :style="{ display: show ? 'block' : 'none' }" tabindex="-1">
+  <div
+    class="modal fade"
+    :class="{ show: show }"
+    :style="{ display: show ? 'block' : 'none' }"
+    tabindex="-1"
+  >
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <div class="d-flex align-items-center w-100">
             <h5 class="modal-title me-auto">
-              <i class="bi bi-shield-plus me-2"></i>
+              <i class="bi bi-shield-plus me-2" />
               {{ isEdit ? 'Edit' : 'Add New' }} Vaccination Record
             </h5>
             <!-- Inside the add/edit vaccination modal: outside toggle at upper right -->
-            <div class="form-check form-switch" v-if="!isEdit">
+            <div
+              v-if="!isEdit"
+              class="form-check form-switch"
+            >
               <input 
+                id="insideOutsideToggle" 
                 class="form-check-input" 
                 type="checkbox" 
-                id="insideOutsideToggle" 
                 :checked="outsideImmunization"
                 @change="$emit('update:outsideImmunization', $event.target.checked)"
               >
-              <label class="form-check-label" for="insideOutsideToggle">Outside record</label>
+              <label
+                class="form-check-label"
+                for="insideOutsideToggle"
+              >Outside record</label>
             </div>
           </div>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="$emit('close')"
+          />
         </div>
         <div class="modal-body">
           <form @submit.prevent="$emit('save')">
@@ -40,11 +55,13 @@
                   v-if="!outsideImmunization" 
                   class="form-select" 
                   :value="form.inventoryId" 
+                  :required="!outsideImmunization"
+                  :disabled="isEdit" 
                   @change="$emit('update:form', { ...form, inventoryId: $event.target.value }); $emit('vaccine-select')"
-                  :required="!outsideImmunization" 
-                  :disabled="isEdit"
                 >
-                  <option value="">Select a vaccine stock</option>
+                  <option value="">
+                    Select a vaccine stock
+                  </option>
                   <option 
                     v-for="v in vaccineOptions" 
                     :key="v.inventory_id" 
@@ -59,11 +76,13 @@
                   v-else 
                   class="form-select" 
                   :value="form.vaccineId" 
+                  :required="outsideImmunization"
+                  :disabled="isEdit" 
                   @change="$emit('update:form', { ...form, vaccineId: $event.target.value }); $emit('vaccine-catalog-select')"
-                  :required="outsideImmunization" 
-                  :disabled="isEdit"
                 >
-                  <option value="">Select a vaccine</option>
+                  <option value="">
+                    Select a vaccine
+                  </option>
                   <option 
                     v-for="v in vaccineCatalog" 
                     :key="v.vaccine_id || v.id" 
@@ -76,7 +95,12 @@
 
               <div class="col-md-6">
                 <label class="form-label">Disease Prevented</label>
-                <input type="text" class="form-control" :value="form.diseasePrevented" readonly>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="form.diseasePrevented"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
@@ -84,13 +108,26 @@
                 <select 
                   class="form-select" 
                   :value="form.doseNumber" 
-                  @change="$emit('update:form', { ...form, doseNumber: $event.target.value })"
                   required
+                  @change="$emit('update:form', { ...form, doseNumber: $event.target.value })"
                 >
-                  <option value="">Select dose</option>
-                  <option v-for="dose in availableDoses" :key="dose" :value="dose">Dose {{ dose }}</option>
+                  <option value="">
+                    Select dose
+                  </option>
+                  <option
+                    v-for="dose in availableDoses"
+                    :key="dose"
+                    :value="dose"
+                  >
+                    Dose {{ dose }}
+                  </option>
                 </select>
-                <div v-if="autoSelectHint" class="form-text text-success">{{ autoSelectHint }}</div>
+                <div
+                  v-if="autoSelectHint"
+                  class="form-text text-success"
+                >
+                  {{ autoSelectHint }}
+                </div>
               </div>
 
               <div class="col-md-6">
@@ -99,24 +136,39 @@
                   type="date" 
                   class="form-control" 
                   :value="form.dateAdministered" 
-                  @change="$emit('update:form', { ...form, dateAdministered: $event.target.value })"
                   required
+                  @change="$emit('update:form', { ...form, dateAdministered: $event.target.value })"
                 >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label">Age at Administration</label>
-                <input type="text" class="form-control" :value="form.ageAtAdministration" readonly>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="form.ageAtAdministration"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label">Manufacturer</label>
-                <input type="text" class="form-control" :value="form.vaccineManufacturer" readonly>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="form.vaccineManufacturer"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label">Lot Number</label>
-                <input type="text" class="form-control" :value="form.lotNumber" readonly>
+                <input
+                  type="text"
+                  class="form-control"
+                  :value="form.lotNumber"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
@@ -126,24 +178,41 @@
                   :value="form.siteOfAdministration" 
                   @change="$emit('update:form', { ...form, siteOfAdministration: $event.target.value })"
                 >
-                  <option value="">Select a site</option>
-                  <option value="Left arm (deltoid)">Left arm (deltoid)</option>
-                  <option value="Right arm (deltoid)">Right arm (deltoid)</option>
-                  <option value="Left thigh (anterolateral)">Left thigh (anterolateral)</option>
-                  <option value="Right thigh (anterolateral)">Right thigh (anterolateral)</option>
-                  <option value="Oral">Oral</option>
+                  <option value="">
+                    Select a site
+                  </option>
+                  <option value="Left arm (deltoid)">
+                    Left arm (deltoid)
+                  </option>
+                  <option value="Right arm (deltoid)">
+                    Right arm (deltoid)
+                  </option>
+                  <option value="Left thigh (anterolateral)">
+                    Left thigh (anterolateral)
+                  </option>
+                  <option value="Right thigh (anterolateral)">
+                    Right thigh (anterolateral)
+                  </option>
+                  <option value="Oral">
+                    Oral
+                  </option>
                 </select>
               </div>
 
-              <div class="col-md-6" v-if="!outsideImmunization">
+              <div
+                v-if="!outsideImmunization"
+                class="col-md-6"
+              >
                 <label class="form-label">Health Staff *</label>
                 <select 
                   class="form-select" 
                   :value="form.healthWorkerId" 
-                  @change="$emit('update:form', { ...form, healthWorkerId: $event.target.value })"
                   required
+                  @change="$emit('update:form', { ...form, healthWorkerId: $event.target.value })"
                 >
-                  <option value="">Select health staff</option>
+                  <option value="">
+                    Select health staff
+                  </option>
                   <option 
                     v-for="hw in nurses" 
                     :key="hw.id || hw.health_worker_id" 
@@ -151,7 +220,12 @@
                   >
                     {{ hw.name }} ({{ hw.hs_type || hw.hw_type || hw.role || hw.type }})
                   </option>
-                  <option v-if="nurses.length === 0" disabled>No nurses/nutritionists available</option>
+                  <option
+                    v-if="nurses.length === 0"
+                    disabled
+                  >
+                    No nurses/nutritionists available
+                  </option>
                 </select>
               </div>
 
@@ -172,19 +246,32 @@
                   rows="2" 
                   :value="form.remarks" 
                   @input="$emit('update:form', { ...form, remarks: $event.target.value })"
-                ></textarea>
+                />
               </div>
             </div>
 
             <div class="mt-4 text-muted small">
-              <i class="bi bi-info-circle me-1"></i>
+              <i class="bi bi-info-circle me-1" />
               Fields marked with * are required
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="saving || !canSave">
-                <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="$emit('close')"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                :disabled="saving || !canSave"
+              >
+                <span
+                  v-if="saving"
+                  class="spinner-border spinner-border-sm me-2"
+                />
                 {{ isEdit ? 'Update' : 'Add' }} Record
               </button>
             </div>

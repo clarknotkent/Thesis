@@ -3,31 +3,56 @@
     <div class="container-fluid">
       <ToastContainer />
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Patient Records</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Patient Records
+          </li>
         </ol>
       </nav>
 
       <!-- Header -->
       <div class="mb-4">
         <h2 class="mb-1">
-          <i class="bi bi-people me-2"></i>Patient Records Management
+          <i class="bi bi-people me-2" />Patient Records Management
         </h2>
-        <p class="text-muted mb-0">Manage patient information and vaccination history</p>
+        <p class="text-muted mb-0">
+          Manage patient information and vaccination history
+        </p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading patients...</span>
         </div>
-        <p class="text-muted mt-2">Loading patient information...</p>
+        <p class="text-muted mt-2">
+          Loading patient information...
+        </p>
       </div>
 
       <!-- Patient Management with Tabs -->
-      <div v-if="!loading" class="row">
+      <div
+        v-if="!loading"
+        class="row"
+      >
         <!-- Main Content -->
         <div class="col-lg-12 mb-4">
           <div class="card shadow">
@@ -38,7 +63,7 @@
                   <button 
                     class="nav-link active"
                   >
-                    <i class="bi bi-people me-2"></i>Patient List
+                    <i class="bi bi-people me-2" />Patient List
                   </button>
                 </li>
               </ul>
@@ -49,7 +74,7 @@
                 <!-- Header Section -->
                 <div class="mb-3">
                   <h5 class="mb-0">
-                    <i class="bi bi-list-ul me-2"></i>All Patients
+                    <i class="bi bi-list-ul me-2" />All Patients
                   </h5>
                 </div>
 
@@ -57,53 +82,110 @@
                 <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
                   <div class="d-flex gap-2 align-items-center flex-grow-1">
                     <!-- Search Bar -->
-                    <div class="input-group" style="max-width: 300px;">
+                    <div
+                      class="input-group"
+                      style="max-width: 300px;"
+                    >
                       <input 
+                        v-model="searchQuery" 
                         type="text" 
                         class="form-control form-control-sm" 
-                        placeholder="Search patients..." 
-                        v-model="searchQuery"
+                        placeholder="Search patients..."
                         @input="debouncedSearch"
                       >
-                      <button class="btn btn-sm btn-outline-primary" type="button">
-                        <i class="bi bi-search"></i>
+                      <button
+                        class="btn btn-sm btn-outline-primary"
+                        type="button"
+                      >
+                        <i class="bi bi-search" />
                       </button>
                     </div>
                     
                     <!-- Status Filter -->
-                    <select class="form-select form-select-sm" style="max-width: 150px;" v-model="selectedStatus" @change="applyFilters" :disabled="showDeleted">
-                      <option value="">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="due">Vaccination Due</option>
-                      <option value="completed">Up to Date</option>
-                      <option value="fic">FIC</option>
-                      <option value="cic">CIC</option>
-                      <option value="defaulter">Defaulter</option>
+                    <select
+                      v-model="selectedStatus"
+                      class="form-select form-select-sm"
+                      style="max-width: 150px;"
+                      :disabled="showDeleted"
+                      @change="applyFilters"
+                    >
+                      <option value="">
+                        All Status
+                      </option>
+                      <option value="active">
+                        Active
+                      </option>
+                      <option value="inactive">
+                        Inactive
+                      </option>
+                      <option value="due">
+                        Vaccination Due
+                      </option>
+                      <option value="completed">
+                        Up to Date
+                      </option>
+                      <option value="fic">
+                        FIC
+                      </option>
+                      <option value="cic">
+                        CIC
+                      </option>
+                      <option value="defaulter">
+                        Defaulter
+                      </option>
                     </select>
                     
                     <!-- Gender Filter -->
-                    <select class="form-select form-select-sm" style="max-width: 120px;" v-model="selectedGender" @change="applyFilters">
-                      <option value="">All Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
+                    <select
+                      v-model="selectedGender"
+                      class="form-select form-select-sm"
+                      style="max-width: 120px;"
+                      @change="applyFilters"
+                    >
+                      <option value="">
+                        All Gender
+                      </option>
+                      <option value="male">
+                        Male
+                      </option>
+                      <option value="female">
+                        Female
+                      </option>
                     </select>
                   </div>
 
                   <!-- Action Buttons -->
                   <div class="d-flex gap-2 align-items-center">
                     <div class="form-check form-switch me-2">
-                      <input class="form-check-input" type="checkbox" id="toggleDeleted" v-model="showDeleted" @change="applyFilters">
-                      <label class="form-check-label" for="toggleDeleted">Show Deleted</label>
+                      <input
+                        id="toggleDeleted"
+                        v-model="showDeleted"
+                        class="form-check-input"
+                        type="checkbox"
+                        @change="applyFilters"
+                      >
+                      <label
+                        class="form-check-label"
+                        for="toggleDeleted"
+                      >Show Deleted</label>
                     </div>
-                    <button class="btn btn-sm btn-outline-primary" @click="resetFilters">
-                      <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      @click="resetFilters"
+                    >
+                      <i class="bi bi-arrow-clockwise me-1" />Reset
                     </button>
-                    <router-link to="/admin/patients/add-record" class="btn btn-sm btn-outline-success">
-                      <i class="bi bi-file-medical me-1"></i>Add Vaccination Record
+                    <router-link
+                      to="/admin/patients/add-record"
+                      class="btn btn-sm btn-outline-success"
+                    >
+                      <i class="bi bi-file-medical me-1" />Add Vaccination Record
                     </router-link>
-                    <router-link to="/admin/patients/add" class="btn btn-sm btn-primary">
-                      <i class="bi bi-plus-circle me-1"></i>Add Patient
+                    <router-link
+                      to="/admin/patients/add"
+                      class="btn btn-sm btn-primary"
+                    >
+                      <i class="bi bi-plus-circle me-1" />Add Patient
                     </router-link>
                   </div>
                 </div>
@@ -113,40 +195,87 @@
                   <table class="table table-hover table-bordered">
                     <thead class="table-light">
                       <tr>
-                        <th class="text-center">Patient ID</th>
-                        <th class="text-center">Child Name</th>
-                        <th class="text-center">Sex</th>
-                        <th class="text-center">Birth Date</th>
-                        <th class="text-center">Age</th>
-                        <th class="text-center">Guardian</th>
-                        <th class="text-center">Contact</th>
-                        <th class="text-center">Last Vaccination</th>
-                        <th class="text-center">Actions</th>
+                        <th class="text-center">
+                          Patient ID
+                        </th>
+                        <th class="text-center">
+                          Child Name
+                        </th>
+                        <th class="text-center">
+                          Sex
+                        </th>
+                        <th class="text-center">
+                          Birth Date
+                        </th>
+                        <th class="text-center">
+                          Age
+                        </th>
+                        <th class="text-center">
+                          Guardian
+                        </th>
+                        <th class="text-center">
+                          Contact
+                        </th>
+                        <th class="text-center">
+                          Last Vaccination
+                        </th>
+                        <th class="text-center">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="patient in sortedPatients" :key="patient.id" :class="{ 'table-secondary': patient.status === 'inactive' }">
-                        <td class="text-center align-middle fw-semibold text-primary">{{ patient.id }}</td>
+                      <tr
+                        v-for="patient in sortedPatients"
+                        :key="patient.id"
+                        :class="{ 'table-secondary': patient.status === 'inactive' }"
+                      >
+                        <td class="text-center align-middle fw-semibold text-primary">
+                          {{ patient.id }}
+                        </td>
                         <td class="text-center align-middle fw-semibold">
                           {{ patient.childInfo.name }}
-                          <span v-if="patient.status === 'inactive'" class="badge rounded-pill text-bg-secondary ms-2">Inactive</span>
-                          <span v-else-if="patient.status === 'archived'" class="badge rounded-pill text-bg-danger ms-2">Archived</span>
+                          <span
+                            v-if="patient.status === 'inactive'"
+                            class="badge rounded-pill text-bg-secondary ms-2"
+                          >Inactive</span>
+                          <span
+                            v-else-if="patient.status === 'archived'"
+                            class="badge rounded-pill text-bg-danger ms-2"
+                          >Archived</span>
                         </td>
-                        <td class="text-center align-middle">{{ patient.childInfo.sex }}</td>
-                        <td class="text-center align-middle">{{ formatDate(patient.childInfo.birthDate) }}</td>
-                        <td class="text-center align-middle">{{ calculateAge(patient.childInfo.birthDate) }}</td>
-                        <td class="text-center align-middle">{{ patient.motherInfo.name }}</td>
+                        <td class="text-center align-middle">
+                          {{ patient.childInfo.sex }}
+                        </td>
+                        <td class="text-center align-middle">
+                          {{ formatDate(patient.childInfo.birthDate) }}
+                        </td>
+                        <td class="text-center align-middle">
+                          {{ calculateAge(patient.childInfo.birthDate) }}
+                        </td>
+                        <td class="text-center align-middle">
+                          {{ patient.motherInfo.name }}
+                        </td>
                         <td class="text-center align-middle">
                           <span v-if="patient.guardian_contact_number || patient.childInfo.phoneNumber">
-                            <i class="bi bi-telephone me-1"></i>{{ patient.guardian_contact_number || patient.childInfo.phoneNumber }}
+                            <i class="bi bi-telephone me-1" />{{ patient.guardian_contact_number || patient.childInfo.phoneNumber }}
                           </span>
-                          <span v-else class="text-muted">—</span>
+                          <span
+                            v-else
+                            class="text-muted"
+                          >—</span>
                         </td>
                         <td class="text-center align-middle">
-                          <span v-if="patient.lastVaccination" class="text-muted">
+                          <span
+                            v-if="patient.lastVaccination"
+                            class="text-muted"
+                          >
                             {{ formatDate(patient.lastVaccination) }}
                           </span>
-                          <span v-else class="text-warning">No records</span>
+                          <span
+                            v-else
+                            class="text-warning"
+                          >No records</span>
                         </td>
                         <td class="text-center align-middle">
                           <div class="d-flex gap-2 justify-content-center">
@@ -155,48 +284,56 @@
                               class="btn btn-sm btn-outline-primary"
                               title="View Details"
                             >
-                              <i class="bi bi-eye me-1"></i>View
+                              <i class="bi bi-eye me-1" />View
                             </router-link>
                             <button
                               v-if="patient.status === 'archived'"
                               class="btn btn-sm btn-outline-success"
-                              @click="restorePatient(patient)"
                               title="Restore Patient"
+                              @click="restorePatient(patient)"
                             >
-                              <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+                              <i class="bi bi-arrow-counterclockwise me-1" />Restore
                             </button>
                             <template v-else>
                               <button 
-                                class="btn btn-sm btn-outline-warning" 
-                                v-if="patient.status !== 'inactive'"
-                                @click="setPatientStatus(patient, 'inactive')"
+                                v-if="patient.status !== 'inactive'" 
+                                class="btn btn-sm btn-outline-warning"
                                 title="Deactivate"
+                                @click="setPatientStatus(patient, 'inactive')"
                               >
-                                <i class="bi bi-slash-circle me-1"></i>Deactivate
+                                <i class="bi bi-slash-circle me-1" />Deactivate
                               </button>
                               <button 
-                                class="btn btn-sm btn-outline-success" 
-                                v-else
-                                @click="setPatientStatus(patient, 'active')"
+                                v-else 
+                                class="btn btn-sm btn-outline-success"
                                 title="Activate"
+                                @click="setPatientStatus(patient, 'active')"
                               >
-                                <i class="bi bi-check-circle me-1"></i>Activate
+                                <i class="bi bi-check-circle me-1" />Activate
                               </button>
                               <button 
                                 class="btn btn-sm btn-outline-danger" 
-                                @click="deletePatient(patient)"
                                 title="Delete Patient"
+                                @click="deletePatient(patient)"
                               >
-                                <i class="bi bi-trash me-1"></i>Delete
+                                <i class="bi bi-trash me-1" />Delete
                               </button>
                             </template>
                           </div>
                         </td>
                       </tr>
                       <tr v-if="sortedPatients.length === 0">
-                        <td colspan="9" class="text-center text-muted py-4">
-                          <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                          <p class="mb-0 mt-2">No patients found</p>
+                        <td
+                          colspan="9"
+                          class="text-center text-muted py-4"
+                        >
+                          <i
+                            class="bi bi-inbox"
+                            style="font-size: 2rem;"
+                          />
+                          <p class="mb-0 mt-2">
+                            No patients found
+                          </p>
                         </td>
                       </tr>
                     </tbody>
@@ -204,12 +341,15 @@
                 </div>
 
                 <!-- Pagination Footer -->
-                <div v-if="sortedPatients.length > 0" class="pagination-footer border-top mt-3 pt-3">
+                <div
+                  v-if="sortedPatients.length > 0"
+                  class="pagination-footer border-top mt-3 pt-3"
+                >
                   <AppPagination
-                    :currentPage="currentPage"
-                    :totalPages="totalPages"
-                    :totalItems="totalItems"
-                    :itemsPerPage="itemsPerPage"
+                    :current-page="currentPage"
+                    :total-pages="totalPages"
+                    :total-items="totalItems"
+                    :items-per-page="itemsPerPage"
                     @page-changed="changePage"
                   />
                 </div>
@@ -219,9 +359,9 @@
         </div>
       </div>
 
-  <!-- Navigation: View patient and Add record actions now open pages -->
+      <!-- Navigation: View patient and Add record actions now open pages -->
 
-  <!-- Page-only flow: no modals -->
+      <!-- Page-only flow: no modals -->
     </div>
   </AdminLayout>
 </template>

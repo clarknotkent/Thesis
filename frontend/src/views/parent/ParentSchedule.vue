@@ -1,35 +1,58 @@
 <template>
   <ParentLayout title="My Schedule">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <div class="spinner" />
       <p>Loading children...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <i class="bi bi-exclamation-triangle error-icon"></i>
-      <p class="error-text">{{ error }}</p>
-      <button class="retry-button" @click="fetchChildren">
-        <i class="bi bi-arrow-clockwise"></i>
+    <div
+      v-else-if="error"
+      class="error-state"
+    >
+      <i class="bi bi-exclamation-triangle error-icon" />
+      <p class="error-text">
+        {{ error }}
+      </p>
+      <button
+        class="retry-button"
+        @click="fetchChildren"
+      >
+        <i class="bi bi-arrow-clockwise" />
         Try Again
       </button>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="children.length === 0" class="empty-state">
-      <i class="bi bi-people empty-icon"></i>
-      <h3 class="empty-title">No Children Found</h3>
+    <div
+      v-else-if="children.length === 0"
+      class="empty-state"
+    >
+      <i class="bi bi-people empty-icon" />
+      <h3 class="empty-title">
+        No Children Found
+      </h3>
       <p class="empty-text">
         You don't have any registered children yet. Please contact your health worker to register your child.
       </p>
     </div>
 
     <!-- Children List -->
-    <div v-else class="schedule-container">
+    <div
+      v-else
+      class="schedule-container"
+    >
       <div class="section-header">
-        <h5 class="section-title">My Family's Schedule</h5>
-        <p class="section-subtitle">Tap on a child to view their vaccination schedule</p>
+        <h5 class="section-title">
+          My Family's Schedule
+        </h5>
+        <p class="section-subtitle">
+          Tap on a child to view their vaccination schedule
+        </p>
       </div>
 
       <div class="children-list">
@@ -127,7 +150,7 @@ const fetchChildren = async () => {
     if (!navigator.onLine || children.value.length === 0) {
       console.log('📴 Loading from IndexedDB cache')
       try {
-        let cachedChildren = await db.patients.toArray()
+        const cachedChildren = await db.patients.toArray()
         
         if (cachedChildren.length > 0) {
           console.log('📦 Found children in IndexedDB cache')

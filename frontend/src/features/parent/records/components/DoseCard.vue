@@ -1,7 +1,7 @@
 <template>
   <div class="info-card">
     <div class="card-header info">
-      <i class="bi bi-calendar-check"></i>
+      <i class="bi bi-calendar-check" />
       <h2>Dose {{ doseNumber }}</h2>
       <span :class="['status-badge-small', statusClass]">
         {{ status || 'Completed' }}
@@ -24,17 +24,26 @@
         <span class="detail-label">Facility</span>
         <span class="detail-value">{{ facility }}</span>
       </div>
-      <div v-if="site" class="detail-item">
+      <div
+        v-if="site"
+        class="detail-item"
+      >
         <span class="detail-label">Site</span>
         <span class="detail-value">{{ site }}</span>
       </div>
-      <div v-if="batchNumber" class="detail-item">
+      <div
+        v-if="batchNumber"
+        class="detail-item"
+      >
         <span class="detail-label">Batch Number</span>
         <span class="detail-value">
           <span class="batch-badge">{{ batchNumber }}</span>
         </span>
       </div>
-      <div v-if="isOutside !== undefined" class="detail-item">
+      <div
+        v-if="isOutside !== undefined"
+        class="detail-item"
+      >
         <span class="detail-label">Location Type</span>
         <span class="detail-value">
           <span :class="isOutside ? 'location-badge outside' : 'location-badge'">
@@ -42,7 +51,10 @@
           </span>
         </span>
       </div>
-      <div v-if="remarks" class="detail-item remarks-item">
+      <div
+        v-if="remarks"
+        class="detail-item remarks-item"
+      >
         <span class="detail-label">Remarks</span>
         <span class="detail-value remarks-text">{{ remarks }}</span>
       </div>

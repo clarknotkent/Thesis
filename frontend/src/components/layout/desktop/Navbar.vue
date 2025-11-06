@@ -4,45 +4,60 @@
       <div class="navbar-brand fw-bold d-flex align-items-center">
         <button 
           class="btn btn-link sidebar-toggle-icon p-0 me-2"
-          @click="toggleSidebar"
           aria-label="Toggle sidebar"
+          @click="toggleSidebar"
         >
-          <i class="bi bi-shield-check"></i>
+          <i class="bi bi-shield-check" />
         </button>
         <span>ImmunizeMe {{ userRole }}</span>
       </div>
 
-      <div class="navbar-collapse" id="navbarNav">
+      <div
+        id="navbarNav"
+        class="navbar-collapse"
+      >
         <ul class="navbar-nav ms-auto">
           <!-- User Menu -->
           <li class="nav-item dropdown">
             <a
+              id="navbarDropdown"
               class="nav-link dropdown-toggle d-flex align-items-center cursor-pointer"
               href="#"
-              id="navbarDropdown"
               role="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
               @click.prevent="toggleDropdown"
             >
-              <i class="bi bi-person-circle me-2"></i>
+              <i class="bi bi-person-circle me-2" />
               <span>{{ userName }}</span>
             </a>
-            <ul class="dropdown-menu dropdown-menu-end" :class="{ 'show': dropdownOpen }">
+            <ul
+              class="dropdown-menu dropdown-menu-end"
+              :class="{ 'show': dropdownOpen }"
+            >
               <li>
-                <a class="dropdown-item cursor-pointer" @click="goToProfile">
-                  <i class="bi bi-person me-2"></i>Profile
+                <a
+                  class="dropdown-item cursor-pointer"
+                  @click="goToProfile"
+                >
+                  <i class="bi bi-person me-2" />Profile
                 </a>
               </li>
               <li>
-                <a class="dropdown-item cursor-pointer" @click="goToSettings">
-                  <i class="bi bi-gear me-2"></i>Settings
+                <a
+                  class="dropdown-item cursor-pointer"
+                  @click="goToSettings"
+                >
+                  <i class="bi bi-gear me-2" />Settings
                 </a>
               </li>
-              <li><hr class="dropdown-divider" /></li>
+              <li><hr class="dropdown-divider"></li>
               <li>
-                <a class="dropdown-item cursor-pointer" @click="logout">
-                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                <a
+                  class="dropdown-item cursor-pointer"
+                  @click="logout"
+                >
+                  <i class="bi bi-box-arrow-right me-2" />Logout
                 </a>
               </li>
             </ul>

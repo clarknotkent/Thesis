@@ -1,25 +1,43 @@
 <template>
-  <nav aria-label="Page navigation" v-if="totalPages > 1">
+  <nav
+    v-if="totalPages > 1"
+    aria-label="Page navigation"
+  >
     <ul class="pagination justify-content-center mb-0">
       <!-- Previous Button -->
-      <li class="page-item" :class="{ disabled: currentPage === 1 }">
+      <li
+        class="page-item"
+        :class="{ disabled: currentPage === 1 }"
+      >
         <button 
           class="page-link" 
-          @click="changePage(currentPage - 1)"
           :disabled="currentPage === 1"
+          @click="changePage(currentPage - 1)"
         >
-          <i class="bi bi-chevron-left"></i>
+          <i class="bi bi-chevron-left" />
           Previous
         </button>
       </li>
 
       <!-- First Page -->
-      <li v-if="showFirstPage" class="page-item" :class="{ active: currentPage === 1 }">
-        <button class="page-link" @click="changePage(1)">1</button>
+      <li
+        v-if="showFirstPage"
+        class="page-item"
+        :class="{ active: currentPage === 1 }"
+      >
+        <button
+          class="page-link"
+          @click="changePage(1)"
+        >
+          1
+        </button>
       </li>
 
       <!-- First Ellipsis -->
-      <li v-if="showFirstEllipsis" class="page-item disabled">
+      <li
+        v-if="showFirstEllipsis"
+        class="page-item disabled"
+      >
         <span class="page-link">...</span>
       </li>
 
@@ -30,34 +48,57 @@
         class="page-item" 
         :class="{ active: currentPage === page }"
       >
-        <button class="page-link" @click="changePage(page)">{{ page }}</button>
+        <button
+          class="page-link"
+          @click="changePage(page)"
+        >
+          {{ page }}
+        </button>
       </li>
 
       <!-- Last Ellipsis -->
-      <li v-if="showLastEllipsis" class="page-item disabled">
+      <li
+        v-if="showLastEllipsis"
+        class="page-item disabled"
+      >
         <span class="page-link">...</span>
       </li>
 
       <!-- Last Page -->
-      <li v-if="showLastPage" class="page-item" :class="{ active: currentPage === totalPages }">
-        <button class="page-link" @click="changePage(totalPages)">{{ totalPages }}</button>
+      <li
+        v-if="showLastPage"
+        class="page-item"
+        :class="{ active: currentPage === totalPages }"
+      >
+        <button
+          class="page-link"
+          @click="changePage(totalPages)"
+        >
+          {{ totalPages }}
+        </button>
       </li>
 
       <!-- Next Button -->
-      <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+      <li
+        class="page-item"
+        :class="{ disabled: currentPage === totalPages }"
+      >
         <button 
           class="page-link" 
-          @click="changePage(currentPage + 1)"
           :disabled="currentPage === totalPages"
+          @click="changePage(currentPage + 1)"
         >
           Next
-          <i class="bi bi-chevron-right"></i>
+          <i class="bi bi-chevron-right" />
         </button>
       </li>
     </ul>
 
     <!-- Page Info -->
-    <div class="text-center mt-2" v-if="showPageInfo">
+    <div
+      v-if="showPageInfo"
+      class="text-center mt-2"
+    >
       <small class="text-muted">
         Showing {{ startItem }} to {{ endItem }} of {{ totalItems }} entries
       </small>

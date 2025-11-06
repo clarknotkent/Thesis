@@ -1,27 +1,52 @@
 <template>
   <div>
     <!-- Floating FAQ Chat Head -->
-    <button class="faq-fab" type="button" @click="$emit('toggle')">
-      <i class="bi bi-question-circle-fill"></i>
+    <button
+      class="faq-fab"
+      type="button"
+      @click="$emit('toggle')"
+    >
+      <i class="bi bi-question-circle-fill" />
     </button>
 
     <!-- FAQ Conversation Panel -->
-    <div v-if="isOpen" class="faq-panel card shadow">
+    <div
+      v-if="isOpen"
+      class="faq-panel card shadow"
+    >
       <div class="card-header d-flex align-items-center justify-content-between py-2">
         <div class="d-flex align-items-center gap-2">
-          <div class="avatar-circle bg-primary text-white">?</div>
+          <div class="avatar-circle bg-primary text-white">
+            ?
+          </div>
           <div>
-            <div class="fw-semibold">FAQs Assistant</div>
-            <div class="text-muted small">Tap a question to view the answer</div>
+            <div class="fw-semibold">
+              FAQs Assistant
+            </div>
+            <div class="text-muted small">
+              Tap a question to view the answer
+            </div>
           </div>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" @click="$emit('close')">
-          <i class="bi bi-x"></i>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          @click="$emit('close')"
+        >
+          <i class="bi bi-x" />
         </button>
       </div>
-      <div class="card-body p-0 d-flex flex-column" style="max-height: 60vh;">
-        <div ref="chatBox" class="faq-chat flex-fill p-2 overflow-auto">
-          <div v-if="thread.length === 0" class="text-center text-muted small py-3">
+      <div
+        class="card-body p-0 d-flex flex-column"
+        style="max-height: 60vh;"
+      >
+        <div
+          ref="chatBox"
+          class="faq-chat flex-fill p-2 overflow-auto"
+        >
+          <div
+            v-if="thread.length === 0"
+            class="text-center text-muted small py-3"
+          >
             Select a question below to see the answer here.
           </div>
           <div v-else>
@@ -31,18 +56,39 @@
               class="mb-2 d-flex" 
               :class="m.role === 'me' ? 'justify-content-end' : 'justify-content-start'"
             >
-              <div class="message-bubble" :class="m.role === 'me' ? 'bubble-me' : 'bubble-faq'">
-                <div class="message-content">{{ m.text }}</div>
-                <div class="message-time small">{{ formatTime(m.at) }}</div>
+              <div
+                class="message-bubble"
+                :class="m.role === 'me' ? 'bubble-me' : 'bubble-faq'"
+              >
+                <div class="message-content">
+                  {{ m.text }}
+                </div>
+                <div class="message-time small">
+                  {{ formatTime(m.at) }}
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="p-2 border-top" style="max-height: 40%; overflow: auto;">
-          <div v-for="(faq, idx) in faqs" :key="idx" class="mb-2">
-            <button class="btn btn-light w-100 text-start" @click="$emit('select-faq', faq)">
-              <div class="fw-semibold">{{ faq.q }}</div>
-              <div class="text-muted small">Tap to show answer</div>
+        <div
+          class="p-2 border-top"
+          style="max-height: 40%; overflow: auto;"
+        >
+          <div
+            v-for="(faq, idx) in faqs"
+            :key="idx"
+            class="mb-2"
+          >
+            <button
+              class="btn btn-light w-100 text-start"
+              @click="$emit('select-faq', faq)"
+            >
+              <div class="fw-semibold">
+                {{ faq.q }}
+              </div>
+              <div class="text-muted small">
+                Tap to show answer
+              </div>
             </button>
           </div>
         </div>

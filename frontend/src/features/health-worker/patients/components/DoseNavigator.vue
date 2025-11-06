@@ -1,16 +1,23 @@
 <template>
-  <div v-if="doses.length > 0" class="dose-navigator">
+  <div
+    v-if="doses.length > 0"
+    class="dose-navigator"
+  >
     <div
       v-for="dose in doses"
       :key="dose.immunization_id || dose.id"
       class="dose-pill"
       :class="{ active: String(dose.immunization_id || dose.id) === String(currentDoseId) }"
-      @click="$emit('jump-to-dose', dose.immunization_id || dose.id)"
       role="button"
       tabindex="0"
+      @click="$emit('jump-to-dose', dose.immunization_id || dose.id)"
     >
-      <div class="dose-label">Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}</div>
-      <div class="dose-date">{{ formatDate(dose) }}</div>
+      <div class="dose-label">
+        Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}
+      </div>
+      <div class="dose-date">
+        {{ formatDate(dose) }}
+      </div>
     </div>
   </div>
 </template>

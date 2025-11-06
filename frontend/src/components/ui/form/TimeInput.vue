@@ -3,34 +3,37 @@
     <div class="input-group">
       <input
         ref="textInput"
+        v-model="displayValue"
         type="text"
         :class="inputClass"
         :placeholder="placeholder"
         :disabled="disabled"
         :required="required"
-        v-model="displayValue"
+        :maxlength="format24 ? 5 : 8"
         @input="handleInput"
         @blur="handleBlur"
         @keydown="handleKeydown"
-        :maxlength="format24 ? 5 : 8"
-      />
+      >
       <button
         class="btn btn-outline-secondary"
         type="button"
         :disabled="disabled"
-        @click="openPicker"
         title="Pick time from clock"
+        @click="openPicker"
       >
-        <i class="bi bi-clock"></i>
+        <i class="bi bi-clock" />
       </button>
       <input
-        type="time"
         ref="nativePicker"
+        type="time"
         class="native-picker-hidden"
         @change="onNativeChange"
-      />
+      >
     </div>
-    <small v-if="error" class="text-danger d-block mt-1">{{ error }}</small>
+    <small
+      v-if="error"
+      class="text-danger d-block mt-1"
+    >{{ error }}</small>
   </div>
 </template>
 
@@ -91,7 +94,7 @@ watch(() => props.modelValue, (nv) => {
 // Auto-format as user types (adds colon automatically)
 const handleInput = (e) => {
   const input = e.target
-  let newValue = input.value.toUpperCase()
+  const newValue = input.value.toUpperCase()
   
   // Get cursor position before formatting
   let cursor = input.selectionStart || 0
@@ -357,7 +360,7 @@ const onNativeChange = (e) => {
   if (!timeValue) return
   
   const [hourStr, minuteStr] = timeValue.split(':')
-  let hour = parseInt(hourStr)
+  const hour = parseInt(hourStr)
   const minute = parseInt(minuteStr)
   
   if (props.format24) {

@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Adjust Stock</li>
+          <li class="breadcrumb-item active">
+            Adjust Stock
+          </li>
         </ol>
       </nav>
 
@@ -18,46 +27,77 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-arrow-left-right me-2"></i>Adjust Stock
+            <i class="bi bi-arrow-left-right me-2" />Adjust Stock
           </h1>
-          <p class="text-muted mb-0">Adjust vaccine stock quantity</p>
+          <p class="text-muted mb-0">
+            Adjust vaccine stock quantity
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Form Card -->
-      <div v-else-if="inventoryData" class="row">
+      <div
+        v-else-if="inventoryData"
+        class="row"
+      >
         <div class="col-lg-6">
           <div class="card shadow mb-4">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Current Stock Information</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Current Stock Information
+              </h6>
             </div>
             <div class="card-body">
               <div class="mb-3">
-                <div class="form-text">Vaccine</div>
-                <div class="fw-semibold fs-5">{{ inventoryData.vaccineName }}</div>
+                <div class="form-text">
+                  Vaccine
+                </div>
+                <div class="fw-semibold fs-5">
+                  {{ inventoryData.vaccineName }}
+                </div>
               </div>
               <div class="mb-3">
-                <div class="form-text">Current Quantity</div>
-                <div class="fw-semibold fs-3 text-primary">{{ inventoryData.quantity }} doses</div>
+                <div class="form-text">
+                  Current Quantity
+                </div>
+                <div class="fw-semibold fs-3 text-primary">
+                  {{ inventoryData.quantity }} doses
+                </div>
               </div>
               <div class="mb-3">
-                <div class="form-text">Lot Number</div>
-                <div class="fw-semibold">{{ inventoryData.lotNumber || inventoryData.batchNo || '-' }}</div>
+                <div class="form-text">
+                  Lot Number
+                </div>
+                <div class="fw-semibold">
+                  {{ inventoryData.lotNumber || inventoryData.batchNo || '-' }}
+                </div>
               </div>
             </div>
           </div>
@@ -66,25 +106,48 @@
         <div class="col-lg-6">
           <div class="card shadow">
             <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">Stock Adjustment</h6>
+              <h6 class="m-0 fw-bold text-primary">
+                Stock Adjustment
+              </h6>
             </div>
             <div class="card-body">
               <form @submit.prevent="handleSubmit">
                 <div class="mb-3">
                   <label class="form-label">Transaction Type <span class="text-danger">*</span></label>
-                  <select class="form-select" v-model="adjustForm.type" required>
-                    <option value="">-- Select Type --</option>
-                    <option value="ADJUST">ADJUST (Set to exact quantity)</option>
-                    <option value="RETURN">RETURN (Remove from stock)</option>
-                    <option value="EXPIRED">EXPIRED (Mark as expired)</option>
+                  <select
+                    v-model="adjustForm.type"
+                    class="form-select"
+                    required
+                  >
+                    <option value="">
+                      -- Select Type --
+                    </option>
+                    <option value="ADJUST">
+                      ADJUST (Set to exact quantity)
+                    </option>
+                    <option value="RETURN">
+                      RETURN (Remove from stock)
+                    </option>
+                    <option value="EXPIRED">
+                      EXPIRED (Mark as expired)
+                    </option>
                   </select>
-                  <div class="form-text" v-if="adjustForm.type === 'ADJUST'">
+                  <div
+                    v-if="adjustForm.type === 'ADJUST'"
+                    class="form-text"
+                  >
                     ADJUST sets the stock to the exact quantity you enter.
                   </div>
-                  <div class="form-text" v-else-if="adjustForm.type === 'RETURN'">
+                  <div
+                    v-else-if="adjustForm.type === 'RETURN'"
+                    class="form-text"
+                  >
                     RETURN reduces the current stock by the quantity entered.
                   </div>
-                  <div class="form-text" v-else-if="adjustForm.type === 'EXPIRED'">
+                  <div
+                    v-else-if="adjustForm.type === 'EXPIRED'"
+                    class="form-text"
+                  >
                     EXPIRED removes expired stock from inventory.
                   </div>
                 </div>
@@ -92,13 +155,13 @@
                 <div class="mb-3">
                   <label class="form-label">Quantity <span class="text-danger">*</span></label>
                   <input 
+                    v-model.number="adjustForm.quantity" 
                     type="number" 
                     min="0" 
                     class="form-control" 
-                    v-model.number="adjustForm.quantity" 
                     required 
                     placeholder="Enter quantity"
-                  />
+                  >
                   <div class="form-text">
                     <span v-if="adjustForm.type === 'ADJUST'">
                       New stock level will be: <strong>{{ adjustForm.quantity || 0 }}</strong> doses
@@ -115,25 +178,38 @@
                 <div class="mb-3">
                   <label class="form-label">Note (Optional)</label>
                   <textarea 
+                    v-model="adjustForm.note" 
                     class="form-control" 
                     rows="3" 
-                    v-model="adjustForm.note" 
                     placeholder="Reason or remarks for this adjustment"
-                  ></textarea>
+                  />
                 </div>
 
                 <div class="alert alert-warning">
-                  <i class="bi bi-exclamation-triangle me-2"></i>
+                  <i class="bi bi-exclamation-triangle me-2" />
                   <strong>Warning:</strong> This action will update the inventory stock level and cannot be undone.
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                  <router-link to="/admin/vaccines" class="btn btn-secondary">
-                    <i class="bi bi-x-circle me-2"></i>Cancel
+                  <router-link
+                    to="/admin/vaccines"
+                    class="btn btn-secondary"
+                  >
+                    <i class="bi bi-x-circle me-2" />Cancel
                   </router-link>
-                  <button type="submit" class="btn btn-primary" :disabled="submitting">
-                    <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                    <i v-else class="bi bi-check-circle me-2"></i>
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    :disabled="submitting"
+                  >
+                    <span
+                      v-if="submitting"
+                      class="spinner-border spinner-border-sm me-2"
+                    />
+                    <i
+                      v-else
+                      class="bi bi-check-circle me-2"
+                    />
                     Apply Adjustment
                   </button>
                 </div>
@@ -144,9 +220,14 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        Failed to load inventory data. <router-link to="/admin/vaccines">Go back to inventory</router-link>
+      <div
+        v-else
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        Failed to load inventory data. <router-link to="/admin/vaccines">
+          Go back to inventory
+        </router-link>
       </div>
     </div>
   </AdminLayout>

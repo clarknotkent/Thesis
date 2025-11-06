@@ -2,11 +2,27 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Dashboard</router-link></li>
-          <li class="breadcrumb-item"><router-link to="/admin/patients">Patient Records</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">Add Patient</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Dashboard
+            </router-link>
+          </li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/patients">
+              Patient Records
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Add Patient
+          </li>
         </ol>
       </nav>
 
@@ -14,39 +30,60 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 class="mb-1">
-            <i class="bi bi-person-plus-fill me-2"></i>Add New Patient
+            <i class="bi bi-person-plus-fill me-2" />Add New Patient
           </h2>
-          <p class="text-muted mb-0">Register a new patient in the system</p>
+          <p class="text-muted mb-0">
+            Register a new patient in the system
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" @click="goBack">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/dashboard" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/dashboard"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loadingGuardians" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loadingGuardians"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading guardians...</span>
         </div>
-        <p class="text-muted mt-2">Loading guardian information...</p>
+        <p class="text-muted mt-2">
+          Loading guardian information...
+        </p>
       </div>
 
       <!-- Form Card -->
-      <div v-else class="card shadow">
+      <div
+        v-else
+        class="card shadow"
+      >
         <div class="card-header py-3">
-          <h6 class="m-0 fw-bold text-primary">Patient Information Form</h6>
+          <h6 class="m-0 fw-bold text-primary">
+            Patient Information Form
+          </h6>
         </div>
         <div class="card-body p-4">
           <PatientForm
             :initial-data="{}"
             :guardians="guardians"
-                    :mother-suggestions="motherSuggestions"
-                    :father-suggestions="fatherSuggestions"
+            :mother-suggestions="motherSuggestions"
+            :father-suggestions="fatherSuggestions"
             :is-editing="false"
             :submitting="submitting"
             submit-label="Add Patient"

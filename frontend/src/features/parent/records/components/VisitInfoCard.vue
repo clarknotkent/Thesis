@@ -1,13 +1,13 @@
 <template>
   <div class="info-card">
     <div class="card-header primary">
-      <i class="bi bi-clipboard-data"></i>
+      <i class="bi bi-clipboard-data" />
       <h2>Visit Information</h2>
     </div>
     <div class="card-body">
       <div class="info-item">
         <div class="info-icon">
-          <i class="bi bi-person-circle text-primary"></i>
+          <i class="bi bi-person-circle text-primary" />
         </div>
         <div class="info-content">
           <span class="info-label">Patient</span>
@@ -16,7 +16,7 @@
       </div>
       <div class="info-item">
         <div class="info-icon">
-          <i class="bi bi-calendar-event text-success"></i>
+          <i class="bi bi-calendar-event text-success" />
         </div>
         <div class="info-content">
           <span class="info-label">Visit Date</span>
@@ -25,7 +25,7 @@
       </div>
       <div class="info-item">
         <div class="info-icon">
-          <i class="bi bi-person-badge text-info"></i>
+          <i class="bi bi-person-badge text-info" />
         </div>
         <div class="info-content">
           <span class="info-label">Health Staff</span>
@@ -34,7 +34,7 @@
       </div>
       <div class="info-item">
         <div class="info-icon">
-          <i :class="hasOutsideServices ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'"></i>
+          <i :class="hasOutsideServices ? 'bi bi-house-door text-warning' : 'bi bi-building text-secondary'" />
         </div>
         <div class="info-content">
           <span class="info-label">Service Location</span>
@@ -43,13 +43,18 @@
           </span>
         </div>
       </div>
-      <div v-if="findings" class="info-item findings">
+      <div
+        v-if="findings"
+        class="info-item findings"
+      >
         <div class="info-icon">
-          <i class="bi bi-journal-text text-info"></i>
+          <i class="bi bi-journal-text text-info" />
         </div>
         <div class="info-content">
           <span class="info-label">Clinical Findings</span>
-          <p class="findings-text">{{ findings }}</p>
+          <p class="findings-text">
+            {{ findings }}
+          </p>
         </div>
       </div>
     </div>

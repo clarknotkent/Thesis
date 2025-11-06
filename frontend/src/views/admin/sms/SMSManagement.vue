@@ -2,19 +2,33 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><router-link to="/admin/dashboard">Admin</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">SMS Management</li>
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            SMS Management
+          </li>
         </ol>
       </nav>
 
       <!-- Header -->
       <div class="mb-3">
         <h2 class="mb-1">
-          <i class="bi bi-chat-dots me-2"></i>SMS Management
+          <i class="bi bi-chat-dots me-2" />SMS Management
         </h2>
-        <p class="text-muted mb-0">Manage vaccination reminder messages and auto-send settings</p>
+        <p class="text-muted mb-0">
+          Manage vaccination reminder messages and auto-send settings
+        </p>
       </div>
 
       <!-- SMS Summary Cards -->
@@ -25,11 +39,18 @@
             <div class="card-body py-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Sent</div>
-                  <div class="h4 mb-0 fw-bold text-gray-800">1,247</div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                    Total Sent
+                  </div>
+                  <div class="h4 mb-0 fw-bold text-gray-800">
+                    1,247
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-send-check text-primary" style="font-size: 2.5rem;"></i>
+                  <i
+                    class="bi bi-send-check text-primary"
+                    style="font-size: 2.5rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -42,11 +63,18 @@
             <div class="card-body py-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">Pending</div>
-                  <div class="h4 mb-0 fw-bold text-gray-800">23</div>
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                    Pending
+                  </div>
+                  <div class="h4 mb-0 fw-bold text-gray-800">
+                    23
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-clock-history text-warning" style="font-size: 2.5rem;"></i>
+                  <i
+                    class="bi bi-clock-history text-warning"
+                    style="font-size: 2.5rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -59,11 +87,18 @@
             <div class="card-body py-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Failed</div>
-                  <div class="h4 mb-0 fw-bold text-gray-800">5</div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">
+                    Failed
+                  </div>
+                  <div class="h4 mb-0 fw-bold text-gray-800">
+                    5
+                  </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-x-circle text-danger" style="font-size: 2.5rem;"></i>
+                  <i
+                    class="bi bi-x-circle text-danger"
+                    style="font-size: 2.5rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -76,13 +111,21 @@
             <div class="card-body py-3">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Auto-Send</div>
-                  <div class="h4 mb-0 fw-bold" :class="autoSendEnabled ? 'text-success' : 'text-danger'">
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                    Auto-Send
+                  </div>
+                  <div
+                    class="h4 mb-0 fw-bold"
+                    :class="autoSendEnabled ? 'text-success' : 'text-danger'"
+                  >
                     {{ autoSendEnabled ? 'ON' : 'OFF' }}
                   </div>
                 </div>
                 <div class="col-auto">
-                  <i class="bi bi-lightning-charge text-success" style="font-size: 2.5rem;"></i>
+                  <i
+                    class="bi bi-lightning-charge text-success"
+                    style="font-size: 2.5rem;"
+                  />
                 </div>
               </div>
             </div>
@@ -104,7 +147,7 @@
                     :class="{ active: activeTab === 'logs' }"
                     @click="activeTab = 'logs'"
                   >
-                    <i class="bi bi-list-ul me-2"></i>Message Logs
+                    <i class="bi bi-list-ul me-2" />Message Logs
                   </button>
                 </li>
                 <li class="nav-item">
@@ -113,7 +156,7 @@
                     :class="{ active: activeTab === 'templates' }"
                     @click="activeTab = 'templates'"
                   >
-                    <i class="bi bi-file-text me-2"></i>Message Templates
+                    <i class="bi bi-file-text me-2" />Message Templates
                   </button>
                 </li>
                 <li class="nav-item">
@@ -122,24 +165,33 @@
                     :class="{ active: activeTab === 'settings' }"
                     @click="activeTab = 'settings'"
                   >
-                    <i class="bi bi-gear me-2"></i>Auto-Send Settings
+                    <i class="bi bi-gear me-2" />Auto-Send Settings
                   </button>
                 </li>
               </ul>
             </div>
             <div class="card-body p-0">
               <!-- Message Logs Tab -->
-              <div v-if="activeTab === 'logs'" class="p-4">
+              <div
+                v-if="activeTab === 'logs'"
+                class="p-4"
+              >
                 <MessageLogs />
               </div>
 
               <!-- Message Templates Tab -->
-              <div v-if="activeTab === 'templates'" class="p-4">
+              <div
+                v-if="activeTab === 'templates'"
+                class="p-4"
+              >
                 <MessageTemplates />
               </div>
 
               <!-- Auto-Send Settings Tab -->
-              <div v-if="activeTab === 'settings'" class="p-4">
+              <div
+                v-if="activeTab === 'settings'"
+                class="p-4"
+              >
                 <AutoSendSettings />
               </div>
             </div>

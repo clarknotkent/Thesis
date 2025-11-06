@@ -1,13 +1,20 @@
 <template>
   <HealthWorkerLayout>
     <div class="messages-container">
-
       <!-- Loading State -->
-      <div v-if="loading && !selectedConversation" class="loading-state">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading && !selectedConversation"
+        class="loading-state"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="mt-2">Loading conversations...</p>
+        <p class="mt-2">
+          Loading conversations...
+        </p>
       </div>
 
       <!-- Conversations List View -->

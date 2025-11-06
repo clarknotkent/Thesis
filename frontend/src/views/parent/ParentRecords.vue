@@ -1,34 +1,56 @@
 <template>
   <ParentLayout title="My Records">
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="alert alert-danger m-3" role="alert">
-      <i class="bi bi-exclamation-triangle me-2"></i>
+    <div
+      v-else-if="error"
+      class="alert alert-danger m-3"
+      role="alert"
+    >
+      <i class="bi bi-exclamation-triangle me-2" />
       {{ error }}
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="dependents.length === 0" class="empty-state">
+    <div
+      v-else-if="dependents.length === 0"
+      class="empty-state"
+    >
       <div class="empty-state-icon">
-        <i class="bi bi-folder"></i>
+        <i class="bi bi-folder" />
       </div>
-      <h5 class="empty-state-title">No Records Found</h5>
+      <h5 class="empty-state-title">
+        No Records Found
+      </h5>
       <p class="empty-state-text">
         You don't have any registered dependents yet. Please contact your health worker to register your child.
       </p>
     </div>
 
     <!-- Dependents List -->
-    <div v-else class="records-container">
+    <div
+      v-else
+      class="records-container"
+    >
       <div class="section-header">
-        <h5 class="section-title">My Family's Records</h5>
-        <p class="section-subtitle">Tap on a child to view their health records</p>
+        <h5 class="section-title">
+          My Family's Records
+        </h5>
+        <p class="section-subtitle">
+          Tap on a child to view their health records
+        </p>
       </div>
 
       <div class="dependents-list">
@@ -121,7 +143,7 @@ const fetchDependents = async () => {
     if (!navigator.onLine || dependents.value.length === 0) {
       console.log('📴 Loading from IndexedDB cache')
       try {
-        let cachedChildren = await db.patients.toArray()
+        const cachedChildren = await db.patients.toArray()
         
         if (cachedChildren.length > 0) {
           console.log('📦 Found children in IndexedDB cache')

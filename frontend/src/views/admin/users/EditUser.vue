@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/users">User Accounts</router-link>
+            <router-link to="/admin/users">
+              User Accounts
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">Edit User</li>
+          <li class="breadcrumb-item active">
+            Edit User
+          </li>
         </ol>
       </nav>
 
@@ -18,29 +27,46 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-pencil-square me-2"></i>Edit User
+            <i class="bi bi-pencil-square me-2" />Edit User
           </h1>
-          <p class="text-muted mb-0">Update user account information</p>
+          <p class="text-muted mb-0">
+            Update user account information
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/users" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/users"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Form Card -->
-      <div v-else-if="userData" class="card shadow">
+      <div
+        v-else-if="userData"
+        class="card shadow"
+      >
         <div class="card-body p-4">
           <UserForm
             :initial-data="userData"
@@ -53,9 +79,14 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        Failed to load user data. <router-link to="/admin/users">Go back to user list</router-link>
+      <div
+        v-else
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        Failed to load user data. <router-link to="/admin/users">
+          Go back to user list
+        </router-link>
       </div>
     </div>
   </AdminLayout>

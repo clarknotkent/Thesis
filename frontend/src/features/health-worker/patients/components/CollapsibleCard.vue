@@ -1,14 +1,22 @@
 <template>
   <div class="collapsible-card">
-    <button class="card-header" @click="$emit('toggle')">
+    <button
+      class="card-header"
+      @click="$emit('toggle')"
+    >
       <div class="header-left">
-        <i :class="`bi bi-${icon}`"></i>
-        <h3 class="card-title">{{ title }}</h3>
+        <i :class="`bi bi-${icon}`" />
+        <h3 class="card-title">
+          {{ title }}
+        </h3>
       </div>
-      <i :class="['bi', isExpanded ? 'bi-chevron-up' : 'bi-chevron-down', 'toggle-icon']"></i>
+      <i :class="['bi', isExpanded ? 'bi-chevron-up' : 'bi-chevron-down', 'toggle-icon']" />
     </button>
     <transition name="expand">
-      <div v-if="isExpanded" class="card-content">
+      <div
+        v-if="isExpanded"
+        class="card-content"
+      >
         <slot />
       </div>
     </transition>

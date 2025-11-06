@@ -2,20 +2,32 @@
   <HealthWorkerLayout>
     <div class="qr-scanner-page">
       <div class="scanner-header">
-        <h5 class="mb-1"><i class="bi bi-qr-code-scan me-2"></i>Scan Patient QR</h5>
-        <p class="text-muted small mb-1">Point the camera at the QR. It will auto-redirect when detected.</p>
+        <h5 class="mb-1">
+          <i class="bi bi-qr-code-scan me-2" />Scan Patient QR
+        </h5>
+        <p class="text-muted small mb-1">
+          Point the camera at the QR. It will auto-redirect when detected.
+        </p>
         <div class="small">
           <span class="badge bg-secondary me-2">Role: {{ displayRole }}</span>
-          <span v-if="displayName" class="text-muted">User: {{ displayName }}</span>
+          <span
+            v-if="displayName"
+            class="text-muted"
+          >User: {{ displayName }}</span>
         </div>
       </div>
 
       <div class="scanner-container">
         <div class="video-wrapper">
-          <video ref="videoEl" autoplay playsinline muted></video>
+          <video
+            ref="videoEl"
+            autoplay
+            playsinline
+            muted
+          />
           <div class="scan-overlay">
-            <div class="corner tl"/><div class="corner tr"/>
-            <div class="corner bl"/><div class="corner br"/>
+            <div class="corner tl" /><div class="corner tr" />
+            <div class="corner bl" /><div class="corner br" />
           </div>
         </div>
       </div>
@@ -23,18 +35,40 @@
       <div class="controls">
         <div class="row g-2 align-items-center">
           <div class="col-8">
-            <select class="form-select form-select-sm" v-model="selectedDeviceId" @change="restart">
-              <option v-for="d in devices" :key="d.deviceId" :value="d.deviceId">
+            <select
+              v-model="selectedDeviceId"
+              class="form-select form-select-sm"
+              @change="restart"
+            >
+              <option
+                v-for="d in devices"
+                :key="d.deviceId"
+                :value="d.deviceId"
+              >
                 {{ d.label || 'Camera' }}
               </option>
             </select>
           </div>
           <div class="col-4 d-flex justify-content-end">
-            <button class="btn btn-sm btn-outline-secondary me-2" @click="toggleTorch" :disabled="!canTorch">
-              <i class="bi" :class="torchOn ? 'bi-lightbulb-fill' : 'bi-lightbulb'"/> Torch
+            <button
+              class="btn btn-sm btn-outline-secondary me-2"
+              :disabled="!canTorch"
+              @click="toggleTorch"
+            >
+              <i
+                class="bi"
+                :class="torchOn ? 'bi-lightbulb-fill' : 'bi-lightbulb'"
+              /> Torch
             </button>
-            <button class="btn btn-sm" :class="isRunning ? 'btn-danger' : 'btn-primary'" @click="isRunning ? stop() : start()">
-              <i class="bi" :class="isRunning ? 'bi-stop-fill' : 'bi-play-fill'"/>
+            <button
+              class="btn btn-sm"
+              :class="isRunning ? 'btn-danger' : 'btn-primary'"
+              @click="isRunning ? stop() : start()"
+            >
+              <i
+                class="bi"
+                :class="isRunning ? 'bi-stop-fill' : 'bi-play-fill'"
+              />
               <span class="ms-1">{{ isRunning ? 'Stop' : 'Start' }}</span>
             </button>
           </div>
@@ -44,17 +78,33 @@
       <div class="fallback mt-3">
         <label class="form-label small text-muted">Or paste QR link</label>
         <div class="input-group input-group-sm">
-          <input type="text" v-model="manualText" class="form-control" placeholder="https://... or patient ID" />
-          <button class="btn btn-outline-primary" @click="handleResult(manualText)">Go</button>
+          <input
+            v-model="manualText"
+            type="text"
+            class="form-control"
+            placeholder="https://... or patient ID"
+          >
+          <button
+            class="btn btn-outline-primary"
+            @click="handleResult(manualText)"
+          >
+            Go
+          </button>
         </div>
       </div>
 
-      <div v-if="message" class="alert alert-info py-2 mt-3">
-        <i class="bi bi-info-circle me-2"/>{{ message }}
+      <div
+        v-if="message"
+        class="alert alert-info py-2 mt-3"
+      >
+        <i class="bi bi-info-circle me-2" />{{ message }}
       </div>
 
-      <div v-if="error" class="alert alert-danger py-2 mt-3">
-        <i class="bi bi-exclamation-triangle me-2"/>{{ error }}
+      <div
+        v-if="error"
+        class="alert alert-danger py-2 mt-3"
+      >
+        <i class="bi bi-exclamation-triangle me-2" />{{ error }}
       </div>
     </div>
   </HealthWorkerLayout>
@@ -73,7 +123,7 @@ const { addToast } = useToast()
 
 const videoEl = ref(null)
 // Prefer QR-only reader for better detection performance
-let reader = new BrowserQRCodeReader()
+const reader = new BrowserQRCodeReader()
 const devices = ref([])
 const selectedDeviceId = ref('')
 const isRunning = ref(false)

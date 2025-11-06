@@ -1,21 +1,34 @@
 <template>
-  <div class="inventory-card" @click="$emit('click', inventory)">
+  <div
+    class="inventory-card"
+    @click="$emit('click', inventory)"
+  >
     <div class="card-header">
       <div class="vaccine-info">
-        <i class="bi bi-shield-fill-check vaccine-icon"></i>
+        <i class="bi bi-shield-fill-check vaccine-icon" />
         <div class="vaccine-details">
-          <h3 class="vaccine-name">{{ vaccineName }}</h3>
-          <p class="vaccine-meta">{{ manufacturer }} • {{ brandName }}</p>
+          <h3 class="vaccine-name">
+            {{ vaccineName }}
+          </h3>
+          <p class="vaccine-meta">
+            {{ manufacturer }} • {{ brandName }}
+          </p>
         </div>
       </div>
-      <span class="status-badge" :class="statusClass">{{ status }}</span>
+      <span
+        class="status-badge"
+        :class="statusClass"
+      >{{ status }}</span>
     </div>
 
     <div class="card-body">
       <div class="info-row">
         <div class="info-item">
           <span class="info-label">Quantity</span>
-          <span class="info-value" :class="quantityClass">{{ quantity }}</span>
+          <span
+            class="info-value"
+            :class="quantityClass"
+          >{{ quantity }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Expiration</span>
@@ -23,14 +36,17 @@
         </div>
       </div>
 
-      <div v-if="lotNumber" class="lot-info">
+      <div
+        v-if="lotNumber"
+        class="lot-info"
+      >
         <span class="lot-label">Lot:</span>
         <span class="lot-value">{{ lotNumber }}</span>
       </div>
     </div>
 
     <div class="card-footer">
-      <i class="bi bi-chevron-right"></i>
+      <i class="bi bi-chevron-right" />
     </div>
   </div>
 </template>

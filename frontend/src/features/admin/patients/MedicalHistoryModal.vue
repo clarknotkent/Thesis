@@ -1,25 +1,47 @@
 <template>
   <!-- Embedded Page View -->
-  <div v-if="embeddedPage" class="medical-history-page container-fluid py-3">
+  <div
+    v-if="embeddedPage"
+    class="medical-history-page container-fluid py-3"
+  >
     <div class="d-flex align-items-center mb-3">
-      <h3 class="mb-0">Medical History</h3>
-      <button class="btn btn-outline-secondary ms-auto" @click="onClose">Back</button>
+      <h3 class="mb-0">
+        Medical History
+      </h3>
+      <button
+        class="btn btn-outline-secondary ms-auto"
+        @click="onClose"
+      >
+        Back
+      </button>
     </div>
 
     <div class="card shadow-sm">
       <div class="card-body">
-        <div v-if="loading" class="text-center py-4">
-          <div class="spinner-border text-primary" role="status">
+        <div
+          v-if="loading"
+          class="text-center py-4"
+        >
+          <div
+            class="spinner-border text-primary"
+            role="status"
+          >
             <span class="visually-hidden">Loading...</span>
           </div>
         </div>
 
         <div v-else>
-          <div v-if="visits.length === 0" class="text-center text-muted py-4">
+          <div
+            v-if="visits.length === 0"
+            class="text-center text-muted py-4"
+          >
             No visits found for this patient.
           </div>
 
-          <div v-else class="list-group">
+          <div
+            v-else
+            class="list-group"
+          >
             <button 
               v-for="v in visits" 
               :key="v.visit_id" 
@@ -67,23 +89,39 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
-              <i class="bi bi-clock-history me-2"></i>Medical History
+              <i class="bi bi-clock-history me-2" />Medical History
             </h5>
-            <button type="button" class="btn-close" @click="$emit('close')"></button>
+            <button
+              type="button"
+              class="btn-close"
+              @click="$emit('close')"
+            />
           </div>
           <div class="modal-body">
-            <div v-if="loading" class="text-center py-4">
-              <div class="spinner-border text-primary" role="status">
+            <div
+              v-if="loading"
+              class="text-center py-4"
+            >
+              <div
+                class="spinner-border text-primary"
+                role="status"
+              >
                 <span class="visually-hidden">Loading...</span>
               </div>
             </div>
 
             <div v-else>
-              <div v-if="visits.length === 0" class="text-center text-muted py-4">
+              <div
+                v-if="visits.length === 0"
+                class="text-center text-muted py-4"
+              >
                 No visits found for this patient.
               </div>
 
-              <div v-else class="list-group">
+              <div
+                v-else
+                class="list-group"
+              >
                 <button 
                   v-for="v in visits" 
                   :key="v.visit_id" 
@@ -119,7 +157,10 @@
         </div>
       </div>
     </div>
-    <div v-if="show && !embeddedPage" class="modal-backdrop fade show"></div>
+    <div
+      v-if="show && !embeddedPage"
+      class="modal-backdrop fade show"
+    />
   </div>
 </template>
 

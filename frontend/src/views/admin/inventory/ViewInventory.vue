@@ -2,15 +2,24 @@
   <AdminLayout>
     <div class="container-fluid">
       <!-- Breadcrumb -->
-      <nav aria-label="breadcrumb" class="mb-3">
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <router-link to="/admin/dashboard">Admin</router-link>
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
           </li>
           <li class="breadcrumb-item">
-            <router-link to="/admin/vaccines">Vaccine Inventory</router-link>
+            <router-link to="/admin/vaccines">
+              Vaccine Inventory
+            </router-link>
           </li>
-          <li class="breadcrumb-item active">View Details</li>
+          <li class="breadcrumb-item active">
+            View Details
+          </li>
         </ol>
       </nav>
 
@@ -18,23 +27,37 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-eye me-2"></i>Inventory Details
+            <i class="bi bi-eye me-2" />Inventory Details
           </h1>
-          <p class="text-muted mb-0">View vaccine stock information</p>
+          <p class="text-muted mb-0">
+            View vaccine stock information
+          </p>
         </div>
         <div class="d-flex gap-2">
-          <button @click="goBack" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back
+          <button
+            class="btn btn-outline-secondary"
+            @click="goBack"
+          >
+            <i class="bi bi-arrow-left me-2" />Back
           </button>
-          <router-link to="/admin/vaccines" class="btn btn-outline-primary">
-            <i class="bi bi-house me-2"></i>Home
+          <router-link
+            to="/admin/vaccines"
+            class="btn btn-outline-primary"
+          >
+            <i class="bi bi-house me-2" />Home
           </router-link>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
@@ -45,7 +68,7 @@
         <div class="card shadow mb-4">
           <div class="card-header bg-white py-3">
             <h6 class="m-0 fw-bold text-primary">
-              <i class="bi bi-info-circle me-2"></i>Vaccine Information
+              <i class="bi bi-info-circle me-2" />Vaccine Information
             </h6>
           </div>
           <div class="card-body">
@@ -53,13 +76,21 @@
               <!-- Left Column -->
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">VACCINE</label>
-                <input type="text" class="form-control bg-light" :value="inventoryData.vaccineName" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="inventoryData.vaccineName"
+                  readonly
+                >
               </div>
               
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">STATUS</label>
                 <div>
-                  <span class="badge" :class="getStatusBadgeClass(inventoryData.status)">
+                  <span
+                    class="badge"
+                    :class="getStatusBadgeClass(inventoryData.status)"
+                  >
                     {{ inventoryData.status }}
                   </span>
                 </div>
@@ -67,38 +98,71 @@
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">MANUFACTURER</label>
-                <input type="text" class="form-control bg-light" :value="inventoryData.manufacturer || '—'" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="inventoryData.manufacturer || '—'"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">BRAND</label>
-                <input type="text" class="form-control bg-light" :value="inventoryData.brandName || '—'" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="inventoryData.brandName || '—'"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">LOT NUMBER</label>
-                <input type="text" class="form-control bg-light" :value="inventoryData.batchNo || inventoryData.lotNumber || '—'" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="inventoryData.batchNo || inventoryData.lotNumber || '—'"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">QUANTITY</label>
-                <input type="text" class="form-control bg-light fw-bold" :value="`${inventoryData.quantity} doses`" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light fw-bold"
+                  :value="`${inventoryData.quantity} doses`"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">EXPIRATION DATE</label>
-                <input type="text" class="form-control bg-light" :value="formatDate(inventoryData.expiryDate)" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="formatDate(inventoryData.expiryDate)"
+                  readonly
+                >
               </div>
 
               <div class="col-md-6">
                 <label class="form-label text-muted small fw-semibold">STORAGE LOCATION</label>
-                <input type="text" class="form-control bg-light" :value="inventoryData.storageLocation || '—'" readonly>
+                <input
+                  type="text"
+                  class="form-control bg-light"
+                  :value="inventoryData.storageLocation || '—'"
+                  readonly
+                >
               </div>
             </div>
           </div>
           <div class="card-footer bg-white d-flex justify-content-end gap-2">
-            <button @click="editInventory" class="btn btn-primary">
-              <i class="bi bi-pencil me-2"></i>Edit
+            <button
+              class="btn btn-primary"
+              @click="editInventory"
+            >
+              <i class="bi bi-pencil me-2" />Edit
             </button>
           </div>
         </div>
@@ -107,90 +171,209 @@
         <div class="card shadow">
           <div class="card-header bg-white py-3">
             <h6 class="m-0 fw-bold text-primary">
-              <i class="bi bi-clock-history me-2"></i>Transaction History
+              <i class="bi bi-clock-history me-2" />Transaction History
             </h6>
           </div>
           <div class="card-body">
             <!-- Search and Sort Controls -->
-            <div v-if="history && history.length > 0" class="d-flex justify-content-between align-items-center mb-3 gap-3">
+            <div
+              v-if="history && history.length > 0"
+              class="d-flex justify-content-between align-items-center mb-3 gap-3"
+            >
               <div class="d-flex gap-2 align-items-center flex-grow-1">
                 <!-- Search Bar -->
-                <div class="input-group" style="max-width: 300px;">
+                <div
+                  class="input-group"
+                  style="max-width: 300px;"
+                >
                   <input 
+                    v-model="searchQuery" 
                     type="text" 
-                    class="form-control form-control-sm" 
-                    v-model="searchQuery"
+                    class="form-control form-control-sm"
                     placeholder="Search transactions..."
                   >
-                  <button class="btn btn-sm btn-outline-primary" type="button">
-                    <i class="bi bi-search"></i>
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    type="button"
+                  >
+                    <i class="bi bi-search" />
                   </button>
                 </div>
                 
                 <!-- Type Filter -->
                 <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="typeFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                  <button
+                    id="typeFilter"
+                    class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
                     Filter: {{ filterType || 'All Types' }}
                   </button>
-                  <ul class="dropdown-menu" aria-labelledby="typeFilter">
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = ''">All Types</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'ADJUST'">ADJUST</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'RETURN'">RETURN</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'EXPIRED'">EXPIRED</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'RECEIVE'">RECEIVE</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="filterType = 'ISSUE'">ISSUE</a></li>
+                  <ul
+                    class="dropdown-menu"
+                    aria-labelledby="typeFilter"
+                  >
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = ''"
+                      >All Types</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = 'ADJUST'"
+                      >ADJUST</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = 'RETURN'"
+                      >RETURN</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = 'EXPIRED'"
+                      >EXPIRED</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = 'RECEIVE'"
+                      >RECEIVE</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="filterType = 'ISSUE'"
+                      >ISSUE</a>
+                    </li>
                   </ul>
                 </div>
                 
                 <!-- Sort Dropdown -->
                 <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <button
+                    id="sortDropdown"
+                    class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
                     Sort: {{ sortOrder === 'newest' ? 'Newest First' : 'Oldest First' }}
                   </button>
-                  <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                    <li><a class="dropdown-item" href="#" @click.prevent="sortOrder = 'newest'">Newest First</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="sortOrder = 'oldest'">Oldest First</a></li>
+                  <ul
+                    class="dropdown-menu"
+                    aria-labelledby="sortDropdown"
+                  >
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="sortOrder = 'newest'"
+                      >Newest First</a>
+                    </li>
+                    <li>
+                      <a
+                        class="dropdown-item"
+                        href="#"
+                        @click.prevent="sortOrder = 'oldest'"
+                      >Oldest First</a>
+                    </li>
                   </ul>
                 </div>
               </div>
             </div>
 
             <!-- Loading State -->
-            <div v-if="historyLoading" class="text-center py-4">
-              <div class="spinner-border text-primary spinner-border-sm" role="status">
+            <div
+              v-if="historyLoading"
+              class="text-center py-4"
+            >
+              <div
+                class="spinner-border text-primary spinner-border-sm"
+                role="status"
+              >
                 <span class="visually-hidden">Loading history...</span>
               </div>
             </div>
 
             <!-- Empty State -->
-            <div v-else-if="!history || history.length === 0" class="text-center py-4 text-muted">
-              <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-              <p class="mb-0 mt-2">No transaction history available</p>
+            <div
+              v-else-if="!history || history.length === 0"
+              class="text-center py-4 text-muted"
+            >
+              <i
+                class="bi bi-inbox"
+                style="font-size: 2rem;"
+              />
+              <p class="mb-0 mt-2">
+                No transaction history available
+              </p>
             </div>
 
             <!-- No Results State -->
-            <div v-else-if="paginatedHistory.length === 0" class="text-center py-4 text-muted">
-              <i class="bi bi-search" style="font-size: 2rem;"></i>
-              <p class="mb-0 mt-2">No transactions match your search</p>
+            <div
+              v-else-if="paginatedHistory.length === 0"
+              class="text-center py-4 text-muted"
+            >
+              <i
+                class="bi bi-search"
+                style="font-size: 2rem;"
+              />
+              <p class="mb-0 mt-2">
+                No transactions match your search
+              </p>
             </div>
 
             <!-- History Table -->
-            <div v-else class="table-responsive">
+            <div
+              v-else
+              class="table-responsive"
+            >
               <table class="table table-hover table-bordered mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th class="text-center">Date</th>
-                    <th class="text-center">Time</th>
-                    <th class="text-center">Transaction Type</th>
-                    <th class="text-center">Quantity Change</th>
-                    <th class="text-center">Before</th>
-                    <th class="text-center">After</th>
-                    <th class="text-center">Performed By</th>
-                    <th class="text-center">Notes</th>
+                    <th class="text-center">
+                      Date
+                    </th>
+                    <th class="text-center">
+                      Time
+                    </th>
+                    <th class="text-center">
+                      Transaction Type
+                    </th>
+                    <th class="text-center">
+                      Quantity Change
+                    </th>
+                    <th class="text-center">
+                      Before
+                    </th>
+                    <th class="text-center">
+                      After
+                    </th>
+                    <th class="text-center">
+                      Performed By
+                    </th>
+                    <th class="text-center">
+                      Notes
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="record in paginatedHistory" :key="record.id">
+                  <tr
+                    v-for="record in paginatedHistory"
+                    :key="record.id"
+                  >
                     <td class="text-center align-middle">
                       {{ formatDateOnly(record.timestamp) }}
                     </td>
@@ -198,7 +381,10 @@
                       {{ formatTimeOnly(record.timestamp) }}
                     </td>
                     <td class="text-center align-middle">
-                      <span class="badge" :class="getTransactionTypeClass(record.type)">
+                      <span
+                        class="badge"
+                        :class="getTransactionTypeClass(record.type)"
+                      >
                         {{ record.type }}
                       </span>
                     </td>
@@ -225,12 +411,15 @@
             </div>
 
             <!-- Pagination Footer -->
-            <div v-if="filteredHistory.length > 0" class="pagination-footer border-top mt-3 pt-3">
+            <div
+              v-if="filteredHistory.length > 0"
+              class="pagination-footer border-top mt-3 pt-3"
+            >
               <AppPagination
-                :currentPage="currentPage"
-                :totalPages="totalPages"
-                :totalItems="filteredHistory.length"
-                :itemsPerPage="itemsPerPage"
+                :current-page="currentPage"
+                :total-pages="totalPages"
+                :total-items="filteredHistory.length"
+                :items-per-page="itemsPerPage"
                 @page-changed="(page) => currentPage = page"
               />
             </div>
@@ -239,9 +428,14 @@
       </div>
 
       <!-- Error State -->
-      <div v-else class="alert alert-danger">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        Failed to load inventory data. <router-link to="/admin/vaccines">Go back to inventory</router-link>
+      <div
+        v-else
+        class="alert alert-danger"
+      >
+        <i class="bi bi-exclamation-circle me-2" />
+        Failed to load inventory data. <router-link to="/admin/vaccines">
+          Go back to inventory
+        </router-link>
       </div>
     </div>
   </AdminLayout>

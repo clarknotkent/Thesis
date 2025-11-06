@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "serve -s dist -l 5173"
+    "start": "serve -s dist -l 5173",
+    "lint": "eslint --ext .js,.vue src",
+    "lint:fix": "eslint --ext .js,.vue src --fix"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
@@ -26,7 +28,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-vue": "^10.5.1",
     "vite": "^7.1.0",
+    "vite-plugin-eslint": "^1.8.1",
     "vite-plugin-pwa": "^1.1.0"
   }
 }

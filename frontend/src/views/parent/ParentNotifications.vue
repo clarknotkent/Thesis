@@ -2,8 +2,12 @@
   <ParentLayout>
     <div class="notifications-container">
       <!-- Offline Warning -->
-      <div v-if="!isOnline" class="alert alert-warning d-flex align-items-center mb-3" role="alert">
-        <i class="bi bi-wifi-off me-2"></i>
+      <div
+        v-if="!isOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
         <div>
           <strong>Offline Mode - Notifications Disabled</strong><br>
           <small>You must be online to view notifications. Connect to the internet to access this feature.</small>
@@ -11,27 +15,45 @@
       </div>
 
       <div class="section-header">
-        <h5 class="section-title">Notifications</h5>
+        <h5 class="section-title">
+          Notifications
+        </h5>
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+      <div
+        v-if="loading"
+        class="text-center py-5"
+      >
+        <div
+          class="spinner-border text-primary"
+          role="status"
+        >
           <span class="visually-hidden">Loading...</span>
         </div>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="notifications.length === 0 || !isOnline" class="empty-state">
+      <div
+        v-else-if="notifications.length === 0 || !isOnline"
+        class="empty-state"
+      >
         <div class="empty-state-icon">
-          <i :class="!isOnline ? 'bi bi-wifi-off' : 'bi bi-bell'"></i>
+          <i :class="!isOnline ? 'bi bi-wifi-off' : 'bi bi-bell'" />
         </div>
-        <h6 class="empty-state-title">{{ !isOnline ? 'Not Available Offline' : 'No Notifications' }}</h6>
-        <p class="empty-state-text">{{ !isOnline ? 'Connect to the internet to view notifications.' : "You're all caught up!" }}</p>
+        <h6 class="empty-state-title">
+          {{ !isOnline ? 'Not Available Offline' : 'No Notifications' }}
+        </h6>
+        <p class="empty-state-text">
+          {{ !isOnline ? 'Connect to the internet to view notifications.' : "You're all caught up!" }}
+        </p>
       </div>
 
       <!-- Notifications List -->
-      <div v-else-if="isOnline" class="notifications-list">
+      <div
+        v-else-if="isOnline"
+        class="notifications-list"
+      >
         <div 
           v-for="notification in notifications" 
           :key="notification.id"
@@ -40,11 +62,15 @@
           @click="handleClick(notification)"
         >
           <div class="notification-icon">
-            <i :class="getNotificationIcon(notification.type)"></i>
+            <i :class="getNotificationIcon(notification.type)" />
           </div>
           <div class="notification-content">
-            <h6 class="notification-title">{{ notification.title }}</h6>
-            <p class="notification-message">{{ notification.message }}</p>
+            <h6 class="notification-title">
+              {{ notification.title }}
+            </h6>
+            <p class="notification-message">
+              {{ notification.message }}
+            </p>
             <span class="notification-time">{{ formatTime(notification.created_at) }}</span>
           </div>
         </div>

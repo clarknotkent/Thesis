@@ -1,21 +1,40 @@
 <template>
   <div class="medical-history-table">
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
+    <div
+      v-if="loading"
+      class="text-center py-5"
+    >
+      <div
+        class="spinner-border text-primary"
+        role="status"
+      >
         <span class="visually-hidden">Loading medical history...</span>
       </div>
-      <p class="text-muted mt-3">Loading medical history...</p>
+      <p class="text-muted mt-3">
+        Loading medical history...
+      </p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!visits || visits.length === 0" class="text-center py-5">
-      <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
-      <p class="text-muted mt-3">No medical records found</p>
+    <div
+      v-else-if="!visits || visits.length === 0"
+      class="text-center py-5"
+    >
+      <i
+        class="bi bi-clipboard-x text-muted"
+        style="font-size: 3rem;"
+      />
+      <p class="text-muted mt-3">
+        No medical records found
+      </p>
     </div>
 
     <!-- Medical History Table -->
-    <div v-else class="table-responsive">
+    <div
+      v-else
+      class="table-responsive"
+    >
       <table class="table table-hover table-striped">
         <thead>
           <tr>
@@ -31,64 +50,112 @@
           <tr
             v-for="visit in visits"
             :key="visit.visit_id || visit.id"
-            @click="$emit('select-visit', visit)"
             style="cursor: pointer;"
             title="Click to view visit details"
+            @click="$emit('select-visit', visit)"
           >
             <td>
-              <i class="bi bi-calendar-event me-1"></i>
+              <i class="bi bi-calendar-event me-1" />
               {{ formatDate(visit.visit_date) }}
             </td>
             <td>
-              <i class="bi bi-person-badge me-1"></i>
+              <i class="bi bi-person-badge me-1" />
               {{ getWorkerName(visit) }}
             </td>
             <td>
               <div class="d-flex flex-column gap-1">
-                <span v-if="visit.service_rendered" class="services-badge" :title="visit.service_rendered">
+                <span
+                  v-if="visit.service_rendered"
+                  class="services-badge"
+                  :title="visit.service_rendered"
+                >
                   {{ visit.service_rendered }}
                 </span>
                 <div class="d-flex gap-1">
-                  <span v-if="visit.vitamina_given" class="badge bg-warning text-dark">Vitamin A</span>
-                  <span v-if="visit.deworming_given" class="badge bg-success">Deworming</span>
+                  <span
+                    v-if="visit.vitamina_given"
+                    class="badge bg-warning text-dark"
+                  >Vitamin A</span>
+                  <span
+                    v-if="visit.deworming_given"
+                    class="badge bg-success"
+                  >Deworming</span>
                 </div>
               </div>
-              <span v-if="!visit.service_rendered && !visit.vitamina_given && !visit.deworming_given" class="text-muted">—</span>
+              <span
+                v-if="!visit.service_rendered && !visit.vitamina_given && !visit.deworming_given"
+                class="text-muted"
+              >—</span>
             </td>
             <td>
               <div v-if="Array.isArray(visit.immunizations_given) && visit.immunizations_given.length > 0">
-                <small class="d-block" v-for="(im, idx) in visit.immunizations_given" :key="idx">
-                  <i class="bi bi-syringe me-1"></i>{{ im.antigen_name }} 
+                <small
+                  v-for="(im, idx) in visit.immunizations_given"
+                  :key="idx"
+                  class="d-block"
+                >
+                  <i class="bi bi-syringe me-1" />{{ im.antigen_name }} 
                   <span v-if="im.dose_number">(Dose {{ im.dose_number }})</span>
                 </small>
               </div>
-              <span v-else class="text-muted">—</span>
+              <span
+                v-else
+                class="text-muted"
+              >—</span>
             </td>
             <td>
-              <div v-if="hasVitals(visit)" class="vitals-info">
-                <small class="d-block" v-if="getVitals(visit).height_length">
-                  <i class="bi bi-arrows-vertical me-1"></i>{{ getVitals(visit).height_length }} cm
+              <div
+                v-if="hasVitals(visit)"
+                class="vitals-info"
+              >
+                <small
+                  v-if="getVitals(visit).height_length"
+                  class="d-block"
+                >
+                  <i class="bi bi-arrows-vertical me-1" />{{ getVitals(visit).height_length }} cm
                 </small>
-                <small class="d-block" v-if="getVitals(visit).weight">
-                  <i class="bi bi-speedometer me-1"></i>{{ getVitals(visit).weight }} kg
+                <small
+                  v-if="getVitals(visit).weight"
+                  class="d-block"
+                >
+                  <i class="bi bi-speedometer me-1" />{{ getVitals(visit).weight }} kg
                 </small>
-                <small class="d-block" v-if="getVitals(visit).temperature">
-                  <i class="bi bi-thermometer me-1"></i>{{ getVitals(visit).temperature }}°C
+                <small
+                  v-if="getVitals(visit).temperature"
+                  class="d-block"
+                >
+                  <i class="bi bi-thermometer me-1" />{{ getVitals(visit).temperature }}°C
                 </small>
-                <small class="d-block" v-if="getVitals(visit).respiration_rate">
-                  <i class="bi bi-wind me-1"></i>{{ getVitals(visit).respiration_rate }} bpm
+                <small
+                  v-if="getVitals(visit).respiration_rate"
+                  class="d-block"
+                >
+                  <i class="bi bi-wind me-1" />{{ getVitals(visit).respiration_rate }} bpm
                 </small>
-                <small class="d-block" v-if="getVitals(visit).muac">
-                  <i class="bi bi-activity me-1"></i>{{ getVitals(visit).muac }} cm MUAC
+                <small
+                  v-if="getVitals(visit).muac"
+                  class="d-block"
+                >
+                  <i class="bi bi-activity me-1" />{{ getVitals(visit).muac }} cm MUAC
                 </small>
               </div>
-              <span v-else class="text-muted">—</span>
+              <span
+                v-else
+                class="text-muted"
+              >—</span>
             </td>
             <td>
-              <span v-if="visit.findings" class="text-truncate" :title="visit.findings">
+              <span
+                v-if="visit.findings"
+                class="text-truncate"
+                :title="visit.findings"
+              >
                 {{ truncateText(visit.findings, 80) }}
               </span>
-              <span v-else class="text-muted">—</span>
+              <span
+                v-else
+                class="text-muted"
+              >—</span>
             </td>
           </tr>
         </tbody>
@@ -96,7 +163,10 @@
     </div>
 
     <!-- Pagination Info -->
-    <div v-if="visits && visits.length > 0" class="text-muted small mt-3">
+    <div
+      v-if="visits && visits.length > 0"
+      class="text-muted small mt-3"
+    >
       Showing {{ visits.length }} visit{{ visits.length !== 1 ? 's' : '' }}
     </div>
   </div>
