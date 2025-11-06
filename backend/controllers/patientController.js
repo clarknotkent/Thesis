@@ -1,4 +1,5 @@
 const patientModel = require('../models/patientModel');
+const moment = require('moment-timezone');
 const notificationModel = require('../models/notificationModel');
 const { getSupabaseForRequest } = require('../utils/supabaseClient');
 const immunizationModel = require('../models/immunizationModel');
@@ -6,6 +7,7 @@ const { logActivity } = require('../models/activityLogger');
 const { ACTIVITY } = require('../constants/activityTypes');
 const { mintPatientQrUrl } = require('../services/qrService');
 const smsReminderService = require('../services/smsReminderService');
+const svcSupabase = require('../db');
 const serviceSupabase = require('../db');
 
 // Normalize incoming payload to match DB schema
@@ -106,10 +108,10 @@ const createPatient = async (req, res) => {
     // Validate required birthhistory fields (ensure critical newborn info is captured)
     const birthHistoryPayload = req.body.birthhistory || req.body.birth_history || req.body.medical_history || null;
     console.debug('createPatient incoming birthhistory payload:', JSON.stringify(birthHistoryPayload));
-    if (!birthHistoryPayload || !birthHistoryPayload.time_of_birth || !birthHistoryPayload.attendant_at_birth || !birthHistoryPayload.type_of_delivery) {
+    if (!birthHistoryPayload || !birthHistoryPayload.type_of_delivery) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required birth history fields: time_of_birth, attendant_at_birth, type_of_delivery'
+        message: 'Missing required birth history fields: type_of_delivery'
       });
     }
 
@@ -139,6 +141,26 @@ const createPatient = async (req, res) => {
     }
   } catch ( autofillErr ) {
     console.warn('Autofill mother fields failed (non-blocking):', autofillErr.message);
+  }
+
+  // If caller entered an occupation for the selected guardian (based on relationship),
+  // persist it to guardians.occupation so it auto-fills next time.
+  try {
+    const rel = (patientData.relationship_to_guardian || '').toLowerCase();
+    const enteredOccupation = rel === 'mother'
+      ? (patientData.mother_occupation || null)
+      : rel === 'father'
+        ? (patientData.father_occupation || null)
+        : null;
+    if (patientData.guardian_id && enteredOccupation && String(enteredOccupation).trim()) {
+      await supabase
+        .from('guardians')
+        .update({ occupation: String(enteredOccupation).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
+        .eq('guardian_id', patientData.guardian_id)
+        .eq('is_deleted', false);
+    }
+  } catch (occErr) {
+    console.warn('[createPatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
   }
 
   // Ensure created_by / updated_by defaults
@@ -510,6 +532,68 @@ const updatePatient = async (req, res) => {
     console.warn('Autofill mother fields on update failed (non-blocking):', autofillErr.message);
   }
     
+  // If user supplied occupation for selected guardian during update, propagate to guardians table
+  try {
+    const rel = (updates.relationship_to_guardian || '').toLowerCase();
+    const occ = rel === 'mother'
+      ? (updates.mother_occupation || null)
+      : rel === 'father'
+        ? (updates.father_occupation || null)
+        : null;
+    if (updates.guardian_id && occ && String(occ).trim()) {
+      const supabase = getSupabaseForRequest(req);
+      await supabase
+        .from('guardians')
+        .update({ occupation: String(occ).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
+        .eq('guardian_id', updates.guardian_id)
+        .eq('is_deleted', false);
+    }
+  } catch (occErr) {
+    console.warn('[updatePatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
+  }
+
+  // Pre-check: if birthdate is changing, enforce lock when any vaccine completed
+  let dobChanged = false;
+  let oldDob = null;
+  let newDob = updates.date_of_birth || null;
+  try {
+    if (typeof newDob !== 'undefined' && newDob !== null) {
+      const supabase = getSupabaseForRequest(req);
+      const { data: currentRow } = await supabase
+        .from('patients')
+        .select('date_of_birth')
+        .eq('patient_id', id)
+        .maybeSingle();
+      oldDob = currentRow?.date_of_birth || null;
+      // Normalize comparison to YYYY-MM-DD
+      const toISODate = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+      dobChanged = toISODate(oldDob) !== toISODate(newDob);
+      if (dobChanged) {
+        // Check for any completed schedules (actual_date not null)
+        const { data: completedRows, error: compErr } = await supabase
+          .from('patientschedule')
+          .select('patient_schedule_id')
+          .eq('patient_id', id)
+          .eq('is_deleted', false)
+          .not('actual_date', 'is', null);
+        if (compErr) {
+          console.warn('[updatePatient] completed schedules check failed (non-fatal):', compErr?.message || compErr);
+        }
+        const completedCount = Array.isArray(completedRows) ? completedRows.length : 0;
+        if (completedCount > 0) {
+          return res.status(400).json({
+            success: false,
+            code: 'DOB_LOCKED_HAS_COMPLETED',
+            message: 'Birthdate cannot be edited because at least one vaccine is already completed.',
+            completedCount
+          });
+        }
+      }
+    }
+  } catch (preErr) {
+    console.warn('[updatePatient] pre-check for DOB change failed (continuing):', preErr?.message || preErr);
+  }
+
   const updatedPatient = await patientModel.updatePatient(id, updates, getSupabaseForRequest(req));
 
     if (!updatedPatient) {
@@ -543,6 +627,26 @@ const updatePatient = async (req, res) => {
       }
     }
 
+    // After successful update: if DOB changed and patient has no completed doses, queue a background REWRITE of schedules
+    try {
+      if (dobChanged && updatedPatient && updatedPatient.date_of_birth) {
+        const toISODate = (d) => new Date(d).toISOString().split('T')[0];
+        const birthISO = toISODate(updatedPatient.date_of_birth);
+        const userId = req.user?.user_id || null;
+        const patientIdForTask = id;
+        const runAsync = async () => {
+          try {
+            await rewriteSchedulesForDob(patientIdForTask, birthISO, userId);
+          } catch (e) {
+            console.warn('[updatePatient] DOB schedule rewrite async failed:', e?.message || e);
+          }
+        };
+        if (typeof setImmediate === 'function') setImmediate(runAsync); else setTimeout(runAsync, 0);
+      }
+    } catch (cascadeErr) {
+      console.warn('[updatePatient] queue DOB schedule rewrite failed (non-fatal):', cascadeErr?.message || cascadeErr);
+    }
+
     // Log the patient update
     await logActivity({
       action_type: ACTIVITY.CHILD.UPDATE,
@@ -555,7 +659,8 @@ const updatePatient = async (req, res) => {
     res.json({ 
       success: true,
       message: 'Patient updated successfully',
-      data: updatedPatient 
+      data: updatedPatient,
+      schedulesRewriteQueued: !!dobChanged
     });
   } catch (error) {
     console.error('Error updating patient:', error);
@@ -566,6 +671,129 @@ const updatePatient = async (req, res) => {
     });
   }
 };
+
+// Background task: rewrite pending schedules to align with new DOB baseline
+async function rewriteSchedulesForDob(patientId, birthISO, userId) {
+  const supabase = svcSupabase;
+
+  // 1) Load schedule master/doses to compute the new baseline dates
+  const { data: masters, error: mErr } = await supabase
+    .from('schedule_master')
+    .select('id, vaccine_id')
+    .eq('is_deleted', false);
+  if (mErr) throw mErr;
+  const scheduleIds = (masters || []).map(m => m.id);
+  const { data: doses, error: dErr } = await supabase
+    .from('schedule_doses')
+    .select('schedule_id, dose_number, due_after_days')
+    .in('schedule_id', scheduleIds)
+    .order('dose_number', { ascending: true });
+  if (dErr) throw dErr;
+  const masterById = new Map((masters || []).map(m => [m.id, m]));
+
+  // Build target map: key `${vaccine_id}:${dose_number}` -> computed date (YYYY-MM-DD)
+  const targets = new Map();
+  const baseDate = new Date(birthISO + 'T00:00:00Z');
+  for (const rec of doses || []) {
+    const master = masterById.get(rec.schedule_id);
+    if (!master) continue;
+    const due = Number(rec.due_after_days || 0);
+    const dt = new Date(baseDate.getTime());
+    dt.setUTCDate(dt.getUTCDate() + due);
+    const newDateIso = dt.toISOString().split('T')[0];
+    targets.set(`${master.vaccine_id}:${rec.dose_number}`, newDateIso);
+  }
+
+  // 2) Load existing non-completed schedules for the patient
+  const { data: existing, error: eErr } = await supabase
+    .from('patientschedule')
+    .select('patient_schedule_id, vaccine_id, dose_number, scheduled_date')
+    .eq('patient_id', patientId)
+    .eq('is_deleted', false)
+    .is('actual_date', null);
+  if (eErr) throw eErr;
+
+  const existingKeySet = new Set();
+  let updatedCount = 0;
+  let insertedCount = 0;
+  const toISODate = (d) => (d ? new Date(d).toISOString().split('T')[0] : null);
+
+  // 2a) Update existing rows to the new computed dates
+  for (const row of existing || []) {
+    const key = `${row.vaccine_id}:${row.dose_number}`;
+    existingKeySet.add(key);
+    const newIso = targets.get(key);
+    if (!newIso) continue; // no corresponding schedule defined
+    const oldIso = toISODate(row.scheduled_date);
+    if (oldIso === newIso) continue;
+    // Update scheduled_date and eligible_date; preserve ID
+    const { error: upErr } = await supabase
+      .from('patientschedule')
+      .update({
+        scheduled_date: newIso,
+        eligible_date: newIso,
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+      })
+      .eq('patient_schedule_id', row.patient_schedule_id);
+    if (upErr) {
+      console.warn('[rewriteSchedulesForDob] update failed for', row.patient_schedule_id, upErr?.message || upErr);
+    } else {
+      updatedCount++;
+      // Recreate SMS reminders for this schedule
+      try {
+        await smsReminderService.handleScheduleReschedule(row.patient_schedule_id, oldIso, supabase);
+      } catch (smsErr) {
+        console.warn('[rewriteSchedulesForDob] SMS reschedule failed for', row.patient_schedule_id, smsErr?.message || smsErr);
+      }
+    }
+  }
+
+  // 2b) Insert missing schedules defined in master/doses but absent for this patient
+  for (const [key, newIso] of targets.entries()) {
+    if (existingKeySet.has(key)) continue;
+    const [vaccineIdStr, doseNumStr] = key.split(':');
+    const vaccine_id = Number(vaccineIdStr);
+    const dose_number = Number(doseNumStr);
+    const { data: inserted, error: insErr } = await supabase
+      .from('patientschedule')
+      .insert({
+        patient_id: patientId,
+        vaccine_id,
+        dose_number,
+        scheduled_date: newIso,
+        eligible_date: newIso,
+        status: 'Pending',
+        created_by: userId,
+        updated_by: userId,
+      })
+      .select('patient_schedule_id')
+      .single();
+    if (insErr) {
+      console.warn('[rewriteSchedulesForDob] insert failed', key, insErr?.message || insErr);
+    } else if (inserted?.patient_schedule_id) {
+      insertedCount++;
+      try {
+        // Only schedule SMS if the newly computed date is today or in the future (Asia/Manila)
+        const todayLocal = moment.tz('Asia/Manila').format('YYYY-MM-DD');
+        if (newIso >= todayLocal) {
+          await smsReminderService.scheduleReminderLogsForPatientSchedule(inserted.patient_schedule_id, supabase);
+        } else {
+          console.log(`[rewriteSchedulesForDob] Skipping SMS creation for inserted past-dated schedule ${inserted.patient_schedule_id} on ${newIso} (today ${todayLocal}).`);
+        }
+      } catch (smsErr) {
+        console.warn('[rewriteSchedulesForDob] SMS logs create failed for new schedule', inserted.patient_schedule_id, smsErr?.message || smsErr);
+      }
+    }
+  }
+
+  // Refresh pending messages to reflect updated schedules/dates
+  try {
+    await smsReminderService.updateMessagesForPatient(patientId, supabase);
+  } catch (_) {}
+
+  console.log(`[rewriteSchedulesForDob] Complete for patient ${patientId}: updated ${updatedCount}, inserted ${insertedCount}`);
+}
 
 // Delete a patient (soft delete)
 const deletePatient = async (req, res) => {

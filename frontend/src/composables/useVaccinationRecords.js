@@ -200,26 +200,41 @@ export function useVaccinationRecords(patientId, patientDataProp) {
         allWorkers = resp.data.healthWorkers;
       }
 
-      healthWorkers.value = allWorkers.filter(hw => {
-        const hsType = hw.hs_type || hw.hw_type || hw.role || hw.type || '';
-        return hsType.toLowerCase().includes('bhs');
-      }).map(hw => ({
-        id: hw.user_id || hw.id || hw.health_worker_id,
-        health_worker_id: hw.health_worker_id || hw.user_id || hw.id,
-        name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        role: hw.hs_type || hw.hw_type || hw.role || hw.type
-      }));
+      // Build a normalized staff list (all staff) and dedupe on user_id
+      const normalizedAll = []
+      for (const hw of allWorkers) {
+        const uid = hw.user_id || hw.id || hw.health_worker_id
+        if (!uid) continue
+        const hsType = (hw.hs_type || hw.hw_type || hw.role || hw.type || '').toString()
+        const baseName = [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname || ''
+        normalizedAll.push({
+          user_id: String(uid),
+          fullname: baseName ? `${baseName} (${hsType})` : `(${hsType})`,
+          hs_type: hsType
+        })
+      }
+      const dedupAll = new Map()
+      normalizedAll.forEach(s => { dedupAll.set(s.user_id, s) })
+      healthWorkers.value = Array.from(dedupAll.values())
 
-      nurses.value = allWorkers.filter(hw => {
-        const hsType = hw.hs_type || hw.hw_type || hw.role || hw.type || '';
-        return hsType.toLowerCase().includes('nurse') || hsType.toLowerCase().includes('nutritionist');
-      }).map(hw => ({
-        id: hw.user_id || hw.id || hw.health_worker_id,
-        health_worker_id: hw.health_worker_id || hw.user_id || hw.id,
-        name: [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname,
-        role: hw.hs_type || hw.hw_type || hw.role || hw.type,
-        hs_type: hw.hs_type || hw.hw_type || hw.role || hw.type
-      }));
+      // Nurses/Nutritionists only for vaccination selection, with consistent field names
+      const normalizedNurses = []
+      for (const hw of allWorkers) {
+        const hsType = (hw.hs_type || hw.hw_type || hw.role || hw.type || '').toString().toLowerCase()
+        if (!(hsType.includes('nurse') || hsType.includes('nutritionist'))) continue
+        const uid = hw.user_id || hw.id || hw.health_worker_id
+        if (!uid) continue
+        const baseName = [hw.firstname, hw.middlename, hw.surname].filter(Boolean).join(' ').trim() || hw.name || hw.fullname || ''
+        const labelType = (hw.hs_type || hw.hw_type || hw.role || hw.type || '').toString()
+        normalizedNurses.push({
+          user_id: String(uid),
+          fullname: baseName ? `${baseName} (${labelType})` : `(${labelType})`,
+          hs_type: labelType
+        })
+      }
+      const dedupNurses = new Map()
+      normalizedNurses.forEach(s => { dedupNurses.set(s.user_id, s) })
+      nurses.value = Array.from(dedupNurses.values())
     } catch (err) {
       console.error('Error fetching health workers:', err);
       healthWorkers.value = [];

@@ -53,10 +53,14 @@
             <label class="form-label">Date of Birth: <span class="text-danger">*</span></label>
             <DateInput 
               v-model="formData.date_of_birth"
-              :disabled="readOnly"
+              :disabled="readOnly || dobLocked"
               :required="true"
               output-format="iso"
             />
+            <div v-if="dobLocked" class="form-text text-warning d-flex align-items-center mt-1">
+              <i class="bi bi-lock-fill me-1"></i>
+              Birthdate cannot be edited because at least one vaccine is already completed.
+            </div>
           </div>
           <div class="col-xl-3 col-lg-4 col-md-6">
             <label class="form-label">Barangay: <span class="text-danger">*</span></label>
@@ -399,6 +403,10 @@ const props = defineProps({
   submitLabel: {
     type: String,
     default: 'Submit'
+  },
+  dobLocked: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -434,6 +442,10 @@ const formData = ref({
   hearing_test_date: '',
   newborn_screening_date: ''
 })
+
+// No local state needed for dob lock; controlled by parent via prop
+const dobLocked = computed(() => props.dobLocked)
+
 
 // Keep the last selected guardian object for autofill purposes
 const selectedGuardian = ref(null)

@@ -733,7 +733,7 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
       return { success: false, reason: 'schedule_not_found' };
     }
 
-    const newDate = schedule.scheduled_date?.split('T')[0];
+  const newDate = schedule.scheduled_date?.split('T')[0];
     const oldDate = oldDateStr?.split('T')[0];
     const patientId = schedule.patient_id;
 
@@ -822,8 +822,19 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
       console.log(`[STEP 2] ℹ️ Skipping (same date or no old date provided)`);
     }
     
-    // STEP 3: Handle the NEW date - link moved schedule to existing SMS (if any) or create; then update message
+    // Decide if new date is in the past (Asia/Manila)
+    const todayLocal = moment.tz('Asia/Manila').format('YYYY-MM-DD');
+    const isPastNewDate = newDate && newDate < todayLocal;
+
+    // STEP 3: Handle the NEW date - only if the new date is today or future
     console.log(`\n--- STEP 3: Handle new date (${newDate}) ---`);
+    if (isPastNewDate) {
+      console.log(`[STEP 3] ⏭️ Skipping SMS creation/linking for past new date ${newDate} (today ${todayLocal}).`);
+      console.log(`[STEP 3] No reschedule notification will be sent for past date.`);
+      console.log(`\n========== RESCHEDULE CASCADE COMPLETE ==========`);
+      return { success: true, skipped: 'past-new-date' };
+    }
+
     const { data: schedulesOnNewDate } = await supabase
       .from('patientschedule')
       .select('patient_schedule_id, vaccine_id, dose_number')

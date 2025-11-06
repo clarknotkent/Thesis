@@ -52,6 +52,7 @@
             :initial-data="patientData"
             :guardians="guardians"
             :is-editing="true"
+            :dob-locked="dobLocked"
             :submitting="submitting"
             submit-label="Update Patient"
             @submit="handleSubmit"
@@ -80,6 +81,7 @@ const guardians = ref([])
 const loading = ref(true)
 const submitting = ref(false)
 const error = ref(null)
+const dobLocked = ref(false)
 
 const patientId = computed(() => route.params.id)
 
@@ -154,6 +156,16 @@ const fetchPatientData = async () => {
       if (g && g.family_number) {
         patientData.value.family_number = g.family_number
       }
+    }
+
+    // Determine if DOB should be locked: at least one completed vaccine (has actual_date)
+    try {
+      const schedRes = await api.get(`/patients/${patientId.value}/schedule`)
+      const items = schedRes.data?.data || schedRes.data || []
+      dobLocked.value = Array.isArray(items) && items.some(s => s && (s.actual_date || s.actualDate))
+    } catch (e) {
+      // Non-fatal; if we cannot determine, leave unlocked
+      dobLocked.value = false
     }
 
   } catch (err) {
@@ -233,7 +245,10 @@ const handleSubmit = async (formData) => {
     }
   } catch (err) {
     console.error('Error updating patient:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'An error occurred'
+    const code = err.response?.data?.code
+    const errorMessage = code === 'DOB_LOCKED_HAS_COMPLETED'
+      ? 'Birthdate cannot be edited because at least one vaccine is already completed.'
+      : (err.response?.data?.message || err.message || 'An error occurred')
     addToast({
       title: 'Error',
       message: `Failed to update patient: ${errorMessage}`,

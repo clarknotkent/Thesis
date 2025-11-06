@@ -18,6 +18,17 @@ const toDisplayRole = (stored) => {
 
 const HS_TYPES = ['nurse','nutritionist','bhs'];
 
+// Normalize incoming hs_type to stored tokens
+// Accepts common variants and casing; returns one of HS_TYPES or null if unknown
+const mapIncomingHsTypeToStored = (hsType) => {
+  const t = (hsType || '').trim().toLowerCase();
+  if (!t) return null;
+  if (['nurse', 'registered nurse', 'rn'].includes(t)) return 'nurse';
+  if (['nutritionist', 'dietician', 'dietitian'].includes(t)) return 'nutritionist';
+  if (['bhs', 'barangay health staff', 'barangay health station', 'barangay health worker', 'barangay health workers'].includes(t)) return 'bhs';
+  return HS_TYPES.includes(t) ? t : null;
+};
+
 // Normalize contact number to +639... format
 const normalizeContactNumber = (contact) => {
   if (!contact) return null;
@@ -186,8 +197,11 @@ const userModel = {
       // Do NOT store password locally; Supabase Auth holds credentials
       const storedRole = mapIncomingRoleToStored(userData.role);
       let hsType = null;
-      if (storedRole === 'HealthStaff' && userData.hs_type && HS_TYPES.includes(userData.hs_type)) {
-        hsType = userData.hs_type;
+      if (storedRole === 'HealthStaff') {
+        const normalizedHs = mapIncomingHsTypeToStored(userData.hs_type);
+        if (normalizedHs && HS_TYPES.includes(normalizedHs)) {
+          hsType = normalizedHs;
+        }
       }
       // Ensure audit actor fallback (self is unknown yet; will patch after insert)
   const incomingCreatedBy = actorId || userData.created_by || null;
@@ -319,8 +333,13 @@ const userModel = {
         delete filtered.professional_license_no;
         delete filtered.hs_type;
       } else if (['healthstaff','health staff','health_staff'].includes(effectiveRole)) {
-        if (filtered.hs_type && !HS_TYPES.includes(filtered.hs_type)) {
-          delete filtered.hs_type; // invalid subtype
+        if (typeof filtered.hs_type !== 'undefined') {
+          const normalizedHs = mapIncomingHsTypeToStored(filtered.hs_type);
+          if (normalizedHs && HS_TYPES.includes(normalizedHs)) {
+            filtered.hs_type = normalizedHs;
+          } else {
+            delete filtered.hs_type; // invalid subtype
+          }
         }
         // PRC license required only for nurse / nutritionist? (Optionally enforce)
         if (filtered.hs_type === 'bhs') {

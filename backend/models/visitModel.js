@@ -42,10 +42,20 @@ const updateVisitById = async (id, updatePayload, client) => {
 
   // Sanitize the payload: convert empty strings to null for bigint fields
   const sanitizedPayload = { ...updatePayload };
-  const bigintFields = ['recorded_by', 'created_by', 'updated_by'];
+  const bigintFields = ['patient_id', 'recorded_by', 'created_by', 'updated_by'];
+  const toBigintOrNull = (v) => {
+    if (v === undefined || v === null || v === '') return null;
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') {
+      const t = v.trim();
+      if (/^\d+$/.test(t)) return Number(t);
+      return null; // names or non-numeric strings should not be sent to bigint columns
+    }
+    return null;
+  };
   for (const field of bigintFields) {
-    if (sanitizedPayload[field] === '') {
-      sanitizedPayload[field] = null;
+    if (field in sanitizedPayload) {
+      sanitizedPayload[field] = toBigintOrNull(sanitizedPayload[field]);
     }
   }
 
@@ -131,15 +141,27 @@ const createVisit = async (visitPayload, client) => {
   // patient_id, visit_date, recorded_by, vitals {...}, collectedVaccinations [...], services [...]
   const { vitals, collectedVaccinations = [], services = [], ...visitData } = visitPayload;
 
+  const toBigintOrNull = (v) => {
+    if (v === undefined || v === null || v === '') return null;
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') {
+      const t = v.trim();
+      if (/^\d+$/.test(t)) return Number(t);
+      return null;
+    }
+    return null;
+  };
+
   // Normalize actor fields: prefer explicit created_by/updated_by,
   // else fall back to recorded_by, else fall back to actor_id (current user if provided)
   const isProvided = (v) => v !== undefined && v !== null && v !== '';
+  const actorIdClean = toBigintOrNull(visitData.actor_id) ?? null;
   const createdBy = isProvided(visitData.created_by)
-    ? visitData.created_by
-    : (isProvided(visitData.recorded_by) ? visitData.recorded_by : (visitData.actor_id || null));
+    ? (toBigintOrNull(visitData.created_by))
+    : (isProvided(visitData.recorded_by) ? toBigintOrNull(visitData.recorded_by) : actorIdClean);
   const updatedBy = isProvided(visitData.updated_by)
-    ? visitData.updated_by
-    : (isProvided(visitData.recorded_by) ? visitData.recorded_by : (visitData.actor_id || null));
+    ? (toBigintOrNull(visitData.updated_by))
+    : (isProvided(visitData.recorded_by) ? toBigintOrNull(visitData.recorded_by) : actorIdClean);
 
   console.log('🔄 [VISIT_CREATION] Starting visit creation process...');
   console.log('📋 [VISIT_DATA] Visit data received:', { patient_id: visitData.patient_id, visit_date: visitData.visit_date, recorded_by: visitData.recorded_by });
@@ -194,11 +216,11 @@ const createVisit = async (visitPayload, client) => {
   const { data: visit, error: visitErr } = await supabase
     .from('visits')
     .insert({
-      patient_id: visitData.patient_id,
+      patient_id: toBigintOrNull(visitData.patient_id),
       visit_date: visitData.visit_date || new Date().toISOString(),
       findings: findings,
       service_rendered: serviceRendered,
-      recorded_by: visitData.recorded_by || null,
+      recorded_by: toBigintOrNull(visitData.recorded_by),
       created_by: createdBy,
       updated_by: updatedBy
     })
