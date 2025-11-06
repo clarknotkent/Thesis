@@ -470,7 +470,8 @@ const patientModel = {
       const tgtContactField = isMother ? 'father_contact_number' : 'mother_contact_number';
       const tgtOccupationField = isMother ? 'father_occupation' : 'mother_occupation';
       // First, try strict equality (fast, exact)
-      const { data, error } = await supabase
+      // Use a mutable `data` var because we may replace/filter it in fallback steps below
+      const _res = await supabase
         .from('patients')
         .select(`${tgtField}, ${tgtContactField}, ${tgtOccupationField}`)
         .eq(srcField, name)
@@ -478,6 +479,8 @@ const patientModel = {
         .not(tgtField, 'eq', '')
         .eq('is_deleted', false)
         .limit(2000);
+      let data = _res.data || [];
+      const error = _res.error;
       if (error) throw error;
       // Fallback: if no rows matched due to case/spacing differences, try ilike and then post-filter by normalized equality
       const normalize = (s) => (s || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
