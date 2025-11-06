@@ -1,8 +1,8 @@
-const supabase = require('../db');
-const notificationModel = require('./notificationModel');
+import supabase from '../db.js';
+import * as notificationModel from './notificationModel.js';
 
 // Send SMS
-const sendSMS = async (to, message) => {
+const sendSMS = (to, message) => {
   // Placeholder for SMS API integration
   console.log(`Sending SMS to ${to}: ${message}`);
   return { status: 'success', to, message };
@@ -28,7 +28,7 @@ const getSMSLogs = async (filters) => {
 };
 
 // Log SMS
-const logSMS = async (to, message, status) => {
+const logSMS = (to, message, status) => {
   // Use createNotification to ensure normalization and constraint compatibility
   return notificationModel.createNotification({
     channel: 'sms',
@@ -59,10 +59,8 @@ const getNotificationById = async (id) => {
   return data;
 };
 
-module.exports = {
-  sendSMS,
+export { sendSMS,
   getSMSLogs,
   logSMS,
   getAllNotifications,
-  getNotificationById,
-};
+  getNotificationById };

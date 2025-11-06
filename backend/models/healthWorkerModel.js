@@ -1,4 +1,4 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 // Create a new health staff
 const createHealthWorker = async (workerData) => {
@@ -8,7 +8,7 @@ const createHealthWorker = async (workerData) => {
     is_deleted: false,
     date_registered: new Date().toISOString()
   };
-  
+
   const { data, error } = await supabase
     .from('users')
     .insert([healthWorkerData])
@@ -49,9 +49,9 @@ const updateHealthWorker = async (id, workerData) => {
 const deleteHealthWorker = async (id) => {
   const { data, error } = await supabase
     .from('users')
-    .update({ 
-      is_deleted: true, 
-      deleted_at: new Date().toISOString() 
+    .update({
+      is_deleted: true,
+      deleted_at: new Date().toISOString()
     })
     .eq('user_id', id)
     .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
@@ -72,7 +72,7 @@ const listHealthWorkers = async (filters = {}) => {
   if (filters.role) {
     query = query.eq('role', filters.role);
   }
-  
+
   if (filters.search) {
     query = query.or(`surname.ilike.%${filters.search}%,firstname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
   }
@@ -90,7 +90,7 @@ const getAllHealthWorkers = async () => {
 // Fetch health worker progress
 const fetchHealthWorkerProgress = async (id = null) => {
   let query = supabase.from('worker_progress_view').select('*');
-  
+
   if (id) {
     query = query.eq('user_id', id);
   }
@@ -105,13 +105,11 @@ const getHealthWorkerProgress = async (id = null) => {
   return await fetchHealthWorkerProgress(id);
 };
 
-module.exports = {
-  createHealthWorker,
+export { createHealthWorker,
   getHealthWorkerById,
   updateHealthWorker,
   deleteHealthWorker,
   listHealthWorkers,
   getAllHealthWorkers,
   fetchHealthWorkerProgress,
-  getHealthWorkerProgress,
-};
+  getHealthWorkerProgress };

@@ -11,7 +11,7 @@
       title="Child Information"
       icon="person-fill"
       :is-expanded="expandedCards.patientInfo"
-      @toggle="expandedCards.patientInfo = !expandedCards.patientInfo"
+      @toggle="$emit('update:expandedCards', { ...expandedCards, patientInfo: !expandedCards.patientInfo })"
     >
       <div class="info-grid">
         <div class="info-item">
@@ -50,7 +50,7 @@
       title="Guardian & Family Information"
       icon="people-fill"
       :is-expanded="expandedCards.guardianInfo"
-      @toggle="expandedCards.guardianInfo = !expandedCards.guardianInfo"
+      @toggle="$emit('update:expandedCards', { ...expandedCards, guardianInfo: !expandedCards.guardianInfo })"
     >
       <div class="info-grid">
         <div class="info-section-header">
@@ -117,7 +117,7 @@
       title="Birth History"
       icon="calendar-heart-fill"
       :is-expanded="expandedCards.birthHistory"
-      @toggle="expandedCards.birthHistory = !expandedCards.birthHistory"
+      @toggle="$emit('update:expandedCards', { ...expandedCards, birthHistory: !expandedCards.birthHistory })"
     >
       <div class="info-grid">
         <div class="info-item">
@@ -169,7 +169,7 @@
 import { computed } from 'vue'
 import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
-import { formatDate, calculateAge as calculateAgeUtil } from '@/composables/useDateFormat'
+import { formatDate } from '@/composables/useDateFormat'
 
 const props = defineProps({
   patient: {
@@ -181,6 +181,8 @@ const props = defineProps({
     required: true
   }
 })
+
+defineEmits(['update:expandedCards'])
 
 const age = computed(() => {
   const birthDate = props.patient?.childInfo?.birthDate

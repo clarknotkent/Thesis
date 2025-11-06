@@ -1,8 +1,8 @@
-const moment = require('moment-timezone');
-const serviceSupabase = require('../db');
-const smsService = require('./smsService');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
+import moment from 'moment-timezone';
+import serviceSupabase from '../db.js';
+import smsService from './smsService.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
 
 // Helper to use provided client or default service client
 function withClient(client) {
@@ -207,17 +207,17 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
         .select('vaccine_id, antigen_name')
         .in('vaccine_id', vaccineIds);
       const nameMap = new Map((vacs || []).map(v => [v.vaccine_id, v.antigen_name]));
-      
+
       vaccineNames = allSchedsOnDay
         .map(s => nameMap.get(s.vaccine_id) || 'vaccine')
         .filter(Boolean);
-      
+
       doseList = allSchedsOnDay.map(s => `Dose ${s.dose_number || 1}`);
     } catch (_) {}
   }
 
-  const combinedVaccineName = vaccineNames.length > 0 
-    ? vaccineNames.join(', ') 
+  const combinedVaccineName = vaccineNames.length > 0
+    ? vaccineNames.join(', ')
     : 'vaccines';
   const combinedDoseNumber = doseList.length > 0
     ? doseList.join(', ')
@@ -301,14 +301,14 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
             .maybeSingle();
           if (tpl) {
             templateId = tpl.id;
-              // Normalize escaped newlines (\n) stored in DB to real newlines so templates display correctly
-              templateText = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
+            // Normalize escaped newlines (\n) stored in DB to real newlines so templates display correctly
+            templateText = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
           }
         } catch (_) {}
       }
 
       // Determine title: Ms. for Mother, Mr. for Father, blank otherwise
-  const relationship = (patientRow.guardian_relationship || '').toLowerCase();
+      const relationship = (patientRow.guardian_relationship || '').toLowerCase();
       const guardianTitle = relationship === 'mother' ? 'Ms.' : relationship === 'father' ? 'Mr.' : '';
 
       const timeCfg = getReminderTime('Asia/Manila');
@@ -317,22 +317,22 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
 
       const message = templateText
         ? renderTemplate(templateText, {
-            patientName: patientRow.full_name,
-            guardianLastName: patientRow.guardian_last_name || (patientRow.full_name || '').split(' ').pop() || '',
-            guardianTitle,
-            vaccineName: combinedVaccineName,
-            doseNumber: combinedDoseNumber,
-            vaccineLines,
-            scheduledDate: scheduledDateLong,
-            appointmentTime: timeCfg.display,
-            daysUntil: String(days),
-            greetingTime,
-          })
+          patientName: patientRow.full_name,
+          guardianLastName: patientRow.guardian_last_name || (patientRow.full_name || '').split(' ').pop() || '',
+          guardianTitle,
+          vaccineName: combinedVaccineName,
+          doseNumber: combinedDoseNumber,
+          vaccineLines,
+          scheduledDate: scheduledDateLong,
+          appointmentTime: timeCfg.display,
+          daysUntil: String(days),
+          greetingTime,
+        })
         : buildReminderMessage({
-            antigenName: combinedVaccineName,
-            patientName: patientRow.full_name,
-            scheduledDateISO: triggerSched.scheduled_date,
-          });
+          antigenName: combinedVaccineName,
+          patientName: patientRow.full_name,
+          scheduledDateISO: triggerSched.scheduled_date,
+        });
 
       // Insert sms_logs row
       const { data: ins, error: insErr } = await supabase
@@ -629,8 +629,8 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       return { sent: 0, reason: 'claim-failed', error: e?.message || String(e) };
     }
 
-  // Now perform the external send (we own the targetLogId)
-  const sendRes = await smsService.sendSMS(normalizedPhone, message);
+    // Now perform the external send (we own the targetLogId)
+    const sendRes = await smsService.sendSMS(normalizedPhone, message);
 
     try {
       // Update the claimed log with the final send status
@@ -655,7 +655,7 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
           user_id: null,
           entity_type: 'sms_log',
           entity_id: targetLogId,
-    new_value: { patient_id: patientId, phone_number: sendRes.recipient || normalizedPhone, type: 'manual', status: sendRes.success ? 'sent' : 'pending' }
+          new_value: { patient_id: patientId, phone_number: sendRes.recipient || normalizedPhone, type: 'manual', status: sendRes.success ? 'sent' : 'pending' }
         });
       } catch (_) {}
 
@@ -676,7 +676,7 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
  */
 async function updatePhoneNumberForPatient(patientId, newPhoneNumber, client) {
   const supabase = withClient(client);
-  
+
   try {
     // Normalize the number before storing so future comparisons are consistent
     const formatted = newPhoneNumber ? smsService.formatPhoneNumber(newPhoneNumber) : newPhoneNumber;
@@ -684,18 +684,18 @@ async function updatePhoneNumberForPatient(patientId, newPhoneNumber, client) {
     // Update all pending/scheduled SMS logs for this patient
     const { data, error } = await supabase
       .from('sms_logs')
-      .update({ 
+      .update({
         phone_number: formatted,
         updated_at: new Date().toISOString()
       })
       .eq('patient_id', patientId)
     // Only update logs that are still pending (not sent/failed). 'scheduled' is a type, not a status.
-    .eq('status', 'pending')
-    .in('type', ['scheduled', 'manual'])
+      .eq('status', 'pending')
+      .in('type', ['scheduled', 'manual'])
       .select();
-    
+
     if (error) throw error;
-    
+
     console.log(`[smsReminderService] Updated ${data?.length || 0} SMS logs with new phone number for patient ${patientId}`);
     return { updated: data?.length || 0, data };
   } catch (e) {
@@ -713,11 +713,11 @@ async function updatePhoneNumberForPatient(patientId, newPhoneNumber, client) {
  */
 async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
   const supabase = withClient(client);
-  
-  console.log(`\n========== RESCHEDULE CASCADE START ==========`);
+
+  console.log('\n========== RESCHEDULE CASCADE START ==========');
   console.log(`[RESCHEDULE] Schedule ID: ${patientScheduleId}`);
   console.log(`[RESCHEDULE] Old Date String: ${oldDateStr}`);
-  
+
   try {
     // Get the rescheduled schedule details (with NEW date)
     const { data: schedule, error: schedErr } = await supabase
@@ -726,14 +726,14 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
       .eq('patient_schedule_id', patientScheduleId)
       .eq('is_deleted', false)
       .maybeSingle();
-    
+
     if (schedErr) throw schedErr;
     if (!schedule) {
       console.warn(`[RESCHEDULE] ❌ Schedule ${patientScheduleId} not found or deleted`);
       return { success: false, reason: 'schedule_not_found' };
     }
 
-  const newDate = schedule.scheduled_date?.split('T')[0];
+    const newDate = schedule.scheduled_date?.split('T')[0];
     const oldDate = oldDateStr?.split('T')[0];
     const patientId = schedule.patient_id;
 
@@ -742,29 +742,29 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
     console.log(`[RESCHEDULE] New Date: ${newDate}`);
     console.log(`[RESCHEDULE] Vaccine: ${schedule.vaccine_id} (Dose ${schedule.dose_number})`);
 
-  // STEP 1: Detach the moved schedule from any existing SMS logs
-  // If an SMS is shared, DO NOT delete it — only unlink this schedule
-  console.log(`\n--- STEP 1: Detach moved schedule from existing SMS ---`);
+    // STEP 1: Detach the moved schedule from any existing SMS logs
+    // If an SMS is shared, DO NOT delete it — only unlink this schedule
+    console.log('\n--- STEP 1: Detach moved schedule from existing SMS ---');
     const { data: linksToDelete } = await supabase
       .from('sms_log_patientschedule')
       .select('sms_log_id')
       .eq('patient_schedule_id', patientScheduleId);
-    
-  console.log(`[STEP 1] Found ${linksToDelete?.length || 0} SMS links referencing the moved schedule`);
-    
+
+    console.log(`[STEP 1] Found ${linksToDelete?.length || 0} SMS links referencing the moved schedule`);
+
     if (linksToDelete && linksToDelete.length > 0) {
       const smsLogIds = [...new Set(linksToDelete.map(l => l.sms_log_id))];
-  console.log(`[STEP 1] SMS Log IDs to process: ${smsLogIds.join(', ')}`);
-      
+      console.log(`[STEP 1] SMS Log IDs to process: ${smsLogIds.join(', ')}`);
+
       // For each SMS, check if it's shared with other schedules
       for (const smsId of smsLogIds) {
         const { data: allLinksForThisSms } = await supabase
           .from('sms_log_patientschedule')
           .select('patient_schedule_id')
           .eq('sms_log_id', smsId);
-        
+
         const otherSchedules = allLinksForThisSms?.filter(l => l.patient_schedule_id !== patientScheduleId) || [];
-        
+
         if (otherSchedules.length > 0) {
           console.log(`[STEP 1] 🔗 SMS ${smsId} is shared with ${otherSchedules.length} other schedule(s): ${otherSchedules.map(s => s.patient_schedule_id).join(', ')}`);
           // Unlink the moved schedule from this shared SMS
@@ -787,14 +787,14 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
           console.log(`[STEP 1] ✅ Deleted standalone SMS ${smsId}`);
         }
       }
-      
+
       // Refresh messages for remaining shared SMS after unlinking
       await updateMessagesForPatient(patientId, supabase);
       console.log(`[STEP 1] ✅ Processed ${smsLogIds.length} SMS logs and refreshed message content`);
     } else {
-      console.log(`[STEP 1] ℹ️ No SMS logs found for this schedule (might be new)`);
+      console.log('[STEP 1] ℹ️ No SMS logs found for this schedule (might be new)');
     }
-    
+
     // STEP 2: Handle the OLD date - check if other schedules remain (no deletes here)
     console.log(`\n--- STEP 2: Handle old date (${oldDate}) ---`);
     if (oldDate && oldDate !== newDate) {
@@ -805,23 +805,23 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
         .gte('scheduled_date', `${oldDate}T00:00:00`)
         .lte('scheduled_date', `${oldDate}T23:59:59`)
         .eq('is_deleted', false);
-      
+
       console.log(`[STEP 2] Found ${remainingOnOldDate?.length || 0} schedules remaining on old date`);
-      
+
       if (remainingOnOldDate && remainingOnOldDate.length > 0) {
-        console.log(`[STEP 2] Remaining schedules:`, remainingOnOldDate.map(s => 
+        console.log('[STEP 2] Remaining schedules:', remainingOnOldDate.map(s =>
           `ID:${s.patient_schedule_id} (${s.vaccine_id} Dose ${s.dose_number})`
         ).join(', '));
-  console.log(`[STEP 2] ✍️ Updating messages in place for old-date schedules...`);
+        console.log('[STEP 2] ✍️ Updating messages in place for old-date schedules...');
         await updateMessagesForPatient(patientId, supabase);
         console.log(`[STEP 2] ✅ Updated message content for ${oldDate}`);
       } else {
         console.log(`[STEP 2] ℹ️ No schedules remain on ${oldDate}, nothing to recreate`);
       }
     } else {
-      console.log(`[STEP 2] ℹ️ Skipping (same date or no old date provided)`);
+      console.log('[STEP 2] ℹ️ Skipping (same date or no old date provided)');
     }
-    
+
     // Decide if new date is in the past (Asia/Manila)
     const todayLocal = moment.tz('Asia/Manila').format('YYYY-MM-DD');
     const isPastNewDate = newDate && newDate < todayLocal;
@@ -830,8 +830,8 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
     console.log(`\n--- STEP 3: Handle new date (${newDate}) ---`);
     if (isPastNewDate) {
       console.log(`[STEP 3] ⏭️ Skipping SMS creation/linking for past new date ${newDate} (today ${todayLocal}).`);
-      console.log(`[STEP 3] No reschedule notification will be sent for past date.`);
-      console.log(`\n========== RESCHEDULE CASCADE COMPLETE ==========`);
+      console.log('[STEP 3] No reschedule notification will be sent for past date.');
+      console.log('\n========== RESCHEDULE CASCADE COMPLETE ==========');
       return { success: true, skipped: 'past-new-date' };
     }
 
@@ -842,35 +842,35 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
       .gte('scheduled_date', `${newDate}T00:00:00`)
       .lte('scheduled_date', `${newDate}T23:59:59`)
       .eq('is_deleted', false);
-    
+
     console.log(`[STEP 3] Found ${schedulesOnNewDate?.length || 0} total schedules on new date`);
-    
+
     if (schedulesOnNewDate && schedulesOnNewDate.length > 0) {
       const scheduleIdsOnNewDate = schedulesOnNewDate.map(s => s.patient_schedule_id);
       console.log(`[STEP 3] Schedule IDs on new date: ${scheduleIdsOnNewDate.join(', ')}`);
-      console.log(`[STEP 3] Schedules:`, schedulesOnNewDate.map(s => 
+      console.log('[STEP 3] Schedules:', schedulesOnNewDate.map(s =>
         `ID:${s.patient_schedule_id} (${s.vaccine_id} Dose ${s.dose_number})`
       ).join(', '));
-  // Link/create combined SMS without deleting existing ones
-  console.log(`[STEP 3] 🔄 Linking or creating combined SMS for ${scheduleIdsOnNewDate.length} schedules...`);
-  const result = await scheduleReminderLogsForPatientSchedule(patientScheduleId, supabase);
-  console.log(`[STEP 3] ↪️ scheduleReminder created: ${result?.created || 0}, linked: ${result?.linked || 0}, skipped: ${result?.skipped || ''}, ids: ${(result?.sms_log_ids || []).join(', ')}`);
+      // Link/create combined SMS without deleting existing ones
+      console.log(`[STEP 3] 🔄 Linking or creating combined SMS for ${scheduleIdsOnNewDate.length} schedules...`);
+      const result = await scheduleReminderLogsForPatientSchedule(patientScheduleId, supabase);
+      console.log(`[STEP 3] ↪️ scheduleReminder created: ${result?.created || 0}, linked: ${result?.linked || 0}, skipped: ${result?.skipped || ''}, ids: ${(result?.sms_log_ids || []).join(', ')}`);
       // Ensure message text reflects the combined schedules
       await updateMessagesForPatient(patientId, supabase);
-      console.log(`[STEP 3] ✅ Linked/created and updated messages for new date`);
+      console.log('[STEP 3] ✅ Linked/created and updated messages for new date');
       // Send immediate reschedule notification combining affected schedules on the new date
       const notify = await sendRescheduleNotification(patientId, scheduleIdsOnNewDate, supabase);
       console.log(`[STEP 3] 📣 Reschedule notify -> sent: ${notify.sent}, updatedExisting: ${notify.updatedExisting ? 'yes' : 'no'}, id: ${notify.id || ''}, reason: ${notify.reason || ''}`);
     } else {
-      console.log(`[STEP 3] ⚠️ No schedules found on new date (unexpected!)`);
+      console.log('[STEP 3] ⚠️ No schedules found on new date (unexpected!)');
     }
-    
-    console.log(`\n========== RESCHEDULE CASCADE COMPLETE ==========\n`);
+
+    console.log('\n========== RESCHEDULE CASCADE COMPLETE ==========\n');
     return { success: true };
   } catch (e) {
     console.error('\n❌ [RESCHEDULE] FAILED:', e?.message || e);
     console.error('Stack:', e?.stack);
-    console.log(`\n========== RESCHEDULE CASCADE FAILED ==========\n`);
+    console.log('\n========== RESCHEDULE CASCADE FAILED ==========\n');
     throw e;
   }
 }
@@ -881,7 +881,7 @@ async function handleScheduleReschedule(patientScheduleId, oldDateStr, client) {
  */
 async function updateMessagesForPatient(patientId, client) {
   const supabase = withClient(client);
-  
+
   try {
     // Get all pending SMS logs for this patient
     const { data: smsLogs, error: smsErr } = await supabase
@@ -891,14 +891,14 @@ async function updateMessagesForPatient(patientId, client) {
       // Only update logs that are still pending (these will be re-rendered). 'scheduled' is a type, not a status.
       .eq('status', 'pending')
       .in('type', ['scheduled', 'manual']);
-    
+
     if (smsErr) throw smsErr;
     if (!smsLogs || smsLogs.length === 0) {
       console.log(`[smsReminderService] No pending SMS logs to update for patient ${patientId}`);
       return { updated: 0 };
     }
     console.log(`[smsReminderService] Will update ${smsLogs.length} SMS log(s) for patient ${patientId}`);
-    
+
     // For each SMS log, regenerate the message
     let updated = 0;
     for (const smsLog of smsLogs) {
@@ -908,50 +908,50 @@ async function updateMessagesForPatient(patientId, client) {
           .from('sms_log_patientschedule')
           .select('patient_schedule_id')
           .eq('sms_log_id', smsLog.id);
-        
+
         if (linkErr || !links || links.length === 0) {
           console.log(`[updateMessages] sms_log ${smsLog.id}: no links, skipping`);
           continue;
         }
-        
+
         const psIds = links.map(l => l.patient_schedule_id);
         console.log(`[updateMessages] sms_log ${smsLog.id}: linked schedules -> ${psIds.join(', ')}`);
-        
+
         // Get schedule data
         const { data: schedules, error: schedErr } = await supabase
           .from('patientschedule')
           .select('patient_schedule_id, patient_id, vaccine_id, dose_number, scheduled_date')
           .in('patient_schedule_id', psIds)
           .eq('is_deleted', false);
-        
+
         if (schedErr || !schedules || schedules.length === 0) {
           console.log(`[updateMessages] sms_log ${smsLog.id}: schedules not found, skipping`);
           continue;
         }
         const scheduleDates = schedules.map(s => `${s.patient_schedule_id}:${(s.scheduled_date||'').split('T')[0]}`);
         console.log(`[updateMessages] sms_log ${smsLog.id}: schedule dates -> ${scheduleDates.join(', ')}`);
-        
+
         // Get patient data
         const patient = await getPatientSmsInfo(patientId, supabase);
         if (!patient) {
           console.log(`[updateMessages] sms_log ${smsLog.id}: patient ${patientId} not found (both view and base tables), skipping`);
           continue;
         }
-        
+
         // Get vaccine data
         const vaccineIds = [...new Set(schedules.map(s => s.vaccine_id))];
         const { data: vaccines, error: vacErr } = await supabase
           .from('vaccinemaster')
           .select('vaccine_id, antigen_name')
           .in('vaccine_id', vaccineIds);
-        
+
         if (vacErr) {
           console.warn('[smsReminderService] vaccine lookup failed:', vacErr?.message || vacErr);
           continue;
         }
-        
-  const vaccineMap = new Map((vaccines || []).map(v => [v.vaccine_id, v.antigen_name]));
-        
+
+        const vaccineMap = new Map((vaccines || []).map(v => [v.vaccine_id, v.antigen_name]));
+
         // Combine vaccine names and doses
         const vaccineNames = schedules.map(s => vaccineMap.get(s.vaccine_id) || 'vaccine').join(', ');
         const doseNumbers = schedules.map(s => `Dose ${s.dose_number || 1}`).join(', ');
@@ -963,11 +963,11 @@ async function updateMessagesForPatient(patientId, client) {
         const scheduledDate = schedules[0]?.scheduled_date
           ? moment.tz(schedules[0].scheduled_date, 'Asia/Manila').format('MMMM DD, YYYY')
           : '';
-        
+
         // Get guardian title
-  const relationship = (patient.guardian_relationship || '').toLowerCase();
+        const relationship = (patient.guardian_relationship || '').toLowerCase();
         const guardianTitle = relationship === 'mother' ? 'Ms.' : relationship === 'father' ? 'Mr.' : '';
-        
+
         // Get template if available
         let template = null;
         if (smsLog.template_id) {
@@ -976,15 +976,15 @@ async function updateMessagesForPatient(patientId, client) {
             .select('template')
             .eq('id', smsLog.template_id)
             .maybeSingle();
-          
+
           if (!tplErr && tpl) template = typeof tpl.template === 'string' ? tpl.template.replace(/\\n/g, '\n') : tpl.template;
         }
-        
+
         // Fallback template
         if (!template) {
           template = 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!';
         }
-        
+
         // Render message
         const timeCfg2 = getReminderTime('Asia/Manila');
         const greetingTime2 = (timeCfg2.hour >= 6 && timeCfg2.hour < 18) ? 'Good Day' : 'Good Evening';
@@ -1000,16 +1000,16 @@ async function updateMessagesForPatient(patientId, client) {
           daysUntil: '',
           greetingTime: greetingTime2,
         });
-        
+
         // Update SMS log
         const { error: updateErr } = await supabase
           .from('sms_logs')
-          .update({ 
+          .update({
             message,
             updated_at: new Date().toISOString()
           })
           .eq('id', smsLog.id);
-        
+
         if (!updateErr) {
           updated++;
           console.log(`[updateMessages] ✅ Updated sms_log ${smsLog.id}`);
@@ -1020,7 +1020,7 @@ async function updateMessagesForPatient(patientId, client) {
         console.warn(`[smsReminderService] Failed to update message for SMS log ${smsLog.id}:`, e?.message || e);
       }
     }
-    
+
     console.log(`[smsReminderService] Updated ${updated} SMS messages for patient ${patientId}`);
     return { updated };
   } catch (e) {
@@ -1029,9 +1029,7 @@ async function updateMessagesForPatient(patientId, client) {
   }
 }
 
-module.exports = {
-  scheduleReminderLogsForPatientSchedule,
+export { scheduleReminderLogsForPatientSchedule,
   updatePhoneNumberForPatient,
   handleScheduleReschedule,
-  updateMessagesForPatient,
-};
+  updateMessagesForPatient };

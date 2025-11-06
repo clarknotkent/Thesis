@@ -1,7 +1,9 @@
-const serviceSupabase = require('../db');
-const { scheduleReminderLogsForPatientSchedule, handleScheduleReschedule } = require('../services/smsReminderService');
+import serviceSupabase from '../db.js';
+import { scheduleReminderLogsForPatientSchedule, handleScheduleReschedule } from '../services/smsReminderService.js';
 
 // Helper to use provided client or default service client
+import { logActivity } from './activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
 function withClient(client) {
   return client || serviceSupabase;
 }
@@ -24,7 +26,7 @@ const createImmunization = async (immunizationData, client) => {
       }
     }
   } catch(_) {}
-  
+
   // Resolve vaccine_id from inventory_id if present
   if (!payload.vaccine_id && payload.inventory_id) {
     const { data: inv, error: invErr } = await supabase
@@ -70,7 +72,7 @@ const createImmunization = async (immunizationData, client) => {
         administered_date: payload.administered_date,
         user_id: payload.administered_by || null
       });
-      
+
       // Test if RPC function exists first
       const { data: rpcResult, error: rpcErr } = await supabase.rpc('recalc_patient_schedule_enhanced', {
         p_patient_id: payload.patient_id,
@@ -79,7 +81,7 @@ const createImmunization = async (immunizationData, client) => {
         p_actual_date: payload.administered_date,
         p_user_id: payload.administered_by || null
       });
-      
+
       if (rpcErr) {
         console.error('[createImmunization] Pre-insert RPC recalc_patient_schedule_enhanced failed:', {
           error: rpcErr,
@@ -138,18 +140,18 @@ const createImmunization = async (immunizationData, client) => {
         administered_date: data.administered_date,
         user_id: payload.administered_by || null
       });
-      
-      const { data: rpcResult, error: rpcErr } = await supabase.rpc('recalc_patient_schedule_enhanced', {
+
+      const { data: _rpcResult, error: rpcErr } = await supabase.rpc('recalc_patient_schedule_enhanced', {
         p_patient_id: data.patient_id,
         p_vaccine_id: data.vaccine_id,
         p_dose_number: data.dose_number,
         p_actual_date: data.administered_date,
         p_user_id: payload.administered_by || null
       });
-      
+
       if (rpcErr) {
         console.error('[createImmunization] Post-insert RPC recalc_patient_schedule_enhanced failed:', rpcErr);
-        
+
         // Fallback: Directly update the schedule status to Completed
         console.log('[createImmunization] Attempting direct schedule status update...');
         try {
@@ -162,12 +164,12 @@ const createImmunization = async (immunizationData, client) => {
             .eq('dose_number', data.dose_number)
             .eq('is_deleted', false)
             .single();
-            
+
           if (findErr || !scheduleData) {
             console.error('[createImmunization] Could not find schedule to update:', findErr);
           } else {
             // Update the schedule by ID
-            const { data: updateData, error: updateErr } = await supabase
+            const { data: _updateData, error: updateErr } = await supabase
               .from('patientschedule')
               .update({
                 status: 'Completed',
@@ -177,16 +179,14 @@ const createImmunization = async (immunizationData, client) => {
               })
               .eq('patient_schedule_id', scheduleData.patient_schedule_id)
               .select();
-              
+
             if (updateErr) {
               console.error('[createImmunization] Direct schedule update failed:', updateErr);
             } else {
               console.log('[createImmunization] Direct schedule update succeeded');
-              
+
               // Log the schedule completion (normalized via centralized logger)
               try {
-                const { logActivity } = require('./activityLogger');
-                const { ACTIVITY } = require('../constants/activityTypes');
                 await logActivity({
                   action_type: ACTIVITY.SCHEDULE.UPDATE,
                   user_id: payload.administered_by || null,
@@ -313,11 +313,11 @@ const listImmunizations = async (filters = {}, client) => {
   if (filters.patient_id) {
     query = query.eq('patient_id', filters.patient_id);
   }
-  
+
   if (filters.vaccine_id) {
     query = query.eq('vaccine_id', filters.vaccine_id);
   }
-  
+
   if (filters.administered_by) {
     query = query.eq('administered_by', filters.administered_by);
   }
@@ -387,7 +387,7 @@ const enforceVaccineInterval = async (scheduleData, client) => {
   // This function validates interval rules before scheduling
   // The actual enforcement is done by the database trigger
   const { patient_id, vaccine_id, dose_number } = scheduleData;
-  
+
   // Check if previous dose exists and validate interval
   const { data: lastDose, error } = await supabase
     .from('patientschedule')
@@ -397,13 +397,13 @@ const enforceVaccineInterval = async (scheduleData, client) => {
     .eq('dose_number', dose_number - 1)
     .eq('status', 'completed')
     .single();
-  
+
   if (error && error.code !== 'PGRST116') throw error;
-  
+
   if (!lastDose && dose_number > 1) {
     throw new Error('Previous dose not found or not completed');
   }
-  
+
   return { valid: true, message: 'Interval validation passed' };
 };
 
@@ -439,7 +439,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
     // Return the main row (current id) if found, else first; include warning if present
     const normalizeId = (r) => (r?.out_patient_schedule_id ?? r?.patient_schedule_id);
     const main = Array.isArray(res) ? (res.find(r => normalizeId(r) === patientScheduleId) || res[0]) : res;
-    
+
     // CASCADE UPDATE: Recreate SMS reminders for rescheduled date (NON-BLOCKING)
     setImmediate(async () => {
       try {
@@ -449,7 +449,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
         console.warn('[updatePatientSchedule] Failed to update SMS reminders after reschedule:', smsErr?.message || smsErr);
       }
     });
-    
+
     // Also run validator for visibility
     try {
       const mainId = normalizeId(main) ?? patientScheduleId;
@@ -484,7 +484,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
 // Convenience: reschedule API to call directly
 const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, client) => {
   const supabase = withClient(client);
-  
+
   // Get the old date before rescheduling
   const { data: current } = await supabase
     .from('patientschedule')
@@ -492,9 +492,9 @@ const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, cli
     .eq('patient_schedule_id', patientScheduleId)
     .eq('is_deleted', false)
     .maybeSingle();
-  
+
   const oldDate = current?.scheduled_date;
-  
+
   const { data, error } = await supabase.rpc('reschedule_patientschedule', {
     p_patient_schedule_id: patientScheduleId,
     p_new_date: newDate,
@@ -517,8 +517,7 @@ const reschedulePatientSchedule = async (patientScheduleId, newDate, userId, cli
   return data;
 };
 
-module.exports = {
-  createImmunization,
+export { createImmunization,
   getImmunizationById,
   updateImmunization,
   deleteImmunization,
@@ -527,5 +526,4 @@ module.exports = {
   scheduleImmunization,
   enforceVaccineInterval,
   updatePatientSchedule,
-  reschedulePatientSchedule,
-};
+  reschedulePatientSchedule };

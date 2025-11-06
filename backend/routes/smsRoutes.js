@@ -1,24 +1,22 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-	sendSMSNotification,
-	sendReminderNotifications,
-	getSMSHistory,
-	configureSMSSettings,
-	getSMSDeliveryStatus,
-	sendBulkSMS,
-	getSMSTemplates,
-	createSMSTemplate,
-	updateSMSTemplate,
-	deleteSMSTemplate,
-	getGuardianAutoSendSettings,
-	toggleGuardianAutoSend,
-	bulkToggleAutoSend,
-	getSMSStatistics,
-	previewTemplate,
-	runScheduledNow
-} = require('../controllers/smsController');
+import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { sendSMSNotification,
+  sendReminderNotifications,
+  getSMSHistory,
+  configureSMSSettings,
+  getSMSDeliveryStatus,
+  sendBulkSMS,
+  getSMSTemplates,
+  createSMSTemplate,
+  updateSMSTemplate,
+  deleteSMSTemplate,
+  getGuardianAutoSendSettings,
+  toggleGuardianAutoSend,
+  bulkToggleAutoSend,
+  getSMSStatistics,
+  previewTemplate,
+  runScheduledNow } from '../controllers/smsController.js';
 
 // POST /api/sms - Send an SMS notification
 router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), sendSMSNotification);
@@ -68,4 +66,4 @@ router.post('/templates/preview', authenticateRequest, checkUserMapping, authori
 // POST /api/sms/cron/run-now - Manually trigger scheduled SMS processing (admin only)
 router.post('/cron/run-now', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runScheduledNow);
 
-module.exports = router;
+export default router;

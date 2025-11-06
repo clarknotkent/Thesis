@@ -190,10 +190,8 @@ const {
   loadNotifications,
   markAsRead,
   markAllAsRead,
-  deleteNotification,
   clearAllRead,
   startPolling,
-  stopPolling,
   getNotificationIcon
 } = useNotifications()
 

@@ -514,7 +514,7 @@ const unscheduledVaccines = computed(() => {
     .filter(v => !scheduledIds.has(v.id))
 })
 
-function openDropdown(event) {
+function openDropdown(_event) {
   dropdownOpen.value = true
   if (inputRef.value) {
     const rect = inputRef.value.getBoundingClientRect()

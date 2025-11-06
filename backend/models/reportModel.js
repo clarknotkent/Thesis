@@ -1,4 +1,4 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 const reportModel = {
   // Fetch monthly immunization statistics report
@@ -10,7 +10,7 @@ const reportModel = {
         .from('monthlyreports_view')
         .select('*')
         .eq('report_month', monthKey);
-      
+
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -27,7 +27,7 @@ const reportModel = {
         .from('monthlyreports_view')
         .select('*')
         .like('report_month', `${year}-%`);
-      
+
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -73,7 +73,7 @@ const reportModel = {
       }
 
       const { data, error } = await query.order('scheduled_date', { ascending: true });
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -94,7 +94,7 @@ const reportModel = {
       }
 
       const { data, error } = await query.order('current_stock_level', { ascending: true });
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -115,7 +115,7 @@ const reportModel = {
       }
       if (filters.vaccine_id) {
         // tcl_view has immunization_status as json; client can filter further if needed
-        query = query; 
+        query = query;
       }
 
       const { data, error } = await query.order('date_of_birth', { ascending: false });
@@ -128,7 +128,7 @@ const reportModel = {
   },
 
   // Alias function for test compatibility
-  getImmunizationReport: async (filters = {}) => {
+  getImmunizationReport: (filters = {}) => {
     // Return monthly report for current month as default
     const now = new Date();
     const month = filters.month || now.getMonth() + 1;
@@ -205,12 +205,12 @@ const reportModel = {
       const daysBetween = (d1, d2) => Math.floor(hoursBetween(d1, d2) / 24);
 
       // Debug collectors for raw names/doses seen this month
-  const encounteredRawNamesSet = new Set();
-  const encounteredUpperNamesSet = new Set();
-  const encounteredDoseSamples = [];
-  // Aggregated counts by antigen (upper) and by antigen+dose
-  const countByAntigenUpper = Object.create(null);
-  const countByAntigenAndDoseUpper = Object.create(null);
+      const encounteredRawNamesSet = new Set();
+      const encounteredUpperNamesSet = new Set();
+      const encounteredDoseSamples = [];
+      // Aggregated counts by antigen (upper) and by antigen+dose
+      const countByAntigenUpper = Object.create(null);
+      const countByAntigenAndDoseUpper = Object.create(null);
 
       // Helper: clamp dose to valid array index length (1-based dose -> 0-based index)
       const clampDoseIndex = (dose, len) => {
@@ -226,10 +226,10 @@ const reportModel = {
         const antigenName = vac.vaccine_antigen_name || '';
         const NAME = antigenName.toUpperCase();
         const NORMAL = NAME.replace(/[^A-Z0-9]/g, ''); // strip spaces/punct for robust matching
-  // Normalize dose to a number (handles values like 'Dose 1', '1st', '2', etc.)
-  const rawDose = vac.dose_number ?? vac.dose_ordinal ?? vac.dose ?? 1;
-  const parsed = typeof rawDose === 'string' ? parseInt(rawDose.replace(/[^0-9]/g, ''), 10) : Number(rawDose);
-  const dose = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+        // Normalize dose to a number (handles values like 'Dose 1', '1st', '2', etc.)
+        const rawDose = vac.dose_number ?? vac.dose_ordinal ?? vac.dose ?? 1;
+        const parsed = typeof rawDose === 'string' ? parseInt(rawDose.replace(/[^0-9]/g, ''), 10) : Number(rawDose);
+        const dose = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 
         // Collect debug info
         if (antigenName) {
@@ -388,10 +388,12 @@ const reportModel = {
         maleTarget,
         femaleTarget,
         vaccines,
-  fullyImmunizedMale,
-  fullyImmunizedFemale,
-  fullyImmunizedCount,
-  fullyImmunizedCoverage,
+        fullyImmunizedMale,
+        fullyImmunizedFemale,
+        fullyImmunizedCount,
+        fullyImmunizedCoverage,
+        completelyImmunizedMale,
+        completelyImmunizedFemale,
         completelyImmunizedCount,
         completelyImmunizedCoverage,
         newbornScreening: { male: 0, female: 0, total: 0, coverage: 0 },
@@ -418,4 +420,4 @@ const reportModel = {
   },
 };
 
-module.exports = reportModel;
+export default reportModel;

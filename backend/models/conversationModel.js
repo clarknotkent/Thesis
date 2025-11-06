@@ -1,8 +1,8 @@
-const supabase = require('../db');
-const { createMessage } = require('./messageModel');
+import supabase from '../db.js';
+import { createMessage } from './messageModel.js';
 
 // Utility: normalize to string UUIDs and sort for stable signatures
-const toId = (v) => (v == null ? '' : String(v));
+const toId = (v) => (v === null || v === undefined ? '' : String(v));
 const makeParticipantSignature = (ids = []) => ids.map(toId).sort().join('|');
 
 // Find an active conversation whose ACTIVE participant set exactly equals targetIds
@@ -79,7 +79,7 @@ const findActiveConversationByParticipantSet = async (targetIds = []) => {
  * @param {string} userId - The UUID of the user whose conversations are to be fetched.
  * @returns {Promise<Array>} A promise that resolves to an array of conversation objects.
  */
-const getConversationsForUser = async (userId) => {
+const getConversationsForUser = async (_userId) => {
   // Attempt to order by preferred columns with graceful fallback
   const orderCols = ['latest_message_time', 'last_message_at', 'created_at'];
   let lastErr = null;
@@ -205,7 +205,7 @@ const listConversations = async (filters = {}, page = 1, limit = 20) => {
             }
 
             // 2) Unread counts for current user
-            let unreadByConv = {};
+            const unreadByConv = {};
             if (filters.user_id) {
               const { data: unreadRows, error: unreadErr } = await supabase
                 .from('message_receipts')
@@ -409,7 +409,7 @@ const createConversation = async ({ subject = null, created_by, participants = [
   }
 
   return conv;
-}
+};
 
 /**
  * Starts a conversation and immediately posts the first message.
@@ -513,4 +513,4 @@ const startConversationWithMessage = async ({ subject = null, created_by, partic
   }
 };
 
-module.exports = { getConversationsForUser, getMessages, listConversations, createConversation, startConversationWithMessage };
+export { getConversationsForUser, getMessages, listConversations, createConversation, startConversationWithMessage };

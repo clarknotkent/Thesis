@@ -340,29 +340,10 @@ const emit = defineEmits(['submit', 'cancel'])
 const localForm = ref({ ...props.initialData })
 
 // Dropdown selections
-const selectedAntigen = ref('')
 const selectedBrand = ref('')
 const selectedDisease = ref('')
 
 // Options for dropdowns
-const antigenOptions = [
-  'COVID-19',
-  'BCG',
-  'Hepatitis B',
-  'Pentavalent (DPT-Hep B-Hib)',
-  'Oral Polio Vaccine (OPV)',
-  'Inactivated Polio Vaccine (IPV)',
-  'Pneumococcal Conjugate Vaccine (PCV)',
-  'Measles, Mumps, Rubella (MMR)',
-  'Rotavirus',
-  'Japanese Encephalitis',
-  'Human Papillomavirus (HPV)',
-  'Tetanus-Diphtheria (Td)',
-  'Influenza',
-  'Meningococcal',
-  'Varicella (Chickenpox)',
-  'Typhoid'
-]
 
 const brandOptions = [
   'Pfizer',
@@ -407,12 +388,6 @@ watch(() => props.initialData, (newData) => {
 }, { deep: true })
 
 // Dropdown handlers
-const onAntigenSelect = () => {
-  if (selectedAntigen.value) {
-    localForm.value.antigen_name = selectedAntigen.value
-  }
-}
-
 const onAntigenInput = () => {
   selectedAntigen.value = ''
 }

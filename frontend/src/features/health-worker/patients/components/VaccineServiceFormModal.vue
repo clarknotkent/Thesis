@@ -316,8 +316,6 @@ const {
   autoSelectHint,
   serviceForm,
   filteredVaccineOptions,
-  fetchVaccineInventory,
-  fetchVaccineCatalog,
   refreshVaccineSources,
   onVaccineSearch,
   selectVaccine: selectVaccineFromComposable,

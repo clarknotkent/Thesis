@@ -1,4 +1,4 @@
-const dashboardModel = require('../models/dashboardModel');
+import * as dashboardModel from '../models/dashboardModel.js';
 
 // Get dashboard metrics
 const getDashboardMetrics = async (req, res) => {
@@ -37,7 +37,7 @@ const getVaccineReport = async (req, res) => {
 const getDashboardOverview = async (req, res) => {
   try {
     const dashboardStats = await dashboardModel.fetchDashboardMetrics();
-    
+
     res.json({
       success: true,
       data: dashboardStats
@@ -52,9 +52,7 @@ const getDashboardOverview = async (req, res) => {
   }
 };
 
-module.exports = {
-  getDashboardMetrics,
+export { getDashboardMetrics,
   getWorkerProgress,
   getVaccineReport,
-  getDashboardOverview
-};
+  getDashboardOverview };

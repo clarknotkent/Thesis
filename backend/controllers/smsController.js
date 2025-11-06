@@ -1,27 +1,26 @@
-const smsModel = require('../models/smsModel');
-const smsService = require('../services/smsService');
-const smsScheduler = require('../services/smsScheduler');
+import * as smsModel from '../models/smsModel.js';
+import smsService from '../services/smsService.js';
+import * as smsScheduler from '../services/smsScheduler.js';
 // Use Supabase client for DB access (no direct PG connection required)
-const supabase = require('../db');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
+import supabase from '../db.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
 
 // Send SMS notification
 const sendSMSNotification = async (req, res) => {
   try {
-    const { 
-      phoneNumber, 
-      message, 
-      templateId, 
-      variables, 
-      type = 'manual', 
-      guardianId, 
-      patientId 
+    const {
+      phoneNumber,
+      message,
+      templateId,
+      variables,
+      guardianId,
+      patientId
     } = req.body;
     const actorId = req.user && (req.user.user_id || req.user.id) || null;
-    
+
     let finalMessage = message;
-    
+
     // If templateId is provided, use template and replace variables
     if (templateId) {
       const { data: templateRow, error: templateErr } = await supabase
@@ -31,29 +30,29 @@ const sendSMSNotification = async (req, res) => {
         .single();
 
       if (templateErr || !templateRow) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          message: 'Template not found' 
+          message: 'Template not found'
         });
       }
-      
+
       // Replace variables in template
       finalMessage = smsService.replaceTemplateVariables(
         templateRow.template,
         variables || {}
       );
     }
-    
+
     if (!phoneNumber || !finalMessage) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Phone number and message/template are required' 
+        message: 'Phone number and message/template are required'
       });
     }
 
     // Send SMS via PhilSMS
     const result = await smsService.sendSMS(phoneNumber, finalMessage);
-    
+
     // Log to database (sent or failed)
     const insertPayload = {
       guardian_id: guardianId || null,
@@ -96,25 +95,25 @@ const sendSMSNotification = async (req, res) => {
         }
       });
     } catch (_) {}
-    
-    res.json({ 
+
+    res.json({
       success: result.success,
-      message: result.success ? 'SMS sent successfully' : 'SMS sending failed', 
+      message: result.success ? 'SMS sent successfully' : 'SMS sending failed',
       data: result,
       sentMessage: finalMessage
     });
   } catch (error) {
     console.error('Error sending SMS:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to send SMS', 
-      error: error.message 
+      message: 'Failed to send SMS',
+      error: error.message
     });
   }
 };
 
 // Send reminder notifications (placeholder)
-const sendReminderNotifications = async (req, res) => {
+const sendReminderNotifications = (req, res) => {
   try {
     res.json({ success: true, message: 'Reminders not implemented in back. Use scheduler + notifications table.' });
   } catch (error) {
@@ -127,7 +126,7 @@ const getSMSHistory = async (req, res) => {
   try {
     const { status, type, startDate, endDate, search, patientId, guardianId, page = 1, limit = 100 } = req.query;
     const offset = (page - 1) * limit;
-    
+
     // Build supabase query with joins to get names
     // Join guardians and patients separately to avoid nested guardian conflict
     let query = supabase
@@ -177,7 +176,7 @@ const getSMSHistory = async (req, res) => {
     const formattedRows = (rows || []).map(row => {
       const patient = row.patients;
       const guardian = row.guardians;
-      
+
       return {
         id: row.id,
         guardian_id: row.guardian_id,
@@ -206,14 +205,14 @@ const getSMSHistory = async (req, res) => {
     const { count: totalCount, error: countErr } = await countQ;
     if (countErr) throw countErr;
 
-    res.json({ 
-      success: true, 
-      data: formattedRows, 
-      pagination: { 
-        page: Number(page), 
-        limit: Number(limit), 
-        total: totalCount || 0 
-      } 
+    res.json({
+      success: true,
+      data: formattedRows,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: totalCount || 0
+      }
     });
   } catch (error) {
     console.error('Error fetching SMS history:', error);
@@ -221,7 +220,7 @@ const getSMSHistory = async (req, res) => {
   }
 };
 
-const configureSMSSettings = async (req, res) => {
+const configureSMSSettings = (req, res) => {
   res.json({ success: true, message: 'SMS settings management not implemented' });
 };
 
@@ -280,25 +279,25 @@ const createSMSTemplate = async (req, res) => {
   try {
     const { name, template, trigger_type, time_range, is_active = true } = req.body;
     const actorId = req.user && (req.user.user_id || req.user.id) || null;
-    
+
     const allowedTriggers = new Set(['1-week','3-days','1-day','0-day','manual']);
     if (!name || !template || !trigger_type) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Name, template, and trigger_type are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Name, template, and trigger_type are required'
       });
     }
     if (!allowedTriggers.has(String(trigger_type))) {
       return res.status(400).json({ success: false, message: 'Invalid trigger_type. Allowed: 1-week, 3-days, 1-day, 0-day, manual' });
     }
-    
+
     const { data, error } = await supabase
       .from('sms_templates')
-      .insert({ 
-        name, 
-        template, 
-        trigger_type, 
-        time_range, 
+      .insert({
+        name,
+        template,
+        trigger_type,
+        time_range,
         is_active,
         created_by: actorId,
         updated_by: actorId,
@@ -338,14 +337,14 @@ const updateSMSTemplate = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid trigger_type. Allowed: 1-week, 3-days, 1-day, 0-day, manual' });
       }
     }
-    
+
     const { data, error } = await supabase
       .from('sms_templates')
-      .update({ 
-        name, 
-        template, 
-        trigger_type, 
-        time_range, 
+      .update({
+        name,
+        template,
+        trigger_type,
+        time_range,
         is_active,
         updated_by: actorId,
         updated_at: new Date().toISOString()
@@ -373,7 +372,7 @@ const deleteSMSTemplate = async (req, res) => {
     // Soft delete to preserve history and allow auditing
     const { data, error } = await supabase
       .from('sms_templates')
-      .update({ 
+      .update({
         is_deleted: true,
         deleted_by: actorId,
         deleted_at: new Date().toISOString(),
@@ -398,7 +397,7 @@ const deleteSMSTemplate = async (req, res) => {
 const getGuardianAutoSendSettings = async (req, res) => {
   try {
     const { search, status } = req.query;
-    
+
     // Fetch guardians
     let gq = supabase
       .from('guardians')
@@ -414,7 +413,7 @@ const getGuardianAutoSendSettings = async (req, res) => {
 
     // Compute children count per guardian from patients (only active patients)
     const guardianIds = (guardians || []).map(g => g.guardian_id);
-    let childCountMap = new Map();
+    const childCountMap = new Map();
     if (guardianIds.length > 0) {
       const { data: childRows, error: cErr } = await supabase
         .from('patients')
@@ -470,7 +469,7 @@ const toggleGuardianAutoSend = async (req, res) => {
     if (!gRow) {
       return res.status(404).json({ success: false, message: 'Guardian not found or deleted' });
     }
-    
+
     const { data, error } = await supabase
       .from('guardian_auto_send_settings')
       .upsert(
@@ -480,10 +479,10 @@ const toggleGuardianAutoSend = async (req, res) => {
       .select()
       .single();
     if (error) throw error;
-    res.json({ 
-      success: true, 
-      message: `Auto-send ${auto_send_enabled ? 'enabled' : 'disabled'} successfully`, 
-      data 
+    res.json({
+      success: true,
+      message: `Auto-send ${auto_send_enabled ? 'enabled' : 'disabled'} successfully`,
+      data
     });
   } catch (error) {
     console.error('Error toggling guardian auto-send:', error);
@@ -495,17 +494,17 @@ const toggleGuardianAutoSend = async (req, res) => {
 const bulkToggleAutoSend = async (req, res) => {
   try {
     const { guardianIds, auto_send_enabled } = req.body;
-    
+
     console.log('bulkToggleAutoSend received:', { guardianIds, auto_send_enabled, type: typeof auto_send_enabled });
-    
+
     if (!Array.isArray(guardianIds) || guardianIds.length === 0) {
       return res.status(400).json({ success: false, message: 'Guardian IDs array is required' });
     }
-    
+
     if (typeof auto_send_enabled !== 'boolean') {
       return res.status(400).json({ success: false, message: 'auto_send_enabled must be a boolean' });
     }
-    
+
     // Only include guardians that are not deleted
     const { data: activeGuardians, error: gErr } = await supabase
       .from('guardians')
@@ -516,40 +515,40 @@ const bulkToggleAutoSend = async (req, res) => {
       console.error('Error fetching active guardians:', gErr);
       throw gErr;
     }
-    
+
     const validIds = (activeGuardians || []).map(g => g.guardian_id);
     console.log('Valid guardian IDs:', validIds);
-    
+
     if (validIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No active guardians found for provided IDs' });
     }
 
-    const payload = validIds.map(id => ({ 
-      guardian_id: Number(id), 
+    const payload = validIds.map(id => ({
+      guardian_id: Number(id),
       auto_send_enabled: Boolean(auto_send_enabled)
     }));
-    
+
     console.log('Upserting payload:', payload);
-    
+
     // Use upsert with ignoreDuplicates:false (default) to update existing records
     const { data, error } = await supabase
       .from('guardian_auto_send_settings')
-      .upsert(payload, { 
+      .upsert(payload, {
         onConflict: 'guardian_id',
-        ignoreDuplicates: false 
+        ignoreDuplicates: false
       })
       .select();
-      
+
     if (error) {
       console.error('Supabase upsert error:', error);
       throw error;
     }
-    
+
     console.log('Bulk toggle successful:', data);
-    
-    res.json({ 
-      success: true, 
-      message: `Auto-send ${auto_send_enabled ? 'enabled' : 'disabled'} for ${validIds.length} guardian(s)` 
+
+    res.json({
+      success: true,
+      message: `Auto-send ${auto_send_enabled ? 'enabled' : 'disabled'} for ${validIds.length} guardian(s)`
     });
   } catch (error) {
     console.error('Error bulk toggling auto-send:', error);
@@ -611,32 +610,32 @@ const getSMSStatistics = async (req, res) => {
 const previewTemplate = async (req, res) => {
   try {
     const { templateId, variables } = req.body;
-    
+
     if (!templateId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Template ID is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Template ID is required'
       });
     }
-    
+
     const { data: template, error } = await supabase
       .from('sms_templates')
       .select('*')
       .eq('id', templateId)
       .single();
     if (error || !template) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Template not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Template not found'
       });
     }
     const previewMessage = smsService.replaceTemplateVariables(
       template.template,
       variables || {}
     );
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       data: {
         template: template.template,
         preview: previewMessage,
@@ -661,8 +660,7 @@ const runScheduledNow = async (req, res) => {
   }
 };
 
-module.exports = {
-  sendSMSNotification,
+export { sendSMSNotification,
   sendReminderNotifications,
   getSMSHistory,
   configureSMSSettings,
@@ -677,5 +675,4 @@ module.exports = {
   bulkToggleAutoSend,
   getSMSStatistics,
   previewTemplate,
-  runScheduledNow
-};
+  runScheduledNow };

@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const { getConversations, create, startWithMessage, leaveConversation } = require('../controllers/conversationController');
-const { authorizeRole } = require('../middlewares/authMiddleware');
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getConversations, create, startWithMessage, leaveConversation } from '../controllers/conversationController.js';
 
 router.get('/', authenticateRequest, checkUserMapping, getConversations);
 
@@ -15,4 +14,4 @@ router.post('/start', authenticateRequest, checkUserMapping, startWithMessage);
 // Participant leaves a conversation (sets left_at)
 router.post('/:conversation_id/leave', authenticateRequest, checkUserMapping, leaveConversation);
 
-module.exports = router;
+export default router;

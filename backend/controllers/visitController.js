@@ -1,8 +1,8 @@
-const { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay } = require('../models/visitModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { getActorId } = require('../utils/actor');
+import { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay } from '../models/visitModel.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { getActorId } from '../utils/actor.js';
 
 const getVisits = async (req, res) => {
   try {
@@ -92,7 +92,7 @@ const updateVisit = async (req, res) => {
       }
       console.debug('[updateVisit] payload field types:', dbg);
     } catch(_) {}
-    
+
     // Always stamp updated_by as the acting user
     payload.updated_by = getActorId(req) || null;
     // Validate recorded_by: must be a numeric user_id if provided
@@ -105,7 +105,7 @@ const updateVisit = async (req, res) => {
         });
       }
     }
-    
+
     const supabase = getSupabaseForRequest(req);
     const updated = await updateVisitById(id, payload, supabase);
     if (!updated) return res.status(404).json({ message: 'Visit not found' });
@@ -149,7 +149,6 @@ const ensureVisit = async (req, res) => {
   }
 };
 
-module.exports = { getVisits, getVisit, postVisit, updateVisit, ensureVisit };
 // Lightweight existence check (no writes) for UI pre-flight/toast
 const existsVisit = async (req, res) => {
   try {
@@ -164,5 +163,5 @@ const existsVisit = async (req, res) => {
   }
 };
 
-module.exports = { getVisits, getVisit, postVisit, updateVisit, ensureVisit, existsVisit };
+export { getVisits, getVisit, postVisit, updateVisit, ensureVisit, existsVisit };
 

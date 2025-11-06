@@ -370,7 +370,7 @@ const onContactInput = (e) => {
 }
 
 // Normalize incoming contact number on initial load
-watch(() => localForm.value.contactNumber, (val, oldVal) => {
+watch(() => localForm.value.contactNumber, (val, _oldVal) => {
   // If readOnly, don't reformat to avoid flicker; otherwise keep mask
   if (!props.readOnly) {
     const formatted = formatMaskedContact(val)

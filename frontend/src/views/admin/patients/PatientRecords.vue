@@ -368,7 +368,6 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
@@ -378,8 +377,6 @@ import { useConfirm } from '@/composables/useConfirm'
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
-
-const router = useRouter()
 
 // Reactive data
 const loading = ref(true)

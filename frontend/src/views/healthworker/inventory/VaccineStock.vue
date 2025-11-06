@@ -241,7 +241,6 @@ const router = useRouter()
 // Use vaccine inventory composable
 const {
   loading,
-  inventory,
   searchTerm,
   currentTypeFilter,
   currentStatusFilter,
@@ -253,7 +252,6 @@ const {
   filteredInventory,
   totalPages,
   paginatedInventory,
-  getStatus,
   selectTypeFilter,
   selectStatusFilter,
   selectSort,

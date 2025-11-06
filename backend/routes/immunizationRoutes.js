@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-  listImmunizations,
+import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { listImmunizations,
   getImmunizationRecord,
   createImmunizationRecord,
   updateImmunizationRecord,
@@ -13,8 +12,7 @@ const {
   manualReschedulePatientSchedule,
   debugManualReschedule
   , debugManualRescheduleDB
-  , debugRescheduleCheckpoints
-} = require('../controllers/immunizationController');
+  , debugRescheduleCheckpoints } from '../controllers/immunizationController.js';
 
 // GET /api/immunizations - Get all immunizations
 router.get('/', authenticateRequest, checkUserMapping, listImmunizations);
@@ -52,4 +50,4 @@ router.post('/debug-reschedule-db', authenticateRequest, checkUserMapping, autho
 // POST /api/immunizations/debug-reschedule-checkpoints - Subject-first checkpoints (pass/fail per rule)
 router.post('/debug-reschedule-checkpoints', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), debugRescheduleCheckpoints);
 
-module.exports = router;
+export default router;

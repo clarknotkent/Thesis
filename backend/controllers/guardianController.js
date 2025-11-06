@@ -1,22 +1,22 @@
-const guardianModel = require('../models/guardianModel');
-const notificationModel = require('../models/notificationModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
+import guardianModel from '../models/guardianModel.js';
+import * as notificationModel from '../models/notificationModel.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
 
 // Get all guardians for dropdown
 const getAllGuardians = async (req, res) => {
   try {
     const guardians = await guardianModel.getAllGuardians();
-    
-    res.json({ 
-      success: true, 
-      data: guardians 
+
+    res.json({
+      success: true,
+      data: guardians
     });
   } catch (error) {
     console.error('Error fetching guardians:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch guardians', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch guardians',
+      error: error.message
     });
   }
 };
@@ -26,24 +26,24 @@ const getGuardianById = async (req, res) => {
   try {
     const { id } = req.params;
     const guardian = await guardianModel.getGuardianById(id);
-    
+
     if (!guardian) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Guardian not found' 
+        message: 'Guardian not found'
       });
     }
-    
-    res.json({ 
-      success: true, 
-      data: guardian 
+
+    res.json({
+      success: true,
+      data: guardian
     });
   } catch (error) {
     console.error('Error fetching guardian:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to fetch guardian details', 
-      error: error.message 
+      message: 'Failed to fetch guardian details',
+      error: error.message
     });
   }
 };
@@ -52,12 +52,12 @@ const getGuardianById = async (req, res) => {
 const createGuardian = async (req, res) => {
   try {
     const guardianData = req.body;
-    
+
     // Validate required fields
     if (!guardianData.firstname || !guardianData.surname) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Missing required fields: firstname, surname' 
+        message: 'Missing required fields: firstname, surname'
       });
     }
 
@@ -77,17 +77,17 @@ const createGuardian = async (req, res) => {
       console.warn('Failed to send welcome notification:', notifError.message);
     }
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      message: 'Guardian created successfully', 
+      message: 'Guardian created successfully',
       data: newGuardian
     });
   } catch (error) {
     console.error('Error creating guardian:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to create guardian', 
-      error: error.message 
+      message: 'Failed to create guardian',
+      error: error.message
     });
   }
 };
@@ -97,27 +97,27 @@ const updateGuardian = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     const updatedGuardian = await guardianModel.updateGuardian(id, updates);
-    
+
     if (!updatedGuardian) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Guardian not found' 
+        message: 'Guardian not found'
       });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Guardian updated successfully',
-      data: updatedGuardian 
+      data: updatedGuardian
     });
   } catch (error) {
     console.error('Error updating guardian:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to update guardian', 
-      error: error.message 
+      message: 'Failed to update guardian',
+      error: error.message
     });
   }
 };
@@ -127,13 +127,13 @@ const deleteGuardian = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id; // From auth middleware
-    
+
     const result = await guardianModel.deleteGuardian(id, userId);
 
     if (!result) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Guardian not found' 
+        message: 'Guardian not found'
       });
     }
 
@@ -141,56 +141,58 @@ const deleteGuardian = async (req, res) => {
     const cancelled = result.cancelledSmsCount || 0;
     console.log(`[guardianController] deleteGuardian: cancelled ${cancelled} sms_logs for guardian ${id}`);
 
-    res.json({ 
+    res.json({
       success: true,
       message: `Guardian deleted successfully. Cancelled pending scheduled SMS: ${cancelled}`
     });
   } catch (error) {
     console.error('Error deleting guardian:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to delete guardian', 
-      error: error.message 
+      message: 'Failed to delete guardian',
+      error: error.message
     });
   }
 };
 
-module.exports = {
+// admin helper: cancel pending scheduled SMS for a guardian
+const cancelPendingSmsForGuardian = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabase = getSupabaseForRequest(req);
+
+    const { data, error } = await supabase
+      .from('sms_logs')
+      .update({
+        is_deleted: true,
+        status: 'cancelled',
+        error_message: 'Cancelled by admin: guardian cleanup',
+        updated_at: new Date().toISOString()
+      })
+      .eq('guardian_id', id)
+      .eq('status', 'pending')
+      .eq('type', 'scheduled')
+      .select('id');
+
+    if (error) {
+      console.error('[cancelPendingSmsForGuardian] supabase error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to cancel sms_logs', error: error.message || error });
+    }
+
+    const count = Array.isArray(data) ? data.length : 0;
+    console.log(`[cancelPendingSmsForGuardian] Cancelled ${count} pending scheduled sms_logs for guardian ${id}`);
+    return res.json({ success: true, cancelled: count, ids: (data || []).map(r => r.id) });
+  } catch (err) {
+    console.error('[cancelPendingSmsForGuardian] unexpected error:', err);
+    return res.status(500).json({ success: false, message: 'Internal error', error: err?.message || String(err) });
+  }
+};
+
+export {
   getAllGuardians,
   getGuardianById,
   createGuardian,
   updateGuardian,
   deleteGuardian,
-  // admin helper: cancel pending scheduled SMS for a guardian
-  cancelPendingSmsForGuardian: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const supabase = getSupabaseForRequest(req);
-
-      const { data, error } = await supabase
-        .from('sms_logs')
-        .update({
-          is_deleted: true,
-          status: 'cancelled',
-          error_message: 'Cancelled by admin: guardian cleanup',
-          updated_at: new Date().toISOString()
-        })
-        .eq('guardian_id', id)
-        .eq('status', 'pending')
-        .eq('type', 'scheduled')
-        .select('id');
-
-      if (error) {
-        console.error('[cancelPendingSmsForGuardian] supabase error:', error);
-        return res.status(500).json({ success: false, message: 'Failed to cancel sms_logs', error: error.message || error });
-      }
-
-      const count = Array.isArray(data) ? data.length : 0;
-      console.log(`[cancelPendingSmsForGuardian] Cancelled ${count} pending scheduled sms_logs for guardian ${id}`);
-      return res.json({ success: true, cancelled: count, ids: (data || []).map(r => r.id) });
-    } catch (err) {
-      console.error('[cancelPendingSmsForGuardian] unexpected error:', err);
-      return res.status(500).json({ success: false, message: 'Internal error', error: err?.message || String(err) });
-    }
-  }
+  cancelPendingSmsForGuardian
 };

@@ -1,5 +1,5 @@
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
-const vitaminaModel = require('../models/vitaminaModel');
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
+import * as vitaminaModel from '../models/vitaminaModel.js';
 
 async function resolveVaccineId(supabase, { inventory_id, vaccine_id }) {
   if (vaccine_id) return vaccine_id;
@@ -102,9 +102,9 @@ const createVitaminaRecord = async (req, res) => {
       if (!visit_id) return res.status(400).json({ success:false, message:'patient has not taken their vitalsigns yet' });
     }
     if (!patient_id) patient_id = await resolvePatientIdFromVisit(supabase, visit_id);
-  // Enforce inventory_id for in-facility
-  if (!payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is required for in-facility vitamina' });
-  const vaccineId = await resolveVaccineId(supabase, { inventory_id: payload.inventory_id, vaccine_id: payload.vaccine_id });
+    // Enforce inventory_id for in-facility
+    if (!payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is required for in-facility vitamina' });
+    const vaccineId = await resolveVaccineId(supabase, { inventory_id: payload.inventory_id, vaccine_id: payload.vaccine_id });
     const { data: visitVital, error: vitErr } = await supabase
       .from('vitalsigns')
       .select('vital_id')
@@ -148,10 +148,8 @@ const deleteVitaminaRecord = async (req, res) => {
   }
 };
 
-module.exports = {
-  listVitamina,
+export { listVitamina,
   getVitaminaRecord,
   createVitaminaRecord,
   updateVitaminaRecord,
-  deleteVitaminaRecord,
-};
+  deleteVitaminaRecord };

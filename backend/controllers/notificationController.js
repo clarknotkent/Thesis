@@ -1,5 +1,4 @@
-const notificationModel = require('../models/notificationModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
+import * as notificationModel from '../models/notificationModel.js';
 
 // Helper to send standardized error
 function sendError(res, error, fallback) {
@@ -100,4 +99,4 @@ const updateNotificationStatus = async (req, res) => {
   }
 };
 
-module.exports = { create, list, markAsRead, deleteNotification, getPendingNotifications, updateNotificationStatus };
+export { create, list, markAsRead, deleteNotification, getPendingNotifications, updateNotificationStatus };

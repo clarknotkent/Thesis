@@ -2,7 +2,6 @@ import { createApp, nextTick } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { getRole } from './services/auth'
 
 // Import our custom styles (includes Bootstrap)
 import './assets/styles/index.css'
@@ -72,14 +71,14 @@ try {
 const initDropdowns = () => {
 	const toggles = document.querySelectorAll('[data-bs-toggle="dropdown"]')
 	console.log('Initializing dropdowns, found:', toggles.length)
-	toggles.forEach((el, index) => {
-		try {
-			const instance = Dropdown.getOrCreateInstance(el)
-			console.log(`Dropdown ${index} initialized:`, el.id || el)
-		} catch (e) {
-			console.error('Error initializing dropdown:', e)
-		}
-	})
+  toggles.forEach((el, index) => {
+    try {
+      const _instance = Dropdown.getOrCreateInstance(el)
+      console.log(`Dropdown ${index} initialized:`, el.id || el)
+    } catch (e) {
+      console.error('Error initializing dropdown:', e)
+    }
+  })
 }
 
 router.afterEach(() => {
@@ -95,8 +94,8 @@ nextTick(() => initDropdowns())
 // Register the service worker (dev/prod) but DON'T initialize offline yet
 // Offline functionality will be initialized after user login
 try {
-	if (registerSW) {
-		const updateSW = registerSW({ 
+  if (registerSW) {
+    const _updateSW = registerSW({ 
       immediate: true,
       onRegistered(registration) {
         console.log('✅ Service Worker registered successfully')
@@ -176,7 +175,7 @@ try {
         window.__testOfflineRouting = async () => {
           console.log('🧪 Testing offline cache...')
           try {
-            const { getCacheStats, clearCache } = await import('@/services/offline/offlineUtils')
+            const { getCacheStats, _clearCache } = await import('@/services/offline/offlineUtils')
             const stats = await getCacheStats()
             console.log('✅ Offline cache stats:', stats)
             console.log('💡 Use clearCache() to clear all offline data')

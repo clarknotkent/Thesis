@@ -41,8 +41,6 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import SummaryCards from '@/features/parent/home/components/SummaryCards.vue'
 import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
-import { formatDate, calculateAge } from '@/composables/useDateFormat'
-import { getChildName, getChildDOB, getCompletedCount, getPendingCount } from '@/composables/useParentData'
 import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 

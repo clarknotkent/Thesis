@@ -323,18 +323,14 @@ const {
   saving,
   error,
   vaccinationRecord,
-  patientData,
   nurses,
   form,
   todayDate,
   isFormValid,
   otherDoses,
   calculateAge,
-  formatDateForInput,
   fetchVaccinationRecord,
-  prepareUpdateData,
-  updateVaccinationRecord,
-  resetForm
+  prepareUpdateData
 } = useVaccinationRecordEditor(patientId, recordId)
 
 // Local state for approval modal
@@ -416,7 +412,7 @@ const onApproverCancel = () => {
 
 // Parse structured remarks produced by admin UI into discrete fields.
 // Returns { manufacturer, lot, site, facility, administeredBy, otherRemarks }
-const parseRemarksForOutside = (remarks) => {
+const _parseRemarksForOutside = (remarks) => {
   const result = { manufacturer: '', lot: '', site: '', facility: '', administeredBy: '', otherRemarks: '' }
   if (!remarks || !remarks.trim()) return result
 
@@ -465,7 +461,7 @@ const getAdministeredByDisplay = (f) => {
 }
 
 // Build structured remarks string similar to admin: main remarks + labeled parts
-const buildStructuredRemarks = (f) => {
+const _buildStructuredRemarks = (f) => {
   const main = (f.remarks && f.remarks.trim()) ? f.remarks.trim() : ''
   const parts = []
   if (f.siteOfAdministration) parts.push(`Site: ${f.siteOfAdministration}`)
@@ -478,15 +474,6 @@ const buildStructuredRemarks = (f) => {
     if (f.lotNumber) parts.push(`Lot: ${f.lotNumber}`)
   }
   return [main, ...parts].filter(Boolean).join(' | ')
-}
-
-const fetchPatientData = async () => {
-  try {
-    const response = await api.get(`/patients/${patientId.value}`)
-    patientData.value = response.data.data || response.data
-  } catch (err) {
-    console.error('Error fetching patient data:', err)
-  }
 }
 
 const fetchHealthWorkers = async () => {
@@ -545,6 +532,7 @@ const fetchHealthWorkers = async () => {
 
 onMounted(() => {
   fetchVaccinationRecord()
+  fetchHealthWorkers()
 })
 </script>
 
@@ -552,8 +540,6 @@ onMounted(() => {
 /* Container */
 .edit-record-container {
   min-height: 100vh;
-  background: #f3f4f6;
-  padding-bottom: 100px; /* Extra padding for bottom navbar + buttons */
 }
 
 /* Fixed Header Section */

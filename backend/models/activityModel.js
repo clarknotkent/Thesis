@@ -1,11 +1,11 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   // Ensure reasonable limits to prevent memory issues
   const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
   const safePage = Math.max(parseInt(page) || 1, 1);
   const offset = (safePage - 1) * safeLimit;
-  
+
   // Query the view which now includes user_fullname and user_role from the LEFT JOIN
   let query = supabase
     .from('activitylogs_view')
@@ -16,7 +16,7 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   if (filters.action_type) query = query.eq('action_type', filters.action_type);
   if (filters.entity_type) query = query.eq('entity_type', filters.entity_type);
   if (filters.entity_id) query = query.eq('entity_id', filters.entity_id);
-  
+
   // User role filter
   if (filters.user_role) {
     const role = String(filters.user_role).trim();
@@ -27,12 +27,12 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
       query = query.eq('user_role', role);
     }
   }
-  
+
   // Search filter (search in user name, action type, or description)
   if (filters.search) {
     query = query.or(`user_fullname.ilike.%${filters.search}%,action_type.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
   }
-  
+
   // Date range filters
   // Precedence: if explicit from/to provided, honor them regardless of date_range
   const hasExplicitFrom = !!filters.from_date;
@@ -67,7 +67,7 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
     switch (filters.date_range) {
       case 'today': {
         query = query.gte('timestamp', todayStart.toISOString())
-                     .lte('timestamp', todayEnd.toISOString());
+          .lte('timestamp', todayEnd.toISOString());
         break;
       }
       case 'week': {
@@ -79,13 +79,13 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
         weekStart.setHours(0, 0, 0, 0);
         // Inclusive up to end of today
         query = query.gte('timestamp', weekStart.toISOString())
-                     .lte('timestamp', todayEnd.toISOString());
+          .lte('timestamp', todayEnd.toISOString());
         break;
       }
       case 'month': {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
         query = query.gte('timestamp', monthStart.toISOString())
-                     .lte('timestamp', todayEnd.toISOString());
+          .lte('timestamp', todayEnd.toISOString());
         break;
       }
       case 'custom':
@@ -99,20 +99,20 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   const { data, error, count } = await query
     .order('timestamp', { ascending: false })
     .range(offset, offset + safeLimit - 1);
-    
+
   if (error) {
     console.error('Supabase query error:', error);
     throw error;
   }
-  
+
   const enriched = (data || []).map(r => ({
     ...r,
     user_role: r.user_role || 'System',
-    display_user_name: r.user_fullname || r.username || (r.user_id == null ? 'System' : `User ${r.user_id}`),
+    display_user_name: r.user_fullname || r.username || (r.user_id === null ? 'System' : `User ${r.user_id}`),
     display_action: r.description || r.action_type,
     full_description: r.description
   }));
-  
+
   return {
     items: enriched,
     totalCount: count || 0,
@@ -122,8 +122,6 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
   };
 };
 
-module.exports = { listActivityLogs };
- 
 // Fetch single activity log by id from view
 const getActivityLogByIdModel = async (id) => {
   const { data, error } = await supabase
@@ -155,5 +153,8 @@ const clearOldLogsModel = async (days) => {
   return { count: count || 0 };
 };
 
-module.exports.getActivityLogByIdModel = getActivityLogByIdModel;
-module.exports.clearOldLogsModel = clearOldLogsModel;
+export {
+  listActivityLogs,
+  getActivityLogByIdModel,
+  clearOldLogsModel
+};

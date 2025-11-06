@@ -255,16 +255,14 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
-import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+import { utcToPH } from '@/utils/dateUtils'
 
 const route = useRoute()
 const router = useRouter()
 
 const props = defineProps({
-  existingVisitId: { type: [String, Number], required: false }
+  existingVisitId: { type: [String, Number], required: false, default: null }
 })
-
-const emit = defineEmits(['enable-edit-mode'])
 
 const patients = ref([])
 const loading = ref(false)

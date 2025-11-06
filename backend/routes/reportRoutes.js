@@ -1,15 +1,13 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const { 
-  getMonthlyReport,
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getMonthlyReport,
   getAnnualReport,
   getDefaultersReport,
   getDueSoonReport,
   getInventoryLowStockReport,
   getTCLReport,
-  getMonthlyImmunizationReport
-} = require('../controllers/reportController');
+  getMonthlyImmunizationReport } from '../controllers/reportController.js';
 
 // GET /api/reports/monthly - Get monthly report
 router.get('/monthly', authenticateRequest, checkUserMapping, getMonthlyReport);
@@ -32,4 +30,4 @@ router.get('/tcl', authenticateRequest, checkUserMapping, getTCLReport);
 // GET /api/reports/monthly-immunization - Get comprehensive monthly immunization report
 router.get('/monthly-immunization', authenticateRequest, checkUserMapping, getMonthlyImmunizationReport);
 
-module.exports = router;
+export default router;

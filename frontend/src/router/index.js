@@ -10,7 +10,6 @@ import LandingPage from '@/views/LandingPage.vue'
 // Admin Views
 import AdminDashboard from '@/views/admin/dashboard/Dashboard.vue'
 import PatientRecords from '@/views/admin/patients/PatientRecords.vue'
-import VaccineInventory from '@/views/admin/inventory/VaccineInventory.vue'
 import InventoryOverview from '@/views/admin/inventory/InventoryOverview.vue'
 import ReceivingReportPage from '@/views/admin/inventory/ReceivingReportPage.vue'
 import SMSManagement from '@/views/admin/sms/SMSManagement.vue'

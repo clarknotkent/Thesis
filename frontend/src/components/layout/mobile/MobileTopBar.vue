@@ -65,8 +65,6 @@ const messageCount = ref(0)
 
 let pollInterval = null
 
-const clamp = (n) => (n > 99 ? '99+' : n)
-
 const fetchCounts = async () => {
   try {
     // Notifications: ask for unread only if backend supports it

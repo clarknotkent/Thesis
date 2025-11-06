@@ -62,7 +62,7 @@ const fetchPatientDetails = async (patientId) => {
 
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPatientDetails, getVaccinationHistory, getMedicalHistory } from '@/services/offline/offlineUtils'
+import { getPatientDetails, getMedicalHistory } from '@/services/offline/offlineUtils'
 
 const route = useRoute()
 const router = useRouter()

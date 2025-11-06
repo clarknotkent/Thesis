@@ -1,6 +1,6 @@
-const supabase = require('../db');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+import supabase from '../db.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
 
 // Create a new user
@@ -175,7 +175,7 @@ const verifyToken = async (token) => {
       email: row.email,
       uuid: row.supabase_uuid || null,
     };
-  } catch (error) {
+  } catch (_) {
     return null;
   }
 };
@@ -189,21 +189,20 @@ const generateToken = (payload, expiresIn = '7d') => {
 // Refresh token
 const refreshToken = async (token) => {
   try {
-    const decoded = jwt.verify(token, SECRET_KEY, { ignoreExpiration: true });
+    const _decoded = jwt.verify(token, SECRET_KEY, { ignoreExpiration: true });
     const user = await verifyToken(token);
     if (!user) throw new Error('User not found');
-    
-    return generateToken({ 
-      id: user.id, 
-      role: user.role 
+
+    return generateToken({
+      id: user.id,
+      role: user.role
     });
-  } catch (error) {
-    throw error;
+  } catch (e) {
+    throw e;
   }
 };
 
-module.exports = {
-  createUser,
+export { createUser,
   registerUser,
   findUserByUsernameOrEmail,
   findUserByIdentifier,
@@ -217,5 +216,4 @@ module.exports = {
   linkSupabaseUser,
   verifyToken,
   generateToken,
-  refreshToken,
-};
+  refreshToken };

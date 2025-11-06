@@ -14,4 +14,4 @@ function dbreak() {
   }
 }
 
-module.exports = { dlog, dbreak };
+export { dlog, dbreak };

@@ -1,14 +1,12 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-  listHealthWorkers,
+import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { listHealthWorkers,
   getHealthWorker,
   createHealthWorker,
   updateHealthWorker,
   deleteHealthWorker,
-  getHealthWorkerProgress
-} = require('../controllers/healthWorkerController');
+  getHealthWorkerProgress } from '../controllers/healthWorkerController.js';
 
 // GET /api/health-staff - List all health staff
 router.get('/', authenticateRequest, checkUserMapping, listHealthWorkers);
@@ -28,4 +26,4 @@ router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['adm
 // GET /api/health-staff/:id/progress - Get health staff progress
 router.get('/:id/progress', authenticateRequest, checkUserMapping, getHealthWorkerProgress);
 
-module.exports = router;
+export default router;

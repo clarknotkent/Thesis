@@ -1,6 +1,5 @@
-const crypto = require('crypto');
-const serviceSupabase = require('../db');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
+import crypto from 'crypto';
+import serviceSupabase from '../db.js';
 
 const APP_QR_SECRET = process.env.APP_QR_SECRET || 'change_me_dev_qr_secret';
 const PORT = process.env.PORT || 3000;
@@ -10,7 +9,7 @@ const FRONTEND_BASE_URL = (process.env.FRONTEND_BASE_URL || '').replace(/\/$/, '
 const FRONTEND_PATIENT_RECORDS_PATH = process.env.FRONTEND_PATIENT_RECORDS_PATH || '/patient/:id';
 const DEFAULT_TTL = parseInt(process.env.APP_QR_DEFAULT_TTL_SECONDS || '15552000', 10); // ~180 days
 
-console.log('QR Service env check: APP_QR_SECRET loaded:', !!process.env.APP_QR_SECRET, 'PUBLIC_BASE_URL:', PUBLIC_BASE_URL)
+console.log('QR Service env check: APP_QR_SECRET loaded:', !!process.env.APP_QR_SECRET, 'PUBLIC_BASE_URL:', PUBLIC_BASE_URL);
 if (process.env.NODE_ENV === 'production') {
   if (/localhost/i.test(PUBLIC_BASE_URL)) {
     console.warn('[qrService] WARNING: PUBLIC_BASE_URL is set to localhost in production. Minted QR codes will point to localhost. Set PUBLIC_BASE_URL to your public backend URL.');
@@ -113,8 +112,6 @@ async function rotateNonce(patientId, supabase = serviceSupabase) {
   return data.qr_nonce;
 }
 
-module.exports = {
-  mintPatientQrUrl,
+export { mintPatientQrUrl,
   verifyAndGetRedirect,
-  rotateNonce,
-};
+  rotateNonce };

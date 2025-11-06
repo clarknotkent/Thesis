@@ -796,7 +796,6 @@
 </template>
 
 <script setup>
-import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import TimeInput from '@/components/ui/form/TimeInput.vue'
@@ -915,7 +914,7 @@ const triggerBackup = async () => {
   try {
     backing.value = true
     
-    const response = await api.post('/system/backup')
+    const _response = await api.post('/system/backup')
     settings.value.system.lastBackup = new Date().toISOString()
     alert('Backup created successfully!')
     

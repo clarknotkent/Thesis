@@ -175,12 +175,12 @@
                 for="showDeletedSwitch"
               >Show Deleted</label>
             </div>
-            <router-link
-              to="/admin/users/add"
+            <button
               class="btn btn-primary ms-2"
+              @click="openUserModal()"
             >
               <i class="bi bi-plus-circle me-2" />Add New User
-            </router-link>
+            </button>
           </div>
         </div>
         <div class="card-body">
@@ -997,10 +997,6 @@ const saveUser = async () => {
   }
 }
 
-const editUser = (user) => {
-  openUserModal(user)
-}
-
 const confirmDeleteUser = (user) => {
   // Prevent deletes with clear feedback rather than disabling the button
   if (isAdminRole(user.role)) {
@@ -1038,7 +1034,7 @@ const deleteUser = async () => {
   }
 }
 
-const resetPassword = (user) => {
+const _resetPassword = (user) => {
   userToResetPassword.value = user
   newPassword.value = ''
   showPasswordModal.value = true
@@ -1127,11 +1123,6 @@ const statusBadgeClass = (status) => {
   return 'bg-secondary'
 }
 
-const formatDate = (date) => {
-  if (!date) return 'Never'
-  return formatPHDateTime(date)
-}
-
 // Explicit PH timezone formatting (treat timezone-less ISO as UTC -> PH)
 const formatDatePH = (date) => {
   if (!date) return 'Never'
@@ -1160,7 +1151,7 @@ const formatForInput = (date) => {
   return `${mm}/${dd}/${yyyy}`
 }
 
-const validateAndFormatDate = (fieldName) => {
+const _validateAndFormatDate = (fieldName) => {
   if (!userForm.value[fieldName]) return
   
   // Handle various input formats and convert to MM/DD/YYYY
@@ -1194,7 +1185,7 @@ const validateAndFormatDate = (fieldName) => {
   }
 }
 
-const openDatePicker = (fieldName) => {
+const _openDatePicker = (fieldName) => {
   const datePickerEl = datePickerBirthdate.value
   if (datePickerEl) {
     // Set the current value in ISO format for the date picker
@@ -1207,7 +1198,7 @@ const openDatePicker = (fieldName) => {
   }
 }
 
-const onDatePickerChange = (fieldName, event) => {
+const _onDatePickerChange = (fieldName, event) => {
   const isoDate = event.target.value
   if (isoDate) {
     // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display

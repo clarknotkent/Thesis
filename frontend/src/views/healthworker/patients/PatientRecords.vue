@@ -97,10 +97,8 @@ import PatientListCard from '@/features/health-worker/patients/components/Patien
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
 
 const { addToast } = useToast()
-const { confirm } = useConfirm()
 
 const router = useRouter()
 
@@ -121,15 +119,14 @@ const guardianSearchTerm = ref('')
 const showGuardianDropdown = ref(false)
 const selectedGuardianName = ref('')
 const searchQuery = ref('')
-const selectedStatus = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(7) // Limited to 7 records per page for mobile
 const totalItems = ref(0)
 const totalPages = ref(0)
 
 // View mode and filters
-const sortOrder = ref('name') // 'name', 'age', 'date'
-const sortDirection = ref('asc') // 'asc', 'desc'
+// const sortOrder = ref('name') // 'name', 'age', 'date' - not yet implemented
+// const sortDirection = ref('asc') // 'asc', 'desc' - not yet implemented
 
 // Remove modal states - we'll navigate to detail page instead
 
@@ -193,7 +190,7 @@ const toggleFilters = () => {
   showFilterSheet.value = !showFilterSheet.value
 }
 
-const applyFilters = (filters) => {
+const applyFilters = (_filters) => {
   // Filters are applied through v-model; reset to first page and re-fetch
   currentPage.value = 1
   fetchPatients()
@@ -337,46 +334,6 @@ const resetPagination = () => {
   currentPage.value = 1
 }
 
-const toggleSort = () => {
-  // Cycle through sort options: name -> age -> date -> name (desc) -> age (desc) -> date (desc)
-  if (sortOrder.value === 'name' && sortDirection.value === 'asc') {
-    sortOrder.value = 'age'
-  } else if (sortOrder.value === 'age' && sortDirection.value === 'asc') {
-    sortOrder.value = 'date'
-  } else if (sortOrder.value === 'date' && sortDirection.value === 'asc') {
-    sortOrder.value = 'name'
-    sortDirection.value = 'desc'
-  } else if (sortOrder.value === 'name' && sortDirection.value === 'desc') {
-    sortOrder.value = 'age'
-    sortDirection.value = 'desc'
-  } else if (sortOrder.value === 'age' && sortDirection.value === 'desc') {
-    sortOrder.value = 'date'
-    sortDirection.value = 'desc'
-  } else {
-    sortOrder.value = 'name'
-    sortDirection.value = 'asc'
-  }
-  
-  // Apply sorting
-  patients.value.sort((a, b) => {
-    let comparison = 0
-    
-    if (sortOrder.value === 'name') {
-      comparison = a.childInfo.name.localeCompare(b.childInfo.name)
-    } else if (sortOrder.value === 'age') {
-      const ageA = new Date(a.childInfo.birthDate)
-      const ageB = new Date(b.childInfo.birthDate)
-      comparison = ageB - ageA // Younger first for asc
-    } else if (sortOrder.value === 'date') {
-      const dateA = new Date(a.dateRegistered || 0)
-      const dateB = new Date(b.dateRegistered || 0)
-      comparison = dateB - dateA // Most recent first for asc
-    }
-    
-    return sortDirection.value === 'desc' ? -comparison : comparison
-  })
-}
-
 // Debounced search
 let searchTimeout
 const debouncedSearch = () => {
@@ -390,7 +347,7 @@ const debouncedSearch = () => {
 // Removed viewPatient and editPatient methods - navigation handled by viewPatientDetail
 
 // DELETE functionality disabled for health workers (no delete permissions)
-const deletePatient = async (patient) => {
+const _deletePatient = async (_patient) => {
   // Health workers don't have delete permissions
   addToast({ 
     title: 'Permission Denied', 
@@ -424,7 +381,7 @@ const deletePatient = async (patient) => {
   */
 }
 
-const savePatient = async () => {
+const _savePatient = async () => {
   try {
     saving.value = true
     
@@ -529,7 +486,7 @@ const openQrScanner = () => {
   router.push('/healthworker/qr')
 }
 
-const administerVaccine = (patient) => {
+const _administerVaccine = (patient) => {
   // NOTE: Vaccine administration feature is planned for future implementation
   // This will open a modal/form to:
   // 1. Select vaccine from available inventory
@@ -544,7 +501,7 @@ const administerVaccine = (patient) => {
   })
 }
 
-const getStatusBadgeClass = (status) => {
+const _getStatusBadgeClass = (status) => {
   const classes = {
     active: 'badge bg-success',
     pending: 'badge bg-warning text-dark',
@@ -553,7 +510,7 @@ const getStatusBadgeClass = (status) => {
   return classes[status] || 'badge bg-secondary'
 }
 
-const getPatientStatusText = (status) => {
+const _getPatientStatusText = (status) => {
   const statusTexts = {
     active: 'Active',
     pending: 'Pending',
@@ -562,7 +519,7 @@ const getPatientStatusText = (status) => {
   return statusTexts[status] || 'Unknown'
 }
 
-const isDefaulter = (patient) => {
+const _isDefaulter = (patient) => {
   // Check if patient has overdue schedules (missed vaccinations)
   if (!patient.patientSchedules || patient.patientSchedules.length === 0) {
     return false
@@ -582,7 +539,7 @@ const isDefaulter = (patient) => {
   })
 }
 
-const isDueToday = (patient) => {
+const _isDueToday = (patient) => {
   // Check if patient has schedules due today
   if (!patient.patientSchedules || patient.patientSchedules.length === 0) {
     return false
@@ -595,7 +552,7 @@ const isDueToday = (patient) => {
 }
 
 // Guardian search computed property
-const filteredGuardians = computed(() => {
+const _filteredGuardians = computed(() => {
   if (!guardianSearchTerm.value) {
     return guardians.value
   }
@@ -614,7 +571,7 @@ const filteredGuardians = computed(() => {
 })
 
 // Guardian selection methods
-const selectGuardian = (guardian) => {
+const _selectGuardian = (guardian) => {
   form.value.guardian_id = guardian.guardian_id
   selectedGuardianName.value = guardian.full_name
   guardianSearchTerm.value = ''
@@ -632,7 +589,7 @@ const selectGuardian = (guardian) => {
   }
 }
 
-const hideGuardianDropdown = () => {
+const _hideGuardianDropdown = () => {
   setTimeout(() => {
     showGuardianDropdown.value = false
   }, 200) // Small delay to allow click events on dropdown items

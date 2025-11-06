@@ -493,7 +493,7 @@ const formatDateToISO = (mmddyyyy) => {
     
     if (year.length === 4 && month.length === 2 && day.length === 2) {
       const date = new Date(year, month - 1, day)
-      if (date.getFullYear() == year && date.getMonth() == month - 1 && date.getDate() == day) {
+      if (date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1 && date.getDate() === parseInt(day)) {
         return `${year}-${month}-${day}`
       }
     }

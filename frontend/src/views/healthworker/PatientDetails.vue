@@ -475,7 +475,6 @@ const route = useRoute()
 // Use patient details composable
 const {
   patient,
-  vaccinationHistory,
   scheduledVaccinations,
   medicalHistory,
   loading,
@@ -493,7 +492,6 @@ const {
   formatDate,
   isEditable,
   fetchPatientDetails,
-  fetchMedicalHistory,
   rescheduleVaccination,
   toggleCard,
   setActiveTab

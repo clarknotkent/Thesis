@@ -60,16 +60,6 @@ export function useVaccineInventory() {
   const receivingStatus = ref('')
   const receivingSearch = ref('')
 
-  // Scheduling Fields
-  const schedulingFields = ref({
-    vaccine_id: '',
-    vaccine_name: '',
-    total_doses: 1,
-    doses: [
-      { dose_number: 1, min_age_months: 0, max_age_months: 1, interval_days: 0, required: true }
-    ]
-  })
-  const currentDoseIndex = ref(0)
 
   // Disease/Vaccine Options
   const diseaseOptions = ref([])
@@ -82,12 +72,10 @@ export function useVaccineInventory() {
   const selectedManufacturer = ref('')
 
   // Edit Wizard
-  const editWizard = ref({ selectedVaccineId: '' })
+  const _editWizard = ref({ selectedVaccineId: '' })
 
   // Validation State
-  const isSubmitting = ref(false)
-  const submitMessage = ref('')
-  const errors = ref({ general: '', doses: [] })
+  const _errors = ref({ general: '', doses: [] })
 
   // Forms
   const form = ref({
@@ -568,7 +556,7 @@ export function useVaccineInventory() {
   }
 
   const onVaccineSelect = () => {
-    const selected = existingVaccines.value.find(v => v.id == form.value.vaccine_id)
+    const selected = existingVaccines.value.find(v => v.id === form.value.vaccine_id)
     if (selected) {
       form.value.antigenName = selected.antigen_name
       form.value.brandName = selected.brand_name

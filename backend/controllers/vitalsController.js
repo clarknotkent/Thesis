@@ -1,5 +1,5 @@
-const { getVitalsignsByVisitId, updateVitalsignsByVisitId } = require('../models/vitalsModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
+import { getVitalsignsByVisitId, updateVitalsignsByVisitId } from '../models/vitalsModel.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
 
 const getVitalsByVisitId = async (req, res) => {
   try {
@@ -19,7 +19,7 @@ const updateVitalsByVisitId = async (req, res) => {
     const { visitId } = req.params;
     const vitalsData = req.body;
     const supabase = getSupabaseForRequest(req);
-    
+
     const updatedVitals = await updateVitalsignsByVisitId(visitId, vitalsData, supabase);
     res.json({ data: updatedVitals });
   } catch (error) {
@@ -28,4 +28,4 @@ const updateVitalsByVisitId = async (req, res) => {
   }
 };
 
-module.exports = { getVitalsByVisitId, updateVitalsByVisitId };
+export { getVitalsByVisitId, updateVitalsByVisitId };

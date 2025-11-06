@@ -21,7 +21,6 @@ function normalizeToPlus63Mobile(input) {
   if (!input) return { valid: false, normalized: null, error: 'Missing contact number' };
   let raw = String(input).trim();
   // Strip all non-digits except leading +
-  const hasPlus = raw.startsWith('+');
   raw = raw.replace(/[^\d+]/g, '');
   // Remove leading + for easier handling below
   if (raw.startsWith('+')) raw = raw.slice(1);
@@ -55,4 +54,4 @@ function getPhoneVariants(input) {
   return { valid: local.valid || intl.valid, variants: Array.from(new Set(out)), local, intl };
 }
 
-module.exports = { normalizePhilippineMobile, normalizeToPlus63Mobile, getPhoneVariants };
+export { normalizePhilippineMobile, normalizeToPlus63Mobile, getPhoneVariants };

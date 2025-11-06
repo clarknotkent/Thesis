@@ -593,7 +593,7 @@ const tryGetDisplayName = (obj) => {
   return candidates.find(x => x && x.length > 0) || ''
 }
 
-const resolveEntityName = async (type, id) => {
+const _resolveEntityName = async (type, id) => {
   if (!type || !id) return ''
   const key = `${String(type).toLowerCase()}:${id}`
   if (entityNameCache.has(key)) return entityNameCache.get(key)

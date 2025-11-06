@@ -1,5 +1,4 @@
-const vaccineModel = require('../models/vaccineModel');
-const { ACTIVITY } = require('../constants/activityTypes');
+import vaccineModel from '../models/vaccineModel.js';
 
 // Helper to send standardized error
 function sendError(res, error, fallback) {
@@ -33,7 +32,7 @@ const getScheduleForVaccine = async (req, res) => {
     console.error('[vaccineController.getScheduleForVaccine] error:', error);
     return sendError(res, error, 'Failed to fetch schedule');
   }
-}
+};
 
 // Create vaccine
 const addVaccine = async (req, res) => {
@@ -55,8 +54,8 @@ const addVaccine = async (req, res) => {
     const dto = await vaccineModel.createVaccine(payload, actorId);
     return res.status(201).json({ success:true, message:'Vaccine created', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.addVaccine] payload:', req.body, 'actor:', req.user?.user_id);
-  console.error('addVaccine error:', error);
+    console.debug('[vaccineController.addVaccine] payload:', req.body, 'actor:', req.user?.user_id);
+    console.error('addVaccine error:', error);
     return sendError(res, error, 'Failed to create vaccine');
   }
 };
@@ -69,8 +68,8 @@ const getVaccine = async (req, res) => {
     if (!record) return res.status(404).json({ success:false, message:'Vaccine not found' });
     return res.json({ success:true, data: record });
   } catch (error) {
-  console.debug('[vaccineController.getVaccine] id:', req.params.id);
-  console.error('getVaccine error:', error);
+    console.debug('[vaccineController.getVaccine] id:', req.params.id);
+    console.error('getVaccine error:', error);
     return sendError(res, error, 'Failed to fetch vaccine');
   }
 };
@@ -97,8 +96,8 @@ const updateVaccine = async (req, res) => {
     if (!dto) return res.status(404).json({ success:false, message:'Vaccine not found' });
     return res.json({ success:true, message:'Vaccine updated', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.updateVaccine] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
-  console.error('updateVaccine error:', error);
+    console.debug('[vaccineController.updateVaccine] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
+    console.error('updateVaccine error:', error);
     return sendError(res, error, 'Failed to update vaccine');
   }
 };
@@ -112,8 +111,8 @@ const deleteVaccine = async (req, res) => {
     if (!dto) return res.status(404).json({ success:false, message:'Vaccine not found' });
     return res.json({ success:true, message:'Vaccine deleted', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.deleteVaccine] id:', req.params.id, 'actor:', req.user?.user_id);
-  console.error('deleteVaccine error:', error);
+    console.debug('[vaccineController.deleteVaccine] id:', req.params.id, 'actor:', req.user?.user_id);
+    console.error('deleteVaccine error:', error);
     return sendError(res, error, 'Failed to delete vaccine');
   }
 };
@@ -127,8 +126,8 @@ const listVaccines = async (req, res) => {
     const result = await vaccineModel.getAllVaccines(filters, parseInt(page,10)||1, parseInt(limit,10)||50);
     return res.json({ success:true, data: result });
   } catch (error) {
-  console.debug('[vaccineController.listVaccines] error occurred while listing vaccines');
-  console.error('listVaccines error:', error);
+    console.debug('[vaccineController.listVaccines] error occurred while listing vaccines');
+    console.error('listVaccines error:', error);
     return sendError(res, error, 'Failed to list vaccines');
   }
 };
@@ -139,7 +138,7 @@ const adjustInventoryStock = async (req, res) => {
     const actorId = req.user?.user_id || null;
     const { id } = req.params; // inventory_id
     const { type, quantity, note } = req.body;
-  const allowed = ['ADJUST','RECEIVE','RETURN','EXPIRED','ISSUE'];
+    const allowed = ['ADJUST','RECEIVE','RETURN','EXPIRED','ISSUE'];
     if (!allowed.includes(type)) {
       return res.status(400).json({ success:false, message:`Invalid type. Allowed: ${allowed.join(', ')}` });
     }
@@ -190,8 +189,8 @@ const addInventory = async (req, res) => {
     const dto = await vaccineModel.createInventoryItem(payload, actorId);
     return res.status(201).json({ success:true, message:'Inventory item created', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.addInventory] payload:', req.body, 'actor:', req.user?.user_id);
-  console.error('addInventory error:', error);
+    console.debug('[vaccineController.addInventory] payload:', req.body, 'actor:', req.user?.user_id);
+    console.error('addInventory error:', error);
     return sendError(res, error, 'Failed to create inventory item');
   }
 };
@@ -204,8 +203,8 @@ const getInventory = async (req, res) => {
     if (!record) return res.status(404).json({ success:false, message:'Inventory item not found' });
     return res.json({ success:true, data: record });
   } catch (error) {
-  console.debug('[vaccineController.getInventory] id:', req.params.id);
-  console.error('getInventory error:', error);
+    console.debug('[vaccineController.getInventory] id:', req.params.id);
+    console.error('getInventory error:', error);
     return sendError(res, error, 'Failed to fetch inventory item');
   }
 };
@@ -234,8 +233,8 @@ const updateInventory = async (req, res) => {
     if (!dto) return res.status(404).json({ success:false, message:'Inventory item not found' });
     return res.json({ success:true, message:'Inventory item updated', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.updateInventory] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
-  console.error('updateInventory error:', error);
+    console.debug('[vaccineController.updateInventory] id:', req.params.id, 'payload:', req.body, 'actor:', req.user?.user_id);
+    console.error('updateInventory error:', error);
     return sendError(res, error, 'Failed to update inventory item');
   }
 };
@@ -249,8 +248,8 @@ const deleteInventory = async (req, res) => {
     if (!dto) return res.status(404).json({ success:false, message:'Inventory item not found' });
     return res.json({ success:true, message:'Inventory item deleted', data: dto });
   } catch (error) {
-  console.debug('[vaccineController.deleteInventory] id:', req.params.id, 'actor:', req.user?.user_id);
-  console.error('deleteInventory error:', error);
+    console.debug('[vaccineController.deleteInventory] id:', req.params.id, 'actor:', req.user?.user_id);
+    console.error('deleteInventory error:', error);
     return sendError(res, error, 'Failed to delete inventory item');
   }
 };
@@ -323,11 +322,11 @@ const getStockStats = async (_req, res) => {
 };
 
 // Placeholders (not implemented yet)
-const createInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
-const approveInventoryRequest = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
-const getInventoryRequests = async (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+const createInventoryRequest = (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+const approveInventoryRequest = (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
+const getInventoryRequests = (_req, res) => res.status(501).json({ success:false, message:'Inventory requests not implemented' });
 // Manual creation blocked (ledger is system generated)
-const createInventoryTransaction = async (_req, res) => res.status(400).json({ success:false, message:'Manual transaction creation not allowed; adjust inventory instead.' });
+const createInventoryTransaction = (_req, res) => res.status(400).json({ success:false, message:'Manual transaction creation not allowed; adjust inventory instead.' });
 const getInventoryTransactions = async (req, res) => {
   try {
     const { page=1, limit=20, inventory_id, vaccine_id, transaction_type, date_from, date_to } = req.query;
@@ -336,8 +335,8 @@ const getInventoryTransactions = async (req, res) => {
     const result = await vaccineModel.getAllInventoryTransactions(filters, Number(page), Number(limit));
     return res.json({ success:true, ...result });
   } catch (error) {
-  console.debug('[vaccineController.getInventoryTransactions] inventory_id (query):', req.query?.inventory_id);
-  console.error('getInventoryTransactions error:', error);
+    console.debug('[vaccineController.getInventoryTransactions] inventory_id (query):', req.query?.inventory_id);
+    console.error('getInventoryTransactions error:', error);
     return sendError(res, error, 'Failed to fetch inventory transactions');
   }
 };
@@ -367,7 +366,30 @@ const getScheduleById = async (req, res) => {
   }
 };
 
-module.exports = {
+// Manual tasks
+const runExpiryCheck = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const result = await vaccineModel.runExpiryCheckTask(actorId);
+    return res.json({ success: true, message: 'Expiry check executed', data: result });
+  } catch (error) {
+    console.error('[vaccineController.runExpiryCheck] error:', error);
+    return sendError(res, error, 'Failed to run expiry check');
+  }
+};
+
+const runScheduleStatusUpdate = async (req, res) => {
+  try {
+    const actorId = req.user?.user_id || null;
+    const result = await vaccineModel.runScheduleStatusUpdateTask(actorId);
+    return res.json({ success: true, message: 'Schedule status update executed', data: result });
+  } catch (error) {
+    console.error('[vaccineController.runScheduleStatusUpdate] error:', error);
+    return sendError(res, error, 'Failed to run schedule status update');
+  }
+};
+
+export {
   addVaccine,
   getVaccine,
   updateVaccine,
@@ -390,25 +412,6 @@ module.exports = {
   getScheduleForVaccine,
   listSchedules,
   getScheduleById,
-  // Manual tasks
-  runExpiryCheck: async (req, res) => {
-    try {
-      const actorId = req.user?.user_id || null;
-      const result = await vaccineModel.runExpiryCheckTask(actorId);
-      return res.json({ success: true, message: 'Expiry check executed', data: result });
-    } catch (error) {
-      console.error('[vaccineController.runExpiryCheck] error:', error);
-      return sendError(res, error, 'Failed to run expiry check');
-    }
-  },
-  runScheduleStatusUpdate: async (req, res) => {
-    try {
-      const actorId = req.user?.user_id || null;
-      const result = await vaccineModel.runScheduleStatusUpdateTask(actorId);
-      return res.json({ success: true, message: 'Schedule status update executed', data: result });
-    } catch (error) {
-      console.error('[vaccineController.runScheduleStatusUpdate] error:', error);
-      return sendError(res, error, 'Failed to run schedule status update');
-    }
-  }
+  runExpiryCheck,
+  runScheduleStatusUpdate
 };

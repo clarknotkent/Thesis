@@ -1,8 +1,8 @@
 // Lightweight debugging helper: prints an sms_log row and the sanitized final message
 // Usage: node backend/scripts/print_sms_log.js <id>
 
-const supabase = require('../db');
-const smsService = require('../services/smsService');
+import supabase from '../db.js';
+import smsService from '../services/smsService.js';
 
 const id = process.argv[2];
 if (!id) {

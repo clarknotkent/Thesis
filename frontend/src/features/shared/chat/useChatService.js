@@ -5,9 +5,6 @@ import { getConversationsOffline, getMessagesOffline, queueOfflineMessage } from
 // Helper to normalize user ID
 const getUserKey = (u) => u?.user_id ?? u?.id ?? u?.userId ?? null;
 
-// Helper to shift Date by N hours (PH time UTC+8)
-const shiftHours = (date, hours) => new Date(date.getTime() + hours * 60 * 60 * 1000);
-
 // Get participant display name
 const getParticipantDisplayName = (p) => {
   if (!p) return '';

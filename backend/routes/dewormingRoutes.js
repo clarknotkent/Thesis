@@ -1,13 +1,11 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping, authorizeRole } = require('../middlewares/authMiddleware');
-const {
-  listDeworming,
+import { authenticateRequest, checkUserMapping, authorizeRole } from '../middlewares/authMiddleware.js';
+import { listDeworming,
   getDewormingRecord,
   createDewormingRecord,
   updateDewormingRecord,
-  deleteDewormingRecord,
-} = require('../controllers/dewormingController');
+  deleteDewormingRecord } from '../controllers/dewormingController.js';
 
 router.get('/', authenticateRequest, checkUserMapping, listDeworming);
 router.get('/:id', authenticateRequest, checkUserMapping, getDewormingRecord);
@@ -15,4 +13,4 @@ router.post('/', authenticateRequest, checkUserMapping, authorizeRole(['admin','
 router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','nurse','nutritionist']), updateDewormingRecord);
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteDewormingRecord);
 
-module.exports = router;
+export default router;

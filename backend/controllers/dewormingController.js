@@ -1,5 +1,5 @@
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
-const dewormingModel = require('../models/dewormingModel');
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
+import * as dewormingModel from '../models/dewormingModel.js';
 
 async function resolveVaccineId(supabase, { inventory_id, vaccine_id }) {
   if (vaccine_id) return vaccine_id;
@@ -104,9 +104,9 @@ const createDewormingRecord = async (req, res) => {
       if (!visit_id) return res.status(400).json({ success:false, message:'patient has not taken their vitalsigns yet' });
     }
     if (!patient_id) patient_id = await resolvePatientIdFromVisit(supabase, visit_id);
-  // Enforce inventory_id for in-facility
-  if (!payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is required for in-facility deworming' });
-  const vaccineId = await resolveVaccineId(supabase, { inventory_id: payload.inventory_id, vaccine_id: payload.vaccine_id });
+    // Enforce inventory_id for in-facility
+    if (!payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is required for in-facility deworming' });
+    const vaccineId = await resolveVaccineId(supabase, { inventory_id: payload.inventory_id, vaccine_id: payload.vaccine_id });
 
     // derive vital_id from visit vitals
     const { data: visitVital, error: vitErr } = await supabase
@@ -152,10 +152,8 @@ const deleteDewormingRecord = async (req, res) => {
   }
 };
 
-module.exports = {
-  listDeworming,
+export { listDeworming,
   getDewormingRecord,
   createDewormingRecord,
   updateDewormingRecord,
-  deleteDewormingRecord,
-};
+  deleteDewormingRecord };

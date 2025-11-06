@@ -1,5 +1,5 @@
-const serviceSupabase = require('../db');
-const { updateMessagesForPatient } = require('../services/smsReminderService');
+import serviceSupabase from '../db.js';
+import { updateMessagesForPatient } from '../services/smsReminderService.js';
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -68,7 +68,7 @@ const patientModel = {
           .range(offset, offset + limit - 1);
         if (baseErr) throw baseErr;
 
-        const ids = Array.from(new Set((baseRows || []).map(r => r.patient_id).filter(v => v != null)));
+        const ids = Array.from(new Set((baseRows || []).map(r => r.patient_id).filter(v => v !== null)));
         if (ids.length === 0) {
           return {
             patients: [],
@@ -223,7 +223,7 @@ const patientModel = {
             .eq('is_deleted', false)
             .eq('status', desired);
           if (baseMatchErr) throw baseMatchErr;
-          const ids = Array.from(new Set((baseMatch || []).map(r => r.patient_id).filter(v => v != null)));
+          const ids = Array.from(new Set((baseMatch || []).map(r => r.patient_id).filter(v => v !== null)));
           if (ids.length === 0) {
             return {
               patients: [],
@@ -248,7 +248,7 @@ const patientModel = {
             .select('patient_id')
             .in('status', ['Due', 'Overdue']);
           if (schErr) throw schErr;
-          const ids = Array.from(new Set((sch || []).map(r => r.patient_id).filter(v => v != null)));
+          const ids = Array.from(new Set((sch || []).map(r => r.patient_id).filter(v => v !== null)));
           if (ids.length === 0) {
             // No matches; short-circuit with empty result
             return {
@@ -470,7 +470,7 @@ const patientModel = {
       const tgtContactField = isMother ? 'father_contact_number' : 'mother_contact_number';
       const tgtOccupationField = isMother ? 'father_occupation' : 'mother_occupation';
       // First, try strict equality (fast, exact)
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('patients')
         .select(`${tgtField}, ${tgtContactField}, ${tgtOccupationField}`)
         .eq(srcField, name)
@@ -545,7 +545,7 @@ const patientModel = {
       // Pick the highest count; if tie, lexicographically smallest
       let best = null; let bestCount = -1;
       for (const [k, c] of counts.entries()) {
-        if (c > bestCount || (c === bestCount && (best == null || k.localeCompare(best) < 0))) {
+        if (c > bestCount || (c === bestCount && (best === null || k.localeCompare(best) < 0))) {
           best = k; bestCount = c;
         }
       }
@@ -556,7 +556,7 @@ const patientModel = {
         // pick most common contact; if tie choose lexicographically smallest
         let bc = null; let bcCount = -1;
         for (const [contact, c] of cmap.entries()) {
-          if (c > bcCount || (c === bcCount && (bc == null || contact.localeCompare(bc) < 0))) {
+          if (c > bcCount || (c === bcCount && (bc === null || contact.localeCompare(bc) < 0))) {
             bc = contact; bcCount = c;
           }
         }
@@ -566,7 +566,7 @@ const patientModel = {
         const omap = occupationCounts.get(best);
         let bo = null; let boCount = -1;
         for (const [occ, c] of omap.entries()) {
-          if (c > boCount || (c === boCount && (bo == null || occ.localeCompare(bo) < 0))) {
+          if (c > boCount || (c === boCount && (bo === null || occ.localeCompare(bo) < 0))) {
             bo = occ; boCount = c;
           }
         }
@@ -576,7 +576,7 @@ const patientModel = {
       if (best && !bestOccupation) {
         try {
           const parts = best.trim().split(/\s+/);
-          const first = parts[0] || '';
+          const _first = parts[0] || '';
           const last = parts[parts.length - 1] || '';
           // Query candidates by surname to keep result small, then filter in code
           const { data: users, error: uErr } = await supabase
@@ -651,7 +651,7 @@ const patientModel = {
         let bestOccupation = null;
         let bestOccCount = -1;
         for (const [occ, c] of entry.occupations.entries()) {
-          if (c > bestOccCount || (c === bestOccCount && (bestOccupation == null || occ.localeCompare(bestOccupation) < 0))) {
+          if (c > bestOccCount || (c === bestOccCount && (bestOccupation === null || occ.localeCompare(bestOccupation) < 0))) {
             bestOccupation = occ; bestOccCount = c;
           }
         }
@@ -730,16 +730,16 @@ const patientModel = {
   calculateAgeInMonths: (birthDate) => {
     const birth = new Date(birthDate);
     const today = new Date();
-    
+
     // Calculate total months difference
     let months = (today.getFullYear() - birth.getFullYear()) * 12;
     months += today.getMonth() - birth.getMonth();
-    
+
     // Adjust if the day hasn't occurred yet this month
     if (today.getDate() < birth.getDate()) {
       months--;
     }
-    
+
     // Ensure non-negative age
     return Math.max(0, months);
   },
@@ -779,7 +779,7 @@ const patientModel = {
           }
         }
       }
-      
+
       const insertData = {
         firstname: patientData.firstname,
         surname: patientData.surname,
@@ -814,7 +814,7 @@ const patientModel = {
         .insert(insertData)
         .select()
         .single();
-          
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -983,10 +983,10 @@ const patientModel = {
       const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patients')
-        .update({ 
+        .update({
           is_deleted: true,
           deleted_at: new Date().toISOString(),
-          deleted_by: deletedBy 
+          deleted_by: deletedBy
         })
         .eq('patient_id', id)
         .select()
@@ -1228,7 +1228,7 @@ const patientModel = {
       const supabase = withClient(client);
       const { data, error } = await supabase
         .from('patients')
-        .update({ 
+        .update({
           tags: tag,
           updated_at: new Date().toISOString()
         })
@@ -1431,13 +1431,13 @@ const patientModel = {
   },
 
   // Alias functions for test compatibility
-  getAllChildren: async (filters = {}, page = 1, limit = 10) => {
+  getAllChildren: (filters = {}, page = 1, limit = 10) => {
     return patientModel.getAllPatients(filters, page, limit);
   },
 
-  getChildById: async (id) => {
+  getChildById: (id) => {
     return patientModel.getPatientById(id);
   }
 };
 
-module.exports = patientModel;
+export default patientModel;

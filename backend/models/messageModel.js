@@ -1,5 +1,5 @@
-const supabase = require('../db');
-const notificationModel = require('./notificationModel');
+import supabase from '../db.js';
+import * as notificationModel from './notificationModel.js';
 
 // Feature flag: control whether creating a chat message also creates an in-app notification
 // Default is OFF; set NOTIFY_ON_NEW_MESSAGE=true to enable per-message notifications
@@ -31,7 +31,7 @@ const createMessage = async (payload) => {
       if (receipts.length > 0) {
         await supabase.from('message_receipts').insert(receipts);
         // Optionally insert notifications for recipients (use model to normalize channel & enforce constraint)
-  if (SHOULD_NOTIFY_NEW_MESSAGE && !suppressNotification) {
+        if (SHOULD_NOTIFY_NEW_MESSAGE && !suppressNotification) {
           for (const r of receipts) {
             try {
               await notificationModel.createNotification({
@@ -52,7 +52,7 @@ const createMessage = async (payload) => {
       }
     }
   } catch (e) {
-    console.warn('[createMessage] failed to create receipts/notifications', e.message || e)
+    console.warn('[createMessage] failed to create receipts/notifications', e.message || e);
   }
 
   return data;
@@ -122,4 +122,4 @@ const markMessageRead = async (message_id, user_id, read_at = new Date().toISOSt
   return receipt;
 };
 
-module.exports = { createMessage, listMessagesByConversation, markMessageRead };
+export { createMessage, listMessagesByConversation, markMessageRead };

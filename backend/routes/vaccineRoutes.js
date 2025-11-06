@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const { manageScheduling, getScheduleForVaccine } = require('../controllers/vaccineController');
+import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { manageScheduling, getScheduleForVaccine } from '../controllers/vaccineController.js';
 // Scheduling Management Route
 // POST /api/vaccines/:id/schedule - Manage scheduling for a vaccine type
 router.post('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
@@ -9,8 +9,7 @@ router.post('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRol
 router.put('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
 // GET /api/vaccines/:id/schedule - Retrieve schedule for a vaccine type
 router.get('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleForVaccine);
-const {
-  addVaccine,
+import { addVaccine,
   getVaccine,
   updateVaccine,
   deleteVaccine,
@@ -26,10 +25,9 @@ const {
   createInventoryTransaction,
   getInventoryTransactions,
   listStock,
-  getStockStats
-} = require('../controllers/vaccineController');
+  getStockStats } from '../controllers/vaccineController.js';
 
-const { listSchedules, getScheduleById } = require('../controllers/vaccineController');
+import { listSchedules, getScheduleById } from '../controllers/vaccineController.js';
 
 // GET /api/vaccines/schedules - list all schedules
 router.get('/schedules', authenticateRequest, checkUserMapping, authorizeRole(['admin']), listSchedules);
@@ -38,7 +36,7 @@ router.get('/schedules', authenticateRequest, checkUserMapping, authorizeRole(['
 router.get('/schedules/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleById);
 
 // Manual run of scheduled tasks (admin only)
-const { runExpiryCheck, runScheduleStatusUpdate } = require('../controllers/vaccineController');
+import { runExpiryCheck, runScheduleStatusUpdate } from '../controllers/vaccineController.js';
 router.post('/tasks/run-expiry-check', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runExpiryCheck);
 router.post('/tasks/run-schedule-status-update', authenticateRequest, checkUserMapping, authorizeRole(['admin']), runScheduleStatusUpdate);
 
@@ -71,7 +69,7 @@ router.get('/inventory/:id', authenticateRequest, checkUserMapping, getInventory
 router.put('/inventory/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), updateInventory);
 
 // POST /api/vaccines/inventory/:id/adjust - Apply a stock transaction (ADJUST/RECEIVE/RETURN/EXPIRED)
-const { adjustInventoryStock } = require('../controllers/vaccineController');
+import { adjustInventoryStock } from '../controllers/vaccineController.js';
 router.post('/inventory/:id/adjust', authenticateRequest, checkUserMapping, authorizeRole(['admin']), adjustInventoryStock);
 
 // DELETE /api/vaccines/inventory/:id - Remove inventory entry
@@ -105,4 +103,4 @@ router.put('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin'
 // DELETE /api/vaccines/:id - Remove vaccine type
 router.delete('/:id', authenticateRequest, checkUserMapping, authorizeRole(['admin']), deleteVaccine);
 
-module.exports = router;
+export default router;

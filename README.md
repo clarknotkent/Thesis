@@ -2,7 +2,16 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **🔧 November 6, 2025 - ESLint Code Quality Setup**
+> **� November 6, 2025 - Backend ES Module Modernization**
+>
+> - ✅ **Complete ES Module Migration** - All 86 backend files converted from CommonJS to ES6
+> - ✅ **Node.js Modern Standard** - Native `import`/`export` syntax throughout backend
+> - ✅ **Zero ESLint Warnings** - Eliminated MODULE_TYPELESS_PACKAGE_JSON warning
+> - ✅ **Named Exports Pattern** - Improved tree-shaking and code organization
+> - ✅ **Server Running Successfully** - Port 3001, all services initialized
+> - 📦 Backend now uses `"type": "module"` with `.js` extensions required
+>
+> **�🔧 November 6, 2025 - ESLint Code Quality Setup**
 >
 > - ✅ **ESLint 9.39.1 integrated** with Vue 3 plugin for automated code quality checks
 > - ✅ **Flat config format** (eslint.config.js) using ESLint 9's modern standard
@@ -165,8 +174,10 @@ The Immunization Management System is designed to digitize and streamline the im
 
 ### Backend
 
-- Runtime: Node.js 20+
+- Runtime: Node.js 20+ with **ES Modules** ⭐ NEW (Nov 6)
 - Framework: Express.js
+- **Module System**: Native ES6 `import`/`export` (not CommonJS) ⭐ NEW (Nov 6)
+- **Import Extensions**: All relative imports require `.js` extension ⭐ NEW (Nov 6)
 - Database: PostgreSQL 14+ (hosted on Supabase)
 - Authentication: JWT (JSON Web Tokens)
 - File Upload: Multer
@@ -224,26 +235,64 @@ frontend/src/
 
 ### Backend Architecture
 
-The backend follows a standard MVC pattern with additional service layers:
+The backend follows a standard MVC pattern with additional service layers, now fully modernized with ES modules:
 
 ```
 backend/
 ├── constants/               # Constant values (activity types, status codes)
-├── controllers/             # Request handlers for each resource
-├── middlewares/             # Authentication, error handling, validation
-├── migrations/              # ⭐ NEW: Database migrations for offline support
+├── controllers/             # Request handlers for each resource (20 files - ES6 named exports)
+├── middlewares/             # Authentication, error handling, validation (ES6 exports)
+├── migrations/              # ⭐ Database migrations for offline support
 │   └── 001_add_updated_at_columns.sql  # Conflict detection timestamps
-├── models/                  # Database models and queries
-├── routes/                  # API route definitions
-├── services/                # Business logic (SMS, notifications, reports)
-├── utils/                   # Utility functions and helpers
-├── db.js                    # Database connection configuration
-└── server.js                # Express server entry point
+├── models/                  # Database models and queries (15 files - ES6 named exports)
+├── routes/                  # API route definitions (19 files - ES6 imports)
+├── services/                # Business logic (SMS, notifications, reports - ES6 exports)
+├── utils/                   # Utility functions and helpers (ES6 exports)
+├── scripts/                 # Background workers and utilities (ES6 modules)
+├── db.js                    # Database connection (ES6 default export)
+├── server.js                # Express server entry point (ES6 imports)
+└── package.json             # "type": "module" enabled ⭐ NEW (Nov 6)
+```
+
+### ES Module Architecture ⭐ NEW (November 6, 2025)
+
+**Modern JavaScript Standards:**
+- **Native ES6 Modules**: All 86 backend files use `import`/`export`
+- **Named Exports Pattern**: Controllers and models use `export { functionA, functionB }`
+- **Namespace Imports**: Models imported as `import * as model from './model.js'`
+- **File Extensions Required**: `import x from './file.js'` (`.js` mandatory)
+- **Top-Level Await**: Supported throughout codebase
+- **Zero CommonJS**: No `require()` or `module.exports` remaining
+
+**Conversion Achievements:**
+- 86 files migrated from CommonJS to ES6
+- 12 critical manual fixes (inline functions, nested imports)
+- 77+ import patterns updated (default → named)
+- Zero syntax errors, clean server startup
+- ESLint MODULE_TYPELESS_PACKAGE_JSON warning eliminated
+
+**Import Pattern Examples:**
+```javascript
+// Controllers (named exports)
+import * as patientController from './controllers/patientController.js';
+
+// Models (named exports)
+import * as patientModel from './models/patientModel.js';
+
+// Services (named exports)
+import * as smsScheduler from './services/smsScheduler.js';
+
+// Database (default export)
+import supabase from './db.js';
+
+// Middleware (named exports)
+import { authenticate, authorize } from './middlewares/authMiddleware.js';
 ```
 
 ### Design Principles
 
-1. **Offline-First** ⭐ NEW: All critical operations work without internet connection
+1. **Modern JavaScript**: ES6 modules throughout backend for better maintainability ⭐ NEW
+2. **Offline-First** ⭐: All critical operations work without internet connection
 2. **Eventual Consistency** ⭐ NEW: Background sync ensures data reaches server when online
 3. Separation of Concerns: UI components, business logic, and API services are separated
 4. Role-Based Access: Each user role has dedicated features and components

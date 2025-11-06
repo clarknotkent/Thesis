@@ -50,10 +50,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 
-const props = defineProps({})
 const emit = defineEmits(['approved','cancel'])
 
 const identifier = ref('')

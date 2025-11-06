@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const guardianController = require('../controllers/guardianController');
-const { authenticateRequest, optionalAuthenticate, authorizeRole } = require('../middlewares/authMiddleware');
+import * as guardianController from '../controllers/guardianController.js';
+import { authenticateRequest, authorizeRole } from '../middlewares/authMiddleware.js';
 
 // Apply auth middleware to all routes (but don't require user mapping for reads)
 router.use(authenticateRequest);
@@ -24,4 +24,4 @@ router.delete('/:id', guardianController.deleteGuardian);
 // Admin helper to cancel pending scheduled SMS for a guardian (idempotent)
 router.post('/:id/cancel-pending-sms', authenticateRequest, authorizeRole(['admin']), guardianController.cancelPendingSmsForGuardian);
 
-module.exports = router;
+export default router;

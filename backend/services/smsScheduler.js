@@ -1,8 +1,8 @@
-const supabase = require('../db');
-const smsService = require('./smsService');
-const moment = require('moment-timezone');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
+import supabase from '../db.js';
+import smsService from './smsService.js';
+import moment from 'moment-timezone';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
 
 /**
  * SMS Scheduler
@@ -28,7 +28,7 @@ try {
 async function fetchDueScheduled(limit = BATCH_LIMIT) {
   const nowIso = new Date().toISOString();
   // Only process scheduled items to avoid retrying manual failures
-  let query = supabase
+  const query = supabase
     .from('sms_logs')
     .select('id, phone_number, message, template_id, guardian_id, patient_id, scheduled_at, status')
     // Accept both 'pending' and legacy 'scheduled' statuses to be robust
@@ -115,7 +115,7 @@ async function processDueScheduledSMS({ limit = BATCH_LIMIT } = {}) {
             : row.message;
           console.log(`[SMS Scheduler][DEBUG] sms_log=${row.id} recipient=${row.phone_number} message="${preview}"`);
         }
-      } catch (dbgErr) { /* ignore debug logging failures */ }
+      } catch (_) { /* ignore debug logging failures */ }
 
       // Also optionally print the full message when SHOW_SMS_MESSAGES=true (dev/staging only)
       try {
@@ -138,9 +138,9 @@ async function processDueScheduledSMS({ limit = BATCH_LIMIT } = {}) {
           console.log('[SMS Scheduler][PREVIEW_FINAL] sms_log=' + row.id + ' final="' + String(finalized) + '"');
         }
         // env-gated breakpoint: pause only when SMS_DEBUG_BREAK=true
-          if (String(process.env.SMS_DEBUG_BREAK || '').toLowerCase() === 'true') {
-            console.log('[SMS Scheduler][DBG_BREAK] sms_log=' + row.id + ' about to send; raw and final printed above');
-            // debugger; // interactive debugger pause removed
+        if (String(process.env.SMS_DEBUG_BREAK || '').toLowerCase() === 'true') {
+          console.log('[SMS Scheduler][DBG_BREAK] sms_log=' + row.id + ' about to send; raw and final printed above');
+          // debugger; // interactive debugger pause removed
         }
       } catch (e) {
         /* ignore preview errors */
@@ -329,8 +329,6 @@ function stop() {
   running = false;
 }
 
-module.exports = {
-  start,
+export { start,
   stop,
-  processDueScheduledSMS,
-};
+  processDueScheduledSMS };

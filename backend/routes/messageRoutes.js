@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const { sendMessage, getMessages, markRead } = require('../controllers/messageController');
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { sendMessage, getMessages, markRead } from '../controllers/messageController.js';
 
 // Fetch messages for a conversation (authenticated users mapped)
 router.get('/:conversation_id', authenticateRequest, checkUserMapping, getMessages);
@@ -12,4 +12,4 @@ router.post('/:message_id/read', authenticateRequest, checkUserMapping, markRead
 // Send message - Any authenticated user
 router.post('/', authenticateRequest, checkUserMapping, sendMessage);
 
-module.exports = router;
+export default router;

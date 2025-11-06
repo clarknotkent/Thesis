@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const { getVitalsByVisitId, updateVitalsByVisitId } = require('../controllers/vitalsController');
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getVitalsByVisitId, updateVitalsByVisitId } from '../controllers/vitalsController.js';
 
 router.get('/:visitId', authenticateRequest, checkUserMapping, getVitalsByVisitId);
 router.put('/:visitId', authenticateRequest, checkUserMapping, updateVitalsByVisitId);
 
-module.exports = router;
+export default router;

@@ -218,11 +218,6 @@ const getAdministeredBy = (dose) => {
          'Taken Outside'
 }
 
-const isOutsideRecord = (dose) => {
-  const adminBy = getAdministeredBy(dose).toLowerCase()
-  return adminBy.includes('outside') || adminBy.includes('taken outside')
-}
-
 const formatDate = (date) => {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-PH', {

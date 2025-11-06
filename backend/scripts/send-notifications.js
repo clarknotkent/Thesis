@@ -1,5 +1,5 @@
 
-const notificationModel = require('../models/notificationModel');
+import * as notificationModel from '../models/notificationModel.js';
 
 /**
  * This script fetches and processes pending notifications.

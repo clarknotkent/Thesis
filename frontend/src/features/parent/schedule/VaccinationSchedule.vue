@@ -194,7 +194,7 @@
       <div class="vaccination-timeline">
         <div class="timeline-container">
           <div
-            v-for="(vaccine, index) in filteredVaccinations"
+            v-for="vaccine in filteredVaccinations"
             :key="vaccine.id"
             class="timeline-item"
             :class="vaccine.status"

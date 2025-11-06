@@ -1,4 +1,4 @@
-const serviceClient = require('../db');
+import serviceClient from '../db.js';
 
 // For now, always use the service client. Our app-issued JWTs are not Supabase user tokens;
 // forwarding them to PostgREST causes it to attempt SET ROLE to the custom value (e.g., 'Admin'),
@@ -9,4 +9,4 @@ function getSupabaseForRequest(_req) {
   return serviceClient;
 }
 
-module.exports = { getSupabaseForRequest };
+export { getSupabaseForRequest };

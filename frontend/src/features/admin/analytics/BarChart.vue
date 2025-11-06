@@ -122,7 +122,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps({
-  data: { type: Array, required: true, default: () => [] },
+  data: { type: Array, default: () => [] },
   height: { type: Number, default: 320 },
   colors: { type: Array, default: () => ['#1976ff', '#198754', '#19d3f5', '#ffc107', '#dc3545'] },
   gridSteps: { type: Number, default: 5 },

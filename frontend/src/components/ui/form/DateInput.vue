@@ -79,7 +79,6 @@ const nativePicker = ref(null)
 const displayValue = ref('')
 const error = ref('')
 const lastValue = ref('')
-const cursorPosition = ref(0)
 
 // Format date to MM/DD/YYYY for display
 const formatDisplay = (d) => {

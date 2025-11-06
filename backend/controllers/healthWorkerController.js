@@ -1,6 +1,6 @@
-const userModel = require('../models/userModel');
-const { getActorId } = require('../utils/actor');
-const healthWorkerModel = require('../models/healthWorkerModel');
+import userModel from '../models/userModel.js';
+import { getActorId } from '../utils/actor.js';
+import * as healthWorkerModel from '../models/healthWorkerModel.js';
 
 // List all health staff
 const listHealthWorkers = async (req, res) => {
@@ -43,19 +43,19 @@ const getHealthWorker = async (req, res) => {
 // Create a health staff
 const createHealthWorker = async (req, res) => {
   try {
-  const actorId = getActorId(req);
-  console.log('[healthWorkerController.createHealthWorker] ACTOR', actorId, 'USERNAME', req.body?.username);
-  // Accept incoming role tokens but force canonical token; strip any spoofed audit fields
-  const { created_by: _cb, updated_by: _ub, role: _roleIgnored, ...rest } = req.body;
-  const healthWorkerData = { ...rest, role: 'HealthStaff', created_by: actorId, updated_by: actorId };
+    const actorId = getActorId(req);
+    console.log('[healthWorkerController.createHealthWorker] ACTOR', actorId, 'USERNAME', req.body?.username);
+    // Accept incoming role tokens but force canonical token; strip any spoofed audit fields
+    const { created_by: _cb, updated_by: _ub, role: _roleIgnored, ...rest } = req.body;
+    const healthWorkerData = { ...rest, role: 'HealthStaff', created_by: actorId, updated_by: actorId };
     try {
       const safeBody = { ...req.body };
       if (safeBody.password) safeBody.password = '***redacted***';
       const safeConstructed = { ...healthWorkerData };
       if (safeConstructed.password) safeConstructed.password = '***redacted***';
-  console.log('[healthWorkerController.createHealthWorker] PAYLOAD created_by', healthWorkerData.created_by, 'updated_by', healthWorkerData.updated_by, 'role', healthWorkerData.role);
+      console.log('[healthWorkerController.createHealthWorker] PAYLOAD created_by', healthWorkerData.created_by, 'updated_by', healthWorkerData.updated_by, 'role', healthWorkerData.role);
     } catch (logErr) { console.warn('HW create log failed', logErr); }
-  const newHealthWorker = await userModel.createUser(healthWorkerData, actorId, { allowSelf: false });
+    const newHealthWorker = await userModel.createUser(healthWorkerData, actorId, { allowSelf: false });
     res.status(201).json(newHealthWorker);
   } catch (error) {
     console.error(error);
@@ -100,11 +100,9 @@ const getHealthWorkerProgress = async (req, res) => {
   }
 };
 
-module.exports = {
-  createHealthWorker,
+export { createHealthWorker,
   getHealthWorker,
   updateHealthWorker,
   deleteHealthWorker,
   listHealthWorkers,
-  getHealthWorkerProgress,
-};
+  getHealthWorkerProgress };

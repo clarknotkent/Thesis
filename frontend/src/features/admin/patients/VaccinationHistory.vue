@@ -229,16 +229,6 @@ const getVaccineOrderIndex = (vaccineName) => {
   return 999 // Unknown vaccines go to the end
 }
 
-const sortedVaccinations = computed(() => {
-  return [...vaccinations.value].sort((a, b) => {
-    const aDate = a.administered_date || a.date_administered || a.dateAdministered
-    const bDate = b.administered_date || b.date_administered || b.dateAdministered
-    const dateA = aDate ? new Date(aDate) : 0
-    const dateB = bDate ? new Date(bDate) : 0
-    return dateB - dateA // Most recent first
-  })
-})
-
 const groupedVaccinations = computed(() => {
   if (!vaccinations.value || vaccinations.value.length === 0) return []
   
@@ -286,16 +276,6 @@ const groupedVaccinations = computed(() => {
     return getVaccineOrderIndex(a.vaccineName) - getVaccineOrderIndex(b.vaccineName)
   })
 })
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('en-PH', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 const formatShortDate = (dateString) => {
   if (!dateString) return '—'

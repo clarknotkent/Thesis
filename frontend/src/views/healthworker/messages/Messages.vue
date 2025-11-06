@@ -68,7 +68,6 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import ConversationsListSection from '@/features/health-worker/messages/components/ConversationsListSection.vue'
 import ChatViewSection from '@/features/health-worker/messages/components/ChatViewSection.vue'
@@ -78,12 +77,7 @@ import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 import { useToast } from '@/composables/useToast'
 
-const router = useRouter()
 const { addToast } = useToast()
-
-const goBack = () => {
-  router.go(-1)
-}
 
 // State
 const loading = ref(false)

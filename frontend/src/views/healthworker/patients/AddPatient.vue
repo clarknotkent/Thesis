@@ -434,7 +434,7 @@
 
 <script setup>
 import { addToast } from '@/composables/useToast'
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
@@ -448,35 +448,17 @@ const {
   loadingGuardians,
   submitting,
   guardians,
-  motherSuggestions,
-  fatherSuggestions,
-  selectedGuardian,
-  showMotherDropdown,
-  showFatherDropdown,
-  filteredMotherOptions,
-  filteredFatherOptions,
   expandedCards,
   formData,
   motherOptions,
   fatherOptions,
-  formatGuardianNameFirstMiddleLast,
-  applyParentAutofill,
-  fetchCoParentAndFill,
   onGuardianSelected,
   onMotherSelected,
   onFatherSelected,
-  filterMotherOptions,
-  filterFatherOptions,
-  selectMother,
-  selectFather,
-  hideMotherDropdown,
-  hideFatherDropdown,
   fetchGuardians,
   fetchParentSuggestions,
   validateForm,
-  preparePatientData,
-  submitPatient,
-  resetForm
+  submitPatient
 } = usePatientForm()
 
 // Local navigation function

@@ -67,7 +67,7 @@
           </div>
           <div
             class="text-body small mt-1 answer-text"
-            v-html="f.answer"
+            :innerHTML="sanitizeHtml(f.answer)"
           />
           <div
             v-if="f.created_at"
@@ -84,6 +84,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { getFaqs } from '@/services/faqService'
+import DOMPurify from 'dompurify'
 
 const items = ref([])
 const loading = ref(true)
@@ -109,7 +110,6 @@ const load = async () => {
     loading.value = false
   }
 }
-
 const formatDate = (iso) => {
   if (!iso) return ''
   try {
@@ -119,6 +119,12 @@ const formatDate = (iso) => {
   } catch (_) {
     return ''
   }
+}
+
+const sanitizeHtml = (html) => {
+  if (!html) return ''
+  const sanitized = DOMPurify.sanitize(html)
+  return sanitized
 }
 
 onMounted(load)
