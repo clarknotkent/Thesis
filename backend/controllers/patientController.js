@@ -1,14 +1,14 @@
-const patientModel = require('../models/patientModel');
-const moment = require('moment-timezone');
-const notificationModel = require('../models/notificationModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
-const immunizationModel = require('../models/immunizationModel');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { mintPatientQrUrl } = require('../services/qrService');
-const smsReminderService = require('../services/smsReminderService');
-const svcSupabase = require('../db');
-const serviceSupabase = require('../db');
+import patientModel from '../models/patientModel.js';
+import moment from 'moment-timezone';
+import * as notificationModel from '../models/notificationModel.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
+import * as immunizationModel from '../models/immunizationModel.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { mintPatientQrUrl } from '../services/qrService.js';
+import * as smsReminderService from '../services/smsReminderService.js';
+import svcSupabase from '../db.js';
+import serviceSupabase from '../db.js';
 
 // Normalize incoming payload to match DB schema
 const mapPatientPayload = (body) => ({
@@ -39,15 +39,15 @@ const mapPatientPayload = (body) => ({
 // List all patients with optional filters
 const getAllPatients = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 5, 
-      search, 
-      gender, 
-      sex, 
+    const {
+      page = 1,
+      limit = 5,
+      search,
+      gender,
+      sex,
       status,
       age_group,
-      barangay 
+      barangay
     } = req.query;
 
     // Coerce pagination params to integers (req.query values are strings)
@@ -74,17 +74,17 @@ const getAllPatients = async (req, res) => {
     }
     const supabase = getSupabaseForRequest(req);
     const patients = await patientModel.getAllPatients(filters, pageNum, limitNum, supabase);
-    
-    res.json({ 
-      success: true, 
-      data: patients 
+
+    res.json({
+      success: true,
+      data: patients
     });
   } catch (error) {
     console.error('Error fetching patients:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch patients', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch patients',
+      error: error.message
     });
   }
 };
@@ -92,16 +92,16 @@ const getAllPatients = async (req, res) => {
 // Register a new patient
 const createPatient = async (req, res) => {
   try {
-  const patientData = mapPatientPayload(req.body);
-  console.debug('createPatient payload guardian_id (raw):', req.body.guardian_id, 'mapped:', patientData.guardian_id);
-  // Attach acting user id so DB triggers that fallback to NEW.created_by can attribute the record
-  if (req.user && req.user.user_id) patientData.created_by = req.user.user_id;
-    
+    const patientData = mapPatientPayload(req.body);
+    console.debug('createPatient payload guardian_id (raw):', req.body.guardian_id, 'mapped:', patientData.guardian_id);
+    // Attach acting user id so DB triggers that fallback to NEW.created_by can attribute the record
+    if (req.user && req.user.user_id) patientData.created_by = req.user.user_id;
+
     // Validate required fields (general + guardian)
     if (!patientData.firstname || !patientData.surname || !patientData.date_of_birth || !patientData.guardian_id || !patientData.relationship_to_guardian) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Missing required fields: firstname, surname, date_of_birth, guardian_id, relationship_to_guardian' 
+        message: 'Missing required fields: firstname, surname, date_of_birth, guardian_id, relationship_to_guardian'
       });
     }
 
@@ -115,58 +115,58 @@ const createPatient = async (req, res) => {
       });
     }
 
-  const supabase = getSupabaseForRequest(req);
-  // Autofill mother/father fields if relationship_to_guardian is Mother/Father
-  try {
-    const rel = (patientData.relationship_to_guardian || '').toLowerCase();
-    if ((rel === 'mother' || rel === 'father') && patientData.guardian_id) {
-      const { data: g, error: gErr } = await supabase
-        .from('guardians')
-        .select('surname, firstname, middlename, occupation, contact_number')
-        .eq('guardian_id', patientData.guardian_id)
-        .eq('is_deleted', false)
-        .single();
-      if (!gErr && g) {
-        const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
-        if (rel === 'mother') {
-          patientData.mother_name = patientData.mother_name || motherFullName;
-          patientData.mother_occupation = patientData.mother_occupation || g.occupation || null;
-          patientData.mother_contact_number = patientData.mother_contact_number || g.contact_number || null;
-        } else if (rel === 'father') {
-          patientData.father_name = patientData.father_name || motherFullName;
-          patientData.father_occupation = patientData.father_occupation || g.occupation || null;
-          patientData.father_contact_number = patientData.father_contact_number || g.contact_number || null;
+    const supabase = getSupabaseForRequest(req);
+    // Autofill mother/father fields if relationship_to_guardian is Mother/Father
+    try {
+      const rel = (patientData.relationship_to_guardian || '').toLowerCase();
+      if ((rel === 'mother' || rel === 'father') && patientData.guardian_id) {
+        const { data: g, error: gErr } = await supabase
+          .from('guardians')
+          .select('surname, firstname, middlename, occupation, contact_number')
+          .eq('guardian_id', patientData.guardian_id)
+          .eq('is_deleted', false)
+          .single();
+        if (!gErr && g) {
+          const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
+          if (rel === 'mother') {
+            patientData.mother_name = patientData.mother_name || motherFullName;
+            patientData.mother_occupation = patientData.mother_occupation || g.occupation || null;
+            patientData.mother_contact_number = patientData.mother_contact_number || g.contact_number || null;
+          } else if (rel === 'father') {
+            patientData.father_name = patientData.father_name || motherFullName;
+            patientData.father_occupation = patientData.father_occupation || g.occupation || null;
+            patientData.father_contact_number = patientData.father_contact_number || g.contact_number || null;
+          }
         }
       }
+    } catch ( autofillErr ) {
+      console.warn('Autofill mother fields failed (non-blocking):', autofillErr.message);
     }
-  } catch ( autofillErr ) {
-    console.warn('Autofill mother fields failed (non-blocking):', autofillErr.message);
-  }
 
-  // If caller entered an occupation for the selected guardian (based on relationship),
-  // persist it to guardians.occupation so it auto-fills next time.
-  try {
-    const rel = (patientData.relationship_to_guardian || '').toLowerCase();
-    const enteredOccupation = rel === 'mother'
-      ? (patientData.mother_occupation || null)
-      : rel === 'father'
-        ? (patientData.father_occupation || null)
-        : null;
-    if (patientData.guardian_id && enteredOccupation && String(enteredOccupation).trim()) {
-      await supabase
-        .from('guardians')
-        .update({ occupation: String(enteredOccupation).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
-        .eq('guardian_id', patientData.guardian_id)
-        .eq('is_deleted', false);
+    // If caller entered an occupation for the selected guardian (based on relationship),
+    // persist it to guardians.occupation so it auto-fills next time.
+    try {
+      const rel = (patientData.relationship_to_guardian || '').toLowerCase();
+      const enteredOccupation = rel === 'mother'
+        ? (patientData.mother_occupation || null)
+        : rel === 'father'
+          ? (patientData.father_occupation || null)
+          : null;
+      if (patientData.guardian_id && enteredOccupation && String(enteredOccupation).trim()) {
+        await supabase
+          .from('guardians')
+          .update({ occupation: String(enteredOccupation).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
+          .eq('guardian_id', patientData.guardian_id)
+          .eq('is_deleted', false);
+      }
+    } catch (occErr) {
+      console.warn('[createPatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
     }
-  } catch (occErr) {
-    console.warn('[createPatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
-  }
 
-  // Ensure created_by / updated_by defaults
-  if (!patientData.updated_by && patientData.created_by) patientData.updated_by = patientData.created_by;
+    // Ensure created_by / updated_by defaults
+    if (!patientData.updated_by && patientData.created_by) patientData.updated_by = patientData.created_by;
 
-  const newPatient = await patientModel.createPatient(patientData, supabase);
+    const newPatient = await patientModel.createPatient(patientData, supabase);
 
     // Log the patient creation
     await logActivity({
@@ -235,7 +235,7 @@ const createPatient = async (req, res) => {
     });
 
     // Return enriched patient data and schedule from views
-  const patientView = await patientModel.getPatientById(newPatient.patient_id, getSupabaseForRequest(req));
+    const patientView = await patientModel.getPatientById(newPatient.patient_id, getSupabaseForRequest(req));
     // If birth history payload was provided, persist it to birthhistory table (non-blocking)
     if (birthHistoryPayload) {
       setImmediate(async () => {
@@ -306,17 +306,17 @@ const createPatient = async (req, res) => {
       console.warn('QR mint (non-blocking) failed:', qrErr.message);
     }
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      message: 'Patient registered successfully', 
+      message: 'Patient registered successfully',
       data: { patient: patientView, schedule, qr }
     });
   } catch (error) {
     console.error('Error registering patient:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to register patient', 
-      error: error.message 
+      message: 'Failed to register patient',
+      error: error.message
     });
   }
 };
@@ -418,7 +418,7 @@ const getSmartDoseOptions = async (req, res) => {
       .eq('is_deleted', false)
       .maybeSingle();
     if (smErr) throw smErr;
-    const allDoseNumbers = Array.isArray(sm?.schedule_doses) ? sm.schedule_doses.map(d => d.dose_number).filter(n => n != null).sort((a,b)=>a-b) : [];
+    const allDoseNumbers = Array.isArray(sm?.schedule_doses) ? sm.schedule_doses.map(d => d.dose_number).filter(n => n !== null).sort((a,b)=>a-b) : [];
 
     const { data: taken, error: tErr } = await supabase
       .from('immunizations')
@@ -429,10 +429,10 @@ const getSmartDoseOptions = async (req, res) => {
     if (tErr) throw tErr;
     const completedSet = new Set((taken || []).map(x => x.dose_number));
 
-  const remaining = allDoseNumbers.filter(n => !completedSet.has(n));
-  const autoSelect = remaining.length === 1 ? remaining[0] : null;
+    const remaining = allDoseNumbers.filter(n => !completedSet.has(n));
+    const autoSelect = remaining.length === 1 ? remaining[0] : null;
 
-  res.json({ success: true, data: { available_doses: remaining, all_doses: allDoseNumbers, completed_doses: Array.from(completedSet), auto_select: autoSelect } });
+    res.json({ success: true, data: { available_doses: remaining, all_doses: allDoseNumbers, completed_doses: Array.from(completedSet), auto_select: autoSelect } });
   } catch (error) {
     console.error('Error computing smart dose options:', error);
     res.status(500).json({ success:false, message:'Failed to compute smart dose options', error: error.message });
@@ -442,19 +442,19 @@ const getSmartDoseOptions = async (req, res) => {
 // Get a specific patient by ID
 const getPatientById = async (req, res) => {
   try {
-  const { id } = req.params;
-  const patient = await patientModel.getPatientById(id, getSupabaseForRequest(req));
-    
+    const { id } = req.params;
+    const patient = await patientModel.getPatientById(id, getSupabaseForRequest(req));
+
     if (!patient) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Patient not found' 
+        message: 'Patient not found'
       });
     }
-    
+
     // Fetch birth history and attach as medical_history for backward compatibility with frontend
     try {
-  const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req)).catch(() => null);
+      const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req)).catch(() => null);
       const payload = { ...patient };
       if (birthHistory) {
         payload.medical_history = birthHistory;
@@ -462,23 +462,21 @@ const getPatientById = async (req, res) => {
       } else {
         console.warn('⚠️ No birth history found for patient', id);
       }
-      
+
       // Fetch vaccination history
-      const immunizationModel = require('../models/immunizationModel');
-  const vaccinationHistory = await immunizationModel.listImmunizations({ patient_id: id }, getSupabaseForRequest(req));
+      const vaccinationHistory = await immunizationModel.listImmunizations({ patient_id: id }, getSupabaseForRequest(req));
       payload.vaccinationHistory = vaccinationHistory || [];
-      
+
       // Fetch next scheduled vaccinations
-  const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
+      const nextScheduledVaccinations = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
       payload.nextScheduledVaccinations = nextScheduledVaccinations || [];
-      
+
       // Attach QR url for display on patient details page
       try {
-        console.log('Minting QR for patient', id)
-        const { mintPatientQrUrl } = require('../services/qrService');
+        console.log('Minting QR for patient', id);
         const qr = await mintPatientQrUrl(id); // Use default TTL from environment
         payload.qr = qr;
-        console.log('QR minted successfully:', !!qr)
+        console.log('QR minted successfully:', !!qr);
       } catch (qrErr) {
         console.warn('QR mint on getPatientById failed (non-blocking):', qrErr.message);
       }
@@ -489,10 +487,10 @@ const getPatientById = async (req, res) => {
     }
   } catch (error) {
     console.error('Error fetching patient:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to fetch patient details', 
-      error: error.message 
+      message: 'Failed to fetch patient details',
+      error: error.message
     });
   }
 };
@@ -500,106 +498,106 @@ const getPatientById = async (req, res) => {
 // Update a patient
 const updatePatient = async (req, res) => {
   try {
-  const { id } = req.params;
-  const updates = mapPatientPayload(req.body);
-  // Record who updated the patient for audit/triggers
-  if (req.user && req.user.user_id) updates.updated_by = req.user.user_id;
-  // Autofill mother/father fields if relationship_to_guardian is Mother/Father and fields are blank
-  try {
-    const rel = (updates.relationship_to_guardian || '').toLowerCase();
-    if ((rel === 'mother' || rel === 'father') && updates.guardian_id) {
-      const supabase = getSupabaseForRequest(req);
-      const { data: g, error: gErr } = await supabase
-        .from('guardians')
-        .select('surname, firstname, middlename, occupation, contact_number')
-        .eq('guardian_id', updates.guardian_id)
-        .eq('is_deleted', false)
-        .single();
-      if (!gErr && g) {
-        const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
-        if (rel === 'mother') {
-          updates.mother_name = updates.mother_name || motherFullName;
-          updates.mother_occupation = updates.mother_occupation || g.occupation || null;
-          updates.mother_contact_number = updates.mother_contact_number || g.contact_number || null;
-        } else if (rel === 'father') {
-          updates.father_name = updates.father_name || motherFullName;
-          updates.father_occupation = updates.father_occupation || g.occupation || null;
-          updates.father_contact_number = updates.father_contact_number || g.contact_number || null;
-        }
-      }
-    }
-  } catch (autofillErr) {
-    console.warn('Autofill mother fields on update failed (non-blocking):', autofillErr.message);
-  }
-    
-  // If user supplied occupation for selected guardian during update, propagate to guardians table
-  try {
-    const rel = (updates.relationship_to_guardian || '').toLowerCase();
-    const occ = rel === 'mother'
-      ? (updates.mother_occupation || null)
-      : rel === 'father'
-        ? (updates.father_occupation || null)
-        : null;
-    if (updates.guardian_id && occ && String(occ).trim()) {
-      const supabase = getSupabaseForRequest(req);
-      await supabase
-        .from('guardians')
-        .update({ occupation: String(occ).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
-        .eq('guardian_id', updates.guardian_id)
-        .eq('is_deleted', false);
-    }
-  } catch (occErr) {
-    console.warn('[updatePatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
-  }
-
-  // Pre-check: if birthdate is changing, enforce lock when any vaccine completed
-  let dobChanged = false;
-  let oldDob = null;
-  let newDob = updates.date_of_birth || null;
-  try {
-    if (typeof newDob !== 'undefined' && newDob !== null) {
-      const supabase = getSupabaseForRequest(req);
-      const { data: currentRow } = await supabase
-        .from('patients')
-        .select('date_of_birth')
-        .eq('patient_id', id)
-        .maybeSingle();
-      oldDob = currentRow?.date_of_birth || null;
-      // Normalize comparison to YYYY-MM-DD
-      const toISODate = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
-      dobChanged = toISODate(oldDob) !== toISODate(newDob);
-      if (dobChanged) {
-        // Check for any completed schedules (actual_date not null)
-        const { data: completedRows, error: compErr } = await supabase
-          .from('patientschedule')
-          .select('patient_schedule_id')
-          .eq('patient_id', id)
+    const { id } = req.params;
+    const updates = mapPatientPayload(req.body);
+    // Record who updated the patient for audit/triggers
+    if (req.user && req.user.user_id) updates.updated_by = req.user.user_id;
+    // Autofill mother/father fields if relationship_to_guardian is Mother/Father and fields are blank
+    try {
+      const rel = (updates.relationship_to_guardian || '').toLowerCase();
+      if ((rel === 'mother' || rel === 'father') && updates.guardian_id) {
+        const supabase = getSupabaseForRequest(req);
+        const { data: g, error: gErr } = await supabase
+          .from('guardians')
+          .select('surname, firstname, middlename, occupation, contact_number')
+          .eq('guardian_id', updates.guardian_id)
           .eq('is_deleted', false)
-          .not('actual_date', 'is', null);
-        if (compErr) {
-          console.warn('[updatePatient] completed schedules check failed (non-fatal):', compErr?.message || compErr);
-        }
-        const completedCount = Array.isArray(completedRows) ? completedRows.length : 0;
-        if (completedCount > 0) {
-          return res.status(400).json({
-            success: false,
-            code: 'DOB_LOCKED_HAS_COMPLETED',
-            message: 'Birthdate cannot be edited because at least one vaccine is already completed.',
-            completedCount
-          });
+          .single();
+        if (!gErr && g) {
+          const motherFullName = [g.firstname, g.middlename, g.surname].filter(Boolean).join(' ');
+          if (rel === 'mother') {
+            updates.mother_name = updates.mother_name || motherFullName;
+            updates.mother_occupation = updates.mother_occupation || g.occupation || null;
+            updates.mother_contact_number = updates.mother_contact_number || g.contact_number || null;
+          } else if (rel === 'father') {
+            updates.father_name = updates.father_name || motherFullName;
+            updates.father_occupation = updates.father_occupation || g.occupation || null;
+            updates.father_contact_number = updates.father_contact_number || g.contact_number || null;
+          }
         }
       }
+    } catch (autofillErr) {
+      console.warn('Autofill mother fields on update failed (non-blocking):', autofillErr.message);
     }
-  } catch (preErr) {
-    console.warn('[updatePatient] pre-check for DOB change failed (continuing):', preErr?.message || preErr);
-  }
 
-  const updatedPatient = await patientModel.updatePatient(id, updates, getSupabaseForRequest(req));
+    // If user supplied occupation for selected guardian during update, propagate to guardians table
+    try {
+      const rel = (updates.relationship_to_guardian || '').toLowerCase();
+      const occ = rel === 'mother'
+        ? (updates.mother_occupation || null)
+        : rel === 'father'
+          ? (updates.father_occupation || null)
+          : null;
+      if (updates.guardian_id && occ && String(occ).trim()) {
+        const supabase = getSupabaseForRequest(req);
+        await supabase
+          .from('guardians')
+          .update({ occupation: String(occ).trim(), updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
+          .eq('guardian_id', updates.guardian_id)
+          .eq('is_deleted', false);
+      }
+    } catch (occErr) {
+      console.warn('[updatePatient] Guardian occupation update skipped (non-blocking):', occErr?.message || occErr);
+    }
+
+    // Pre-check: if birthdate is changing, enforce lock when any vaccine completed
+    let dobChanged = false;
+    let oldDob = null;
+    const newDob = updates.date_of_birth || null;
+    try {
+      if (typeof newDob !== 'undefined' && newDob !== null) {
+        const supabase = getSupabaseForRequest(req);
+        const { data: currentRow } = await supabase
+          .from('patients')
+          .select('date_of_birth')
+          .eq('patient_id', id)
+          .maybeSingle();
+        oldDob = currentRow?.date_of_birth || null;
+        // Normalize comparison to YYYY-MM-DD
+        const toISODate = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+        dobChanged = toISODate(oldDob) !== toISODate(newDob);
+        if (dobChanged) {
+        // Check for any completed schedules (actual_date not null)
+          const { data: completedRows, error: compErr } = await supabase
+            .from('patientschedule')
+            .select('patient_schedule_id')
+            .eq('patient_id', id)
+            .eq('is_deleted', false)
+            .not('actual_date', 'is', null);
+          if (compErr) {
+            console.warn('[updatePatient] completed schedules check failed (non-fatal):', compErr?.message || compErr);
+          }
+          const completedCount = Array.isArray(completedRows) ? completedRows.length : 0;
+          if (completedCount > 0) {
+            return res.status(400).json({
+              success: false,
+              code: 'DOB_LOCKED_HAS_COMPLETED',
+              message: 'Birthdate cannot be edited because at least one vaccine is already completed.',
+              completedCount
+            });
+          }
+        }
+      }
+    } catch (preErr) {
+      console.warn('[updatePatient] pre-check for DOB change failed (continuing):', preErr?.message || preErr);
+    }
+
+    const updatedPatient = await patientModel.updatePatient(id, updates, getSupabaseForRequest(req));
 
     if (!updatedPatient) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Patient not found' 
+        message: 'Patient not found'
       });
     }
 
@@ -621,7 +619,7 @@ const updatePatient = async (req, res) => {
           newborn_screening_result: birthHistoryPayload.newborn_screening_result || birthHistoryPayload.newbornScreeningResult || null,
           updated_by: req.user?.user_id || null
         };
-  await patientModel.updatePatientBirthHistory(id, upsertPayload, getSupabaseForRequest(req));
+        await patientModel.updatePatientBirthHistory(id, upsertPayload, getSupabaseForRequest(req));
       } catch (err) {
         console.error('Failed to persist birth history for patient update:', err);
       }
@@ -656,7 +654,7 @@ const updatePatient = async (req, res) => {
       entity_id: updatedPatient.patient_id
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Patient updated successfully',
       data: updatedPatient,
@@ -664,10 +662,10 @@ const updatePatient = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating patient:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to update patient', 
-      error: error.message 
+      message: 'Failed to update patient',
+      error: error.message
     });
   }
 };
@@ -798,31 +796,31 @@ async function rewriteSchedulesForDob(patientId, birthISO, userId) {
 // Delete a patient (soft delete)
 const deletePatient = async (req, res) => {
   try {
-  const { id } = req.params;
-  const userId = req.user?.user_id; // From checkUserMapping middleware
-    
-  const result = await patientModel.deletePatient(id, userId, getSupabaseForRequest(req));
+    const { id } = req.params;
+    const userId = req.user?.user_id; // From checkUserMapping middleware
+
+    const result = await patientModel.deletePatient(id, userId, getSupabaseForRequest(req));
 
     if (!result) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Patient not found' 
+        message: 'Patient not found'
       });
     }
 
     const cancelled = result.cancelledSmsCount || 0;
     console.log(`[patientController] deletePatient: cancelled ${cancelled} sms_logs for patient ${id}`);
 
-    res.json({ 
+    res.json({
       success: true,
-      message: `Patient deleted successfully. Cancelled pending scheduled SMS: ${cancelled}` 
+      message: `Patient deleted successfully. Cancelled pending scheduled SMS: ${cancelled}`
     });
   } catch (error) {
     console.error('Error deleting patient:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to delete patient', 
-      error: error.message 
+      message: 'Failed to delete patient',
+      error: error.message
     });
   }
 };
@@ -831,7 +829,7 @@ const deletePatient = async (req, res) => {
 const getPatientSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-  const schedule = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
+    const schedule = await patientModel.getPatientVaccinationSchedule(id, getSupabaseForRequest(req));
     if (!schedule) {
       return res.status(404).json({ message: 'Patient schedule not found' });
     }
@@ -847,12 +845,12 @@ const updatePatientTag = async (req, res) => {
   try {
     const { id } = req.params;
     const { tag } = req.body;
-    
+
     if (!tag) {
       return res.status(400).json({ message: 'Tag is required' });
     }
 
-  const updatedPatient = await patientModel.updatePatientTag(id, tag, getSupabaseForRequest(req));
+    const updatedPatient = await patientModel.updatePatientTag(id, tag, getSupabaseForRequest(req));
     if (!updatedPatient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
@@ -867,7 +865,7 @@ const updatePatientTag = async (req, res) => {
 const getBirthHistory = async (req, res) => {
   try {
     const { id } = req.params;
-  const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req));
+    const birthHistory = await patientModel.getPatientBirthHistory(id, getSupabaseForRequest(req));
     if (!birthHistory) {
       return res.status(404).json({ message: 'Birth history not found' });
     }
@@ -883,8 +881,8 @@ const updateBirthHistory = async (req, res) => {
   try {
     const { id } = req.params;
     const birthData = req.body;
-    
-  const updatedHistory = await patientModel.updatePatientBirthHistory(id, birthData, getSupabaseForRequest(req));
+
+    const updatedHistory = await patientModel.updatePatientBirthHistory(id, birthData, getSupabaseForRequest(req));
     if (!updatedHistory) {
       return res.status(404).json({ message: 'Patient not found' });
     }
@@ -896,14 +894,9 @@ const updateBirthHistory = async (req, res) => {
 };
 
 // Get patient vitals
-const getVitals = async (req, res) => {
+const getVitals = (req, res) => {
   try {
-    const { id } = req.params;
-  return res.status(410).json({ message: 'Deprecated: use visit or service-specific endpoints to manage vitals' });
-    if (!vitals) {
-      return res.status(404).json({ message: 'Patient vitals not found' });
-    }
-    res.json(vitals);
+    return res.status(410).json({ message: 'Deprecated: use visit or service-specific endpoints to manage vitals' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to fetch patient vitals', error });
@@ -911,11 +904,10 @@ const getVitals = async (req, res) => {
 };
 
 // Update patient vitals
-const updateVitals = async (req, res) => {
+const updateVitals = (req, res) => {
   try {
-    const { id } = req.params;
-    const vitalsData = req.body;
-    
+    const { id: _id } = req.params;
+
     return res.status(410).json({ message: 'Deprecated: use visit or outside service endpoints to create vitals' });
   } catch (error) {
     console.error(error);
@@ -925,7 +917,7 @@ const updateVitals = async (req, res) => {
 // Update patient schedule statuses (manual only - not for automatic updates)
 const updatePatientSchedules = async (req, res) => {
   try {
-    const { id: patientId } = req.params;
+    const patientId = req.params.id;
 
     // Call the database function to update schedule statuses
     const result = await patientModel.updatePatientSchedules(patientId);
@@ -960,10 +952,10 @@ const restorePatient = async (req, res) => {
     try {
       await logActivity({
         action_type: ACTIVITY.CHILD.RESTORE,
-        description: `Restored patient ${id}`,
+        description: `Restored patient ${patientId}`,
         user_id: actorId,
         entity_type: 'child',
-        entity_id: id
+        entity_id: patientId
       });
     } catch (_) {}
     res.json({ success: true, message: 'Patient restored successfully' });
@@ -976,8 +968,7 @@ const restorePatient = async (req, res) => {
   }
 };
 
-module.exports = {
-  createPatient,
+export { createPatient,
   getPatientById,
   updatePatient,
   deletePatient,
@@ -995,5 +986,4 @@ module.exports = {
   listParentsWithContacts,
   listDistinctParentNames,
   getCoParentSuggestion,
-  getSmartDoseOptions,
-};
+  getSmartDoseOptions };

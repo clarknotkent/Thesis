@@ -1,9 +1,9 @@
-const userModel = require('../models/userModel');
-const { getActorId } = require('../utils/actor');
-const { createUserMapping } = require('../models/authModel');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { createClient } = require('@supabase/supabase-js');
+import userModel from '../models/userModel.js';
+import { getActorId } from '../utils/actor.js';
+import { createUserMapping } from '../models/authModel.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { createClient } from '@supabase/supabase-js';
 
 const getAuthAdmin = () => {
   const url = process.env.SUPABASE_URL;
@@ -23,32 +23,32 @@ const createUser = async (req, res) => {
 
     // 1) Create Supabase Auth user (email/password)
     const admin = getAuthAdmin();
-  // ...existing code...
+    // ...existing code...
     const { data: created, error: sberr } = await admin.auth.admin.createUser({
       email: userData.email,
       password: userData.password,
       email_confirm: true,
     });
     if (sberr) {
-  console.warn('[users] supabase createUser failed', sberr);
+      console.warn('[users] supabase createUser failed', sberr);
       return res.status(400).json({ message: 'Supabase auth user creation failed', error: sberr.message });
     }
 
     // 2) Create application user record (with hashed password handled in model)
     let newUser;
     try {
-  const actorId = getActorId(req);
-  // ...existing code...
+      const actorId = getActorId(req);
+      // ...existing code...
       // Ignore any client-supplied created_by/updated_by to prevent spoofing
       const { created_by: _cb, updated_by: _ub, ...rest } = userData;
       const constructed = { ...rest, created_by: actorId, updated_by: actorId };
       const safeLog = { ...constructed };
       if (safeLog.password) safeLog.password = '***redacted***';
-  // ...existing code...
-  newUser = await userModel.createUser(constructed, actorId, { allowSelf: false });
-  // ...existing code...
+      // ...existing code...
+      newUser = await userModel.createUser(constructed, actorId, { allowSelf: false });
+      // ...existing code...
     } catch (e) {
-  console.error('[users] local user create failed, rolling back auth user', e);
+      console.error('[users] local user create failed, rolling back auth user', e);
       try { await admin.auth.admin.deleteUser(created.user.id); } catch (_) {}
       throw e;
     }
@@ -56,7 +56,7 @@ const createUser = async (req, res) => {
     // 3) Map Supabase UUID to local user_id
     try {
       await createUserMapping({ uuid: created.user.id, user_id: newUser.user_id });
-    } catch (mapErr) {
+    } catch (_mapErr) {
       // Best-effort cleanup if mapping fails: delete the auth user to avoid orphans
       try { await admin.auth.admin.deleteUser(created.user.id); } catch (_) {}
       return res.status(500).json({ message: 'Failed to map Supabase user to local account' });
@@ -73,13 +73,13 @@ const createUser = async (req, res) => {
       console.warn('[users:createUser] ensureGuardianForUser failed (non-fatal):', e && e.message);
     }
 
-    const { password, ...safeUser } = newUser;
+    const { password: _password, ...safeUser } = newUser;
     try {
       await logActivity({ action_type: ACTIVITY.USER.CREATE, description: `Created user ${safeUser.user_id}`, user_id: req.user?.user_id || null, entity_id: safeUser.user_id, entity_type: 'user', new_value: safeUser });
-  } catch (e) { /* activity log failed */ }
+    } catch (e) { /* activity log failed */ }
     res.status(201).json({ message: 'User created successfully', user: safeUser });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to create user', error });
   }
 };
@@ -89,16 +89,16 @@ const getUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await userModel.getUserById(id);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Remove password from response
-    const { password, ...safeUser } = user;
+    const { password: _password, ...safeUser } = user;
     res.json(safeUser);
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to fetch user', error });
   }
 };
@@ -109,48 +109,48 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     const before = await userModel.getUserById(id);
-  const actorId = req.user?.user_id || null;
-  console.debug('[users:updateUser] before:', JSON.stringify(before || {}));
-  console.debug('[users:updateUser] incoming updateData:', JSON.stringify(updateData || {}));
-  const updatedUser = await userModel.updateUser(id, { ...updateData, updated_by: actorId });
-  // If resulting role is Guardian, ensure guardian record exists
-  try {
-    const roleToken = (updatedUser && updatedUser.role || '').toLowerCase();
-    if (['guardian','parent','guardian-parent'].includes(roleToken)) {
-      const actorId2 = getActorId(req);
-      const ensured = await require('../models/guardianModel').ensureGuardianForUser({
-        user_id: updatedUser.user_id,
-        role: updatedUser.role,
-        surname: updatedUser.surname,
-        firstname: updatedUser.firstname,
-        middlename: updatedUser.middlename,
-        email: updatedUser.email,
-        address: updatedUser.address,
-        contact_number: updatedUser.contact_number,
-      }, actorId2);
-      console.log('[users:updateUser] ensured guardian_id:', ensured && ensured.guardian_id);
+    const actorId = req.user?.user_id || null;
+    console.debug('[users:updateUser] before:', JSON.stringify(before || {}));
+    console.debug('[users:updateUser] incoming updateData:', JSON.stringify(updateData || {}));
+    const updatedUser = await userModel.updateUser(id, { ...updateData, updated_by: actorId });
+    // If resulting role is Guardian, ensure guardian record exists
+    try {
+      const roleToken = (updatedUser && updatedUser.role || '').toLowerCase();
+      if (['guardian','parent','guardian-parent'].includes(roleToken)) {
+        const actorId2 = getActorId(req);
+        const ensured = await require('../models/guardianModel').ensureGuardianForUser({
+          user_id: updatedUser.user_id,
+          role: updatedUser.role,
+          surname: updatedUser.surname,
+          firstname: updatedUser.firstname,
+          middlename: updatedUser.middlename,
+          email: updatedUser.email,
+          address: updatedUser.address,
+          contact_number: updatedUser.contact_number,
+        }, actorId2);
+        console.log('[users:updateUser] ensured guardian_id:', ensured && ensured.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:updateUser] ensureGuardianForUser failed (non-fatal):', e && e.message);
     }
-  } catch (e) {
-    console.warn('[users:updateUser] ensureGuardianForUser failed (non-fatal):', e && e.message);
-  }
-  console.debug('[users:updateUser] after:', JSON.stringify(updatedUser || {}));
-  // If user is guardian, sync guardian core fields from user
-  try {
-    const roleToken2 = (updatedUser && updatedUser.role || '').toLowerCase();
-    if (['guardian','parent','guardian-parent'].includes(roleToken2)) {
-      const actorSync = getActorId(req);
-      await require('../models/guardianModel').syncGuardianFromUser(updatedUser, actorSync);
+    console.debug('[users:updateUser] after:', JSON.stringify(updatedUser || {}));
+    // If user is guardian, sync guardian core fields from user
+    try {
+      const roleToken2 = (updatedUser && updatedUser.role || '').toLowerCase();
+      if (['guardian','parent','guardian-parent'].includes(roleToken2)) {
+        const actorSync = getActorId(req);
+        await require('../models/guardianModel').syncGuardianFromUser(updatedUser, actorSync);
+      }
+    } catch (e) {
+      console.warn('[users:updateUser] syncGuardianFromUser failed (non-fatal):', e && e.message);
     }
-  } catch (e) {
-    console.warn('[users:updateUser] syncGuardianFromUser failed (non-fatal):', e && e.message);
-  }
-    
+
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Remove password from response
-    const { password, ...safeUser } = updatedUser;
+    const { password: _password, ...safeUser } = updatedUser;
     try {
       const { password: _pwOld, ...oldSafe } = before || {};
       const activityPayload = {
@@ -164,10 +164,10 @@ const updateUser = async (req, res) => {
       };
       console.debug('[users:updateUser] activityPayload:', JSON.stringify(activityPayload));
       await logActivity(activityPayload);
-  } catch (e) { /* activity log failed */ }
+    } catch (e) { /* activity log failed */ }
     res.json({ message: 'User updated successfully', user: safeUser });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to update user', error });
   }
 };
@@ -176,33 +176,33 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-  const actorId = req.user?.user_id || null;
-  const success = await userModel.deleteUser(id, actorId);
-    
+    const actorId = req.user?.user_id || null;
+    const success = await userModel.deleteUser(id, actorId);
+
     if (!success) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-  try { await logActivity({ action_type: ACTIVITY.USER.SOFT_DELETE, description: `Soft deleted user ${id} by ${actorId}`, user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deleted_by: actorId } }); } catch (e) { /* activity log failed */ }
-  // Cascade soft-delete to guardian if exists
-  try {
-    const { data: g, error: gErr } = await require('../db')
-      .from('guardians')
-      .select('guardian_id')
-      .eq('user_id', id)
-      .maybeSingle();
-    if (!gErr && g && g.guardian_id) {
-      await require('../db')
+
+    try { await logActivity({ action_type: ACTIVITY.USER.SOFT_DELETE, description: `Soft deleted user ${id} by ${actorId}`, user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deleted_by: actorId } }); } catch (e) { /* activity log failed */ }
+    // Cascade soft-delete to guardian if exists
+    try {
+      const { data: g, error: gErr } = await require('../db')
         .from('guardians')
-        .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
-        .eq('guardian_id', g.guardian_id);
+        .select('guardian_id')
+        .eq('user_id', id)
+        .maybeSingle();
+      if (!gErr && g && g.guardian_id) {
+        await require('../db')
+          .from('guardians')
+          .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
+          .eq('guardian_id', g.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:deleteUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
     }
-  } catch (e) {
-    console.warn('[users:deleteUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
-  }
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to delete user', error });
   }
 };
@@ -227,7 +227,7 @@ const listUsers = async (req, res) => {
       }
     });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to fetch users', error });
   }
 };
@@ -237,14 +237,14 @@ const getUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const profile = await userModel.getUserProfile(id);
-    
+
     if (!profile) {
       return res.status(404).json({ message: 'User profile not found' });
     }
-    
+
     res.json(profile);
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to fetch user profile', error });
   }
 };
@@ -254,18 +254,18 @@ const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    
+
     if (!role) {
       return res.status(400).json({ message: 'Role is required' });
     }
 
-  const before = await userModel.getUserById(id);
-  const updatedUser = await userModel.assignRole(id, role);
-    
+    const before = await userModel.getUserById(id);
+    const updatedUser = await userModel.assignRole(id, role);
+
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     try {
       await logActivity({
         action_type: ACTIVITY.USER.ROLE_UPDATE,
@@ -276,7 +276,7 @@ const updateUserRole = async (req, res) => {
         old_value: before ? { role: before.role } : null,
         new_value: { role: updatedUser.role }
       });
-  } catch(e) { /* activity log failed */ }
+    } catch(e) { /* activity log failed */ }
     // Ensure guardian if role becomes Guardian
     try {
       const roleToken = (updatedUser && updatedUser.role || '').toLowerCase();
@@ -290,7 +290,7 @@ const updateUserRole = async (req, res) => {
     }
     res.json({ message: 'User role updated successfully', user: updatedUser });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to update user role', error });
   }
 };
@@ -299,47 +299,47 @@ const updateUserRole = async (req, res) => {
 const deactivateUser = async (req, res) => {
   try {
     const { id } = req.params;
-  const actorId = req.user?.user_id || null;
-  const success = await userModel.deleteUser(id, actorId);
-    
+    const actorId = req.user?.user_id || null;
+    const success = await userModel.deleteUser(id, actorId);
+
     if (!success) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-  try { await logActivity({ action_type: ACTIVITY.USER.DEACTIVATE, description: `Deactivated user ${id} by ${actorId}` , user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deactivated_by: actorId } }); } catch (e) { /* activity log failed */ }
-  // Cascade soft-delete to guardian if exists
-  try {
-    const { data: g, error: gErr } = await require('../db')
-      .from('guardians')
-      .select('guardian_id')
-      .eq('user_id', id)
-      .maybeSingle();
-    if (!gErr && g && g.guardian_id) {
-      await require('../db')
+
+    try { await logActivity({ action_type: ACTIVITY.USER.DEACTIVATE, description: `Deactivated user ${id} by ${actorId}` , user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deactivated_by: actorId } }); } catch (e) { /* activity log failed */ }
+    // Cascade soft-delete to guardian if exists
+    try {
+      const { data: g, error: gErr } = await require('../db')
         .from('guardians')
-        .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
-        .eq('guardian_id', g.guardian_id);
+        .select('guardian_id')
+        .eq('user_id', id)
+        .maybeSingle();
+      if (!gErr && g && g.guardian_id) {
+        await require('../db')
+          .from('guardians')
+          .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
+          .eq('guardian_id', g.guardian_id);
+      }
+    } catch (e) {
+      console.warn('[users:deactivateUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
     }
-  } catch (e) {
-    console.warn('[users:deactivateUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
-  }
     res.json({ message: 'User account deactivated successfully' });
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to deactivate user account', error });
   }
 };
 
 // Get user activity logs
-const getUserActivityLogs = async (req, res) => {
+const getUserActivityLogs = (req, res) => {
   try {
-    const { id } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
-    
+    const { id: _id } = req.params;
+    const { limit: _limit = 50, _offset = 0 } = req.query;
+
     const logs = [];
     res.json(logs);
   } catch (error) {
-  console.error(error);
+    console.error(error);
     res.status(500).json({ message: 'Failed to fetch user activity logs', error });
   }
 };
@@ -387,20 +387,20 @@ const resetPassword = async (req, res) => {
       return res.status(403).json({ message: 'Only admins can reset other users passwords' });
     }
     const admin = getAuthAdmin();
-  // fetch mapping to supabase uuid
-  const profile = await userModel.getUserById(id);
-  if (!profile) return res.status(404).json({ message: 'User not found' });
+    // fetch mapping to supabase uuid
+    const profile = await userModel.getUserById(id);
+    if (!profile) return res.status(404).json({ message: 'User not found' });
 
-  // Prefer explicit user_mapping lookup by user_id (may contain authoritative supabase UUID)
-  let mapping = null;
-  try { mapping = await require('../models/authModel').getUserMappingByUserId(id); } catch(e) { console.debug('[resetPassword] mapping lookup failed', e && (e.message||e)); }
-  const supabaseUuid = (mapping && mapping.uuid) || profile.supabase_uuid;
-  if (!supabaseUuid) return res.status(404).json({ message: 'User mapping not found' });
+    // Prefer explicit user_mapping lookup by user_id (may contain authoritative supabase UUID)
+    let mapping = null;
+    try { mapping = await require('../models/authModel').getUserMappingByUserId(id); } catch(e) { console.debug('[resetPassword] mapping lookup failed', e && (e.message||e)); }
+    const supabaseUuid = (mapping && mapping.uuid) || profile.supabase_uuid;
+    if (!supabaseUuid) return res.status(404).json({ message: 'User mapping not found' });
 
     // Call Supabase Admin API to update the user's password. Wrap and log errors clearly.
     let pwRes;
     try {
-  pwRes = await admin.auth.admin.updateUserById(supabaseUuid, { password: newPassword });
+      pwRes = await admin.auth.admin.updateUserById(supabaseUuid, { password: newPassword });
     } catch (e) {
       console.error('[resetPassword] admin.updateUserById threw an exception', { userId: id, uuid: profile.supabase_uuid, err: e && (e.message || e) });
       // Supabase AuthApiError when user missing: allow admin to recreate the Supabase user
@@ -469,8 +469,7 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = {
-  createUser,
+export { createUser,
   getUser,
   updateUser,
   deleteUser,
@@ -480,5 +479,4 @@ module.exports = {
   deactivateUser,
   getUserActivityLogs,
   restoreUser,
-  resetPassword,
-};
+  resetPassword };

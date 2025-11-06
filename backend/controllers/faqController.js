@@ -1,6 +1,6 @@
-const { createFAQ, listFAQs, updateFAQ, deleteFAQ } = require('../models/faqModel');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { logActivity } = require('../models/activityLogger');
+import { createFAQ, listFAQs, updateFAQ, deleteFAQ } from '../models/faqModel.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { logActivity } from '../models/activityLogger.js';
 
 const create = async (req, res) => {
   try {
@@ -52,4 +52,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { create, list, update, remove };
+export { create, list, update, remove };

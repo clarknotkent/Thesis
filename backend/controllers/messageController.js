@@ -1,11 +1,13 @@
-const { createMessage, listMessagesByConversation, markMessageRead } = require('../models/messageModel');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { logActivity } = require('../models/activityLogger');
+import { createMessage, listMessagesByConversation, markMessageRead } from '../models/messageModel.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { logActivity } from '../models/activityLogger.js';
 
+import supabase from '../db.js';
 const sendMessage = async (req, res) => {
   try {
     const sender_id = req.user && (req.user.user_id || req.user.id);
-    let { conversation_id, message_type = 'chat', message_content, attachment_url } = req.body;
+    const { conversation_id, message_content, attachment_url } = req.body;
+    let message_type = (req.body.message_type || 'chat').toString().toLowerCase();
     // Normalize and validate message_type to match DB enum/check
     message_type = (message_type || 'chat').toString().toLowerCase();
     if (!['chat', 'system'].includes(message_type)) message_type = 'chat';
@@ -41,7 +43,6 @@ const getMessages = async (req, res) => {
     try {
       if (user_id) {
         const nowIso = new Date().toISOString();
-        const supabase = require('../db');
         const { data: msgIds } = await supabase
           .from('messages')
           .select('message_id')
@@ -136,4 +137,4 @@ const markRead = async (req, res) => {
   }
 };
 
-module.exports = { sendMessage, getMessages, markRead };
+export { sendMessage, getMessages, markRead };

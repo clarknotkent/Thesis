@@ -1,5 +1,5 @@
-const supabase = require('../db');
-const bcrypt = require('bcrypt');
+import supabase from '../db.js';
+import bcrypt from 'bcrypt';
 
 // Map any incoming variant to DB-enforced tokens: 'Admin','HealthStaff','Guardian'
 const mapIncomingRoleToStored = (role) => {
@@ -91,9 +91,9 @@ const userModel = {
 
       // Apply pagination
       const offset = (page - 1) * limit;
-    const { data, error, count } = await query
-  .range(offset, offset + limit - 1)
-  .order('user_id', { ascending: true });
+      const { data, error, count } = await query
+        .range(offset, offset + limit - 1)
+        .order('user_id', { ascending: true });
 
       if (error) throw error;
 
@@ -165,21 +165,21 @@ const userModel = {
         .eq('user_id', id)
         .single();
 
-  if (error && error.code !== 'PGRST116') throw error;
-  if (!data) return null;
-  // Enrich with status from base table if available
-  try {
-    const { data: srow } = await supabase
-      .from('users')
-      .select('user_status')
-      .eq('user_id', id)
-      .single();
-    const baseStatus = (srow?.user_status || 'active').toLowerCase();
-    const derivedStatus = data.is_deleted ? 'archived' : (baseStatus === 'inactive' ? 'inactive' : 'active');
-    return { ...data, user_status: baseStatus, status: derivedStatus };
-  } catch(_) {
-    return { ...data, user_status: 'active', status: data.is_deleted ? 'archived' : 'active' };
-  }
+      if (error && error.code !== 'PGRST116') throw error;
+      if (!data) return null;
+      // Enrich with status from base table if available
+      try {
+        const { data: srow } = await supabase
+          .from('users')
+          .select('user_status')
+          .eq('user_id', id)
+          .single();
+        const baseStatus = (srow?.user_status || 'active').toLowerCase();
+        const derivedStatus = data.is_deleted ? 'archived' : (baseStatus === 'inactive' ? 'inactive' : 'active');
+        return { ...data, user_status: baseStatus, status: derivedStatus };
+      } catch(_) {
+        return { ...data, user_status: 'active', status: data.is_deleted ? 'archived' : 'active' };
+      }
     } catch (error) {
       console.error('Error fetching user by ID:', error);
       throw error;
@@ -204,8 +204,8 @@ const userModel = {
         }
       }
       // Ensure audit actor fallback (self is unknown yet; will patch after insert)
-  const incomingCreatedBy = actorId || userData.created_by || null;
-  const incomingUpdatedBy = actorId || userData.updated_by || incomingCreatedBy || null;
+      const incomingCreatedBy = actorId || userData.created_by || null;
+      const incomingUpdatedBy = actorId || userData.updated_by || incomingCreatedBy || null;
       // Derive username from email if not provided
       if (!userData.username && userData.email) {
         userData.username = userData.email.split('@')[0];
@@ -225,8 +225,8 @@ const userModel = {
         user_status: ((userData.user_status || userData.status) === 'inactive') ? 'inactive' : 'active',
         // archived is represented by is_deleted; default new users to not archived
         is_deleted: false,
-  professional_license_no: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.professional_license_no || null) : null,
-  employee_id: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.employee_id || null) : null,
+        professional_license_no: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.professional_license_no || null) : null,
+        employee_id: (storedRole === 'HealthStaff' || storedRole === 'Admin') ? (userData.employee_id || null) : null,
         hs_type: hsType,
         created_by: incomingCreatedBy,
         updated_by: incomingUpdatedBy
@@ -236,13 +236,13 @@ const userModel = {
         payload.professional_license_no = null;
       }
 
-  console.log('[userModel.createUser] STEP1 build', { actorId, created_by: payload.created_by, updated_by: payload.updated_by, role: payload.role });
-  console.log('[userModel.createUser] STEP2 insert start user/email', payload.username, payload.email);
+      console.log('[userModel.createUser] STEP1 build', { actorId, created_by: payload.created_by, updated_by: payload.updated_by, role: payload.role });
+      console.log('[userModel.createUser] STEP2 insert start user/email', payload.username, payload.email);
 
-  const { data, error } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .insert(payload)
-  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
+        .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -259,7 +259,7 @@ const userModel = {
           .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, employee_id, professional_license_no, created_by, updated_by')
           .single();
         if (!corrErr && corrected) return corrected;
-      } else if (!actorId && data.created_by == null && data.updated_by == null) {
+      } else if (!actorId && data.created_by === null && data.updated_by === null) {
         console.log('[userModel.createUser] STEP3 self-assign (no actor) user', data.user_id);
         const { data: selfAssign, error: selfErr } = await supabase
           .from('users')
@@ -279,7 +279,7 @@ const userModel = {
   // Update user
   updateUser: async (id, updates) => {
     try {
-  const updateData = { ...updates };
+      const updateData = { ...updates };
 
       // Password updates should go through Supabase Auth; ignore local password field
       if (updateData.password) {
@@ -312,7 +312,7 @@ const userModel = {
         updateData.updated_by = updates.actor_id;
       }
 
-  const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'user_status', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
+      const allowed = ['username', 'email', 'role', 'hs_type', 'firstname', 'middlename', 'surname', 'contact_number', 'address', 'sex', 'birthdate', 'user_status', 'is_deleted', 'professional_license_no', 'employee_id', 'updated_by'];
       const filtered = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.includes(k)));
 
       // Normalize contact number
@@ -359,7 +359,7 @@ const userModel = {
         .from('users')
         .update(filtered)
         .eq('user_id', id)
-  .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
+        .select('user_id, username, email, role, hs_type, firstname, middlename, surname, contact_number, address, birthdate, employee_id, professional_license_no, created_by, updated_by')
         .single();
 
       if (error) throw error;
@@ -376,7 +376,7 @@ const userModel = {
     try {
       const { data, error } = await supabase
         .from('users')
-        .update({ 
+        .update({
           is_deleted: true,
           deleted_at: new Date().toISOString(),
           deleted_by: actorId || null
@@ -443,7 +443,7 @@ const userModel = {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ 
+        .update({
           last_login: new Date().toISOString()
         })
         .eq('user_id', id);
@@ -463,7 +463,7 @@ const userModel = {
       const normalized = mapIncomingRoleToStored(role);
       const { data, error } = await supabase
         .from('users')
-        .update({ 
+        .update({
           role: normalized
         })
         .eq('user_id', userId)
@@ -510,4 +510,4 @@ const userModel = {
   },
 };
 
-module.exports = userModel;
+export default userModel;

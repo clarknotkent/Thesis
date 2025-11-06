@@ -280,13 +280,11 @@ import ScheduledVaccinations from '@/features/admin/patients/ScheduledVaccinatio
 import MedicalHistory from '@/features/admin/patients/MedicalHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
 import QRCode from 'qrcode'
 
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
-const { confirm } = useConfirm()
 
 const patientData = ref({})
 const guardians = ref([])
@@ -433,41 +431,6 @@ const fetchPatientData = async () => {
     })
   } finally {
     loading.value = false
-  }
-}
-
-const handleEditVaccinations = () => {
-  router.push({ name: 'PatientVaccinations', params: { id: patientId.value } })
-}
-
-const handleEditMedicalHistory = () => {
-  // Navigate to medical history page
-  router.push({ name: 'PatientMedicalHistory', params: { id: patientId.value } })
-}
-
-const handleDelete = async () => {
-  const confirmed = await confirm(
-    'Delete Patient',
-    `Are you sure you want to delete ${fullName.value}? This action cannot be undone.`
-  )
-
-  if (!confirmed) return
-
-  try {
-    await api.delete(`/patients/${patientId.value}`)
-    addToast({
-      title: 'Success',
-      message: 'Patient deleted successfully',
-      type: 'success'
-    })
-    router.push('/admin/patients')
-  } catch (err) {
-    console.error('Error deleting patient:', err)
-    addToast({
-      title: 'Error',
-      message: 'Failed to delete patient. Please try again.',
-      type: 'error'
-    })
   }
 }
 

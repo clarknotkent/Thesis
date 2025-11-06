@@ -377,7 +377,6 @@ const {
   saving,
   patientData,
   vaccineOptions,
-  healthWorkers,
   nurses,
   availableDoses,
   autoSelectHint,
@@ -410,7 +409,6 @@ const {
   deriveFacility,
   isOutside,
   getMinDate,
-  filteredVaccinations,
   sortedVaccinations,
   upcomingSchedules,
   canSave

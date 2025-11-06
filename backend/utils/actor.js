@@ -11,4 +11,4 @@ function getActorId(req) {
   return null;
 }
 
-module.exports = { getActorId };
+export { getActorId };

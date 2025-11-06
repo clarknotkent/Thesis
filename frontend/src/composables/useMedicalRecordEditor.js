@@ -1,12 +1,10 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import api from '@/services/api';
-import { useToast } from '@/composables/useToast';
 import { useConfirm } from '@/composables/useConfirm';
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils';
 
 export function useMedicalRecordEditor(props) {
-  const { addToast } = useToast();
-  const { confirm } = useConfirm();
+  const { _confirm } = useConfirm();
 
   // State
   const patients = ref([]);

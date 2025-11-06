@@ -459,12 +459,11 @@
 import { addToast } from '@/composables/useToast'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useActivityLogStore } from '@/stores/activityLogStore'
-import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import DateInput from '@/components/ui/form/DateInput.vue'
-import { formatPHDate, formatPHDateTime, utcToPH, nowPH, getPHDateKey } from '@/utils/dateUtils'
+import { formatPHDate, formatPHDateTime, nowPH, getPHDateKey } from '@/utils/dateUtils'
 
 // Reactive data
 const loading = ref(true)
@@ -476,8 +475,6 @@ const itemsPerPage = ref(10) // Set to 10 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 const activityLogStore = useActivityLogStore()
-const router = useRouter()
-
 // Date picker refs
 
 // Modal states
@@ -848,7 +845,7 @@ const exportLogs = async () => {
 }
 
 // Date formatting methods
-const formatDatePH = (date) => {
+const _formatDatePH = (date) => {
   if (!date) return 'Never'
   return formatPHDateTime(date)
 }
@@ -863,7 +860,7 @@ const formatTimeOnly = (date) => {
   return formatPHDate(date, 'hh:mm A')
 }
 
-const convertToISODate = (dateValue) => {
+const _convertToISODate = (dateValue) => {
   if (!dateValue) return ''
   return formatPHDate(dateValue, 'YYYY-MM-DD')
 }
@@ -924,10 +921,10 @@ onMounted(() => {
 })
 
 // Auto-apply filters when custom dates change
-watch(() => filters.value.fromDate, (nv, ov) => {
+watch(() => filters.value.fromDate, (_nv, _ov) => {
   if (filters.value.dateRange === 'custom') applyFilters()
 })
-watch(() => filters.value.toDate, (nv, ov) => {
+watch(() => filters.value.toDate, (_nv, _ov) => {
   if (filters.value.dateRange === 'custom') applyFilters()
 })
 </script>

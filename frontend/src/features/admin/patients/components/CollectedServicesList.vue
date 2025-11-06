@@ -78,7 +78,6 @@
 defineProps({
   services: {
     type: Array,
-    required: true,
     default: () => []
   },
   disabled: {

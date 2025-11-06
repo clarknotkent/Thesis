@@ -1,12 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole } = require('../middlewares/authMiddleware');
-const { 
-	getActivityLogs,
-	getActivityLogById,
-	exportActivityLogs,
-	clearOldActivityLogs
-} = require('../controllers/activityController');
+import { authenticateRequest, authorizeRole } from '../middlewares/authMiddleware.js';
+import { getActivityLogs,
+  getActivityLogById,
+  exportActivityLogs,
+  clearOldActivityLogs } from '../controllers/activityController.js';
 
 // List activity logs (admin only)
 router.get('/', authenticateRequest, authorizeRole(['admin', 'superadmin']), getActivityLogs);
@@ -20,4 +18,4 @@ router.delete('/clear-old/:days', authenticateRequest, authorizeRole(['admin', '
 // Get single activity log by ID (admin only)
 router.get('/:id', authenticateRequest, authorizeRole(['admin', 'superadmin']), getActivityLogById);
 
-module.exports = router;
+export default router;

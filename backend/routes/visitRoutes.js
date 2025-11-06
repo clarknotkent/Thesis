@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const { getVisits, getVisit, postVisit, updateVisit, ensureVisit, existsVisit } = require('../controllers/visitController');
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getVisits, getVisit, postVisit, updateVisit, ensureVisit, existsVisit } from '../controllers/visitController.js';
 
 // GET routes - no user mapping required for admins to read visit data
 router.get('/', authenticateRequest, getVisits);
@@ -14,4 +14,4 @@ router.post('/', authenticateRequest, checkUserMapping, postVisit);
 router.put('/:id', authenticateRequest, checkUserMapping, updateVisit);
 router.post('/ensure', authenticateRequest, checkUserMapping, ensureVisit);
 
-module.exports = router;
+export default router;

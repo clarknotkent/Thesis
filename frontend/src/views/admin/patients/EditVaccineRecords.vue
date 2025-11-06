@@ -830,12 +830,12 @@ const actuallySaveAllRecords = async (approver) => {
       console.log(`Dose ${dose.id} inventory check: oldInventoryId=${oldInventoryId}, selectedInventoryId=${dose.selectedInventoryId}, newInventoryId=${newInventoryId}, invChanged=${invChanged}, isOutside=${isOutside}`)
       if (!isOutside && invChanged) {
         try {
-          const returnRes = await api.post(`/vaccines/inventory/${oldInventoryId}/adjust`, {
+          const _returnRes = await api.post(`/vaccines/inventory/${oldInventoryId}/adjust`, {
             type: 'RECEIVE',
             quantity: 1,
             note: `Immunization ${dose.id}: inventory changed, return to old lot`
           })
-          const issueRes = await api.post(`/vaccines/inventory/${newInventoryId}/adjust`, {
+          const _issueRes = await api.post(`/vaccines/inventory/${newInventoryId}/adjust`, {
             type: 'ISSUE',
             quantity: 1,
             note: `Immunization ${dose.id}: inventory changed, issue from new lot`

@@ -141,8 +141,8 @@
                         :class="{ 'is-open': it.dropdownOpen }"
                       >
                         <input 
-                          v-model="it.vaccine_search"
-                          :ref="el => it.inputRef = el" 
+                          :ref="el => it.inputRef = el"
+                          v-model="it.vaccine_search" 
                           type="text" 
                           class="form-control form-control-sm"
                           :disabled="isReadOnly"
@@ -694,16 +694,6 @@ function selectVaccine(it, vaccine) {
     if (!it.manufacturer) it.manufacturer = vaccine.manufacturer || ''
   }
   it.dropdownOpen = false
-}
-
-function onSelectVaccine(it) {
-  if (!it.vaccine_id) return
-  const v = vaccineTypes.value.find(x => String(x.id) === String(it.vaccine_id))
-  if (v) {
-    it.antigen_name = v.antigen_name || ''
-    it.brand_name = v.brand_name || ''
-    if (!it.manufacturer) it.manufacturer = v.manufacturer || ''
-  }
 }
 
 async function fetchReport() {

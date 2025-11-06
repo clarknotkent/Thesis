@@ -1,13 +1,13 @@
-const { listActivityLogs, getActivityLogByIdModel, clearOldLogsModel } = require('../models/activityModel');
+import { listActivityLogs, getActivityLogByIdModel, clearOldLogsModel } from '../models/activityModel.js';
 
 const getActivityLogs = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      user_id, 
-      action_type, 
-      entity_type, 
+    const {
+      page = 1,
+      limit = 10,
+      user_id,
+      action_type,
+      entity_type,
       entity_id,
       search,
       date_range,
@@ -15,7 +15,7 @@ const getActivityLogs = async (req, res) => {
       from_date,
       to_date
     } = req.query;
-    
+
     const filters = {};
     if (user_id) filters.user_id = parseInt(user_id);
     if (action_type) filters.action_type = action_type;
@@ -26,24 +26,22 @@ const getActivityLogs = async (req, res) => {
     if (user_role) filters.user_role = user_role;
     if (from_date) filters.from_date = from_date;
     if (to_date) filters.to_date = to_date;
-    
+
     const result = await listActivityLogs(parseInt(page), parseInt(limit), filters);
-    
+
     res.json({
       success: true,
       data: result
     });
   } catch (error) {
     console.error('Error fetching activity logs:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Failed to fetch activity logs',
-      error: error.message 
+      error: error.message
     });
   }
 };
-
-module.exports = { getActivityLogs };
 
 // Get single activity log by ID
 const getActivityLogById = async (req, res) => {
@@ -58,7 +56,7 @@ const getActivityLogById = async (req, res) => {
     const enriched = {
       ...log,
       user_role: log.user_role || 'System',
-      display_user_name: log.user_fullname || log.username || (log.user_id == null ? 'System' : `User ${log.user_id}`),
+      display_user_name: log.user_fullname || log.username || (log.user_id === null ? 'System' : `User ${log.user_id}`),
       display_action: log.description || log.action_type,
       full_description: log.description || log.full_description,
     };
@@ -149,9 +147,7 @@ const clearOldActivityLogs = async (req, res) => {
   }
 };
 
-module.exports = { 
-  getActivityLogs,
+export { getActivityLogs,
   getActivityLogById,
   exportActivityLogs,
-  clearOldActivityLogs,
-};
+  clearOldActivityLogs };

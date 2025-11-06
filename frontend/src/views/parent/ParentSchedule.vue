@@ -69,19 +69,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
 import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 
-const router = useRouter()
-
 const loading = ref(true)
 const error = ref(null)
 const children = ref([])
-const unreadNotifications = ref(0)
-const unreadMessages = ref(0)
 
 const fetchChildren = async () => {
   try {

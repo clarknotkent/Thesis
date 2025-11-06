@@ -5,10 +5,11 @@
 
  Requires a DATABASE_URL or PG* env vars in .env (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE).
 */
-const fs = require('fs');
-const path = require('path');
-const { Client } = require('pg');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import { Client } from 'pg';
+import dotenv from 'dotenv';
+dotenv.config();
 
 function getConnectionString() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;

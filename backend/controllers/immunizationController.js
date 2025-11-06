@@ -1,10 +1,10 @@
-const immunizationModel = require('../models/immunizationModel');
-const notificationModel = require('../models/notificationModel');
-const { getSupabaseForRequest } = require('../utils/supabaseClient');
-const { logActivity } = require('../models/activityLogger');
-const { ACTIVITY } = require('../constants/activityTypes');
-const { getActorId } = require('../utils/actor');
-const { debugReschedule } = require('../utils/scheduleDebugger');
+import * as immunizationModel from '../models/immunizationModel.js';
+import * as notificationModel from '../models/notificationModel.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
+import { logActivity } from '../models/activityLogger.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import { getActorId } from '../utils/actor.js';
+import { debugReschedule } from '../utils/scheduleDebugger.js';
 
 async function resolveVaccineId(supabase, { inventory_id, vaccine_id }) {
   if (vaccine_id) return vaccine_id;
@@ -46,7 +46,7 @@ const listImmunizations = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
     // Read filters from query params (patient_id, vaccine_id, administered_by)
-  const { patient_id, vaccine_id, administered_by, limit, sort } = req.query || {};
+    const { patient_id, vaccine_id, administered_by, limit, sort } = req.query || {};
     const filters = {};
     // Coerce numeric-like values to numbers when possible
     if (patient_id !== undefined && patient_id !== '') {
@@ -61,9 +61,9 @@ const listImmunizations = async (req, res) => {
       const v = Number(administered_by);
       filters.administered_by = Number.isNaN(v) ? administered_by : v;
     }
-  if (limit !== undefined && limit !== '') filters.limit = limit;
-  if (sort !== undefined && sort !== '') filters.sort = sort;
-  const immunizations = await immunizationModel.listImmunizations(filters, supabase);
+    if (limit !== undefined && limit !== '') filters.limit = limit;
+    if (sort !== undefined && sort !== '') filters.sort = sort;
+    const immunizations = await immunizationModel.listImmunizations(filters, supabase);
     res.json(immunizations);
   } catch (error) {
     console.error(error);
@@ -92,7 +92,7 @@ const createImmunizationRecord = async (req, res) => {
     const supabase = getSupabaseForRequest(req);
     const actorId = getActorId(req);
     const payload = { ...req.body };
-    
+
     // Sanitize bigint fields: convert empty strings to null
     const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id'];
     for (const field of bigintFields) {
@@ -100,7 +100,7 @@ const createImmunizationRecord = async (req, res) => {
         payload[field] = null;
       }
     }
-    
+
     const outside = !!payload.outside;
     // Always stamp audit fields from actor if present
     if (actorId) {
@@ -109,8 +109,8 @@ const createImmunizationRecord = async (req, res) => {
     }
 
     // Determine linkage: outside vs in-facility
-  if (outside) {
-  // Outside flow: require patient_id, vaccine info; forbid inventory_id; vitals optional
+    if (outside) {
+      // Outside flow: require patient_id, vaccine info; forbid inventory_id; vitals optional
       if (!payload.patient_id) return res.status(400).json({ success:false, message:'patient_id is required for outside immunization' });
       if (payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is not allowed for outside immunization' });
       const vaccineId = await resolveVaccineId(supabase, { inventory_id: null, vaccine_id: payload.vaccine_id });
@@ -121,9 +121,9 @@ const createImmunizationRecord = async (req, res) => {
         payload.remarks = 'Outside immunization: please record the administering provider\'s name.';
       }
       // Insert immunization with outside=true and patient_id
-  // IMPORTANT: For outside immunization, administered_by may be null as per policy.
-  // Do not overwrite administered_by automatically here.
-  const insertData = { ...payload, outside: true, vaccine_id: vaccineId };
+      // IMPORTANT: For outside immunization, administered_by may be null as per policy.
+      // Do not overwrite administered_by automatically here.
+      const insertData = { ...payload, outside: true, vaccine_id: vaccineId };
       const imm = await immunizationModel.createImmunization(insertData, supabase);
 
       // If vitals provided, create vitalsigns row and update immunization.vital_id
@@ -146,7 +146,7 @@ const createImmunizationRecord = async (req, res) => {
         await immunizationModel.updateImmunization(imm.immunization_id, { vital_id: vit.vital_id }, supabase);
       }
 
-  await logActivity({ action_type: ACTIVITY.IMMUNIZATION.OUTSIDE_CREATE, description: `Outside immunization for patient ${imm.patient_id}`, user_id: actorId, entity_type: 'immunization', entity_id: imm.immunization_id, new_value: { vaccine_id: vaccineId, dose_number: imm.dose_number } });
+      await logActivity({ action_type: ACTIVITY.IMMUNIZATION.OUTSIDE_CREATE, description: `Outside immunization for patient ${imm.patient_id}`, user_id: actorId, entity_type: 'immunization', entity_id: imm.immunization_id, new_value: { vaccine_id: vaccineId, dose_number: imm.dose_number } });
       return res.status(201).json({ success: true, data: imm });
     }
 
@@ -157,12 +157,12 @@ const createImmunizationRecord = async (req, res) => {
       if (!patient_id) return res.status(400).json({ success:false, message:'visit_id or patient_id is required for in-facility immunization' });
       visit_id = await findTodayVisitWithVitals(supabase, patient_id);
       if (!visit_id) {
-  await logActivity({ action_type: ACTIVITY.IMMUNIZATION.BLOCKED_NO_VITALS, description: `Attempt in-facility immunization without same-day vitals`, user_id: actorId, entity_type: 'patient', entity_id: patient_id });
+        await logActivity({ action_type: ACTIVITY.IMMUNIZATION.BLOCKED_NO_VITALS, description: 'Attempt in-facility immunization without same-day vitals', user_id: actorId, entity_type: 'patient', entity_id: patient_id });
         return res.status(400).json({ success:false, message:'patient has not taken their vitalsigns yet' });
       }
     }
     if (!patient_id) patient_id = await resolvePatientIdFromVisit(supabase, visit_id);
-  // Enforce inventory_id for in-facility
+    // Enforce inventory_id for in-facility
     if (!payload.inventory_id) return res.status(400).json({ success:false, message:'inventory_id is required for in-facility immunization' });
     const vaccineId = await resolveVaccineId(supabase, { inventory_id: payload.inventory_id, vaccine_id: payload.vaccine_id });
 
@@ -176,9 +176,9 @@ const createImmunizationRecord = async (req, res) => {
       .limit(1)
       .maybeSingle();
     if (vitErr) throw vitErr;
-  // For in-facility, default administered_by to actor if not provided
-  if (!payload.administered_by && actorId) payload.administered_by = actorId;
-  const insertData = { ...payload, visit_id, patient_id, vaccine_id: vaccineId, vital_id: visitVital ? visitVital.vital_id : null };
+    // For in-facility, default administered_by to actor if not provided
+    if (!payload.administered_by && actorId) payload.administered_by = actorId;
+    const insertData = { ...payload, visit_id, patient_id, vaccine_id: vaccineId, vital_id: visitVital ? visitVital.vital_id : null };
     if (!insertData.vital_id) return res.status(400).json({ success:false, message:'No vitals found for visit' });
     const imm = await immunizationModel.createImmunization(insertData, supabase);
     // Notify guardian about immunization confirmation
@@ -216,7 +216,7 @@ const updateImmunizationRecord = async (req, res) => {
     const supabase = getSupabaseForRequest(req);
     const actorId = getActorId(req);
     const payload = Object.assign({}, req.body);
-    
+
     // Sanitize bigint fields: convert empty strings to null
     const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id'];
     for (const field of bigintFields) {
@@ -224,7 +224,7 @@ const updateImmunizationRecord = async (req, res) => {
         payload[field] = null;
       }
     }
-    
+
     // Ensure audit field on update
     if (actorId && !payload.updated_by) payload.updated_by = actorId;
     // Load old row for activity diff
@@ -329,7 +329,7 @@ const enforceVaccineInterval = async (req, res) => {
 const manualReschedulePatientSchedule = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
-  const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade } = req.body;
+    const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade } = req.body;
 
     if (!p_patient_schedule_id || !p_new_scheduled_date) {
       return res.status(400).json({ message: 'patient_schedule_id and new_scheduled_date are required' });
@@ -370,7 +370,7 @@ const manualReschedulePatientSchedule = async (req, res) => {
           } else {
             console.info(JSON.stringify(checks, null, 2));
           }
-        } catch (ppErr) {
+        } catch (_) {
           console.info(JSON.stringify(checks, null, 2));
         }
       }
@@ -396,8 +396,8 @@ const manualReschedulePatientSchedule = async (req, res) => {
     }
 
     // Determine if any change happened to scheduled_date
-  const originalDate = beforeRow?.scheduled_date || null;
-  const changed = !originalDate || (new Date(updatedRow.scheduled_date).toDateString() !== new Date(originalDate).toDateString());
+    const originalDate = beforeRow?.scheduled_date || null;
+    const changed = !originalDate || (new Date(updatedRow.scheduled_date).toDateString() !== new Date(originalDate).toDateString());
 
     // Log only if the date actually changed
     if (changed) {
@@ -430,7 +430,71 @@ const manualReschedulePatientSchedule = async (req, res) => {
   }
 };
 
-module.exports = {
+// Debug only (non-modifying): traces candidate-date decisions for a reschedule
+const debugManualReschedule = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req);
+    const { patient_schedule_id, requested_date } = req.query;
+    if (!patient_schedule_id || !requested_date) {
+      return res.status(400).json({ message: 'patient_schedule_id and requested_date are required' });
+    }
+    const out = await debugReschedule(supabase, Number(patient_schedule_id), requested_date);
+    return res.json({ success: true, data: out });
+  } catch (err) {
+    console.error('[debugManualReschedule] error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Debug (DB-level): run the instrumented DB RPC and return its decision trace + changes
+const debugManualRescheduleDB = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req);
+    const { patient_schedule_id, new_date } = req.body || {};
+    if (!patient_schedule_id || !new_date) {
+      return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
+    }
+    const actorId = getActorId(req) || null;
+    const { data, error } = await supabase.rpc('debug_reschedule_trace', {
+      p_patient_schedule_id: Number(patient_schedule_id),
+      p_new_date: new_date,
+      p_user_id: actorId,
+    });
+    if (error) {
+      return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
+    }
+    // data is an array with one row { trace, changes }
+    const row = Array.isArray(data) ? data[0] : data;
+    return res.json({ success: true, trace: row?.trace || [], changes: row?.changes || [] });
+  } catch (err) {
+    console.error('[debugManualRescheduleDB] error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Debug: subject-first checkpoints — returns pass/fail per rule
+const debugRescheduleCheckpoints = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req);
+    const { patient_schedule_id, new_date } = req.body || {};
+    if (!patient_schedule_id || !new_date) {
+      return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
+    }
+    const { data, error } = await supabase.rpc('debug_reschedule_checkpoints', {
+      p_patient_schedule_id: Number(patient_schedule_id),
+      p_new_date: new_date,
+    });
+    if (error) {
+      return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
+    }
+    return res.json({ success: true, checks: data });
+  } catch (err) {
+    console.error('[debugRescheduleCheckpoints] error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export {
   createImmunizationRecord,
   getImmunizationRecord,
   updateImmunizationRecord,
@@ -440,67 +504,7 @@ module.exports = {
   enforceVaccineInterval,
   updatePatientSchedule,
   manualReschedulePatientSchedule,
-  // Debug only (non-modifying): traces candidate-date decisions for a reschedule
-  async debugManualReschedule(req, res) {
-    try {
-      const supabase = getSupabaseForRequest(req);
-      const { patient_schedule_id, requested_date } = req.query;
-      if (!patient_schedule_id || !requested_date) {
-        return res.status(400).json({ message: 'patient_schedule_id and requested_date are required' });
-      }
-      const out = await debugReschedule(supabase, Number(patient_schedule_id), requested_date);
-      return res.json({ success: true, data: out });
-    } catch (err) {
-      console.error('[debugManualReschedule] error:', err);
-      return res.status(500).json({ success: false, message: err.message });
-    }
-  }
-  ,
-  // Debug (DB-level): run the instrumented DB RPC and return its decision trace + changes
-  async debugManualRescheduleDB(req, res) {
-    try {
-      const supabase = getSupabaseForRequest(req);
-      const { patient_schedule_id, new_date } = req.body || {};
-      if (!patient_schedule_id || !new_date) {
-        return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
-      }
-      const actorId = getActorId(req) || null;
-      const { data, error } = await supabase.rpc('debug_reschedule_trace', {
-        p_patient_schedule_id: Number(patient_schedule_id),
-        p_new_date: new_date,
-        p_user_id: actorId,
-      });
-      if (error) {
-        return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
-      }
-      // data is an array with one row { trace, changes }
-      const row = Array.isArray(data) ? data[0] : data;
-      return res.json({ success: true, trace: row?.trace || [], changes: row?.changes || [] });
-    } catch (err) {
-      console.error('[debugManualRescheduleDB] error:', err);
-      return res.status(500).json({ success: false, message: err.message });
-    }
-  }
-  ,
-  // Debug: subject-first checkpoints — returns pass/fail per rule
-  async debugRescheduleCheckpoints(req, res) {
-    try {
-      const supabase = getSupabaseForRequest(req);
-      const { patient_schedule_id, new_date } = req.body || {};
-      if (!patient_schedule_id || !new_date) {
-        return res.status(400).json({ message: 'patient_schedule_id and new_date are required' });
-      }
-      const { data, error } = await supabase.rpc('debug_reschedule_checkpoints', {
-        p_patient_schedule_id: Number(patient_schedule_id),
-        p_new_date: new_date,
-      });
-      if (error) {
-        return res.status(400).json({ success: false, message: error.message, code: error.code, details: error.details, hint: error.hint });
-      }
-      return res.json({ success: true, checks: data });
-    } catch (err) {
-      console.error('[debugRescheduleCheckpoints] error:', err);
-      return res.status(500).json({ success: false, message: err.message });
-    }
-  }
+  debugManualReschedule,
+  debugManualRescheduleDB,
+  debugRescheduleCheckpoints
 };

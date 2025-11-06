@@ -116,7 +116,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
     // Cache patients (clean data - remove nested objects)
     const cleanPatients = patients.map(p => {
       // Remove nested objects and arrays that aren't part of the patients table schema
-      const { patientschedule, immunizations, visits, guardian, birthhistory, ...patientData } = p
+      const { patientschedule: _patientschedule, immunizations: _immunizations, visits: _visits, guardian: _guardian, birthhistory: _birthhistory, ...patientData } = p
       
       // Map frontend field names to database field names
       return {
@@ -332,7 +332,7 @@ export async function prefetchParentDataOnLogin(guardianId, userId) {
     // These features require online connectivity
 
     // Step 4: Fetch vaccine master and FAQs in parallel
-    const results = await Promise.allSettled([
+    const _results = await Promise.allSettled([
       (async () => {
         try {
           console.log('� Fetching vaccine catalog (parallel)...')

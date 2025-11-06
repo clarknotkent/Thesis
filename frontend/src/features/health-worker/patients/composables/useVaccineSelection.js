@@ -2,7 +2,7 @@
  * Composable for managing vaccine selection logic in immunization forms
  * Handles inventory-based vaccines (in-facility) and catalog vaccines (outside facility)
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 export function useVaccineSelection() {
@@ -89,7 +89,7 @@ export function useVaccineSelection() {
       today.setHours(0, 0, 0, 0)
 
       // helper to get patient's existing vaccines
-      const { vaccineIds, antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
+      const { vaccineIds: _vaccineIds, antigenNames: _antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
 
       const mapped = (Array.isArray(raw) ? raw : []).map(v => {
         const exp = v.expiration_date || v.expiry_date || null
@@ -144,7 +144,7 @@ export function useVaccineSelection() {
 
       const list = Array.isArray(payload) ? payload : []
 
-      const { vaccineIds, antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
+      const { vaccineIds: _vaccineIds, antigenNames: _antigenNames } = patientId ? await fetchPatientImmunizations(patientId) : { vaccineIds: new Set(), antigenNames: new Set() }
 
       const mapped = list.map(v => ({
         vaccine_id: v.vaccine_id || v.id,

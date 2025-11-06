@@ -539,7 +539,6 @@ const getTypeBadgeClass = (type) => {
 const getCardPreview = (t) => {
   if (!t?.template) return ''
   const greeting = (t.time_range === 'day') ? 'Good Day' : 'Good Evening'
-  const greetingTime = greeting
   const title = 'Mr.'
   const guardianName = 'Dela Cruz'
   const patientName = 'Maria'

@@ -67,7 +67,7 @@ async function debugReschedule(supabase, patientScheduleId, requestedDate) {
 
   // Start candidate at max(requested, prev+min)
   let candidate = new Date(reqDate);
-  if (prevRef && sd.min_interval_days != null) {
+  if (prevRef && sd.min_interval_days !== null) {
     const minDate = new Date(prevRef);
     minDate.setDate(minDate.getDate() + sd.min_interval_days);
     if (candidate < minDate) candidate = minDate;
@@ -75,7 +75,7 @@ async function debugReschedule(supabase, patientScheduleId, requestedDate) {
 
   // Define helpers
   const subjectConc = !!sm.concurrent_allowed;
-  const maxBoundary = (prevRef && sd.max_interval_days != null)
+  const maxBoundary = (prevRef && sd.max_interval_days !== null)
     ? new Date(prevRef.getFullYear(), prevRef.getMonth(), prevRef.getDate() + sd.max_interval_days)
     : null;
 
@@ -123,7 +123,7 @@ async function debugReschedule(supabase, patientScheduleId, requestedDate) {
     }
 
     // 3) Cross-vaccine min spacing
-    if (sd.min_interval_other_vax != null) {
+    if (sd.min_interval_other_vax !== null) {
       const conflict = otherVaccines.find(o => {
         const diffDays = Math.abs((o.date - candidate) / 86400000);
         const sameDay = toISODate(o.date) === cISO;
@@ -148,4 +148,4 @@ async function debugReschedule(supabase, patientScheduleId, requestedDate) {
   return { finalCandidate: toISODate(candidate), trace };
 }
 
-module.exports = { debugReschedule };
+export { debugReschedule };

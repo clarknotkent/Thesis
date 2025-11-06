@@ -69,12 +69,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { logout as doLogout } from '@/services/auth'
 import { useOffline } from '@/composables/useOffline'
 
-const props = defineProps({
+defineProps({
   userRole: {
     type: String,
     default: 'Admin'

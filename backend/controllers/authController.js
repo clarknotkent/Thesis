@@ -1,13 +1,17 @@
-const authModel = require('../models/authModel');
-const userModel = require('../models/userModel');
-const { ACTIVITY } = require('../constants/activityTypes');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const supabase = require('../db');
-const { createClient } = require('@supabase/supabase-js');
-const { getActorId } = require('../utils/actor');
+import * as authModel from '../models/authModel.js';
+import userModel from '../models/userModel.js';
+import { ACTIVITY } from '../constants/activityTypes.js';
+import jwt from 'jsonwebtoken';
+import supabase from '../db.js';
+import { createClient } from '@supabase/supabase-js';
+import { getActorId } from '../utils/actor.js';
 
 // Create a fresh Supabase client for per-request auth without persisting session
+import { normalizePhilippineMobile } from '../utils/contact.js';
+import guardianModel from '../models/guardianModel.js';
+import { logActivity } from '../models/activityLogger.js';
+import { normalizeToPlus63Mobile } from '../utils/contact.js';
+import sb from '../db.js';
 const getAuthClient = () => {
   const url = process.env.SUPABASE_URL;
   // Prefer service role for server-side operations; fallback to generic key, then anon last
@@ -54,7 +58,6 @@ const registerUser = async (req, res) => {
       console.warn('[registerUser] DEBUG: Missing contact_number');
       return res.status(400).json({ message: 'Contact number is required' });
     }
-    const { normalizePhilippineMobile } = require('../utils/contact');
     const norm = normalizePhilippineMobile(contact_number);
     if (!norm.valid) {
       console.warn('[registerUser] DEBUG: Invalid contact_number format:', contact_number);
@@ -79,7 +82,7 @@ const registerUser = async (req, res) => {
     console.log('[registerUser] DEBUG: Building canonical app user payload');
     // Canonical role tokens (DB constraint downstream via userModel): Admin | HealthStaff | Guardian
     // We'll keep using 'HealthWorker' here (historical) but broaden accepted inputs; userModel maps to stored token.
-    let incomingRole = (role || '').trim().toLowerCase();
+    const incomingRole = (role || '').trim().toLowerCase();
     let canonicalRole;
     if (['admin','administrator','system admin'].includes(incomingRole)) {
       canonicalRole = 'Admin';
@@ -106,7 +109,7 @@ const registerUser = async (req, res) => {
     } else normalizedSex = 'Other';
 
     // Accept additional optional fields from body
-  const { middlename, hw_type, employee_id, created_by: _cb, updated_by: _ub } = req.body; // ignore spoofed audit fields
+    const { middlename, hw_type, employee_id, created_by: _cb, updated_by: _ub } = req.body; // ignore spoofed audit fields
     let professionalLicense = professional_license_no || null;
     let hwType = hw_type || null;
     // If role is HealthWorker but subtype provided as role variants like 'nurse'
@@ -115,13 +118,13 @@ const registerUser = async (req, res) => {
     }
     if (hwType === 'bhs') professionalLicense = null; // BHS never keeps license
 
-  // Actor (creator) id: middleware may set user_id or id
-  const actorId = getActorId(req); // if an authenticated admin creates user
-  console.log('[registerUser] actorId resolved =', actorId, 'req.user =', req.user);
+    // Actor (creator) id: middleware may set user_id or id
+    const actorId = getActorId(req); // if an authenticated admin creates user
+    console.log('[registerUser] actorId resolved =', actorId, 'req.user =', req.user);
     const appUserPayload = {
       username,
       email,
-  role: canonicalRole,
+      role: canonicalRole,
       firstname,
       middlename: middlename || null,
       surname,
@@ -130,9 +133,9 @@ const registerUser = async (req, res) => {
       birthdate: birthdate || null,
       address: address || null,
       status: status || 'active',
-  professional_license_no: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? professionalLicense : null,
-  employee_id: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? (employee_id || null) : null,
-  hw_type: (canonicalRole === 'HealthWorker') ? (hwType || null) : null,
+      professional_license_no: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? professionalLicense : null,
+      employee_id: (canonicalRole === 'HealthWorker' || canonicalRole === 'Admin') ? (employee_id || null) : null,
+      hw_type: (canonicalRole === 'HealthWorker') ? (hwType || null) : null,
       created_by: actorId, // if null, will be self-assigned after insert
       updated_by: actorId,
       password // userModel ignores password for local hash, Supabase handles auth
@@ -141,7 +144,7 @@ const registerUser = async (req, res) => {
     console.log('[registerUser] DEBUG: Canonical payload to userModel.createUser:', safeAppUserPayload);
     let newUser;
     try {
-  newUser = await userModel.createUser(appUserPayload, actorId, { allowSelf: true });
+      newUser = await userModel.createUser(appUserPayload, actorId, { allowSelf: true });
     } catch (e) {
       console.error('[registerUser] DEBUG: userModel.createUser failed:', e?.message || e);
       // Rollback auth user if app user creation fails
@@ -189,9 +192,8 @@ const registerUser = async (req, res) => {
     }
 
     // If role is Guardian, create guardian record
-  if (newUser && newUser.role === 'Guardian') {
+    if (newUser && newUser.role === 'Guardian') {
       try {
-        const guardianModel = require('../models/guardianModel');
         await guardianModel.createGuardian({
           surname: newUser.surname,
           firstname: newUser.firstname,
@@ -215,7 +217,6 @@ const registerUser = async (req, res) => {
 
     // Log activities: user registration (+ guardian profile creation)
     try {
-      const { logActivity } = require('../models/activityLogger');
       const creatorId = actorId || newUser.user_id; // actor if present, else self (self-registration)
       await logActivity({
         action_type: ACTIVITY.USER.CREATE,
@@ -258,7 +259,6 @@ const loginUser = async (req, res) => {
 
     // If identifier looks like a PH mobile, normalize to +639XXXXXXXXX for DB lookup
     try {
-      const { normalizeToPlus63Mobile } = require('../utils/contact');
       const maybePhone = normalizeToPlus63Mobile(identifier);
       if (maybePhone && maybePhone.valid && maybePhone.normalized) {
         identifier = maybePhone.normalized;
@@ -269,7 +269,6 @@ const loginUser = async (req, res) => {
     const appUser = await authModel.findUserByIdentifier(identifier);
     if (!appUser) {
       try {
-        const { logActivity } = require('../models/activityLogger');
         await logActivity({ action_type: ACTIVITY.USER.LOGIN_FAILED, description: 'Failed login (no user)', user_id: null, entity_type: 'user', entity_id: null });
       } catch(_) {}
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -278,25 +277,23 @@ const loginUser = async (req, res) => {
     // Explicitly block soft-deleted users at login
     if (appUser.is_deleted === true) {
       try {
-        const { logActivity } = require('../models/activityLogger');
         await logActivity({ action_type: ACTIVITY.USER.LOGIN_FAILED, description: 'Failed login (user is soft-deleted)', user_id: appUser.user_id, entity_type: 'user', entity_id: appUser.user_id });
       } catch(_) {}
       return res.status(403).json({ message: 'Account is deactivated. Please contact an administrator.' });
     }
 
     // Resolve email; we only use email sign-in
-  const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
+    const emailToUse = /@/.test(identifier) ? identifier : appUser.email;
     if (!emailToUse) {
       return res.status(400).json({ message: 'User record missing email for authentication' });
     }
-  const sb = getAuthClient();
-  const signInResult = await sb.auth.signInWithPassword({ email: emailToUse, password });
+    const sb = getAuthClient();
+    const signInResult = await sb.auth.signInWithPassword({ email: emailToUse, password });
 
     const { data: sessionData, error: signInError } = signInResult || {};
     if (signInError || !sessionData?.user) {
       console.warn('Login failed:', { identifier, reason: signInError?.message || 'invalid' });
       try {
-        const { logActivity } = require('../models/activityLogger');
         await logActivity({ action_type: ACTIVITY.USER.LOGIN_FAILED, description: 'Failed login (bad password)', user_id: appUser.user_id, entity_type: 'user', entity_id: appUser.user_id });
       } catch(_) {}
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -325,7 +322,6 @@ const loginUser = async (req, res) => {
 
     // Log login activity
     try {
-      const { logActivity } = require('../models/activityLogger');
       await logActivity({
         action_type: ACTIVITY.USER.LOGIN,
         description: 'User login',
@@ -373,7 +369,6 @@ const logoutUser = async (req, res) => {
     }
     try {
       if (actorId) {
-        const { logActivity } = require('../models/activityLogger');
         await logActivity({ action_type: ACTIVITY.USER.LOGOUT, description: 'User logout', user_id: actorId, entity_type: 'user', entity_id: actorId });
       }
     } catch(_) {}
@@ -432,162 +427,164 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = {
+// Debug: Return current user's Supabase UUID and mapping details
+const debugCurrentUserUUID = async (req, res) => {
+  try {
+    const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    let viaView = null, viaMapping = null;
+    try {
+      const { data: v } = await sb
+        .from('users_with_uuid')
+        .select('user_id, email, role, supabase_uuid')
+        .eq('user_id', userId)
+        .single();
+      viaView = v || null;
+    } catch (_) {}
+    try {
+      const { data: m } = await sb
+        .from('user_mapping')
+        .select('user_id, uuid')
+        .eq('user_id', userId)
+        .single();
+      viaMapping = m || null;
+    } catch (_) {}
+
+    const uuid = viaView?.supabase_uuid || viaMapping?.uuid || null;
+    // Emit server-side debugger log
+    console.log('[DEBUG] /api/auth/debug/uuid', { userId, uuid, viaView, viaMapping });
+    return res.json({ userId, uuid, viaView, viaMapping });
+  } catch (e) {
+    console.error('[auth.debugCurrentUserUUID] error', e);
+    return res.status(500).json({ message: 'Failed to resolve UUID' });
+  }
+};
+
+// Change password for currently authenticated user
+const changeCurrentPassword = async (req, res) => {
+  try {
+    const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
+    const { currentPassword, newPassword } = req.body || {};
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new passwords are required' });
+    }
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
+    // Fetch current user password hash and email
+    const { data: userRow, error: userErr } = await require('../db')
+      .from('users')
+      .select('user_id, password_hash, email')
+      .eq('user_id', userId)
+      .eq('is_deleted', false)
+      .single();
+    if (userErr || !userRow) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    let verified = false;
+    let supabaseUUIDFromSignin = null;
+    if (userRow.password_hash) {
+      verified = await authModel.verifyPassword(currentPassword, userRow.password_hash || '');
+    }
+    if (!verified) {
+      // Fallback: verify via Supabase Auth sign-in (source of truth)
+      if (!userRow.email) {
+        return res.status(400).json({ message: 'User email missing; cannot verify current password' });
+      }
+      try {
+        const sb = getAuthClient();
+        const { data: signin, error: signErr } = await sb.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+        if (signErr || !signin?.user) {
+          return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+        supabaseUUIDFromSignin = signin.user?.id || null;
+        verified = true;
+      } catch (_) {
+        // Treat as not verified if sign-in throws
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+    }
+    // 1) Try user-scoped update via anon client (least privilege): sign in as user then update
+    let authUpdated = false;
+    try {
+      if (!userRow.email) throw new Error('no-email');
+      const anon = getAnonClient();
+      const signRes = await anon.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
+      if (!signRes?.data?.session) throw new Error('signin-failed');
+      // set session and update password as the user
+      await anon.auth.setSession({
+        access_token: signRes.data.session.access_token,
+        refresh_token: signRes.data.session.refresh_token
+      });
+      const { error: updErr } = await anon.auth.updateUser({ password: newPassword });
+      if (updErr) throw updErr;
+      authUpdated = true;
+      console.log('[DEBUG] changeCurrentPassword user-scoped updateUser OK', { userId });
+    } catch (_userScopedErr) {
+      // Fallback to Admin API path (requires service role)
+      try {
+        // Resolve Supabase UUID via view (fallback to mapping if needed)
+        let supabaseUUID = supabaseUUIDFromSignin || null;
+        try {
+          const { data: uidRow } = await sb
+            .from('users_with_uuid')
+            .select('supabase_uuid')
+            .eq('user_id', userId)
+            .single();
+          supabaseUUID = supabaseUUID || uidRow?.supabase_uuid || null;
+        } catch (_) {}
+        if (!supabaseUUID) {
+          try {
+            const map = await authModel.getUserMappingByUserId(userId);
+            supabaseUUID = supabaseUUID || map?.uuid || null;
+          } catch (_) {}
+        }
+
+        if (!supabaseUUID) {
+          return res.status(409).json({ message: 'Unable to locate Supabase user mapping for this account' });
+        }
+
+        const admin = getAuthClient();
+        console.log('[DEBUG] changeCurrentPassword admin.updateUserById', { userId, supabaseUUID });
+        const { error: updAuthErr } = await admin.auth.admin.updateUserById(supabaseUUID, { password: newPassword });
+        if (updAuthErr) {
+          return res.status(500).json({ message: 'Failed to update Supabase Auth password', error: updAuthErr.message });
+        }
+        authUpdated = true;
+        console.log('[DEBUG] changeCurrentPassword admin.updateUserById OK', { userId, supabaseUUID });
+      } catch (authUpdateErr) {
+        console.error('[auth] Supabase Auth password update failed:', authUpdateErr);
+        return res.status(500).json({ message: 'Failed to update password (auth provider)' });
+      }
+    }
+
+    // 2) Update local shadow hash to keep in sync for any local checks
+    try {
+      await authModel.changePassword(userId, newPassword);
+    } catch (localErr) {
+      // Not fatal for login, but keep consistent state if possible
+      console.warn('[auth] Local password hash update failed after auth change:', localErr?.message || localErr);
+    }
+
+    return res.json({ success: true, message: 'Password changed successfully', authUpdated: !!authUpdated });
+  } catch (error) {
+    console.error('[auth] changeCurrentPassword error:', error);
+    return res.status(500).json({ message: 'Failed to change password' });
+  }
+};
+
+export {
   registerUser,
   loginUser,
   logoutUser,
   linkSupabaseUser,
   getUserMapping,
   refreshToken,
-  // Debug: Return current user's Supabase UUID and mapping details
-  debugCurrentUserUUID: async (req, res) => {
-    try {
-      const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-
-      const sb = require('../db');
-      let viaView = null, viaMapping = null;
-      try {
-        const { data: v } = await sb
-          .from('users_with_uuid')
-          .select('user_id, email, role, supabase_uuid')
-          .eq('user_id', userId)
-          .single();
-        viaView = v || null;
-      } catch (_) {}
-      try {
-        const { data: m } = await sb
-          .from('user_mapping')
-          .select('user_id, uuid')
-          .eq('user_id', userId)
-          .single();
-        viaMapping = m || null;
-      } catch (_) {}
-
-      const uuid = viaView?.supabase_uuid || viaMapping?.uuid || null;
-      // Emit server-side debugger log
-      console.log('[DEBUG] /api/auth/debug/uuid', { userId, uuid, viaView, viaMapping });
-      return res.json({ userId, uuid, viaView, viaMapping });
-    } catch (e) {
-      console.error('[auth.debugCurrentUserUUID] error', e);
-      return res.status(500).json({ message: 'Failed to resolve UUID' });
-    }
-  },
-  // Change password for currently authenticated user
-  changeCurrentPassword: async (req, res) => {
-    try {
-      const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
-      const { currentPassword, newPassword } = req.body || {};
-      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: 'Current and new passwords are required' });
-      }
-      if (String(newPassword).length < 8) {
-        return res.status(400).json({ message: 'New password must be at least 8 characters' });
-      }
-
-      // Fetch current user password hash and email
-      const { data: userRow, error: userErr } = await require('../db')
-        .from('users')
-        .select('user_id, password_hash, email')
-        .eq('user_id', userId)
-        .eq('is_deleted', false)
-        .single();
-      if (userErr || !userRow) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Verify current password
-      let verified = false;
-      let supabaseUUIDFromSignin = null;
-      if (userRow.password_hash) {
-        verified = await authModel.verifyPassword(currentPassword, userRow.password_hash || '');
-      }
-      if (!verified) {
-        // Fallback: verify via Supabase Auth sign-in (source of truth)
-        if (!userRow.email) {
-          return res.status(400).json({ message: 'User email missing; cannot verify current password' });
-        }
-        try {
-          const sb = getAuthClient();
-          const { data: signin, error: signErr } = await sb.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
-          if (signErr || !signin?.user) {
-            return res.status(400).json({ message: 'Current password is incorrect' });
-          }
-          supabaseUUIDFromSignin = signin.user?.id || null;
-          verified = true;
-        } catch (_) {
-          // Treat as not verified if sign-in throws
-          return res.status(400).json({ message: 'Current password is incorrect' });
-        }
-      }
-      // 1) Try user-scoped update via anon client (least privilege): sign in as user then update
-      let authUpdated = false;
-      try {
-        if (!userRow.email) throw new Error('no-email');
-        const anon = getAnonClient();
-        const signRes = await anon.auth.signInWithPassword({ email: userRow.email, password: currentPassword });
-        if (!signRes?.data?.session) throw new Error('signin-failed');
-        // set session and update password as the user
-        await anon.auth.setSession({
-          access_token: signRes.data.session.access_token,
-          refresh_token: signRes.data.session.refresh_token
-        });
-        const { error: updErr } = await anon.auth.updateUser({ password: newPassword });
-        if (updErr) throw updErr;
-        authUpdated = true;
-        console.log('[DEBUG] changeCurrentPassword user-scoped updateUser OK', { userId });
-      } catch (userScopedErr) {
-        // Fallback to Admin API path (requires service role)
-        try {
-          // Resolve Supabase UUID via view (fallback to mapping if needed)
-          const sb = require('../db');
-          let supabaseUUID = supabaseUUIDFromSignin || null;
-          try {
-            const { data: uidRow } = await sb
-              .from('users_with_uuid')
-              .select('supabase_uuid')
-              .eq('user_id', userId)
-              .single();
-            supabaseUUID = supabaseUUID || uidRow?.supabase_uuid || null;
-          } catch (_) {}
-          if (!supabaseUUID) {
-            try {
-              const map = await authModel.getUserMappingByUserId(userId);
-              supabaseUUID = supabaseUUID || map?.uuid || null;
-            } catch (_) {}
-          }
-
-          if (!supabaseUUID) {
-            return res.status(409).json({ message: 'Unable to locate Supabase user mapping for this account' });
-          }
-
-          const admin = getAuthClient();
-          console.log('[DEBUG] changeCurrentPassword admin.updateUserById', { userId, supabaseUUID });
-          const { error: updAuthErr } = await admin.auth.admin.updateUserById(supabaseUUID, { password: newPassword });
-          if (updAuthErr) {
-            return res.status(500).json({ message: 'Failed to update Supabase Auth password', error: updAuthErr.message });
-          }
-          authUpdated = true;
-          console.log('[DEBUG] changeCurrentPassword admin.updateUserById OK', { userId, supabaseUUID });
-        } catch (authUpdateErr) {
-          console.error('[auth] Supabase Auth password update failed:', authUpdateErr);
-          return res.status(500).json({ message: 'Failed to update password (auth provider)' });
-        }
-      }
-
-      // 2) Update local shadow hash to keep in sync for any local checks
-      try {
-        await authModel.changePassword(userId, newPassword);
-      } catch (localErr) {
-        // Not fatal for login, but keep consistent state if possible
-        console.warn('[auth] Local password hash update failed after auth change:', localErr?.message || localErr);
-      }
-
-      return res.json({ success: true, message: 'Password changed successfully', authUpdated: !!authUpdated });
-    } catch (error) {
-      console.error('[auth] changeCurrentPassword error:', error);
-      return res.status(500).json({ message: 'Failed to change password' });
-    }
-  }
+  debugCurrentUserUUID,
+  changeCurrentPassword
 };

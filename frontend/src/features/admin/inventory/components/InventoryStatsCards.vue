@@ -102,7 +102,6 @@
 defineProps({
   stats: {
     type: Object,
-    required: true,
     default: () => ({
       totalTypes: 0,
       totalDoses: 0,

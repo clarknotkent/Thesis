@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping, authorizePatientReadAccess } = require('../middlewares/authMiddleware');
-const { 
-  createPatient,
+import { authenticateRequest, authorizeRole, checkUserMapping, authorizePatientReadAccess } from '../middlewares/authMiddleware.js';
+import { createPatient,
   getPatientById,
   updatePatient,
   deletePatient,
@@ -20,12 +19,11 @@ const {
   listParentsWithContacts,
   listDistinctParentNames,
   getCoParentSuggestion,
-  getSmartDoseOptions
-} = require('../controllers/patientController');
+  getSmartDoseOptions } from '../controllers/patientController.js';
 
 // NOTE: Define non-parameterized helper routes BEFORE any '/:id' routes to avoid shadowing
 // Optional: compute age detail (months, days) from DOB
-router.get('/helpers/age', authenticateRequest, (req, res, next) => {
+router.get('/helpers/age', authenticateRequest, (req, res, _next) => {
   try {
     const dob = req.query.date_of_birth || req.query.dob;
     if (!dob) return res.status(400).json({ success:false, message:'date_of_birth is required' });
@@ -99,4 +97,4 @@ router.post('/:id/update-schedules', authenticateRequest, checkUserMapping, auth
 // GET /api/patients/:id/smart-doses?vaccine_id= - Smart dose options (ownership enforced for guardians)
 router.get('/:id/smart-doses', authenticateRequest, authorizePatientReadAccess, getSmartDoseOptions);
 
-module.exports = router;
+export default router;

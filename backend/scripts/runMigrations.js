@@ -1,7 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const { Client } = require('pg');
-require('dotenv').config();
+import fs from 'fs';
+import path from 'path';
+import { Client } from 'pg';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
 

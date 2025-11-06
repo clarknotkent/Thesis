@@ -15,11 +15,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccinationRecordEditor from '@/features/admin/patients/VaccinationRecordEditor.vue'
 
-const router = useRouter()
+const route = useRoute()
 // Honor query ?outside=true only as an initial hint; no page-level toggle
 const defaultOutside = ref(String(route.query.outside).toLowerCase() === 'true')
 const visitContext = computed(() => String(route.query.visitContext).toLowerCase() === 'true')

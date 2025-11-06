@@ -212,7 +212,6 @@ import AutoSendSettings from '@/features/admin/sms/components/AutoSendSettings.v
 // State
 const activeTab = ref('logs')
 const autoSendEnabled = ref(false)
-const enabledGuardiansCount = ref(0)
 
 // NOTE: SMS management data is managed through child components
 // - SMSLogs component handles log fetching and display

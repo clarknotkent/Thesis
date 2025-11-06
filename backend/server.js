@@ -1,7 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-const { logRequest, handleErrors } = require('./middlewares/authMiddleware');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { logRequest, handleErrors } from './middlewares/authMiddleware.js';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,30 +16,30 @@ app.use(express.json());
 app.use(logRequest);
 
 // Routes
-const patientRoutes = require('./routes/patientRoutes');
-const userRoutes = require('./routes/userRoutes');
-const vaccineRoutes = require('./routes/vaccineRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const authRoutes = require('./routes/authRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-const smsRoutes = require('./routes/smsRoutes');
-const healthWorkerRoutes = require('./routes/healthWorkerRoutes');
-const activityRoutes = require('./routes/activityRoutes');
-const visitRoutes = require('./routes/visitRoutes');
-const conversationRoutes = require('./routes/conversationRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-const guardianRoutes = require('./routes/guardianRoutes');
-const parentRoutes = require('./routes/parentRoutes');
-const immunizationRoutes = require('./routes/immunizationRoutes');
-const dewormingRoutes = require('./routes/dewormingRoutes');
-const vitaminaRoutes = require('./routes/vitaminaRoutes');
-const vitalsRoutes = require('./routes/vitalsRoutes');
-const receivingReportRoutes = require('./routes/receivingReportRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const faqRoutes = require('./routes/faqRoutes');
-const qrRoutes = require('./routes/qrRoutes');
+import patientRoutes from './routes/patientRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import vaccineRoutes from './routes/vaccineRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import smsRoutes from './routes/smsRoutes.js';
+import healthWorkerRoutes from './routes/healthWorkerRoutes.js';
+import activityRoutes from './routes/activityRoutes.js';
+import visitRoutes from './routes/visitRoutes.js';
+import conversationRoutes from './routes/conversationRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import guardianRoutes from './routes/guardianRoutes.js';
+import parentRoutes from './routes/parentRoutes.js';
+import immunizationRoutes from './routes/immunizationRoutes.js';
+import dewormingRoutes from './routes/dewormingRoutes.js';
+import vitaminaRoutes from './routes/vitaminaRoutes.js';
+import vitalsRoutes from './routes/vitalsRoutes.js';
+import receivingReportRoutes from './routes/receivingReportRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import faqRoutes from './routes/faqRoutes.js';
+import qrRoutes from './routes/qrRoutes.js';
 // Start background workers
-const smsScheduler = require('./services/smsScheduler');
+import * as smsScheduler from './services/smsScheduler.js';
 
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);

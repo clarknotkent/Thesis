@@ -1,4 +1,4 @@
-const serviceSupabase = require('../db');
+import serviceSupabase from '../db.js';
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -68,10 +68,8 @@ const deleteDeworming = async (id, client) => {
   return data;
 };
 
-module.exports = {
-  createDeworming,
+export { createDeworming,
   getDewormingById,
   listDeworming,
   updateDeworming,
-  deleteDeworming,
-};
+  deleteDeworming };

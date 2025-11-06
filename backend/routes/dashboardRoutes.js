@@ -1,12 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-  getDashboardMetrics,
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getDashboardMetrics,
   getWorkerProgress,
   getVaccineReport,
-  getDashboardOverview
-} = require('../controllers/dashboardController');
+  getDashboardOverview } from '../controllers/dashboardController.js';
 
 // GET /api/dashboard/metrics - Get dashboard metrics
 router.get('/metrics', authenticateRequest, checkUserMapping, getDashboardMetrics);
@@ -20,4 +18,4 @@ router.get('/vaccine-report', authenticateRequest, checkUserMapping, getVaccineR
 // GET /api/dashboard/overview - Get dashboard overview
 router.get('/overview', authenticateRequest, checkUserMapping, getDashboardOverview);
 
-module.exports = router;
+export default router;

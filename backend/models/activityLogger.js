@@ -1,4 +1,4 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 let actionTypeCache = null;
 let lastLoadTs = 0;
@@ -64,4 +64,4 @@ const logActivity = async ({ action_type, description, user_id = null, entity_ty
   return data;
 };
 
-module.exports = { logActivity };
+export { logActivity };

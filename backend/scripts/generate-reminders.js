@@ -4,10 +4,10 @@
   Purpose: Insert notification rows for upcoming scheduled immunizations (14,7,0 days reminders)
   Usage: node scripts/generate-reminders.js
 */
-const supabase = require('../db');
-const { createNotification } = require('../models/notificationModel');
+import supabase from '../db.js';
+import { createNotification } from '../models/notificationModel.js';
 
-async function isoDateDaysFromNow(days) {
+function isoDateDaysFromNow(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   d.setHours(8, 0, 0, 0); // schedule at 08:00 local

@@ -1,5 +1,5 @@
-const supabase = require('../db');
-const { updatePhoneNumberForPatient, updateMessagesForPatient } = require('../services/smsReminderService');
+import supabase from '../db.js';
+import { updatePhoneNumberForPatient, updateMessagesForPatient } from '../services/smsReminderService.js';
 
 const guardianModel = {
   // Fetch all guardians (for dropdown) from users table where role='guardian'
@@ -29,7 +29,7 @@ const guardianModel = {
         .order('surname', { ascending: true });
 
       if (error) throw error;
-      
+
       // Transform data for dropdown compatibility
       const guardiansWithFullName = (data || []).map(user => {
         const g = Array.isArray(user.guardians) ? user.guardians.find(x => x && x.is_deleted === false) || user.guardians[0] : null;
@@ -194,10 +194,10 @@ const guardianModel = {
     try {
       const { data, error } = await supabase
         .from('guardians')
-        .update({ 
+        .update({
           is_deleted: true,
           deleted_at: new Date().toISOString(),
-          deleted_by: deletedBy 
+          deleted_by: deletedBy
         })
         .eq('guardian_id', id)
         .select()
@@ -353,7 +353,7 @@ const guardianModel = {
       throw error;
     }
   },
-  
+
   // Synchronize an existing guardian's core fields from the corresponding users row.
   // If guardian row does not exist, it will be created/restored first.
   syncGuardianFromUser: async (userOrId, actorId = null) => {
@@ -389,7 +389,7 @@ const guardianModel = {
         .select('contact_number')
         .eq('guardian_id', guardianId)
         .single();
-      
+
       const oldContactNumber = oldGuardian?.contact_number;
 
       // Apply sync update
@@ -465,4 +465,4 @@ const guardianModel = {
   }
 };
 
-module.exports = guardianModel;
+export default guardianModel;

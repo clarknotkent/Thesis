@@ -1,4 +1,4 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 // Fetch dashboard metrics from dashboard_view with inventory data
 const fetchDashboardMetrics = async () => {
@@ -8,17 +8,17 @@ const fetchDashboardMetrics = async () => {
       .from('dashboard_view')
       .select('*')
       .single();
-    
+
     if (dashboardError) throw dashboardError;
-    
+
     // Get inventory statistics
     const { data: inventoryStats, error: inventoryError } = await supabase
       .from('inventory')
       .select('inventory_id, current_stock_level, expiration_date')
       .eq('is_deleted', false);
-      
+
     if (inventoryError) console.warn('Inventory stats error:', inventoryError);
-    
+
     // Get recent inventory items with vaccine details
     const { data: inventoryItems, error: inventoryItemsError } = await supabase
       .from('inventory')
@@ -35,9 +35,9 @@ const fetchDashboardMetrics = async () => {
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
       .limit(5);
-      
+
     if (inventoryItemsError) console.warn('Inventory items error:', inventoryItemsError);
-    
+
     // If no inventory items, get available vaccines instead
     let displayItems = inventoryItems || [];
     if (!inventoryItems || inventoryItems.length === 0) {
@@ -46,7 +46,7 @@ const fetchDashboardMetrics = async () => {
         .select('*')
         .eq('is_deleted', false)
         .limit(5);
-        
+
       if (!vaccinesError && availableVaccines) {
         // Transform vaccine data to match inventory structure for display
         displayItems = availableVaccines.map(vaccine => ({
@@ -60,9 +60,9 @@ const fetchDashboardMetrics = async () => {
         }));
       }
     }
-    
+
     // Get recent vaccinations from enriched view (if available)
-  let recentVaccinations = [];
+    let recentVaccinations = [];
     try {
       // include guardian id and outside flag if available in the view
       const { data: recentData, error: recentErr } = await supabase
@@ -74,7 +74,7 @@ const fetchDashboardMetrics = async () => {
       if (!recentErr && Array.isArray(recentData)) {
         // collect guardian ids to fetch guardian names
         const guardianIds = Array.from(new Set(recentData.map(r => r.patient_guardian_id).filter(Boolean)));
-        let guardianMap = {};
+        const guardianMap = {};
         if (guardianIds.length > 0) {
           const { data: guardiansData, error: gErr } = await supabase
             .from('guardians')
@@ -103,7 +103,7 @@ const fetchDashboardMetrics = async () => {
     } catch (e) {
       console.warn('Recent vaccinations not available:', e.message || e);
     }
-    
+
     // Calculate inventory statistics
     const inventoryCount = inventoryStats?.length || 0;
     const lowStockCount = inventoryStats?.filter(item => item.current_stock_level <= 10).length || 0;
@@ -111,16 +111,16 @@ const fetchDashboardMetrics = async () => {
       const daysToExpiry = Math.ceil((new Date(item.expiration_date) - new Date()) / (1000 * 60 * 60 * 24));
       return daysToExpiry <= 30;
     }).length || 0;
-    
+
     // Get vaccine types count from vaccinemaster for accurate count
-    const { data: vaccineTypes, error: vaccineTypeError } = await supabase
+    const { data: vaccineTypes, error: _vaccineTypeError } = await supabase
       .from('vaccinemaster')
       .select('vaccine_id')
       .eq('is_deleted', false);
-    
+
     const totalVaccineTypes = vaccineTypes?.length || 0;
     const totalAvailableDoses = inventoryStats?.reduce((sum, item) => sum + (item.current_stock_level || 0), 0) || 0;
-    
+
     // Format recent vaccinations data for frontend using fetched recentVaccinations
     const formattedVaccinations = (recentVaccinations || []).map((vacc, index) => ({
       id: vacc.id || index,
@@ -132,7 +132,7 @@ const fetchDashboardMetrics = async () => {
       status: vacc.status || 'completed',
       outside: !!vacc.outside
     }));
-    
+
     // Build chart data: Show ALL 7 vaccines' usage across ALL records (zero if none)
     // Strategy:
     // 1) Determine the 7 vaccines to display from vaccinemaster
@@ -344,7 +344,12 @@ const getMonthlyReports = async (month) => {
   return data;
 };
 
-module.exports = {
+// Alias function for test compatibility
+const getDashboardStats = async () => {
+  return await fetchDashboardMetrics();
+};
+
+export {
   fetchDashboardMetrics,
   getSummaryStats,
   fetchWorkerProgress,
@@ -356,9 +361,5 @@ module.exports = {
   getDueSoon,
   getInventoryLowStock,
   getMonthlyReports,
-  
-  // Alias function for test compatibility
-  getDashboardStats: async () => {
-    return await fetchDashboardMetrics();
-  }
+  getDashboardStats
 };

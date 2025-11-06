@@ -6,9 +6,7 @@
  * All immunization saves go to local Dexie database first, then sync to Supabase via syncService
  */
 import { ref, computed } from 'vue'
-import api from '@/services/api'
 import db from '@/services/offline/db'
-import { getCurrentPHDate } from '@/utils/dateUtils'
 import { getUser, getUserId, getRole } from '@/services/auth'
 
 export function usePatientImmunizationForm(patientId) {

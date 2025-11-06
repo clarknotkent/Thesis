@@ -592,7 +592,7 @@
                   </thead>
                   <tbody>
                     <tr
-                      v-for="(msg, index) in guardianSMSHistory.recent.slice(0, 5)"
+                      v-for="msg in guardianSMSHistory.recent.slice(0, 5)"
                       :key="msg.id"
                     >
                       <td class="small">

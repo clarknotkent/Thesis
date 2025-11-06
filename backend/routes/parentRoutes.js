@@ -1,16 +1,14 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-  getParentProfile,
+import { authenticateRequest, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { getParentProfile,
   getParentChildren,
   getChildDetails,
   getChildVaccinationSchedule,
   getChildImmunizationDetails,
   getChildVisitHistory,
   updateParentProfile,
-  changeParentPassword,
-} = require('../controllers/parentController');
+  changeParentPassword } from '../controllers/parentController.js';
 
 // Apply auth middleware to all routes
 router.use(authenticateRequest);
@@ -40,4 +38,4 @@ router.get('/children/:childId/visits', getChildVisitHistory);
 // GET /api/parent/children/:childId/immunizations/:immunizationId - Get immunization details
 router.get('/children/:childId/immunizations/:immunizationId', getChildImmunizationDetails);
 
-module.exports = router;
+export default router;

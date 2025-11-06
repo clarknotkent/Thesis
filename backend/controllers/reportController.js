@@ -1,24 +1,24 @@
-const reportModel = require('../models/reportModel');
+import reportModel from '../models/reportModel.js';
 
 // Get monthly report
 const getMonthlyReport = async (req, res) => {
   try {
     const { month, year } = req.query;
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
-    
+
     const report = await reportModel.fetchMonthlyReport(month, year);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating monthly report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate monthly report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate monthly report',
+      error: error.message
     });
   }
 };
@@ -28,20 +28,20 @@ const getAnnualReport = async (req, res) => {
   try {
     const { year } = req.query;
     if (!year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Year parameter is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Year parameter is required'
       });
     }
-    
+
     const report = await reportModel.fetchAnnualReport(year);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating annual report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate annual report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate annual report',
+      error: error.message
     });
   }
 };
@@ -54,15 +54,15 @@ const getDefaultersReport = async (req, res) => {
       vaccine_id: req.query.vaccine_id,
       barangay: req.query.barangay
     };
-    
+
     const report = await reportModel.fetchDefaultersReport(filters);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating defaulters report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate defaulters report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate defaulters report',
+      error: error.message
     });
   }
 };
@@ -76,15 +76,15 @@ const getDueSoonReport = async (req, res) => {
       vaccine_id: req.query.vaccine_id,
       barangay: req.query.barangay
     };
-    
+
     const report = await reportModel.fetchDueSoonReport(filters);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating due soon report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate due soon report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate due soon report',
+      error: error.message
     });
   }
 };
@@ -97,15 +97,15 @@ const getInventoryLowStockReport = async (req, res) => {
       threshold: parseInt(threshold),
       vaccine_id: req.query.vaccine_id
     };
-    
+
     const report = await reportModel.fetchInventoryLowStockReport(filters);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating low stock report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate low stock report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate low stock report',
+      error: error.message
     });
   }
 };
@@ -118,15 +118,15 @@ const getTCLReport = async (req, res) => {
       barangay: req.query.barangay,
       vaccine_id: req.query.vaccine_id
     };
-    
+
     const report = await reportModel.fetchTCLReport(filters);
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating TCL report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate TCL report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate TCL report',
+      error: error.message
     });
   }
 };
@@ -136,9 +136,9 @@ const getMonthlyImmunizationReport = async (req, res) => {
   try {
     const { month, year } = req.query;
     if (!month || !year) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Month and year parameters are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year parameters are required'
       });
     }
     // Optional filters
@@ -157,20 +157,18 @@ const getMonthlyImmunizationReport = async (req, res) => {
     res.json({ success: true, data: report });
   } catch (error) {
     console.error('Error generating monthly immunization report:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate monthly immunization report', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate monthly immunization report',
+      error: error.message
     });
   }
 };
 
-module.exports = {
-  getMonthlyReport,
+export { getMonthlyReport,
   getAnnualReport,
   getDefaultersReport,
   getDueSoonReport,
   getInventoryLowStockReport,
   getTCLReport,
-  getMonthlyImmunizationReport,
-};
+  getMonthlyImmunizationReport };

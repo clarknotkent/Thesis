@@ -807,7 +807,7 @@ const formatDateTime = (dateString) => {
   }
 }
 
-const truncateMessage = (message, length = 60) => {
+const _truncateMessage = (message, length = 60) => {
   if (!message) return ''
   return message.length > length ? message.substring(0, length) + '...' : message
 }

@@ -1,5 +1,6 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const url = process.env.SUPABASE_URL;
 // Prefer service role key for server-side access; fall back to anon key if needed (dev only)
@@ -36,4 +37,4 @@ supabase
     console.error('Database connection error:', err);
   });
 
-module.exports = supabase;
+export default supabase;

@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const notificationController = require('../controllers/notificationController');
-const { authenticateRequest } = require('../middlewares/authMiddleware');
+import * as notificationController from '../controllers/notificationController.js';
+import { authenticateRequest } from '../middlewares/authMiddleware.js';
 
 // Create notification (admin)
 router.post('/', authenticateRequest, notificationController.create);
@@ -21,4 +21,4 @@ router.get('/pending', authenticateRequest, notificationController.getPendingNot
 // Update notification status (for sending service)
 router.put('/:id/status', authenticateRequest, notificationController.updateNotificationStatus);
 
-module.exports = router;
+export default router;

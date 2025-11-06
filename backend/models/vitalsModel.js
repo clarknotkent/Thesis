@@ -1,4 +1,4 @@
-const serviceSupabase = require('../db');
+import serviceSupabase from '../db.js';
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -13,7 +13,7 @@ const getVitalsignsByVisitId = async (visitId, client) => {
     .single();
   if (error && error.code !== 'PGRST116') throw error;
   if (!data) return null;
-  
+
   // Map database fields to frontend expected fields
   return {
     temperature: data.temperature,
@@ -26,10 +26,10 @@ const getVitalsignsByVisitId = async (visitId, client) => {
 
 const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
   const supabase = withClient(client);
-  
+
   // Check if vitals exist for this visit
   const existing = await getVitalsignsByVisitId(visitId, supabase);
-  
+
   const vitalsPayload = {
     temperature: vitalsData.temperature || null,
     muac: vitalsData.muac || null,
@@ -38,7 +38,7 @@ const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
     height_length: vitalsData.height || null,
     updated_at: new Date().toISOString()
   };
-  
+
   if (existing) {
     // Update existing vitals
     const { data, error } = await supabase
@@ -65,4 +65,4 @@ const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
   }
 };
 
-module.exports = { getVitalsignsByVisitId, updateVitalsignsByVisitId };
+export { getVitalsignsByVisitId, updateVitalsignsByVisitId };

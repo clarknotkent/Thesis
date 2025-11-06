@@ -1,4 +1,4 @@
-const supabase = require('../db');
+import supabase from '../db.js';
 
 const createFAQ = async (payload) => {
   const { data, error } = await supabase.from('faqs').insert(payload).select().single();
@@ -24,4 +24,4 @@ const deleteFAQ = async (faq_id) => {
   return data;
 };
 
-module.exports = { createFAQ, listFAQs, updateFAQ, deleteFAQ };
+export { createFAQ, listFAQs, updateFAQ, deleteFAQ };

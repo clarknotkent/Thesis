@@ -258,7 +258,7 @@ export default {
 
     getRecipientPreview() {
       if (this.form.recipientType === 'user') {
-        const user = this.users.find(u => (u.user_id || u.id) == this.form.recipient_user_id)
+        const user = this.users.find(u => (u.user_id || u.id) === this.form.recipient_user_id)
         return user ? `${user.firstname} ${user.surname}` : 'Not selected'
       }
       return `All ${this.form.recipientType}s`

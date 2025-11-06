@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 class SMSService {
   constructor() {
@@ -53,7 +53,7 @@ class SMSService {
     if (typeof message !== 'string') return message;
 
     // Normalize CRLF to LF
-    let s = message.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const s = message.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     // Split into lines, trim each line and collapse internal whitespace to single spaces
     const lines = s.split('\n').map(line => line.replace(/\s+/g, ' ').trim());
@@ -159,9 +159,9 @@ class SMSService {
 
     // common punctuation replacements
     s = s.replace(/[–—]/g, '-')      // en-dash / em-dash -> hyphen
-         .replace(/[“”]/g, '"')     // curly double quotes -> "
-         .replace(/[‘’]/g, "'")     // curly single quotes -> '
-         .replace(/…/g, '...');      // ellipsis
+      .replace(/[“”]/g, '"')     // curly double quotes -> "
+      .replace(/[‘’]/g, "'")     // curly single quotes -> '
+      .replace(/…/g, '...');      // ellipsis
 
     // Remove any remaining non-ASCII characters except newline
     s = s.replace(/[^\x00-\x7F\n]/g, '');
@@ -269,7 +269,7 @@ class SMSService {
    */
   async sendBulkSMS(recipients) {
     const results = [];
-    
+
     for (const recipient of recipients) {
       const result = await this.sendSMS(recipient.phone, recipient.message);
       results.push({
@@ -277,11 +277,11 @@ class SMSService {
         guardianId: recipient.guardianId,
         patientId: recipient.patientId
       });
-      
+
       // Add small delay between messages to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     return results;
   }
 
@@ -290,7 +290,7 @@ class SMSService {
    */
   replaceTemplateVariables(template, variables) {
     let message = template;
-    
+
     // Determine greeting time based on current hour or provided time
     let greetingTime = 'Day';
     if (variables.currentHour !== undefined) {
@@ -301,13 +301,13 @@ class SMSService {
       const currentHour = new Date().getHours();
       greetingTime = (currentHour >= 6 && currentHour < 18) ? 'Day' : 'Evening';
     }
-    
+
     // Determine guardian title based on gender
     let guardianTitle = 'Mr.';
     if (variables.guardianGender) {
       guardianTitle = variables.guardianGender.toLowerCase() === 'female' ? 'Ms.' : 'Mr.';
     }
-    
+
     // Replace common variables
     const replacements = {
       '{greeting_time}': greetingTime,
@@ -327,13 +327,13 @@ class SMSService {
       '{health_center}': variables.healthCenter || 'Barangay Health Center',
       '{days_until}': variables.daysUntil || ''
     };
-    
+
     for (const [key, value] of Object.entries(replacements)) {
       message = message.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
     }
-    
+
     return message;
   }
 }
 
-module.exports = new SMSService();
+export default new SMSService();

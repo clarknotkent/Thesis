@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, checkUserMapping, authorizeRole } = require('../middlewares/authMiddleware');
-const { mintPatientQrUrl, verifyAndGetRedirect, rotateNonce } = require('../services/qrService');
-const supabase = require('../db');
-const patientModel = require('../models/patientModel');
+import { authenticateRequest, checkUserMapping, authorizeRole } from '../middlewares/authMiddleware.js';
+import { mintPatientQrUrl, verifyAndGetRedirect, rotateNonce } from '../services/qrService.js';
+import supabase from '../db.js';
+import patientModel from '../models/patientModel.js';
 
 // Mint a signed QR URL for a patient (backend-only; no PII in QR)
 router.post('/patients/:id', authenticateRequest, checkUserMapping, authorizeRole([
@@ -91,4 +91,4 @@ router.get('/p/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

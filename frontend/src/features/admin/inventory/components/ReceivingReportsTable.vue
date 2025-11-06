@@ -134,7 +134,6 @@
 defineProps({
   receivingList: {
     type: Object,
-    required: true,
     default: () => ({ items: [], totalCount: 0, totalPages: 0 })
   },
   loading: {

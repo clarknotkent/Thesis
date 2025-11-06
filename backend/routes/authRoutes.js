@@ -1,16 +1,14 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const {
-	registerUser,
-	loginUser,
-	logoutUser,
-	linkSupabaseUser,
-	getUserMapping,
-	refreshToken,
-	changeCurrentPassword,
-	debugCurrentUserUUID
-} = require('../controllers/authController');
-const { validateToken, optionalAuthenticate, authenticateRequest } = require('../middlewares/authMiddleware');
+import { registerUser,
+  loginUser,
+  logoutUser,
+  linkSupabaseUser,
+  getUserMapping,
+  refreshToken,
+  changeCurrentPassword,
+  debugCurrentUserUUID } from '../controllers/authController.js';
+import { validateToken, optionalAuthenticate, authenticateRequest } from '../middlewares/authMiddleware.js';
 
 // POST /api/auth/register - User registration
 router.post('/register', optionalAuthenticate, registerUser);
@@ -37,4 +35,4 @@ router.post('/change-password', authenticateRequest, changeCurrentPassword);
 // GET /api/auth/debug/uuid - Return current user's Supabase UUID (dev aid)
 router.get('/debug/uuid', authenticateRequest, debugCurrentUserUUID);
 
-module.exports = router;
+export default router;

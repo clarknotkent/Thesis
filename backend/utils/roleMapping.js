@@ -46,9 +46,7 @@ function isCanonicalRole(role) {
   return CANONICAL_ROLES.includes(String(role || '').toLowerCase());
 }
 
-module.exports = {
-  toCanonicalRole,
+export { toCanonicalRole,
   toDisplayRole,
   isCanonicalRole,
-  CANONICAL_ROLES
-};
+  CANONICAL_ROLES };

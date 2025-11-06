@@ -218,7 +218,7 @@ const editForm = ref({
 })
 const saving = ref(false)
 
-const sortedSchedules = computed(() => {
+const _sortedSchedules = computed(() => {
   if (!schedules.value || schedules.value.length === 0) return []
   
   return [...schedules.value].sort((a, b) => {
@@ -425,7 +425,7 @@ const saveEdit = async (group) => {
   }
 }
 
-const formatDate = (dateString) => {
+const _formatDate = (dateString) => {
   if (!dateString) return '—'
   return new Date(dateString).toLocaleDateString('en-PH', {
     timeZone: 'Asia/Manila',
@@ -435,7 +435,7 @@ const formatDate = (dateString) => {
   })
 }
 
-const formatDateWithTime = (dateString) => {
+const _formatDateWithTime = (dateString) => {
   if (!dateString) return '—'
   const date = new Date(dateString)
   const dateStr = date.toLocaleDateString('en-US', {

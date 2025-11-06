@@ -1,5 +1,5 @@
-const serviceSupabase = require('../db');
-const immunizationModel = require('./immunizationModel');
+import serviceSupabase from '../db.js';
+import * as immunizationModel from './immunizationModel.js';
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -170,8 +170,8 @@ const createVisit = async (visitPayload, client) => {
   console.log('🔧 [SERVICES] Services to perform:', services.length, 'items');
 
   // Build concatenated service_rendered and findings
-  let serviceRenderedParts = [];
-  let findingsParts = [];
+  const serviceRenderedParts = [];
+  const findingsParts = [];
 
   // Add services from the services array (deworming, etc.)
   for (const service of services) {
@@ -386,4 +386,4 @@ const createVisit = async (visitPayload, client) => {
   return createdVisit || visit;
 };
 
-module.exports = { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay };
+export { listVisits, getVisitById, createVisit, ensureVisitForDate, updateVisitById, findExistingVisitForDay };

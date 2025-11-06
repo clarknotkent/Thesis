@@ -4,7 +4,6 @@
  */
 
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import db from '@/services/offline/db-parent-portal';
 
 export function useOffline() {
   const isOnline = ref(navigator.onLine);

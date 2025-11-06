@@ -694,49 +694,6 @@ const formatForInput = (date) => {
   return `${mm}/${dd}/${yyyy}`
 }
 
-const validateAndFormatDate = (fieldName) => {
-  if (!profileForm.value[fieldName]) return
-  
-  const dateStr = profileForm.value[fieldName].trim()
-  let date = null
-  
-  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const [month, day, year] = dateStr.split('/')
-    date = new Date(year, month - 1, day)
-  } else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
-    date = new Date(dateStr)
-  }
-  
-  if (date && !isNaN(date.getTime())) {
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    profileForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
-const openDatePicker = (fieldName) => {
-  const datePickerEl = datePickerBirthdate.value
-  if (datePickerEl) {
-    const isoDate = convertToISODate(profileForm.value[fieldName])
-    if (isoDate) {
-      datePickerEl.value = isoDate
-    }
-    datePickerEl.showPicker()
-  }
-}
-
-const onDatePickerChange = (fieldName, event) => {
-  const isoDate = event.target.value
-  if (isoDate) {
-    const date = new Date(isoDate)
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    profileForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
 const convertToISODate = (mmddyyyy) => {
   if (!mmddyyyy) return null
   const [month, day, year] = mmddyyyy.split('/')

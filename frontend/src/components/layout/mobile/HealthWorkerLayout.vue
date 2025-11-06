@@ -48,7 +48,7 @@ import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
 
-const props = defineProps({
+defineProps({
   showControls: {
     type: Boolean,
     default: false

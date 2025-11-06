@@ -140,7 +140,6 @@ import {
   sendMessage,
   createNewConversation,
   leaveConversation,
-  getConversationTitle,
   getParticipantList,
   processConversations
 } from '@/features/shared/chat/useChatService';

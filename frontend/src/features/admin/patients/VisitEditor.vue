@@ -988,12 +988,12 @@ const fetchPatients = async () => {
   }
 }
 
-const onPatientSearchInput = () => {
+const _onPatientSearchInput = () => {
   // debounce can be added later; for now fetch on input
   fetchPatients()
 }
 
-const clearPatientSearch = () => {
+const _clearPatientSearch = () => {
   patientSearch.value = ''
   fetchPatients()
 }

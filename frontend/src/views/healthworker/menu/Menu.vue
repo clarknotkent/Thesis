@@ -132,10 +132,6 @@ const userId = computed(() => {
   return null
 })
 
-const goBack = () => {
-  router.go(-1)
-}
-
 const logout = async () => {
   if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
     alert('You are offline. Logout is disabled to preserve your offline data. Please reconnect to log out.')

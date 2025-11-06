@@ -104,9 +104,7 @@ const router = useRouter()
 const {
   // State
   loading,
-  vaccines,
   existingVaccines,
-  schedules,
   stats,
   searchTerm,
   currentFilter,

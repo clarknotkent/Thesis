@@ -131,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
 import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
@@ -157,14 +157,6 @@ const selectedStaffId = ref('')
 const newMessage = ref('')
 const creating = ref(false)
 const newChatMode = ref('team') // 'team' | 'staff'
-
-const startDisabled = computed(() => {
-  const msg = (newMessage.value || '').trim()
-  const msgOk = msg.length > 0 && msg.length <= 1000
-  if (!msgOk || creating.value) return true
-  if (newChatMode.value === 'staff') return !selectedStaffId.value
-  return false
-})
 
 // FAQ assistant (loads FAQs from backend faqs table)
 const faqOpen = ref(false)
@@ -339,8 +331,6 @@ const closeNewChat = () => {
   newChatMode.value = 'team'
 }
 
-const prettyHsType = (t) => ({ nurse: 'Nurse', nutritionist: 'Nutritionist', bhs: 'BHS' }[String(t || '').toLowerCase()] || t || '')
-
 const pickAutoStaffId = () => {
   const list = staffOptions.value || []
   if (!list.length) return ''
@@ -387,19 +377,6 @@ const createConversation = async () => {
   } finally {
     creating.value = false
   }
-}
-
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return date.toLocaleDateString()
 }
 
 const prettyRole = (r) => {

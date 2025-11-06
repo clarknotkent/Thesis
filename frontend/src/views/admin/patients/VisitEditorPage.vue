@@ -33,9 +33,6 @@
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VisitEditor from '@/features/admin/patients/VisitEditor.vue'
 import { onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-
-const route = useRoute()
 
 onMounted(() => {
   // Page initialization

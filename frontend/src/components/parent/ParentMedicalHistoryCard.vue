@@ -75,10 +75,6 @@ const props = defineProps({
     type: String,
     default: '—'
   },
-  recorded_by: {
-    type: String,
-    default: ''
-  },
   vitals: {
     type: Object,
     default: () => ({})
@@ -102,6 +98,16 @@ const props = defineProps({
 })
 
 const router = useRouter()
+
+const handleNavigate = () => {
+  router.push({
+    name: 'ParentMedicalHistoryDetail',
+    params: {
+      patientId: props.patientId,
+      visitId: props.visitId
+    }
+  })
+}
 
 const formattedDate = computed(() => {
   if (!props.visitDate) return '—'
@@ -131,13 +137,8 @@ const immunizationsSummary = computed(() => {
 })
 
 const displayedRecordedBy = computed(() => {
-  // Accept either camelCase `recordedBy` or snake_case `recorded_by` from parent
-  return props.recordedBy || props.recorded_by || '—'
+  return props.recordedBy || '—'
 })
-
-const handleNavigate = () => {
-  router.push(`/parent/records/${props.patientId}/visit/${props.visitId}`)
-}
 </script>
 
 <style scoped>

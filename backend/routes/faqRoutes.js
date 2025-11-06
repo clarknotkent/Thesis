@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const { create, list, update, remove } = require('../controllers/faqController');
+import { authenticateRequest, authorizeRole } from '../middlewares/authMiddleware.js';
+import { create, list, update, remove } from '../controllers/faqController.js';
 
 // Public: list FAQs
 router.get('/', list);
@@ -11,4 +11,4 @@ router.post('/', authenticateRequest, authorizeRole(['admin', 'superadmin']), cr
 router.put('/:faq_id', authenticateRequest, authorizeRole(['admin', 'superadmin']), update);
 router.delete('/:faq_id', authenticateRequest, authorizeRole(['admin', 'superadmin']), remove);
 
-module.exports = router;
+export default router;

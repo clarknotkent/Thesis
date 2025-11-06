@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authenticateRequest, authorizeRole, checkUserMapping } = require('../middlewares/authMiddleware');
-const {
-  createUser,
+import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlewares/authMiddleware.js';
+import { createUser,
   getUser,
   updateUser,
   deleteUser,
@@ -12,8 +11,7 @@ const {
   deactivateUser,
   getUserActivityLogs,
   restoreUser,
-  resetPassword
-} = require('../controllers/userController');
+  resetPassword } from '../controllers/userController.js';
 
 // GET /api/users - Get all users with pagination and filtering
 router.get('/', authenticateRequest, checkUserMapping, listUsers);
@@ -48,4 +46,4 @@ router.post('/:id/restore', authenticateRequest, checkUserMapping, authorizeRole
 // POST /api/users/:id/reset-password - Reset password (self or admin)
 router.post('/:id/reset-password', authenticateRequest, checkUserMapping, resetPassword);
 
-module.exports = router;
+export default router;

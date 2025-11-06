@@ -66,7 +66,6 @@
 defineProps({
   vitals: {
     type: Object,
-    required: true,
     default: () => ({
       temperature: '',
       muac: '',

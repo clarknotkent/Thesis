@@ -151,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccineForm from '@/features/admin/inventory/components/VaccineForm.vue'
@@ -219,7 +219,7 @@ const fetchExistingVaccines = async () => {
   }
 }
 
-function openDropdown(event) {
+function openDropdown(_event) {
   dropdownOpen.value = true
   if (inputRef.value) {
     const rect = inputRef.value.getBoundingClientRect()
