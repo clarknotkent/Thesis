@@ -327,7 +327,7 @@
                           <option value="">Select Type</option>
                           <option value="nurse">Nurse</option>
                           <option value="nutritionist">Nutritionist</option>
-                          <option value="bhw">Barangay Health Worker</option>
+                          <option value="bhs">Barangay Health Staff</option>
                         </select>
                       </div>
                       <div class="col-xl-4 col-lg-4 col-md-6" v-if="userForm.role === 'health_worker' || userForm.role === 'admin'">
@@ -727,7 +727,7 @@ const saveUser = async () => {
     if (userForm.value.role === 'health_worker') {
       payload.hw_type = userForm.value.hwType || null
       // if bhw, remove license
-      if (payload.hw_type === 'bhw') {
+      if (payload.hw_type === 'bhs') {
         payload.professional_license_no = null
       }
     } else {

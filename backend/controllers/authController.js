@@ -77,13 +77,24 @@ const registerUser = async (req, res) => {
 
     // Create application user record via unified userModel (ensures role canonicalization & audit handling)
     console.log('[registerUser] DEBUG: Building canonical app user payload');
-  // Canonical role tokens (DB constraint): Admin | HealthWorker | Guardian
+    // Canonical role tokens (DB constraint downstream via userModel): Admin | HealthStaff | Guardian
+    // We'll keep using 'HealthWorker' here (historical) but broaden accepted inputs; userModel maps to stored token.
     let incomingRole = (role || '').trim().toLowerCase();
     let canonicalRole;
-  if (['admin','administrator','system admin'].includes(incomingRole)) canonicalRole = 'Admin';
-  else if (['health_worker','healthworker','health worker'].includes(incomingRole)) canonicalRole = 'HealthWorker';
-  else if (['guardian','parent','guardian-parent'].includes(incomingRole)) canonicalRole = 'Guardian';
-  else canonicalRole = 'Guardian'; // fallback
+    if (['admin','administrator','system admin'].includes(incomingRole)) {
+      canonicalRole = 'Admin';
+    } else if ([
+      'health_worker', 'healthworker', 'health worker',
+      'health_staff', 'healthstaff', 'health staff', 'health-staff', 'hw'
+    ].includes(incomingRole)) {
+      canonicalRole = 'HealthWorker';
+    } else if (['guardian','parent','guardian-parent'].includes(incomingRole)) {
+      canonicalRole = 'Guardian';
+    } else {
+      // safest default is Guardian if unknown; log once for visibility
+      console.warn('[registerUser] Unrecognized role token, defaulting to Guardian:', incomingRole);
+      canonicalRole = 'Guardian';
+    }
 
     // Sex normalization
     let normalizedSex;
@@ -100,9 +111,9 @@ const registerUser = async (req, res) => {
     let hwType = hw_type || null;
     // If role is HealthWorker but subtype provided as role variants like 'nurse'
     if (canonicalRole === 'HealthWorker' && !hwType) {
-      if (['nurse','nutritionist','bhw'].includes(incomingRole)) hwType = incomingRole; // edge case
+      if (['nurse','nutritionist','bhs'].includes(incomingRole)) hwType = incomingRole; // edge case
     }
-    if (hwType === 'bhw') professionalLicense = null; // BHW never keeps license
+    if (hwType === 'bhs') professionalLicense = null; // BHS never keeps license
 
   // Actor (creator) id: middleware may set user_id or id
   const actorId = getActorId(req); // if an authenticated admin creates user
