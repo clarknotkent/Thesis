@@ -59,7 +59,7 @@
                 autocomplete="off"
                 required
                 @input="onVaccineSearch"
-                @focus="showVaccineDropdown = true"
+                @focus="onVaccineInputFocus"
               >
               <div
                 v-if="showVaccineDropdown"
@@ -71,12 +71,7 @@
                   </div>
                 </template>
                 <template v-else>
-                  <template v-if="(outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0">
-                    <div class="vaccine-no-results">
-                      No vaccines available
-                    </div>
-                  </template>
-                  <template v-else-if="filteredVaccineOptions.length > 0">
+                  <template v-if="filteredVaccineOptions.length > 0">
                     <button
                       v-for="vaccine in filteredVaccineOptions"
                       :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
@@ -108,7 +103,7 @@
                   </template>
                   <template v-else>
                     <div class="vaccine-no-results">
-                      No vaccines found
+                      {{ emptyDropdownMessage }}
                     </div>
                   </template>
                 </template>
@@ -291,7 +286,7 @@
 </template>
 
 <script setup>
-import { watch, onMounted, onBeforeUnmount } from 'vue'
+import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
@@ -365,6 +360,12 @@ onBeforeUnmount(() => {
 // Local handler to close dropdown when clicking outside
 const closeVaccineDropdown = () => {
   showVaccineDropdown.value = false
+}
+
+// Open dropdown and ensure sources are fresh so default filters apply immediately
+const onVaccineInputFocus = async () => {
+  showVaccineDropdown.value = true
+  await refreshVaccineSources(getPatientId())
 }
 
 // Wrapper to call composable's select and then update smart doses
@@ -581,6 +582,19 @@ const saveService = () => {
 
 // Watch for date changes to update age
 watch(() => serviceForm.value.dateAdministered, updateAgeCalculation)
+
+// Derived message when no vaccines are available after filtering
+const emptyDropdownMessage = computed(() => {
+  // If sources are empty, tailor message based on mode
+  const hasSource = (outsideMode.value ? vaccineCatalog.value.length : vaccineOptions.value.length) > 0
+  if (!hasSource) {
+    return outsideMode.value
+      ? 'No vaccines in catalog.'
+      : 'No stocked vaccines available.'
+  }
+  // Sources exist but filtered list is empty
+  return 'All scheduled doses are completed or filtered out. Try Outside facility or adjust filters.'
+})
 </script>
 
 <style scoped>

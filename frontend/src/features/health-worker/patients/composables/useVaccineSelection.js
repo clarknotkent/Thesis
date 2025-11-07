@@ -53,11 +53,10 @@ export function useVaccineSelection() {
       // In-facility + NIP-only: show inventory (server already filtered by is_nip if param was set)
       base = [...sourceInv]
     } else {
-      // In-facility + NIP toggle OFF: show all inventory + add Other Vaccines (non-NIP) from catalog
+      // In-facility + NIP toggle OFF: show all inventory + add catalog vaccines not present in inventory (both NIP and non-NIP)
       // Prefer inventory entries when antigen matches; add catalog entries not present in inventory
       const seenAntigen = new Set(sourceInv.map(v => String(v.antigen_name || '').trim().toLowerCase()).filter(Boolean))
       const others = sourceCat
-        .filter(v => !v.is_nip && !v.isNip)
         .filter(v => {
           const key = String(v.antigen_name || '').trim().toLowerCase()
           return key && !seenAntigen.has(key)
@@ -215,8 +214,10 @@ export function useVaccineSelection() {
             const res = await api.get(`/patients/${patientId}/smart-doses`, { params: { vaccine_id: vid } })
             const data = res.data?.data || res.data || {}
             const remainingArr = Array.isArray(data.available_doses) ? data.available_doses : []
-            const allDosesArr = Array.isArray(data.all_doses) ? data.all_doses : []
-            // If schedule isn't configured for this vaccine, fail-open (keep visible)
+            const allDosesArr = Array.isArray(data.all_doses)
+              ? data.all_doses
+              : (Array.isArray(data.schedule_doses) ? data.schedule_doses : [])
+            // If schedule isn't configured (no dose definitions), fail-open (keep visible)
             if (allDosesArr.length === 0) {
               remainingCache.value[vid] = true
             } else {
