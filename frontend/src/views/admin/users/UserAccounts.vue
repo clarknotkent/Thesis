@@ -34,6 +34,7 @@
 
       <!-- User Stats -->
       <div class="row g-3 mb-4">
+        <!-- Total Users -->
         <div class="col-md">
           <div class="card border border-primary border-3 shadow h-100 py-2">
             <div class="card-body">
@@ -57,58 +58,13 @@
           </div>
         </div>
 
+        <!-- Admins -->
         <div class="col-md">
-          <div class="card border border-success border-3 shadow h-100 py-2">
+          <div class="card border border-3 shadow h-100 py-2" style="border-color: #601FC2 !important;">
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
-                    Health Workers
-                  </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ userStats.healthWorkers }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-person-badge text-success"
-                    style="font-size: 2rem;"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md">
-          <div class="card border border-info border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-info text-uppercase mb-1">
-                    Parents
-                  </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ userStats.parents }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-person-vcard text-info"
-                    style="font-size: 2rem;"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md">
-          <div class="card border border-warning border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #601FC2;">
                     Admins
                   </div>
                   <div class="h5 mb-0 fw-bold text-gray-800">
@@ -117,8 +73,56 @@
                 </div>
                 <div class="col-auto">
                   <i
-                    class="bi bi-person-lock text-warning"
-                    style="font-size: 2rem;"
+                    class="bi bi-person-lock"
+                    style="font-size: 2rem; color: #601FC2;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staff -->
+        <div class="col-md">
+          <div class="card border border-3 shadow h-100 py-2" style="border-color: #00B2E3 !important;">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #00B2E3;">
+                    Staff
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ userStats.healthWorkers }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-person-badge"
+                    style="font-size: 2rem; color: #00B2E3;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guardians -->
+        <div class="col-md">
+          <div class="card border border-3 shadow h-100 py-2" style="border-color: #BC4E1E !important;">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #BC4E1E;">
+                    Guardians
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ userStats.parents }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-person-vcard"
+                    style="font-size: 2rem; color: #BC4E1E;"
                   />
                 </div>
               </div>
@@ -172,14 +176,14 @@
                 :class="{ active: activeFilter === 'health_worker' }"
                 @click="setFilter('health_worker')"
               >
-                Health Workers
+                Staff
               </button>
               <button 
                 class="btn btn-outline-primary"
                 :class="{ active: activeFilter === 'parent' }"
                 @click="setFilter('parent')"
               >
-                Parents
+                Guardians
               </button>
             </div>
             <div class="form-check form-switch ms-2">
@@ -728,6 +732,14 @@ const activeFilter = ref('all')
 const showDeleted = ref(false)
 const currentUserId = ref('1') // This would come from auth context
 
+// Statistics for all users (not just current page)
+const allUserStats = ref({
+  total: 0,
+  admins: 0,
+  healthWorkers: 0,
+  parents: 0
+})
+
 // Pagination state (simplified)
 const currentPage = ref(1)
 const totalPages = ref(1)
@@ -765,11 +777,34 @@ const userForm = ref({
 
 // Computed properties
 const userStats = computed(() => ({
-  total: totalItems.value,
-  admins: users.value.filter(u => u.role === 'admin').length,
-  healthWorkers: users.value.filter(u => u.role === 'health_worker').length,
-  parents: users.value.filter(u => u.role === 'parent').length
+  total: allUserStats.value.total,
+  admins: allUserStats.value.admins,
+  healthWorkers: allUserStats.value.healthWorkers,
+  parents: allUserStats.value.parents
 }))
+
+// Fetch user statistics for all users (not paginated)
+const fetchUserStats = async () => {
+  try {
+    // Fetch all active users to count by role
+    const { users: allUsers } = await apiListUsers({
+      page: 1,
+      limit: 10000, // Large number to get all users
+      search: '',
+      role: '',
+      status: 'not_archived'
+    })
+    
+    allUserStats.value = {
+      total: allUsers.length,
+      admins: allUsers.filter(u => u.role === 'Admin').length,
+      healthWorkers: allUsers.filter(u => u.role === 'Health Staff').length,
+      parents: allUsers.filter(u => u.role === 'Parent').length
+    }
+  } catch (error) {
+    console.error('Failed to fetch user statistics:', error)
+  }
+}
 
 // Methods
 const mapBackendRoleToOption = (role) => {
@@ -991,6 +1026,7 @@ const saveUser = async () => {
       await apiCreateUser(payload)
     }
     closeUserModal()
+    await fetchUserStats()
     await fetchUsers()
     await fetchRecentActivity()
     addToast({
@@ -1043,6 +1079,7 @@ const deleteUser = async () => {
   try {
     await apiDeleteUser(userToDelete.value.id)
     closeDeleteModal()
+    await fetchUserStats()
     await fetchUsers()
     await fetchRecentActivity()
     addToast({ title: 'Success', message: 'User deleted successfully!', type: 'success' })
@@ -1100,6 +1137,7 @@ const performRestore = async () => {
   try {
     const res = await apiRestoreUser(userToRestore.value.id)
     closeRestoreModal()
+    await fetchUserStats()
     await fetchUsers()
     await fetchRecentActivity()
     const msg = (res && (res.message || res.msg)) || 'User restored successfully!'
@@ -1241,6 +1279,7 @@ const convertToISODate = (mmddyyyy) => {
 
 // Lifecycle
 onMounted(() => {
+  fetchUserStats()
   fetchUsers()
   fetchRecentActivity()
 })
