@@ -1,10 +1,30 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Notifications
+          </li>
+        </ol>
+      </nav>
+
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            Notifications Inbox
+            <i class="bi bi-bell me-2" />Notifications Inbox
           </h1>
           <p class="text-muted mb-0">
             View and manage your notifications
@@ -605,6 +625,31 @@ export default {
 </script>
 
 <style scoped>
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .nav-pills .nav-link { cursor: pointer; }
 .section-header { background: #f8f9fa; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
 .notification-item { border-bottom: 1px solid #f1f1f1; }

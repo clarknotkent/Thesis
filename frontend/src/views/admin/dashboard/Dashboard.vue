@@ -5,7 +5,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            Admin Dashboard
+            <i class="bi bi-speedometer2 me-2" />Admin Dashboard
           </h1>
           <p class="text-muted mb-0">
             Welcome to the Immunization Management System
@@ -32,14 +32,14 @@
       <!-- Stats Cards Row -->
       <div
         v-if="!loading"
-        class="row g-3 mb-3"
+        class="row g-3 mb-4"
       >
         <!-- Vaccinations Today Card -->
-        <div class="col">
-          <div class="card border-start border-success border-4 shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-success border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Vaccinations Today
                   </div>
@@ -59,11 +59,11 @@
         </div>
 
         <!-- Total Patients Card -->
-        <div class="col">
-          <div class="card border-start border-primary border-4 shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-primary border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Total Patients
                   </div>
@@ -83,11 +83,11 @@
         </div>
 
         <!-- Active Health Staff Card -->
-        <div class="col">
-          <div class="card border-start border-info border-4 shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-info border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Active Health Staff
                   </div>
@@ -107,11 +107,11 @@
         </div>
 
         <!-- Pending Appointments Card -->
-        <div class="col">
-          <div class="card border-start border-warning border-4 shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-warning border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Pending Appointments
                   </div>
@@ -236,31 +236,19 @@
                   </tbody>
                 </table>
               </div>
-              <!-- Pagination controls for Recent Vaccinations -->
-              <div class="d-flex justify-content-between align-items-center mt-2">
-                <div>
-                  <small class="text-muted">Showing page {{ recentPage }} of {{ Math.max(1, Math.ceil(totalRecentItems / pageSize)) }} — {{ totalRecentItems }} total</small>
-                </div>
-                <div
-                  class="btn-group"
-                  role="group"
-                  aria-label="Pagination"
-                >
-                  <button
-                    class="btn btn-sm btn-outline-secondary"
-                    :disabled="recentPage <= 1 || isLoadingRecent"
-                    @click.prevent="fetchRecentPage(recentPage - 1)"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    class="btn btn-sm btn-outline-secondary"
-                    :disabled="(recentPage * pageSize) >= totalRecentItems || isLoadingRecent"
-                    @click.prevent="fetchRecentPage(recentPage + 1)"
-                  >
-                    Next
-                  </button>
-                </div>
+
+              <!-- Pagination Footer -->
+              <div
+                v-if="totalRecentItems > 0"
+                class="pagination-footer border-top mt-3 pt-3"
+              >
+                <AppPagination
+                  :current-page="recentPage"
+                  :total-pages="totalPages"
+                  :total-items="totalRecentItems"
+                  :items-per-page="pageSize"
+                  @page-changed="fetchRecentPage"
+                />
               </div>
             </div>
           </div>
@@ -274,6 +262,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import BarChart from '@/features/admin/analytics/BarChart.vue'
+import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 
 // Reactive data
@@ -293,6 +282,10 @@ const pageSize = ref(8) // display 8 per page as requested
 const totalRecentItems = ref(0)
 const isLoadingRecent = ref(false)
 const allRecentItems = ref([]) // cached full list for client-side paging
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(totalRecentItems.value / pageSize.value))
+})
 
 const lastUpdated = computed(() => {
   try {
@@ -461,5 +454,14 @@ onMounted(() => {
 .page-header {
   border-bottom: 1px solid #e3e6f0;
   padding-bottom: 1rem;
+}
+
+/* Pagination Footer */
+.pagination-footer {
+  padding: 1rem 0;
+  background-color: transparent;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: center;
 }
 </style>

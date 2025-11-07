@@ -1,11 +1,34 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Reports
+          </li>
+        </ol>
+      </nav>
+
       <!-- Page Header -->
       <AppPageHeader 
         title="Monthly Immunization Report"
         subtitle="Comprehensive monthly vaccination statistics and summary"
       >
+        <template #icon>
+          <i class="bi bi-file-text me-2" />
+        </template>
         <template #actions>
           <div class="d-flex gap-2">
             <button
@@ -573,6 +596,31 @@ async function augmentFicCicFromPatientTags(selMonth, selYear) {
 </script>
 
 <style scoped>
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .nav-tabs .nav-link {
   cursor: pointer;
 }

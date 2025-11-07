@@ -1108,6 +1108,49 @@ const debugRewriteDob = async (req, res) => {
   }
 };
 
+// Get patient statistics
+const getPatientStats = async (req, res) => {
+  try {
+    const supabase = getSupabaseForRequest(req) || serviceSupabase;
+
+    // Get total patients (not deleted)
+    const { data: allPatients, error: allError } = await supabase
+      .from('patients')
+      .select('patient_id, sex, tags', { count: 'exact' })
+      .eq('is_deleted', false);
+
+    if (allError) throw allError;
+
+    const totalPatients = allPatients?.length || 0;
+
+    // Count by gender
+    const maleCount = allPatients?.filter(p => p.sex?.toLowerCase() === 'male').length || 0;
+    const femaleCount = allPatients?.filter(p => p.sex?.toLowerCase() === 'female').length || 0;
+
+    // Count FIC and CIC by checking tags field
+    const ficCount = allPatients?.filter(p => p.tags && p.tags.includes('FIC')).length || 0;
+    const cicCount = allPatients?.filter(p => p.tags && p.tags.includes('CIC')).length || 0;
+
+    res.json({
+      success: true,
+      stats: {
+        totalPatients,
+        male: maleCount,
+        female: femaleCount,
+        fic: ficCount,
+        cic: cicCount
+      }
+    });
+  } catch (error) {
+    console.error('[getPatientStats] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch patient statistics',
+      error: error.message
+    });
+  }
+};
+
 export { createPatient,
   getPatientById,
   updatePatient,
@@ -1127,4 +1170,5 @@ export { createPatient,
   listParentsWithContacts,
   listDistinctParentNames,
   getCoParentSuggestion,
-  getSmartDoseOptions };
+  getSmartDoseOptions,
+  getPatientStats };

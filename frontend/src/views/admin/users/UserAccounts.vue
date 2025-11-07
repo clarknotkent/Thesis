@@ -1,10 +1,30 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            User Accounts
+          </li>
+        </ol>
+      </nav>
+
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            User Accounts
+            <i class="bi bi-person-circle me-2" />User Accounts
           </h1>
           <p class="text-muted mb-0">
             Manage system users and permissions
@@ -14,15 +34,15 @@
 
       <!-- User Stats -->
       <div class="row g-3 mb-4">
-        <div class="col-md-3">
-          <div class="card border-left-primary shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-primary border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Total Users
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  <div class="h5 mb-0 fw-bold text-gray-800">
                     {{ userStats.total }}
                   </div>
                 </div>
@@ -37,15 +57,15 @@
           </div>
         </div>
 
-        <div class="col-md-3">
-          <div class="card border-left-success shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-success border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Health Workers
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  <div class="h5 mb-0 fw-bold text-gray-800">
                     {{ userStats.healthWorkers }}
                   </div>
                 </div>
@@ -60,15 +80,15 @@
           </div>
         </div>
 
-        <div class="col-md-3">
-          <div class="card border-left-info shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-info border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Parents
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  <div class="h5 mb-0 fw-bold text-gray-800">
                     {{ userStats.parents }}
                   </div>
                 </div>
@@ -83,15 +103,15 @@
           </div>
         </div>
 
-        <div class="col-md-3">
-          <div class="card border-left-warning shadow h-100 py-2">
+        <div class="col-md">
+          <div class="card border border-warning border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Admins
                   </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  <div class="h5 mb-0 fw-bold text-gray-800">
                     {{ userStats.admins }}
                   </div>
                 </div>
@@ -1234,6 +1254,31 @@ const isAdminRole = (role) => {
 </script>
 
 <style scoped>
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .modal.show {
   background-color: rgba(0, 0, 0, 0.5);
 }

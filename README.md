@@ -2,7 +2,29 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> 🩺 November 7, 2025 - Admin/BHS Immunization & Vitals Reliability
+> 🎨 **November 7, 2025 - Admin UI Consistency & UX Enhancements**
+>
+> **Patient Statistics Dashboard:**
+> - ✅ Added 5 statistics cards to Patient Records page (Total, Male, Female, FIC, CIC)
+> - ✅ New backend endpoint `/api/patients/stats` with gender and immunization status counts
+>
+> **Visual Consistency Across Admin:**
+> - ✅ Standardized card design: `border border-{color} border-3` pattern across Dashboard, Users, Activity Logs
+> - ✅ Added Bootstrap icons to 10 admin page titles (speedometer, chat, bell, file, person, question, list, gear)
+> - ✅ Implemented breadcrumb navigation on 8 admin pages (Admin > Page Name pattern)
+> - ✅ Unified breadcrumb styling: › separator, #4e73df links, no underline by default, underline on hover
+> - ✅ Fixed SMS and Inventory breadcrumb inconsistencies (removed / separator, added missing styles)
+>
+> **Pagination Improvements:**
+> - ✅ Dashboard Recent Vaccinations now uses AppPagination component
+> - ✅ Consistent pagination styling across Dashboard, Patient Records, and Inventory
+> - ✅ Professional page navigation with chevron icons and page info display
+>
+> **Enhanced Components:**
+> - ✅ AppPageHeader component now supports icon slot for flexible page headers
+> - ✅ 19 admin pages updated with complete breadcrumb CSS (including sub-pages)
+>
+> 🩺 **November 7, 2025 - Admin/BHS Immunization & Vitals Reliability**
 >
 > - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit)
 > - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked

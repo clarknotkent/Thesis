@@ -1,10 +1,30 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Activity Logs
+          </li>
+        </ol>
+      </nav>
+
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            Activity Logs
+            <i class="bi bi-list-check me-2" />Activity Logs
           </h1>
           <p class="text-muted mb-0">
             Monitor system activity and user actions
@@ -21,10 +41,10 @@
       <!-- Activity Stats -->
       <div class="row g-3 mb-4">
         <div class="col-md-3">
-          <div class="card border-start border-primary border-4 shadow h-100 py-2">
+          <div class="card border border-primary border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-primary text-uppercase mb-1">
                     Total Logs
                   </div>
@@ -44,10 +64,10 @@
         </div>
 
         <div class="col-md-3">
-          <div class="card border-start border-success border-4 shadow h-100 py-2">
+          <div class="card border border-success border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">
                     Today's Activity
                   </div>
@@ -67,10 +87,10 @@
         </div>
 
         <div class="col-md-3">
-          <div class="card border-start border-info border-4 shadow h-100 py-2">
+          <div class="card border border-info border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-info text-uppercase mb-1">
                     Active Users
                   </div>
@@ -90,10 +110,10 @@
         </div>
 
         <div class="col-md-3">
-          <div class="card border-start border-warning border-4 shadow h-100 py-2">
+          <div class="card border border-warning border-3 shadow h-100 py-2">
             <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col me-2">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                     Failed Actions
                   </div>
@@ -930,6 +950,30 @@ watch(() => filters.value.toDate, (_nv, _ov) => {
 </script>
 
 <style scoped>
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .modal.show {
   background-color: rgba(0, 0, 0, 0.5);
 }
