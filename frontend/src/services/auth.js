@@ -1,4 +1,6 @@
 import api from './api'
+import { db } from './offline/db' // StaffOfflineDB (Admin + HealthStaff)
+// ParentPortalOfflineDB lazy-loaded only when needed
 
 const TOKEN_KEY = 'authToken'
 const USER_KEY = 'authUser'
@@ -47,11 +49,31 @@ export async function login({ identifier, password }) {
   return { token, user }
 }
 
-export function logout() {
+export async function logout() {
   // Prevent logout while offline to keep offline data accessible
   if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
     throw new Error('Cannot log out while offline')
   }
+  
+  console.log('🔐 Logging out and wiping all local databases for security...')
+  
+  // CRITICAL SECURITY: Wipe ALL local IndexedDB databases
+  // This prevents sensitive patient data from persisting after logout
+  try {
+    // Lazy load parent DB only if needed
+    const parentDb = (await import('./offline/db-parent-portal')).default
+    
+    // Close and delete both databases
+    await Promise.all([
+      db.delete().then(() => console.log('✅ Successfully wiped StaffOfflineDB')),
+      parentDb.delete().then(() => console.log('✅ Successfully wiped ParentPortalOfflineDB'))
+    ])
+  } catch (error) {
+    console.error('❌ Error during database wipe:', error)
+    // Continue with logout even if database wipe fails
+  }
+  
+  // Perform API logout (fire-and-forget)
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
     // fire-and-forget logout logging; ignore errors
@@ -60,10 +82,14 @@ export function logout() {
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {})
   }
+  
+  // Clear all localStorage data
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
   localStorage.removeItem('userRole')
   localStorage.removeItem('userInfo')
+  
+  console.log('✅ Logout complete. All local data wiped.')
 }
 
 export function getToken() {

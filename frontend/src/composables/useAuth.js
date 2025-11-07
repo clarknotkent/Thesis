@@ -114,15 +114,27 @@ export const useAuth = () => {
       console.log('⏭️ Not a parent role, skipping bulk cache. Role was:', normalizedRole)
     }
 
-    // Initialize offline support for other roles
-    import('@/services/offline').then(({ initializeOffline, syncAfterLogin }) => {
-      return initializeOffline().then(() => {
-        console.log('� Offline support initialized after login')
-        return syncAfterLogin(role)
+    // Initialize offline support ONLY for parent/guardian roles
+    // Admin/Staff use different offline architecture (StaffOfflineDB via API interceptor)
+    if (normalizedRole === 'guardian' || normalizedRole === 'parent') {
+      import('@/services/offline').then(({ initializeOffline, syncAfterLogin }) => {
+        return initializeOffline().then(() => {
+          console.log('✅ Parent offline support initialized after login')
+          return syncAfterLogin(role)
+        })
+      }).catch(err => {
+        console.error('Failed to initialize offline or sync data after login:', err)
       })
-    }).catch(err => {
-      console.error('Failed to initialize offline or sync data after login:', err)
-    })
+    } else {
+      console.log('ℹ️ Admin/Staff offline uses StaffOfflineDB (auto-initialized)')
+      
+      // Prefetch patients and inventory for offline access
+      import('@/services/offline/staffLoginPrefetch').then(({ prefetchStaffData }) => {
+        prefetchStaffData().catch(err => {
+          console.error('Failed to prefetch staff data:', err)
+        })
+      })
+    }
   }
 
   const logout = async () => {

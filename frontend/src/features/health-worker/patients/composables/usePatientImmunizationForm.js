@@ -2,11 +2,10 @@
  * Composable for managing patient immunization record form data
  * Handles form state, patient loading, and service management
  * 
- * OFFLINE-FIRST ARCHITECTURE:
- * All immunization saves go to local Dexie database first, then sync to Supabase via syncService
+ * NOTE: Admin/Staff offline caching is handled automatically by API interceptor
+ * No direct database writes needed here (read-only offline architecture)
  */
 import { ref, computed } from 'vue'
-import db from '@/services/offline/db'
 import { getUser, getUserId, getRole } from '@/services/auth'
 import api from '@/services/api'
 
@@ -95,13 +94,7 @@ export function usePatientImmunizationForm(patientId) {
         if (data) {
           currentPatient.value = data
           console.log('🌐 Loaded patient from API:', data.patient_id || data.id)
-          // 3) Best-effort cache into Dexie for offline use (if schema present)
-          try {
-            await db.patients.put({ ...data, patient_id: data.patient_id || data.id })
-            console.log('💾 Cached patient to Dexie')
-          } catch (cacheErr) {
-            console.warn('Failed to cache patient (non-blocking):', cacheErr?.message || cacheErr)
-          }
+          // NOTE: Caching handled automatically by API interceptor
           return
         }
       } catch (apiErr) {

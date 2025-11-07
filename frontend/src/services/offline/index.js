@@ -6,9 +6,9 @@
  * 1. API interceptor automatically caches responses to IndexedDB
  * 2. Offline utilities provide seamless online/offline data access
  * 3. No manual prefetch needed - cache populates as users navigate
+ * 
+ * IMPORTANT: Parent DB lazy-loaded to prevent creation for admin users
  */
-
-import db from './db-parent-portal'
 
 /**
  * Initialize the offline system
@@ -17,6 +17,9 @@ export async function initializeOffline() {
   try {
     console.log('🔄 Initializing offline cache system...')
 
+    // Lazy load parent DB to avoid creating it for admin users
+    const db = (await import('./db-parent-portal')).default
+    
     // Database initializes automatically on first access
     // Just verify it's accessible
     await db.open()

@@ -4,11 +4,14 @@
  * Manages vaccine inventory loading, filtering by type/status, 
  * sorting, search, and pagination.
  * 
+ * NEW: Includes offline fallback for Admin/Staff read-only access
+ * 
  * @returns {Object} Inventory state and methods
  */
 
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { db } from '@/services/offline/db' // StaffOfflineDB (Admin + HealthStaff)
 
 export function useVaccineInventory() {
   // State
@@ -134,13 +137,31 @@ export function useVaccineInventory() {
   const fetchInventory = async () => {
     try {
       loading.value = true
+      
+      // ONLINE PATH: Fetch from API
       const response = await api.get('/vaccines/inventory')
       const data = response.data?.data || response.data || []
       inventory.value = Array.isArray(data) ? data : []
-      console.log('📦 [VaccineStock] Loaded inventory:', inventory.value.length, 'items')
+      console.log('📦 [VaccineStock] Loaded inventory:', inventory.value.length, 'items (Online)')
+      
     } catch (error) {
-      console.error('❌ [VaccineStock] Error fetching inventory:', error)
-      inventory.value = []
+      console.warn('⚠️ API fetch failed. Attempting to load from local cache.', error)
+      
+      // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
+      try {
+        const cachedInventory = await db.inventory.toArray()
+        
+        if (cachedInventory.length > 0) {
+          inventory.value = cachedInventory
+          console.log(`✅ [VaccineStock] Successfully loaded ${cachedInventory.length} inventory items from local cache (Offline)`)
+        } else {
+          console.log('ℹ️ No cached inventory found.')
+          inventory.value = []
+        }
+      } catch (dbError) {
+        console.error('❌ Error reading from local cache:', dbError)
+        inventory.value = []
+      }
     } finally {
       loading.value = false
     }

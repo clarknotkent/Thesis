@@ -9,7 +9,7 @@ import './assets/styles/index.css'
 // Import Bootstrap JS
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { Dropdown } from 'bootstrap'
-import { initializeChatOfflineSync } from '@/services/offline/chatOffline'
+// NOTE: chatOffline lazy-loaded to prevent ParentPortalOfflineDB from being created for admin users
 
 // Ensure PWA service worker registration across dev/prod
 // (vite-plugin-pwa will provide this virtual module)
@@ -26,6 +26,28 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+
+// SECURITY: Wipe all offline databases if user is not authenticated
+// This prevents leftover sensitive data from appearing on login/landing pages
+;(async () => {
+  try {
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      console.log('🔒 No active session detected - wiping all offline databases for security')
+      
+      // Dynamically import databases to avoid initialization if not needed
+      const { db } = await import('./services/offline/db')
+      const parentDb = (await import('./services/offline/db-parent-portal')).default
+      
+      await Promise.allSettled([
+        db.delete().then(() => console.log('✅ Wiped StaffOfflineDB')),
+        parentDb.delete().then(() => console.log('✅ Wiped ParentPortalOfflineDB'))
+      ])
+    }
+  } catch (error) {
+    console.warn('⚠️ Database cleanup skipped:', error.message)
+  }
+})()
 
 // Set up offline route error handler
 window.__showOfflineRouteError = () => {
@@ -207,4 +229,10 @@ try {
 } catch (_) {}
 
 // Initialize chat offline syncing (flush queued messages when back online)
-try { initializeChatOfflineSync() } catch (_) {}
+// Lazy-loaded to prevent ParentPortalOfflineDB from being created for admin users
+;(async () => {
+  try {
+    const { initializeChatOfflineSync } = await import('@/services/offline/chatOffline')
+    initializeChatOfflineSync()
+  } catch (_) {}
+})()

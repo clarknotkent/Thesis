@@ -1,14 +1,37 @@
 /**
- * API Cache Interceptor for Parent Portal Offline Support
+ * API Cache Interceptor - Supports both Parent Portal and Admin/Staff offline access
  * 
- * Automatically caches API responses to IndexedDB for offline access.
- * Simple rule: If response succeeds, cache it.
+ * Parent Portal: Full offline functionality with nested data
+ * Admin/Staff: Read-only cache for patients and inventory
  * 
- * New: Detects write operations (POST/PUT/DELETE) and triggers smart recaching
+ * Security: Admin/Staff data is wiped on logout
+ * 
+ * IMPORTANT: Parent database is lazy-loaded to prevent ParentPortalOfflineDB 
+ * from being created when Admin users log in
  */
 
-import db from './db-parent-portal'
-import { recacheAfterWrite } from './parentLoginPrefetch'
+import { db as staffDb } from './db' // StaffOfflineDB (Admin + HealthStaff)
+import { getRole } from '../auth' // Import role checker
+
+// Lazy-loaded parent modules (only when guardian/parent role accesses them)
+let parentDb = null
+let recacheAfterWrite = null
+
+// Lazy loader for parent database
+async function ensureParentDb() {
+  if (!parentDb) {
+    parentDb = (await import('./db-parent-portal')).default
+  }
+  return parentDb
+}
+
+// Lazy loader for parent recache function
+async function ensureRecacheAfterWrite() {
+  if (!recacheAfterWrite) {
+    recacheAfterWrite = (await import('./parentLoginPrefetch')).recacheAfterWrite
+  }
+  return recacheAfterWrite
+}
 
 // Performance tuning
 const CHUNK_SIZE = 500
@@ -20,6 +43,7 @@ const CHUNK_SIZE = 500
  * Returns { total, batches }
  */
 async function bulkPutChunked(table, records, typeLabel) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const total = records.length
   if (total === 0) return { total: 0, batches: 0 }
   if (total <= CHUNK_SIZE) {
@@ -70,8 +94,38 @@ export function installCacheInterceptor(apiInstance) {
       
       return response
     },
-    (error) => {
-      // Pass through errors unchanged
+    async (error) => {
+      // Check if this is a network error and the request was a GET
+      const isNetworkError = error.code === 'ERR_NETWORK' || !error.response
+      const isGetRequest = error.config?.method?.toLowerCase() === 'get'
+      
+      if (isNetworkError && isGetRequest) {
+        console.log(`🔌 Offline detected for ${error.config.url} - checking cache...`)
+        
+        try {
+          const cachedData = await getCachedData(error.config.url)
+          
+          if (cachedData) {
+            console.log(`✅ Serving from offline cache: ${error.config.url}`)
+            
+            // Return a mock response object that looks like an Axios response
+            return {
+              data: cachedData,
+              status: 200,
+              statusText: 'OK (from cache)',
+              headers: {},
+              config: error.config,
+              fromCache: true
+            }
+          } else {
+            console.warn(`❌ No cached data for ${error.config.url}`)
+          }
+        } catch (cacheError) {
+          console.error('Cache retrieval failed:', cacheError)
+        }
+      }
+      
+      // If not a network error or no cache available, pass through error
       return Promise.reject(error)
     }
   )
@@ -81,12 +135,23 @@ export function installCacheInterceptor(apiInstance) {
 
 /**
  * Handle write operations - trigger smart recaching
+ * Only runs for parent/guardian roles
  */
 async function handleWriteOperation(response) {
+  const userRole = getRole()
+  
+  // Only handle writes for parent/guardian roles (not admin/staff)
+  if (userRole !== 'guardian' && userRole !== 'parent') {
+    return
+  }
+  
   const url = response.config.url
   const method = response.config.method?.toLowerCase()
   
   console.log(`🔄 Write operation detected: ${method.toUpperCase()} ${url}`)
+  
+  // Lazy load recache function
+  const recache = await ensureRecacheAfterWrite()
   
   // Get user info for recaching
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || 'null')
@@ -102,26 +167,26 @@ async function handleWriteOperation(response) {
   // Determine resource type and trigger recaching
   if (/\/immunizations/.test(url) || /\/vaccinations/.test(url)) {
     if (patientId) {
-      await recacheAfterWrite('immunization', patientId, guardianId, userId)
+      await recache('immunization', patientId, guardianId, userId)
     }
   }
   else if (/\/visits/.test(url)) {
     if (patientId) {
-      await recacheAfterWrite('visit', patientId, guardianId, userId)
+      await recache('visit', patientId, guardianId, userId)
     }
   }
   else if (/\/patients/.test(url)) {
     if (patientId) {
-      await recacheAfterWrite('patient', patientId, guardianId, userId)
+      await recache('patient', patientId, guardianId, userId)
     }
   }
   else if (/\/patientschedule/.test(url) || /\/schedule/.test(url)) {
     if (patientId) {
-      await recacheAfterWrite('schedule', patientId, guardianId, userId)
+      await recache('schedule', patientId, guardianId, userId)
     }
   }
   else if (/\/notifications/.test(url)) {
-    await recacheAfterWrite('notification', null, guardianId, userId)
+    await recache('notification', null, guardianId, userId)
   }
     else if (/\/conversations(\?|$)/.test(url)) {
       await cacheConversations(response.data)
@@ -133,6 +198,7 @@ async function handleWriteOperation(response) {
 
 /**
  * Main caching logic - routes responses to appropriate handlers
+ * Now supports both Parent Portal and Admin/Staff caching
  */
 async function cacheResponse(response) {
   const url = response.config.url
@@ -141,44 +207,157 @@ async function cacheResponse(response) {
   // Skip empty responses
   if (!data) return
   
-  // Route to appropriate cache handler based on URL pattern
+  // Get current user role
+  const userRole = getRole()
+  console.log(`[Cache Interceptor] URL: ${url}, Role: ${userRole}`)
+  
+  // --- ADMIN/STAFF "CACHE-ON-READ" LOGIC ---
+  // Cache patients and inventory for admin/healthstaff roles
+  if (userRole === 'admin' || userRole === 'healthstaff') {
+    console.log(`[Admin/Staff] Checking URL for caching: ${url}`)
+    
+    // Match patient list endpoint: /patients or /patients?query (but not /patients/123 or /patients/stats)
+    if (/^\/patients(\?|$)/.test(url)) {
+      console.log(`[Admin/Staff] Caching patients list from ${url}`)
+      try {
+        await cacheStaffPatients(data)
+      } catch (error) {
+        console.error(`[Admin/Staff] Cache error for patients:`, error)
+      }
+      return
+    }
+    
+    // Match single patient endpoint: /patients/123 (numeric ID only)
+    if (/^\/patients\/\d+$/.test(url)) {
+      console.log(`[Admin/Staff] Caching single patient from ${url}`)
+      try {
+        await cacheStaffPatients(data)
+      } catch (error) {
+        console.error(`[Admin/Staff] Cache error for patient:`, error)
+      }
+      return
+    }
+    
+    // Match inventory endpoints
+    if (/^\/inventory/.test(url) || /^\/vaccine-stocks/.test(url) || /^\/vaccines\/inventory/.test(url)) {
+      console.log(`[Admin/Staff] Caching inventory from ${url}`)
+      try {
+        await cacheStaffInventory(data)
+      } catch (error) {
+        console.error(`[Admin/Staff] Cache error for inventory:`, error)
+      }
+      return
+    }
+    
+    // CRITICAL: Early return to prevent admin from caching to parent DB
+    return
+  }
+  
+  // --- PARENT PORTAL LOGIC (Existing) ---
+  // Original parent portal caching continues below
+  // Only executes if role is guardian/parent (admin returned above)
+  if (userRole === 'guardian' || userRole === 'parent') {
     if (/\/patients\/\d+$/.test(url)) {
-    await cachePatientDetails(data)
-  }
-  else if (/\/patients(\?|$)/.test(url)) {
-    await cachePatientList(data)
-  }
-  else if (/\/immunizations/.test(url) || /\/vaccinations/.test(url)) {
-    await cacheImmunizations(data)
-  }
-  else if (/\/visits/.test(url)) {
-    await cacheVisits(data)
-  }
-  else if (/\/vitalsigns/.test(url) || /\/vitals/.test(url)) {
-    await cacheVitals(data)
-  }
-  else if (/\/patientschedule/.test(url) || /\/schedule/.test(url)) {
-     await cacheSchedule(response)
-  }
-  else if (/\/notifications/.test(url)) {
-    await cacheNotifications(data)
-  }
-  else if (/\/vaccines/.test(url) || /\/vaccinemaster/.test(url)) {
-    await cacheVaccineMaster(data)
-  }
-  else if (/\/conversations(\?|$)/.test(url)) {
-    await cacheConversations(data)
-  }
-  else if (/\/messages\//.test(url)) {
-    await cacheMessages(data)
-  }
-  else if (/\/faqs(\?|$)/.test(url)) {
-    await cacheFaqs(data)
+      await cachePatientDetails(data)
+    }
+    else if (/\/patients(\?|$)/.test(url)) {
+      await cachePatientList(data)
+    }
+    else if (/\/immunizations/.test(url) || /\/vaccinations/.test(url)) {
+      await cacheImmunizations(data)
+    }
+    else if (/\/visits/.test(url)) {
+      await cacheVisits(data)
+    }
+    else if (/\/vitalsigns/.test(url) || /\/vitals/.test(url)) {
+      await cacheVitals(data)
+    }
+    else if (/\/patientschedule/.test(url) || /\/schedule/.test(url)) {
+       await cacheSchedule(response)
+    }
+    else if (/\/notifications/.test(url)) {
+      await cacheNotifications(data)
+    }
+    else if (/\/vaccines/.test(url) || /\/vaccinemaster/.test(url)) {
+      await cacheVaccineMaster(data)
+    }
+    else if (/\/conversations(\?|$)/.test(url)) {
+      await cacheConversations(data)
+    }
+    else if (/\/messages\//.test(url)) {
+      await cacheMessages(data)
+    }
+    else if (/\/faqs(\?|$)/.test(url)) {
+      await cacheFaqs(data)
+    }
   }
 }
 
 // ========================================
-// CACHE HANDLERS FOR EACH DATA TYPE
+// ADMIN/STAFF CACHE HANDLERS
+// ========================================
+
+/**
+ * Cache patients for Admin/Staff (simplified, read-only)
+ */
+async function cacheStaffPatients(data) {
+  const patients = Array.isArray(data) ? data : (data.data || [data])
+  if (!Array.isArray(patients) || patients.length === 0) return
+  
+  const formatted = patients
+    .filter(p => p && p.patient_id)
+    .map(p => ({
+      patient_id: p.patient_id,
+      surname: p.surname,
+      firstname: p.firstname,
+      middlename: p.middlename,
+      full_name: p.full_name || `${p.firstname || ''} ${p.middlename || ''} ${p.surname || ''}`.trim(),
+      sex: p.sex,
+      date_of_birth: p.date_of_birth,
+      address: p.address,
+      barangay: p.barangay,
+      health_center: p.health_center,
+      status: p.status,
+      tags: p.tags,
+      family_number: p.family_number
+    }))
+  
+  if (formatted.length > 0) {
+    await staffDb.patients.bulkPut(formatted)
+    console.log(`✅ [Admin/Staff] Cached ${formatted.length} patients`)
+  }
+}
+
+/**
+ * Cache inventory for Admin/Staff (simplified, read-only)
+ */
+async function cacheStaffInventory(data) {
+  const inventory = Array.isArray(data) ? data : (data.data || [data])
+  if (!Array.isArray(inventory) || inventory.length === 0) return
+  
+  const formatted = inventory
+    .filter(i => i && i.id)
+    .map(i => ({
+      id: i.id,
+      vaccine_id: i.vaccine_id,
+      vaccine_name: i.vaccine_name,
+      lot_no: i.lot_no,
+      batch_no: i.batch_no,
+      quantity: i.quantity,
+      expiry_date: i.expiry_date,
+      manufacturer: i.manufacturer,
+      location: i.location,
+      status: i.status
+    }))
+  
+  if (formatted.length > 0) {
+    await staffDb.inventory.bulkPut(formatted)
+    console.log(`✅ [Admin/Staff] Cached ${formatted.length} inventory items`)
+  }
+}
+
+// ========================================
+// PARENT PORTAL CACHE HANDLERS (Existing)
 // ========================================
 
 /**
@@ -186,6 +365,7 @@ async function cacheResponse(response) {
  * Handles /patients/:id endpoint response
  */
 async function cachePatientDetails(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const patient = response?.data || response
   if (!patient || !patient.patient_id) return
 
@@ -356,6 +536,7 @@ async function cachePatientDetails(response) {
  * Handles /patients or /parent/children endpoint
  */
 async function cachePatientList(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const patients = response.data || response.items || response
   if (!Array.isArray(patients) || patients.length === 0) return
   const formatted = []
@@ -392,6 +573,7 @@ async function cachePatientList(response) {
  * Cache immunization records
  */
 async function cacheImmunizations(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const immunizations = response.data || response.items || response
   if (!Array.isArray(immunizations) || immunizations.length === 0) return
   const out = []
@@ -436,6 +618,7 @@ async function cacheImmunizations(response) {
  * Cache visit records (medical history)
  */
 async function cacheVisits(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const visits = response.data || response.items || response
   if (!Array.isArray(visits) || visits.length === 0) return
   const out = []
@@ -464,6 +647,7 @@ async function cacheVisits(response) {
  * Cache vital signs (growth monitoring)
  */
 async function cacheVitals(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const vitalsRaw = response.data || response.items || response
   if (!vitalsRaw) return
   const list = Array.isArray(vitalsRaw) ? vitalsRaw : [vitalsRaw]
@@ -493,6 +677,7 @@ async function cacheVitals(response) {
  * Cache patient schedule (upcoming vaccinations)
  */
 async function cacheSchedule(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   // response can be either the axios response (with config/url) or raw data
   const url = response?.config?.url || ''
   const raw = response?.data || response?.items || response
@@ -543,6 +728,7 @@ async function cacheSchedule(response) {
  * Cache notifications
  */
 async function cacheNotifications(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const notifications = response.data || response.items || response
   if (!Array.isArray(notifications) || notifications.length === 0) return
   const formatted = []
@@ -576,6 +762,7 @@ async function cacheNotifications(response) {
  * Cache vaccine master data (reference catalog)
  */
 async function cacheVaccineMaster(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const vaccines = response.data || response.items || response
   if (!Array.isArray(vaccines) || vaccines.length === 0) return
   const formatted = []
@@ -604,6 +791,7 @@ async function cacheVaccineMaster(response) {
  * Cache conversations list
  */
 async function cacheConversations(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const conversations = response.data || response.items || response
   if (!Array.isArray(conversations) || conversations.length === 0) return
   const formatted = []
@@ -629,6 +817,7 @@ async function cacheConversations(response) {
  * Cache messages for a conversation
  */
 async function cacheMessages(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   const messages = response.data || response.items || response
   if (!Array.isArray(messages) || messages.length === 0) return
   const formatted = []
@@ -655,6 +844,7 @@ async function cacheMessages(response) {
  * Cache FAQs for offline
  */
 async function cacheFaqs(response) {
+  const db = await ensureParentDb() // Lazy load parent DB
   let faqs = response.data || response.items || response
   if (!Array.isArray(faqs)) {
     if (Array.isArray(response?.data?.items)) faqs = response.data.items
@@ -679,4 +869,235 @@ async function cacheFaqs(response) {
   } catch (_) {}
 }
 
+// ========================================
+// OFFLINE FALLBACK - GET CACHED DATA
+// ========================================
+
+/**
+ * Retrieve cached data when offline
+ * Supports both Admin/Staff (StaffOfflineDB) and Parent Portal (ParentPortalOfflineDB)
+ */
+async function getCachedData(url) {
+  const userRole = getRole()
+  
+  // --- ADMIN/STAFF OFFLINE READS ---
+  if (userRole === 'admin' || userRole === 'healthstaff') {
+    console.log(`[Admin/Staff Offline] Checking cache for: ${url}`)
+    
+    // Patient list: /patients or /patients?status=not_archived
+    if (/^\/patients(\?|$)/.test(url)) {
+      try {
+        const allPatients = await staffDb.patients.toArray()
+        console.log(`[Admin/Staff Offline] Found ${allPatients.length} cached patients`)
+        
+        // Return in same format as API (paginated response)
+        return {
+          data: allPatients,
+          items: allPatients,
+          pagination: {
+            total: allPatients.length,
+            page: 1,
+            limit: allPatients.length,
+            pages: 1
+          }
+        }
+      } catch (error) {
+        console.error('[Admin/Staff Offline] Error reading patients cache:', error)
+        return null
+      }
+    }
+    
+    // Patient stats: /patients/stats
+    if (/^\/patients\/stats/.test(url)) {
+      try {
+        const allPatients = await staffDb.patients.toArray()
+        const total = allPatients.length
+        const active = allPatients.filter(p => p.status === 'not_archived').length
+        
+        console.log(`[Admin/Staff Offline] Returning stats from ${total} cached patients`)
+        return {
+          total,
+          active,
+          archived: total - active
+        }
+      } catch (error) {
+        console.error('[Admin/Staff Offline] Error calculating stats:', error)
+        return null
+      }
+    }
+    
+    // Single patient: /patients/123
+    const patientIdMatch = url.match(/^\/patients\/(\d+)$/)
+    if (patientIdMatch) {
+      const patientId = parseInt(patientIdMatch[1])
+      try {
+        const patient = await staffDb.patients.get(patientId)
+        console.log(`[Admin/Staff Offline] Found patient ${patientId}:`, patient ? 'YES' : 'NO')
+        return patient || null
+      } catch (error) {
+        console.error('[Admin/Staff Offline] Error reading single patient:', error)
+        return null
+      }
+    }
+    
+    // Inventory: /inventory or /vaccines/inventory
+    if (/^\/inventory/.test(url) || /^\/vaccine-stocks/.test(url) || /^\/vaccines\/inventory/.test(url)) {
+      try {
+        const inventory = await staffDb.inventory.toArray()
+        console.log(`[Admin/Staff Offline] Found ${inventory.length} inventory items`)
+        return {
+          data: inventory,
+          items: inventory
+        }
+      } catch (error) {
+        console.error('[Admin/Staff Offline] Error reading inventory cache:', error)
+        return null
+      }
+    }
+    
+    return null // No cache match for admin/staff
+  }
+  
+  // --- PARENT PORTAL OFFLINE READS ---
+  if (userRole === 'guardian' || userRole === 'parent') {
+    const db = await ensureParentDb()
+    console.log(`[Parent Offline] Checking cache for: ${url}`)
+    
+    // Patient list: /patients
+    if (/^\/patients(\?|$)/.test(url)) {
+      try {
+        const patients = await db.patients.toArray()
+        console.log(`[Parent Offline] Found ${patients.length} cached patients`)
+        return { data: patients }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading patients:', error)
+        return null
+      }
+    }
+    
+    // Single patient: /patients/123
+    const patientIdMatch = url.match(/^\/patients\/(\d+)$/)
+    if (patientIdMatch) {
+      const patientId = parseInt(patientIdMatch[1])
+      try {
+        const patient = await db.patients.get(patientId)
+        console.log(`[Parent Offline] Found patient ${patientId}:`, patient ? 'YES' : 'NO')
+        return patient || null
+      } catch (error) {
+        console.error('[Parent Offline] Error reading single patient:', error)
+        return null
+      }
+    }
+    
+    // Immunizations: /immunizations or /patients/123/immunizations
+    if (/\/immunizations/.test(url)) {
+      try {
+        let immunizations
+        const patientIdFromUrl = url.match(/\/patients\/(\d+)\/immunizations/)
+        
+        if (patientIdFromUrl) {
+          const patientId = parseInt(patientIdFromUrl[1])
+          immunizations = await db.immunizations.where('patient_id').equals(patientId).toArray()
+        } else {
+          immunizations = await db.immunizations.toArray()
+        }
+        
+        console.log(`[Parent Offline] Found ${immunizations.length} cached immunizations`)
+        return { data: immunizations }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading immunizations:', error)
+        return null
+      }
+    }
+    
+    // Visits: /visits or /patients/123/visits
+    if (/\/visits/.test(url)) {
+      try {
+        let visits
+        const patientIdFromUrl = url.match(/\/patients\/(\d+)\/visits/)
+        
+        if (patientIdFromUrl) {
+          const patientId = parseInt(patientIdFromUrl[1])
+          visits = await db.visits.where('patient_id').equals(patientId).toArray()
+        } else {
+          visits = await db.visits.toArray()
+        }
+        
+        console.log(`[Parent Offline] Found ${visits.length} cached visits`)
+        return { data: visits }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading visits:', error)
+        return null
+      }
+    }
+    
+    // Notifications: /notifications
+    if (/^\/notifications/.test(url)) {
+      try {
+        const notifications = await db.notifications.toArray()
+        console.log(`[Parent Offline] Found ${notifications.length} cached notifications`)
+        return { data: notifications }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading notifications:', error)
+        return null
+      }
+    }
+    
+    // Conversations: /conversations
+    if (/^\/conversations/.test(url)) {
+      try {
+        const conversations = await db.conversations.toArray()
+        console.log(`[Parent Offline] Found ${conversations.length} cached conversations`)
+        return { data: conversations }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading conversations:', error)
+        return null
+      }
+    }
+    
+    // Messages: /messages/123
+    const conversationIdMatch = url.match(/^\/messages\/(\d+)/)
+    if (conversationIdMatch) {
+      const conversationId = parseInt(conversationIdMatch[1])
+      try {
+        const messages = await db.messages.where('conversation_id').equals(conversationId).toArray()
+        console.log(`[Parent Offline] Found ${messages.length} cached messages for conversation ${conversationId}`)
+        return { data: messages }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading messages:', error)
+        return null
+      }
+    }
+    
+    // FAQs: /faqs
+    if (/^\/faqs/.test(url)) {
+      try {
+        const faqs = await db.faqs.toArray()
+        console.log(`[Parent Offline] Found ${faqs.length} cached FAQs`)
+        return { data: faqs }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading FAQs:', error)
+        return null
+      }
+    }
+    
+    // Guardians: /guardians
+    if (/^\/guardians/.test(url)) {
+      try {
+        const guardians = await db.guardians.toArray()
+        console.log(`[Parent Offline] Found ${guardians.length} cached guardians`)
+        return { data: guardians }
+      } catch (error) {
+        console.error('[Parent Offline] Error reading guardians:', error)
+        return null
+      }
+    }
+    
+    return null // No cache match for parent portal
+  }
+  
+  return null // No role match
+}
+
 export default { installCacheInterceptor }
+

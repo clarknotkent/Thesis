@@ -1,9 +1,12 @@
 /**
  * Composable for managing patient details page logic
  * Handles patient data loading, vaccination history, scheduled vaccinations, and medical history
+ * 
+ * NEW: Includes offline fallback for Admin/Staff read-only access
  */
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { db } from '@/services/offline/db' // StaffOfflineDB (Admin + HealthStaff)
 
 export function usePatientDetails(patientId) {
   // State
@@ -177,6 +180,8 @@ export function usePatientDetails(patientId) {
   const fetchPatientDetails = async (id = patientId) => {
     try {
       loading.value = true
+      
+      // ONLINE PATH: Fetch from API
       const response = await api.get(`/patients/${id}`)
       
       // Map backend data to frontend format
@@ -228,9 +233,55 @@ export function usePatientDetails(patientId) {
       
       // Fetch medical history (visits)
       await fetchMedicalHistory(id)
+      
+      console.log('✅ Fetched patient details from API (Online)')
+      
     } catch (error) {
-      console.error('Error fetching patient details:', error)
-      throw error
+      console.warn('⚠️ API fetch failed. Attempting to load from local cache.', error)
+      
+      // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
+      try {
+        const cachedPatient = await db.patients.get(Number(id))
+        
+        if (cachedPatient) {
+          patient.value = {
+            id: cachedPatient.patient_id,
+            patient_id: cachedPatient.patient_id,
+            childInfo: {
+              name: cachedPatient.full_name || `${cachedPatient.firstname} ${cachedPatient.surname}`.trim(),
+              firstName: cachedPatient.firstname,
+              middleName: cachedPatient.middlename,
+              lastName: cachedPatient.surname,
+              birthDate: cachedPatient.date_of_birth,
+              sex: cachedPatient.sex,
+              address: cachedPatient.address,
+              barangay: cachedPatient.barangay
+            },
+            motherInfo: {},
+            fatherInfo: {},
+            guardianInfo: {},
+            birthHistory: {},
+            health_center: cachedPatient.health_center,
+            tags: cachedPatient.tags,
+            dateRegistered: null,
+            age_months: null,
+            age_days: null
+          }
+          
+          // No vaccination/medical history in offline cache
+          vaccinationHistory.value = []
+          scheduledVaccinations.value = []
+          medicalHistory.value = []
+          
+          console.log(`✅ Successfully loaded patient ${id} from local cache (Offline)`)
+        } else {
+          console.log(`ℹ️ Patient ${id} not found in cache.`)
+          throw new Error('Patient not found in offline cache')
+        }
+      } catch (dbError) {
+        console.error('❌ Error reading from local cache:', dbError)
+        throw dbError
+      }
     } finally {
       loading.value = false
     }

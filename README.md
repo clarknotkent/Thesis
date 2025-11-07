@@ -2,6 +2,19 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
+> ⚠️ **November 7, 2025 - OFFLINE MODE REFACTORING (WORK IN PROGRESS)**
+>
+> **Major Architecture Changes - Known Issues Present:**
+> - 🔄 **Complete offline system refactored** with separated databases for Admin/Staff vs Parent Portal
+> - 🛡️ **Security fix**: Prevented parent database from loading for Admin/Staff users
+> - ⚡ **Automatic prefetch**: Admin/Staff data now cached on login (patients + inventory)
+> - 🔌 **Offline fallback**: Network error handler with cache fallback implemented
+> - ❌ **CRITICAL BUG**: Cache is empty - data not being saved during online browsing
+> - ⚠️ **Multiple bugs affecting all 3 user types** (Admin, Staff, Parent) - offline mode non-functional
+> - 🚧 **Testing Required**: Extensive debugging needed before production deployment
+>
+> **DO NOT USE IN PRODUCTION** - See CHANGELOG.md for complete bug list and status
+>
 > 🎨 **November 7, 2025 - User Accounts Enhancement**
 >
 > **Accurate User Statistics:**

@@ -194,7 +194,7 @@ import VaccineServiceFormModal from '@/features/health-worker/patients/component
 import { usePatientImmunizationForm } from '@/features/health-worker/patients/composables'
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
-import db from '@/services/offline/db'
+// NOTE: No direct DB import needed - caching handled by API interceptor
 import api from '@/services/api'
 
 const router = useRouter()

@@ -6,6 +6,217 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ## [system-prototype-v4] - 2025-11-07
 
+### ⚠️ KNOWN ISSUES: Offline Mode Refactoring (November 7, 2025)
+
+**Major Refactoring - Work In Progress:**
+The offline system has been completely refactored with significant architectural improvements. However, multiple bugs affecting all user types have been identified during testing.
+
+### 🔄 Major Changes
+
+**Admin/Staff Offline Architecture:**
+- **NEW**: Introduced `StaffOfflineDB` - Separate IndexedDB database for Admin and Health Staff
+  - Renamed from `AdminOfflineDB` for clarity (both roles use same database)
+  - Includes patients and inventory tables only (read-only offline access)
+  - Database automatically wiped on logout for security
+  - Data cached automatically via API response interceptor
+
+**Security Enhancements:**
+- **CRITICAL FIX**: Prevented `ParentPortalOfflineDB` from initializing for Admin/Staff users
+  - Fixed static imports causing parent database to load for all roles
+  - Implemented lazy loading pattern for parent database modules
+  - Added role checks in `useAuth.js` before calling `initializeOffline()`
+  - Only parent/guardian roles now trigger parent database initialization
+
+**Automatic Data Prefetch:**
+- **NEW**: Admin/Staff data automatically cached on login
+  - Patients list (up to 1000 records) fetched and cached
+  - Vaccine inventory automatically cached
+  - Created `staffLoginPrefetch.js` service for background data loading
+  - Integrated into login flow via `useAuth.js`
+
+**Offline Fallback System:**
+- **NEW**: Network error handler with cache fallback
+  - Added `getCachedData()` function to serve data when offline
+  - Supports both Admin/Staff (`StaffOfflineDB`) and Parent Portal (`ParentPortalOfflineDB`)
+  - Returns cached data as mock Axios response when network fails
+  - Handles URL pattern matching for different endpoints
+
+### 🐛 Known Bugs
+
+**Critical Issues Affecting All Users:**
+
+1. **No Cached Data Available:**
+   - **Symptom**: `❌ No cached data for /patients` error when offline
+   - **Cause**: Cache is empty - data not being saved during online browsing
+   - **Impact**: Offline mode completely non-functional
+   - **Status**: ⚠️ **UNRESOLVED** - Cache population failing
+
+2. **Admin Patient Records:**
+   - **Symptom**: Patient list fails to load when offline
+   - **Expected**: Should load from `StaffOfflineDB.patients` table
+   - **Status**: ⚠️ **UNRESOLVED** - Cache read/write issue
+
+3. **Admin Inventory:**
+   - **Symptom**: Inventory fails to load when offline
+   - **Expected**: Should load from `StaffOfflineDB.inventory` table
+   - **Status**: ⚠️ **UNRESOLVED** - Cache read/write issue
+
+4. **Guardian/Guardians Endpoint:**
+   - **Symptom**: `/guardians` endpoint not cached
+   - **Impact**: ViewPatient page fails offline
+   - **Status**: ⚠️ **UNRESOLVED** - Missing cache handler
+
+5. **Patient Stats Endpoint:**
+   - **Symptom**: `/patients/stats` endpoint not cached
+   - **Impact**: Statistics cards fail to load offline
+   - **Status**: ⚠️ **UNRESOLVED** - Missing cache handler
+
+### ✨ Added (Completed in This Release)
+
+**New Files:**
+- `frontend/src/services/offline/staffLoginPrefetch.js` - Automatic data prefetch for staff
+  - `prefetchStaffData()` - Fetches all patients and inventory
+  - `getStaffCacheStats()` - Returns cache statistics
+  
+**Enhanced Files:**
+- `frontend/src/services/offline/apiCacheInterceptor.js`:
+  - Added offline error handler with cache fallback
+  - Added `getCachedData()` function for reading cached data
+  - Supports Admin/Staff and Parent Portal offline reads
+  - Handles URL pattern matching for different endpoints
+  
+- `frontend/src/composables/useAuth.js`:
+  - Added role check before `initializeOffline()` call
+  - Integrated `prefetchStaffData()` for Admin/Staff roles
+  - Only calls parent offline init for guardian/parent roles
+
+**Database Separation:**
+- `StaffOfflineDB` - Admin + Health Staff (patients, inventory)
+- `ParentPortalOfflineDB` - Guardian/Parent (9+ tables with nested data)
+
+### 🔄 Changed
+
+**File Renamings:**
+- All references to `AdminOfflineDB` changed to `StaffOfflineDB` (8+ files)
+- Updated console logs and comments to reflect new naming
+- Updated import paths across composables and services
+
+**Lazy Loading Implementation:**
+- `main.js`: Lazy-loaded `chatOffline` module
+- `services/offline/index.js`: Lazy-loaded parent database
+- `apiCacheInterceptor.js`: All parent cache functions use `ensureParentDb()`
+- Prevents parent database from loading for non-parent users
+
+**API Interceptor Updates:**
+- Modified error handler to check cache before rejecting
+- Added network error detection (`ERR_NETWORK`, `ERR_INTERNET_DISCONNECTED`)
+- Returns mock response with `fromCache: true` flag
+- Supports GET requests only (read-only offline access)
+
+### 🗑️ Removed
+
+**Security Risk Elimination:**
+- Removed static imports of `db-parent-portal` from:
+  - `main.js` (chatOffline import)
+  - `services/offline/index.js` (db import)
+- Removed unconditional `initializeOffline()` call from `useAuth.js`
+
+### 📊 Testing Status
+
+**Build Status:**
+- ✅ Frontend builds successfully (no compilation errors)
+- ✅ Backend starts without errors
+- ❌ Offline functionality not working (cache empty)
+
+**Manual Testing Required:**
+1. ⚠️ Login as Admin → Verify prefetch runs → Check IndexedDB for cached data
+2. ⚠️ Go offline → Navigate to Patient Records → Verify loads from cache
+3. ⚠️ Go offline → Navigate to Inventory → Verify loads from cache
+4. ⚠️ Login as Parent → Verify only `ParentPortalOfflineDB` exists
+5. ⚠️ Login as Admin → Verify only `StaffOfflineDB` exists
+
+### 🎯 Expected Behavior (When Fixed)
+
+**Admin/Staff Offline Flow:**
+1. Login → `prefetchStaffData()` runs automatically
+2. Console shows: "📥 Fetching all patients..." and "📥 Fetching vaccine inventory..."
+3. IndexedDB populated with patients and inventory
+4. Go offline → Navigate pages → Data loads from cache instantly
+5. Console shows: "🔌 Offline detected" and "✅ Serving from offline cache"
+
+**Parent Offline Flow:**
+1. Login → `initializeOffline()` runs (only for guardian/parent)
+2. `ParentPortalOfflineDB` created and populated
+3. Go offline → All parent features work from cache
+4. No `StaffOfflineDB` exists in DevTools
+
+### 🔜 Next Steps
+
+**Immediate Priorities:**
+1. **Investigate Cache Population Issue** - Why is data not being saved?
+2. **Fix Staff Prefetch** - Ensure `prefetchStaffData()` actually caches data
+3. **Add Missing Cache Handlers** - Support `/guardians` and `/patients/stats`
+4. **Test All Offline Scenarios** - Verify each user role works offline
+5. **Add Cache Statistics UI** - Show users what data is cached
+6. **Implement Cache Refresh** - Allow manual cache updates
+
+**Technical Debt:**
+- Add comprehensive error handling for cache operations
+- Implement cache versioning for schema changes
+- Add cache size monitoring and cleanup
+- Create cache migration system for updates
+
+### ⚠️ Developer Notes
+
+**DO NOT MERGE TO PRODUCTION**:
+- Multiple critical bugs unresolved
+- Offline functionality not working as intended
+- Cache population mechanism failing
+- Requires extensive testing before deployment
+
+**Testing Instructions:**
+1. Clear all browser data (IndexedDB, localStorage, caches)
+2. Hard refresh (Ctrl+Shift+R)
+3. Login as Admin and check console for prefetch logs
+4. Open DevTools → Application → IndexedDB
+5. Verify `StaffOfflineDB` exists and contains data
+6. Go offline and test Patient Records and Inventory pages
+
+**Debugging Tools:**
+```javascript
+// Check cache contents in DevTools console
+const db = new Dexie('StaffOfflineDB')
+db.open().then(() => {
+  db.patients.count().then(count => console.log('Patients cached:', count))
+  db.inventory.count().then(count => console.log('Inventory cached:', count))
+})
+```
+
+### 📚 Files Modified (Summary)
+
+**Backend:** 0 files (no backend changes)
+
+**Frontend:** 9 files
+- `src/services/offline/db.js` - Database name changed
+- `src/services/offline/apiCacheInterceptor.js` - Offline fallback added
+- `src/services/offline/staffLoginPrefetch.js` - NEW FILE
+- `src/services/offline/index.js` - Lazy loading
+- `src/services/auth.js` - Comment updates
+- `src/composables/useAuth.js` - Role checks + prefetch
+- `src/main.js` - Lazy loading
+- All composables (usePatientList, usePatientDetails, useVaccineInventory) - Import updates
+
+### 🎓 Lessons Learned
+
+1. **Lazy Loading Critical**: Static imports execute immediately, causing unwanted side effects
+2. **Role Checks Essential**: Must validate user role before initializing role-specific features
+3. **Testing Important**: Offline functionality requires thorough end-to-end testing
+4. **Cache Debugging**: IndexedDB DevTools essential for debugging cache issues
+
+---
+
+## [system-prototype-v4] - 2025-11-07
+
 ### 🎨 User Accounts Page Enhancement (November 7, 2025)
 
 Enhanced the User Accounts page with accurate statistics, improved labeling, and custom color scheme for better role identification.
