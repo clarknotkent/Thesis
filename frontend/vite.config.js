@@ -226,7 +226,12 @@ export default defineConfig({
       },
       devOptions: {
         enabled: true,
-        type: 'module'
+        type: 'module',
+        // In dev, VitePWA uses a temporary dev-dist folder which usually has no assets
+        // (only the generated sw/workbox files, which are ignored by Workbox). This
+        // triggers a harmless Workbox warning about glob patterns not matching files.
+        // Suppress that noise to keep the console clean during local dev.
+        suppressWarnings: true
       }
     })
   ],

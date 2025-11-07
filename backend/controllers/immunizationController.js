@@ -121,9 +121,28 @@ const createImmunizationRecord = async (req, res) => {
         payload.remarks = 'Outside immunization: please record the administering provider\'s name.';
       }
       // Insert immunization with outside=true and patient_id
-      // IMPORTANT: For outside immunization, administered_by may be null as per policy.
-      // Do not overwrite administered_by automatically here.
+      // IMPORTANT: For outside immunization, administered_by must be null as per policy.
       const insertData = { ...payload, outside: true, vaccine_id: vaccineId };
+      // Policy: outside immunizations must not set administered_by; preserve provider name in remarks instead
+      insertData.administered_by = null;
+
+      // If caller linked this outside immunization to an existing visit, try to attach its vitals
+      // so downstream analytics and visit summaries keep integrity (non-blocking if not found).
+      if (payload.visit_id) {
+        try {
+          const { data: visitVital } = await supabase
+            .from('vitalsigns')
+            .select('vital_id')
+            .eq('visit_id', payload.visit_id)
+            .or('is_deleted.is.null,is_deleted.eq.false')
+            .order('vital_id', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (visitVital && visitVital.vital_id) insertData.vital_id = visitVital.vital_id;
+        } catch (_) {
+          // ignore; keep outside flow resilient
+        }
+      }
       const imm = await immunizationModel.createImmunization(insertData, supabase);
 
       // If vitals provided, create vitalsigns row and update immunization.vital_id
@@ -171,7 +190,7 @@ const createImmunizationRecord = async (req, res) => {
       .from('vitalsigns')
       .select('vital_id')
       .eq('visit_id', visit_id)
-      .eq('is_deleted', false)
+      .or('is_deleted.is.null,is_deleted.eq.false')
       .order('vital_id', { ascending: false })
       .limit(1)
       .maybeSingle();
