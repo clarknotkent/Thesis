@@ -213,7 +213,7 @@ const openVaccineModal = () => { showVaccineForm.value = true }
 const load = async () => {
   try {
     loading.value = true
-    const { patientId, visitId } = route.params
+    const { patientId: _patientId, visitId } = route.params
     const res = await api.get(`/visits/${visitId}`)
     const data = res.data?.data || res.data || null
     visit.value = data
@@ -268,26 +268,6 @@ const save = async () => {
     addToast({ title: 'Error', message: e?.response?.data?.message || e.message || 'Failed to save visit', type: 'error' })
   } finally {
     saving.value = false
-  }
-}
-
-const addDeworming = async () => {
-  try {
-    const { visitId } = route.params
-    await api.post('/deworming', { visit_id: visitId })
-    addToast({ title: 'Deworming Added', message: 'Deworming recorded for this visit', type: 'success' })
-  } catch (e) {
-    addToast({ title: 'Error', message: e?.response?.data?.message || 'Failed to add deworming', type: 'error' })
-  }
-}
-const addVitA = async () => {
-  try {
-    const { visitId } = route.params
-    // For in-facility VitA, backend requires inventory_id; here we let staff add outside-service quickly
-    await api.post('/vitamina', { visit_id: visitId, outside: true })
-    addToast({ title: 'Vitamin A Added', message: 'Vitamin A recorded for this visit', type: 'success' })
-  } catch (e) {
-    addToast({ title: 'Error', message: e?.response?.data?.message || 'Failed to add Vitamin A', type: 'error' })
   }
 }
 

@@ -147,29 +147,6 @@ const handleClick = (notification) => {
 }
 
 onMounted(fetchNotifications)
-
-const getNotificationIcon = (type) => {
-  switch (type) {
-    case 'vaccine': return 'bi bi-syringe'
-    case 'appointment': return 'bi bi-calendar-check'
-    case 'message': return 'bi bi-chat-dots'
-    default: return 'bi bi-info-circle'
-  }
-}
-
-const formatTime = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return date.toLocaleDateString()
-}
 </script>
 
 <style scoped>

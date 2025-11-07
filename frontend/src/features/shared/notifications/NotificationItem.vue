@@ -50,22 +50,24 @@
 <script setup>
 import { computed } from 'vue'
 
+defineEmits(['click', 'delete'])
+
 const props = defineProps({
-  id: [String, Number],
-  title: String,
-  message: String,
+  id: { type: [String, Number], default: null },
+  title: { type: String, default: '' },
+  message: { type: String, default: '' },
   type: { type: String, default: 'system' },
-  time: String, // preformatted time
-  created_at: String, // raw ISO
-  channel: String,
+  time: { type: String, default: null }, // preformatted time
+  createdAt: { type: String, default: null }, // raw ISO
+  channel: { type: String, default: null },
   read: { type: Boolean, default: false },
   showDelete: { type: Boolean, default: false },
 })
 
 const displayTime = computed(() => {
   if (props.time) return props.time
-  if (!props.created_at) return ''
-  const d = new Date(props.created_at)
+  if (!props.createdAt) return ''
+  const d = new Date(props.createdAt)
   // Relative-ish: show "Just now", "xh ago", or date
   const now = new Date()
   const diffMs = now - d
