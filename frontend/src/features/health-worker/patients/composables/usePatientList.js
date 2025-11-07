@@ -1,9 +1,12 @@
 /**
  * Composable for managing patient list with pagination, search, and filtering
  * Handles patient data fetching and transformation
+ * 
+ * NEW: Includes offline fallback for Admin/Staff read-only access
  */
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { db } from '@/services/offline/db' // StaffOfflineDB (Admin + HealthStaff)
 
 export function usePatientList() {
   // State
@@ -110,6 +113,7 @@ export function usePatientList() {
 
   /**
    * Fetch patients with filters and pagination
+   * NEW: Falls back to offline cache if API fails
    */
   const fetchPatients = async (searchQuery = '', activeFilters = {}) => {
     try {
@@ -136,7 +140,7 @@ export function usePatientList() {
         params.barangay = activeFilters.barangay
       }
 
-      // Make API request
+      // ONLINE PATH: Make API request
       const response = await api.get('/patients', { params })
       const payload = response.data?.data || response.data || {}
       const patientsData = payload.patients || payload.items || payload || []
@@ -154,10 +158,67 @@ export function usePatientList() {
       } catch (_) {
         // Ignore enrichment errors
       }
+      
+      console.log('✅ Fetched patients from API (Online)')
 
     } catch (error) {
-      console.error('Error fetching patients:', error)
-      patients.value = []
+      console.warn('⚠️ API fetch failed. Attempting to load from local cache.', error)
+      
+      // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
+      try {
+        const cachedPatients = await db.patients.toArray()
+        
+        if (cachedPatients.length > 0) {
+          // Transform cached data to expected format
+          patients.value = cachedPatients.map(p => ({
+            id: p.patient_id,
+            patient_id: p.patient_id,
+            childInfo: {
+              name: p.full_name || `${p.firstname} ${p.surname}`.trim(),
+              firstName: p.firstname,
+              middleName: p.middlename,
+              lastName: p.surname,
+              birthDate: p.date_of_birth,
+              sex: p.sex,
+              address: p.address,
+              barangay: p.barangay
+            },
+            motherInfo: {},
+            fatherInfo: {},
+            guardianInfo: {},
+            vaccinationHistory: [],
+            tags: p.tags,
+            dateRegistered: null,
+            age_months: null,
+            age_days: null
+          }))
+          
+          // Apply basic client-side filtering if search query exists
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            patients.value = patients.value.filter(p => 
+              p.childInfo.name?.toLowerCase().includes(query) ||
+              p.childInfo.firstName?.toLowerCase().includes(query) ||
+              p.childInfo.lastName?.toLowerCase().includes(query)
+            )
+          }
+          
+          totalItems.value = patients.value.length
+          totalPages.value = Math.ceil(patients.value.length / itemsPerPage.value)
+          
+          console.log(`✅ Successfully loaded ${patients.value.length} patients from local cache (Offline)`)
+        } else {
+          console.log('ℹ️ No cached patients found.')
+          patients.value = []
+          totalItems.value = 0
+          totalPages.value = 0
+        }
+      } catch (dbError) {
+        console.error('❌ Error reading from local cache:', dbError)
+        patients.value = []
+        totalItems.value = 0
+        totalPages.value = 0
+      }
     } finally {
       loading.value = false
     }

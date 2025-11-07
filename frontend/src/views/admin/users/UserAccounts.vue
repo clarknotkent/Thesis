@@ -60,11 +60,17 @@
 
         <!-- Admins -->
         <div class="col-md">
-          <div class="card border border-3 shadow h-100 py-2" style="border-color: #601FC2 !important;">
+          <div
+            class="card border border-3 shadow h-100 py-2"
+            style="border-color: #601FC2 !important;"
+          >
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #601FC2;">
+                  <div
+                    class="text-xs fw-bold text-uppercase mb-1"
+                    style="color: #601FC2;"
+                  >
                     Admins
                   </div>
                   <div class="h5 mb-0 fw-bold text-gray-800">
@@ -84,11 +90,17 @@
 
         <!-- Staff -->
         <div class="col-md">
-          <div class="card border border-3 shadow h-100 py-2" style="border-color: #00B2E3 !important;">
+          <div
+            class="card border border-3 shadow h-100 py-2"
+            style="border-color: #00B2E3 !important;"
+          >
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #00B2E3;">
+                  <div
+                    class="text-xs fw-bold text-uppercase mb-1"
+                    style="color: #00B2E3;"
+                  >
                     Staff
                   </div>
                   <div class="h5 mb-0 fw-bold text-gray-800">
@@ -108,11 +120,17 @@
 
         <!-- Guardians -->
         <div class="col-md">
-          <div class="card border border-3 shadow h-100 py-2" style="border-color: #BC4E1E !important;">
+          <div
+            class="card border border-3 shadow h-100 py-2"
+            style="border-color: #BC4E1E !important;"
+          >
             <div class="card-body">
               <div class="d-flex align-items-center justify-content-between">
                 <div>
-                  <div class="text-xs fw-bold text-uppercase mb-1" style="color: #BC4E1E;">
+                  <div
+                    class="text-xs fw-bold text-uppercase mb-1"
+                    style="color: #BC4E1E;"
+                  >
                     Guardians
                   </div>
                   <div class="h5 mb-0 fw-bold text-gray-800">

@@ -2,11 +2,10 @@
  * Composable for managing patient registration form
  * Handles form state, guardian selection, parent autofill, and validation
  * 
- * OFFLINE-FIRST ARCHITECTURE:
- * All patient saves go to local Dexie database first, then sync to Supabase via syncService
+ * NOTE: Admin/Staff offline caching is handled automatically by API interceptor
+ * No direct database writes needed here (read-only offline architecture)
  */
 import { ref, computed, reactive, watch } from 'vue'
-import db from '@/services/offline/db'
 import api from '@/services/api'
 
 export function usePatientForm() {
@@ -693,30 +692,13 @@ export function usePatientForm() {
           const res = await api.post('/patients', serverPayload)
           const serverRecord = res?.data?.data || res?.data || null
 
-          // Best-effort: cache minimal patient to Dexie for parent portal views
-          try {
-            const pid = serverRecord?.patient_id || serverRecord?.id
-            if (pid) {
-              const full_name = [serverRecord?.firstname || patientData.firstname, serverRecord?.middlename || patientData.middlename, serverRecord?.surname || patientData.surname].filter(Boolean).join(' ').trim()
-              await db.patients.put({
-                patient_id: String(pid),
-                surname: serverRecord?.surname || patientData.surname,
-                firstname: serverRecord?.firstname || patientData.firstname,
-                middlename: serverRecord?.middlename || patientData.middlename,
-                full_name,
-                date_of_birth: serverRecord?.date_of_birth || patientData.date_of_birth,
-                guardian_id: serverRecord?.guardian_id || patientData.guardian_id,
-                family_number: serverRecord?.family_number || patientData.family_number
-              })
-            }
-          } catch (cacheErr) {
-            // Non-blocking cache write failure
-            console.warn('Dexie cache put failed (non-blocking):', cacheErr?.message || cacheErr)
-          }
+          // NOTE: Caching handled automatically by API interceptor
+          // when patient list is fetched (read-only offline architecture)
 
           return serverRecord
         } catch (apiErr) {
-          console.warn('Online submit failed, falling back to offline path (will sync later if supported):', apiErr?.message || apiErr)
+          console.warn('Online submit failed:', apiErr?.message || apiErr)
+          // Admin/Staff cannot save offline (read-only architecture)
           // Continue to offline path
         }
       }
