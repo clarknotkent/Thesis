@@ -6,6 +6,81 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ## [system-prototype-v4] - 2025-11-07
 
+### 🎨 User Accounts Page Enhancement (November 7, 2025)
+
+Enhanced the User Accounts page with accurate statistics, improved labeling, and custom color scheme for better role identification.
+
+### ✨ Added
+
+**User Statistics Cards:**
+- Real-time user statistics that reflect total counts across all pages (not just current page)
+- Automatic statistics refresh on user create, update, delete, and restore operations
+- Separate API call to fetch all users for accurate role-based counting
+
+### 🔄 Changed
+
+**Card Reordering and Color Scheme:**
+- Reordered statistics cards from left to right:
+  1. Total Users (Primary Blue - #0d6efd)
+  2. Admins (Purple - #601FC2)
+  3. Staff (Cyan - #00B2E3)
+  4. Guardians (Orange/Brown - #BC4E1E)
+- Applied custom color scheme to match role importance and visual hierarchy
+- Each card now has distinct, recognizable colors for quick role identification
+
+**Terminology Updates:**
+- Changed "Health Workers" to "Staff" throughout the interface (cards and filters)
+- Changed "Parents" to "Guardians" throughout the interface (cards and filters)
+- Better reflects the actual user roles in the system
+
+**Statistics Accuracy:**
+- Fixed role filtering to match backend display roles:
+  - Admins: Filter by `role === 'Admin'` (not `'admin'`)
+  - Staff: Filter by `role === 'Health Staff'` (not `'health_worker'`)
+  - Guardians: Filter by `role === 'Parent'` (not `'parent'`)
+- Statistics now show total counts across entire user base, not just current page
+
+### 🐛 Bug Fixes
+
+- Fixed user statistics cards showing incorrect counts (was only counting users on current page)
+- Fixed role name mismatches between frontend filters and backend display values
+- Cards now properly update after any user management operation
+
+### 📚 Files Modified
+
+**Frontend (1 file):**
+- `frontend/src/views/admin/users/UserAccounts.vue`:
+  - Added `allUserStats` ref for storing total user counts
+  - Added `fetchUserStats()` function to fetch all users for accurate counting
+  - Updated `userStats` computed property to use `allUserStats`
+  - Called `fetchUserStats()` on mount and after create/update/delete/restore operations
+  - Updated card order: Total Users, Admins, Staff, Guardians
+  - Applied custom colors using inline styles (Purple, Cyan, Orange/Brown)
+  - Changed "Health Workers" label to "Staff"
+  - Changed "Parents" label to "Guardians"
+  - Fixed role filters to match backend display values
+
+### ✅ Outcomes
+
+**Visual Improvements:**
+- Clear role identification with distinct color coding
+- Logical card ordering from most general to most specific roles
+- Professional color scheme with good contrast and accessibility
+
+**Data Accuracy:**
+- Statistics accurately reflect all users in system, not just current page
+- Role counts properly match backend role naming conventions
+- Real-time updates ensure statistics stay current
+
+**User Experience:**
+- Clearer terminology: "Staff" instead of "Health Workers", "Guardians" instead of "Parents"
+- Consistent labeling across cards and filter buttons
+- Better visual hierarchy and information architecture
+
+---
+
+## [system-prototype-v4] - 2025-11-07
+
 ### 🩹 Backend correctness: vital_id linkage and PWA DX polish (November 7, 2025)
 
 Focused fixes to ensure immunization records remain properly linked to vitals in all flows, and cleaner DX during frontend development.

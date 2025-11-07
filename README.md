@@ -2,6 +2,23 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
+> 🎨 **November 7, 2025 - User Accounts Enhancement**
+>
+> **Accurate User Statistics:**
+> - ✅ Real-time user counts across all roles (not just current page)
+> - ✅ Statistics auto-refresh after create/update/delete/restore operations
+> - ✅ Fixed role filtering to match backend display values
+>
+> **Visual Improvements:**
+> - ✅ Custom color scheme: Admins (Purple #601FC2), Staff (Cyan #00B2E3), Guardians (Orange #BC4E1E)
+> - ✅ Reordered cards: Total Users → Admins → Staff → Guardians (left to right)
+> - ✅ Better role identification with distinct colors
+>
+> **Terminology Updates:**
+> - ✅ "Health Workers" renamed to "Staff" (cards and filters)
+> - ✅ "Parents" renamed to "Guardians" (cards and filters)
+> - ✅ Consistent labeling throughout interface
+>
 > 🎨 **November 7, 2025 - Admin UI Consistency & UX Enhancements**
 >
 > **Patient Statistics Dashboard:**
