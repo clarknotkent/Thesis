@@ -287,21 +287,23 @@ const createVisit = async (visitPayload, client) => {
       vaccine_id = inv.vaccine_id;
     }
 
+    // Normalize outside mode: outside immunizations must not stamp administered_by
+    const isOutside = (vaccination.outside === true) || (vaccination.outside_facility === true);
     // Whitelist fields passed to immunization insert to avoid schema errors
     const immunizationData = {
-      inventory_id: vaccination.inventory_id || null,
+      inventory_id: isOutside ? null : (vaccination.inventory_id || null),
       vaccine_id,
       patient_id: visitData.patient_id,
       disease_prevented: vaccination.disease_prevented || null,
       dose_number: vaccination.dose_number,
       administered_date: vaccination.administered_date,
       age_at_administration: vaccination.age_at_administration || null,
-      administered_by: vaccination.administered_by || visitData.recorded_by || null,
+      administered_by: isOutside ? null : (vaccination.administered_by || visitData.recorded_by || null),
       facility_name: vaccination.facility_name || null,
       remarks: vaccination.remarks || null,
       visit_id: visit.visit_id, // Link to this visit
       vital_id: createdVitalId || null,
-      outside: vaccination.outside || false,
+      outside: !!isOutside,
       // Ensure audit fields propagate even if recorded_by/administered_by are null
       created_by: createdBy,
       updated_by: updatedBy
