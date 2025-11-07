@@ -26,11 +26,13 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 >
 > 🩺 **November 7, 2025 - Admin/BHS Immunization & Vitals Reliability**
 >
-> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit)
+> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit) — additionally enforced server‑side for safety
 > - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
 > - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
 > - ✅ Vaccine dropdown fixes: “Other” vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
 > - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
+> - ✅ Immunizations added to an existing visit now reliably attach the latest `vital_id` (Admin & BHS) — server resolves if client omits
+> - 🛠️ Dev DX: PWA Workbox glob warnings suppressed in development (`devOptions.suppressWarnings`) for cleaner console
 > - 📝 Docs: Added `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` summarizing payloads and policies
 
 > **� November 6, 2025 - Backend ES Module Modernization**
@@ -1230,8 +1232,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 Project: Immunization Management System
-Version: 4.4 (system-prototype-v4) ⭐ Offline-First PWA
-Last Updated: November 6, 2025
+Version: 4.5 (system-prototype-v4) ⭐ Offline-First PWA (Outside Immunization Policy + vital_id linkage fixes)
+Last Updated: November 7, 2025
 Maintained by: Clark Kent (clarknotkent), JapethDee and RobertBite15
 License: Academic Thesis Project
 

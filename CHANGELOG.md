@@ -6,6 +6,39 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ## [system-prototype-v4] - 2025-11-07
 
+### 🩹 Backend correctness: vital_id linkage and PWA DX polish (November 7, 2025)
+
+Focused fixes to ensure immunization records remain properly linked to vitals in all flows, and cleaner DX during frontend development.
+
+### 🔄 Changed
+
+- Immunizations created for an existing visit now reliably attach the visit's most recent `vital_id` on the server:
+  - Controller attempts to resolve `vital_id` when `visit_id` is present (includes rows with `is_deleted IS NULL OR FALSE`)
+  - Applies to both Admin and BHS endpoints, regardless of client payload
+- Outside immunizations are normalized server-side to enforce policy consistency:
+  - `administered_by` is forced to `null` when `outside === true`
+  - In visit creation (collectedVaccinations), outside entries also set `inventory_id = null`
+- Frontend PWA developer experience:
+  - Suppressed noisy Workbox glob warnings in development via `devOptions.suppressWarnings` in `vite-plugin-pwa`
+
+### 📚 Files Modified (highlights)
+
+- Backend
+  - `backend/controllers/immunizationController.js` — vital_id resolution for existing visits; outside policy normalization
+  - `backend/models/visitModel.js` — outside immunizations normalized (`administered_by`/`inventory_id` null) and linked to newly created `vital_id`
+- Frontend
+  - `frontend/vite.config.js` — add `devOptions: { suppressWarnings: true }` for PWA plugin during dev
+
+### ✅ Outcomes
+
+- Immunization rows added to an existing visit consistently carry the correct `vital_id`
+- Outside‑facility records never stamp a staff ID; inventory linkage cleared when outside
+- Quieter dev console while iterating on the PWA
+
+---
+
+## [system-prototype-v4] - 2025-11-07
+
 ### 🎨 Admin UI Consistency & User Experience Enhancement (November 7, 2025)
 
 A comprehensive visual overhaul of the admin interface focused on consistency, professional aesthetics, and improved navigation across all subsystems.
