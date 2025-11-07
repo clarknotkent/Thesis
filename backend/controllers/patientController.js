@@ -1,5 +1,4 @@
 import patientModel from '../models/patientModel.js';
-import moment from 'moment-timezone';
 import * as notificationModel from '../models/notificationModel.js';
 import { getSupabaseForRequest } from '../utils/supabaseClient.js';
 import * as immunizationModel from '../models/immunizationModel.js';
@@ -9,6 +8,7 @@ import { mintPatientQrUrl } from '../services/qrService.js';
 import * as smsReminderService from '../services/smsReminderService.js';
 import svcSupabase from '../db.js';
 import serviceSupabase from '../db.js';
+import { debugReschedule as debugRescheduleUtil } from '../utils/scheduleDebugger.js';
 
 // Normalize incoming payload to match DB schema
 const mapPatientPayload = (body) => ({
@@ -625,16 +625,25 @@ const updatePatient = async (req, res) => {
       }
     }
 
-    // After successful update: if DOB changed and patient has no completed doses, queue a background REWRITE of schedules
+    // After successful update: if DOB changed, queue a background REWRITE via SQL RPC (bypass constraints)
     try {
-      if (dobChanged && updatedPatient && updatedPatient.date_of_birth) {
-        const toISODate = (d) => new Date(d).toISOString().split('T')[0];
-        const birthISO = toISODate(updatedPatient.date_of_birth);
+      if (dobChanged && updatedPatient?.date_of_birth) {
         const userId = req.user?.user_id || null;
         const patientIdForTask = id;
         const runAsync = async () => {
           try {
-            await rewriteSchedulesForDob(patientIdForTask, birthISO, userId);
+            const { data: rpcData, error: rpcErr } = await svcSupabase.rpc('rewrite_patient_schedules_for_dob', {
+              p_patient_id: patientIdForTask,
+              p_user_id: userId,
+              p_insert_missing: true,
+            });
+            if (rpcErr) {
+              console.warn('[updatePatient] rewrite_patient_schedules_for_dob error:', rpcErr.message || rpcErr);
+            } else {
+              console.log('[updatePatient] DOB rewrite RPC result:', rpcData);
+            }
+            // Refresh combined/pending SMS messages to reflect new schedule dates
+            try { await smsReminderService.updateMessagesForPatient(patientIdForTask, svcSupabase); } catch (_) {}
           } catch (e) {
             console.warn('[updatePatient] DOB schedule rewrite async failed:', e?.message || e);
           }
@@ -671,7 +680,8 @@ const updatePatient = async (req, res) => {
 };
 
 // Background task: rewrite pending schedules to align with new DOB baseline
-async function rewriteSchedulesForDob(patientId, birthISO, userId) {
+// Legacy fallback (unused): kept for reference; RPC now handles DOB rewrites
+async function _rewriteSchedulesForDob(patientId, birthISO, userId) {
   const supabase = svcSupabase;
 
   // 1) Load schedule master/doses to compute the new baseline dates
@@ -968,11 +978,142 @@ const restorePatient = async (req, res) => {
   }
 };
 
+// Debug endpoint: perform DOB rewrite via RPC and return before/after diff plus expectations
+const debugRewriteDob = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supabase = getSupabaseForRequest(req);
+    const userId = req.user?.user_id || null;
+    // Load patient to get DOB
+    const { data: patient, error: pErr } = await supabase
+      .from('patients')
+      .select('patient_id, date_of_birth')
+      .eq('patient_id', id)
+      .single();
+    if (pErr || !patient) {
+      return res.status(404).json({ success:false, message:'Patient not found' });
+    }
+    if (!patient.date_of_birth) {
+      return res.status(400).json({ success:false, message:'Patient has no date_of_birth' });
+    }
+
+    // Snapshot BEFORE
+    const { data: beforeSched, error: bErr } = await supabase
+      .from('patientschedule')
+      .select('patient_schedule_id, vaccine_id, dose_number, scheduled_date, status, actual_date, is_deleted')
+      .eq('patient_id', id)
+      .order('vaccine_id', { ascending: true })
+      .order('dose_number', { ascending: true });
+    if (bErr) throw bErr;
+
+    // Expected map DOB + due_after_days
+    const { data: definitions, error: defErr } = await supabase
+      .from('schedule_doses')
+      .select('schedule_id, dose_number, due_after_days')
+      .order('dose_number', { ascending: true });
+    if (defErr) throw defErr;
+    const { data: masters, error: mErr } = await supabase
+      .from('schedule_master')
+      .select('id, vaccine_id, is_deleted')
+      .eq('is_deleted', false);
+    if (mErr) throw mErr;
+    const masterById = new Map((masters||[]).map(m => [m.id, m.vaccine_id]));
+    const dob = new Date(patient.date_of_birth + 'T00:00:00Z');
+    const expectedByKey = new Map();
+    for (const d of definitions||[]) {
+      const vaccineId = masterById.get(d.schedule_id);
+      if (!vaccineId) continue;
+      const dt = new Date(dob.getTime());
+      dt.setUTCDate(dt.getUTCDate() + Number(d.due_after_days||0));
+      const iso = dt.toISOString().split('T')[0];
+      expectedByKey.set(`${vaccineId}:${d.dose_number}`, iso);
+    }
+
+    // Perform rewrite via RPC
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('rewrite_patient_schedules_for_dob', {
+      p_patient_id: Number(id),
+      p_user_id: userId,
+      p_insert_missing: true,
+    });
+    if (rpcErr) {
+      return res.status(500).json({ success:false, message:'RPC rewrite failed', error: rpcErr.message || rpcErr });
+    }
+
+    // Snapshot AFTER
+    const { data: afterSched, error: aErr } = await supabase
+      .from('patientschedule')
+      .select('patient_schedule_id, vaccine_id, dose_number, scheduled_date, status, actual_date, is_deleted')
+      .eq('patient_id', id)
+      .order('vaccine_id', { ascending: true })
+      .order('dose_number', { ascending: true });
+    if (aErr) throw aErr;
+
+    const beforeMap = new Map((beforeSched||[]).map(r => [r.patient_schedule_id, r]));
+    const afterMap = new Map((afterSched||[]).map(r => [r.patient_schedule_id, r]));
+    const allIds = Array.from(new Set([...(beforeSched||[]).map(r=>r.patient_schedule_id), ...(afterSched||[]).map(r=>r.patient_schedule_id)])).sort((a,b)=>a-b);
+    const diffs = [];
+    for (const idVal of allIds) {
+      const b = beforeMap.get(idVal);
+      const a = afterMap.get(idVal);
+      if (!a) continue; // should not happen after rewrite
+      const key = `${a.vaccine_id}:${a.dose_number}`;
+      const expected = expectedByKey.get(key) || null;
+      const beforeDate = b ? (b.scheduled_date ? b.scheduled_date.split('T')[0] : null) : null;
+      const afterDate = a.scheduled_date ? a.scheduled_date.split('T')[0] : null;
+      diffs.push({
+        patient_schedule_id: idVal,
+        vaccine_id: a.vaccine_id,
+        dose_number: a.dose_number,
+        expected_date: expected,
+        before_date: beforeDate,
+        after_date: afterDate,
+        changed: beforeDate !== afterDate,
+        matches_expected: afterDate === expected,
+        before_status: b?.status || null,
+        after_status: a.status,
+        completed: !!a.actual_date,
+        deleted: !!a.is_deleted,
+      });
+    }
+
+    // If RPC reported failures, analyze each failed ID using scheduleDebugger with the expected date
+    const failedAnalysis = [];
+    try {
+      const failedIds = Array.isArray(rpcData) ? (rpcData[0]?.failed_ids || []) : (rpcData?.failed_ids || []);
+      const afterById = new Map((afterSched||[]).map(r => [r.patient_schedule_id, r]));
+      for (const fid of failedIds) {
+        const r = afterById.get(fid);
+        if (!r) continue;
+        const key = `${r.vaccine_id}:${r.dose_number}`;
+        const expected = expectedByKey.get(key) || null;
+        if (!expected) continue;
+        try {
+          const analysis = await debugRescheduleUtil(supabase, fid, expected);
+          failedAnalysis.push({ patient_schedule_id: fid, expected_date: expected, analysis });
+        } catch (dbgErr) {
+          failedAnalysis.push({ patient_schedule_id: fid, expected_date: expected, error: dbgErr?.message || String(dbgErr) });
+        }
+      }
+    } catch (faErr) {
+      console.warn('[debugRewriteDob] failed to analyze errors:', faErr?.message || faErr);
+    }
+
+    // Console table for immediate dev visibility
+    try { console.table(diffs.slice(0,50)); } catch { console.log(JSON.stringify(diffs.slice(0,50), null, 2)); }
+
+    res.json({ success:true, rpc: rpcData, total: diffs.length, diffs, failedAnalysis });
+  } catch (error) {
+    console.error('[debugRewriteDob] failed:', error);
+    res.status(500).json({ success:false, message:'debug rewrite failed', error: error.message });
+  }
+};
+
 export { createPatient,
   getPatientById,
   updatePatient,
   deletePatient,
   restorePatient,
+  debugRewriteDob,
   getAllPatients,
   getPatientSchedule,
   updatePatientTag,

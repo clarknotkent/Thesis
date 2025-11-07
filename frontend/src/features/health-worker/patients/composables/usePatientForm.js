@@ -7,6 +7,7 @@
  */
 import { ref, computed, reactive, watch } from 'vue'
 import db from '@/services/offline/db'
+import api from '@/services/api'
 
 export function usePatientForm() {
   // State

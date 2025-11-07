@@ -8,6 +8,7 @@
 import { ref, computed } from 'vue'
 import db from '@/services/offline/db'
 import { getUser, getUserId, getRole } from '@/services/auth'
+import api from '@/services/api'
 
 export function usePatientImmunizationForm(patientId) {
   // Loading states
@@ -290,8 +291,8 @@ export function usePatientImmunizationForm(patientId) {
           // Lot number can be provided for both modes (outside entries may carry external lot info)
           lot_number: s.lotNumber || s.lot_number || null,
           site: s.site || null,
-          // who administered (use current user id by default)
-          administered_by: currentUserId.value || s.healthStaff || s.administered_by || null,
+          // who administered: for outside entries, this must be null; otherwise default to current user / provided
+          administered_by: outsideFacility ? null : (s.administered_by || s.healthStaff || currentUserId.value || null),
           // Facility name (source facility for outside, internal for in-facility)
           facility_name: s.facilityName || s.facility_name || null,
           // keep a boolean 'outside' flag as faith uses

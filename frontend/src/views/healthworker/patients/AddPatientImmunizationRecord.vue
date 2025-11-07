@@ -195,6 +195,7 @@ import { usePatientImmunizationForm } from '@/features/health-worker/patients/co
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
 import db from '@/services/offline/db'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -204,6 +205,7 @@ const {
   loading,
   submitting,
   currentPatient,
+  currentUserId,
   formData,
   addedServices,
   isBHS,
@@ -217,8 +219,6 @@ const {
   visitMode,
   availableVisits,
   existingVisitId,
-  vitalsReadOnly,
-  hideVitals,
   loadVisitsForPatient,
   ensureVisitsLoaded,
   setupVisitWatcher,
@@ -349,11 +349,35 @@ const handleSubmit = async () => {
         const patientId = submissionData.patient_id
 
         // Case A: Attach to existing visit (ensure vitals, then create immunizations)
-        if (existingVisitId.value) {
+  if (existingVisitId.value) {
           // Upsert vitals for the existing visit
           if (submissionData?.vitals) {
             try {
-              await api.put(`/vitalsigns/${existingVisitId.value}`, submissionData.vitals)
+              const v = submissionData.vitals || {}
+              const v1raw = {
+                temperature: v.temperature,
+                muac: v.muac,
+                respiration: v.respiration,
+                weight: v.weight,
+                height: v.height
+              }
+              const v2raw = {
+                temperature: v.temperature,
+                muac: v.muac,
+                respiration_rate: v.respiration,
+                weight: v.weight,
+                height_length: v.height
+              }
+              const v1 = Object.fromEntries(Object.entries(v1raw).filter(([, val]) => val !== undefined && val !== null && String(val) !== ''))
+              const v2 = Object.fromEntries(Object.entries(v2raw).filter(([, val]) => val !== undefined && val !== null && String(val) !== ''))
+              let vitalsUpdated = false
+              if (Object.keys(v1).length > 0) {
+                try { await api.put(`/vitals/${existingVisitId.value}`, v1); vitalsUpdated = true } catch {}
+              }
+              if (!vitalsUpdated && Object.keys(v2).length > 0) {
+                try { await api.put(`/vitalsigns/${existingVisitId.value}`, v2); vitalsUpdated = true } catch {}
+              }
+              if (!vitalsUpdated) console.warn('Vitals update failed on both endpoints (non-blocking)')
             } catch (vErr) {
               // Non-blocking: backend will still validate vitals on immunization
               console.warn('Vitals update failed (will rely on existing vitals):', vErr?.message || vErr)
@@ -372,10 +396,13 @@ const handleSubmit = async () => {
                 dose_number: s.dose_number,
                 administered_date: s.administered_date,
                 age_at_administration: s.age_at_administration || null,
-                administered_by: s.administered_by || currentUserId.value || null,
+                // Outside immunizations should not set administered_by
+                administered_by: null,
                 facility_name: s.facility_name || null,
                 outside: true,
-                remarks: s.remarks || null
+                remarks: s.remarks || null,
+                // Ensure linkage to the existing visit
+                visit_id: existingVisitId.value
               }
               await api.post('/immunizations', payload)
             } else {

@@ -254,7 +254,7 @@
                           {{ calculateAge(patient.childInfo.birthDate) }}
                         </td>
                         <td class="text-center align-middle">
-                          {{ patient.motherInfo.name }}
+                          {{ patient.guardianInfo?.name || '—' }}
                         </td>
                         <td class="text-center align-middle">
                           <span v-if="patient.guardian_contact_number || patient.childInfo.phoneNumber">
@@ -435,6 +435,14 @@ const fetchPatients = async () => {
       },
       motherInfo: {
         name: p.mother_name || '',
+      },
+      guardianInfo: {
+        id: p.guardian_id || p.guardianId || null,
+        name: ([p.guardian_firstname, p.guardian_middlename, p.guardian_surname].filter(Boolean).join(' ').trim())
+              || ([p.guardian_surname, p.guardian_firstname].filter(Boolean).join(', ').trim())
+              || (p.guardian?.full_name || ''),
+        contact_number: p.guardian_contact_number || p.guardian?.contact_number || '',
+        family_number: p.guardian_family_number || p.family_number || ''
       },
       guardian_contact_number: p.guardian_contact_number || p.guardian?.contact_number || '',
       family_number: p.guardian_family_number || p.family_number || '',
