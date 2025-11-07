@@ -390,10 +390,6 @@ const remove = async (id) => {
   } catch (e) { addToast({ title: 'Error', message: 'Failed to delete FAQ', type: 'error' }) }
 }
 
-const truncate = (s, n) => s && s.length > n ? s.slice(0,n) + '…' : s
-
-const formatDate = (s) => s ? new Date(s).toLocaleDateString() : 'Unknown'
-
 onMounted(load)
 
 // UX helpers

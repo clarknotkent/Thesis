@@ -156,8 +156,7 @@ const {
   markAsRead,
   markAllAsRead,
   clearAllRead,
-  startPolling,
-  getNotificationIcon
+  startPolling
 } = useNotifications()
 
 // Handle notification click with navigation
