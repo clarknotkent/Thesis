@@ -29,6 +29,7 @@ import HealthWorkerPatients from '@/views/healthworker/patients/PatientRecords.v
 import AddPatient from '@/views/healthworker/patients/AddPatient.vue'
 import PatientDetail from '@/views/healthworker/PatientDetails.vue'
 import VisitSummary from '@/views/healthworker/patients/VisitSummary.vue'
+import EditVisit from '@/views/healthworker/patients/EditVisit.vue'
 import VaccineRecordDetails from '@/views/healthworker/patients/VaccineRecordDetails.vue'
 import AddPatientImmunizationRecord from '@/views/healthworker/patients/AddPatientImmunizationRecord.vue'
 import EditVaccinationRecord from '@/views/healthworker/patients/EditVaccinationRecord.vue'
@@ -573,6 +574,16 @@ const routes = [
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
   role: 'healthstaff'
+    }
+  },
+  {
+    path: '/healthworker/patients/:patientId/visits/:visitId/edit',
+    name: 'HealthWorkerEditVisit',
+    component: EditVisit,
+    meta: {
+      title: 'Edit Visit - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthstaff'
     }
   },
   {

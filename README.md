@@ -2,6 +2,15 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
+> 🩺 November 7, 2025 - Admin/BHS Immunization & Vitals Reliability
+>
+> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit)
+> - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
+> - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
+> - ✅ Vaccine dropdown fixes: “Other” vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
+> - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
+> - 📝 Docs: Added `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` summarizing payloads and policies
+
 > **� November 6, 2025 - Backend ES Module Modernization**
 >
 > - ✅ **Complete ES Module Migration** - All 86 backend files converted from CommonJS to ES6
@@ -140,10 +149,10 @@ The Immunization Management System is designed to digitize and streamline the im
 ### Project Status
 
 - Repository: https://github.com/clarknotkent/Thesis
-- Current Branch: **system-prototype-v4** ⭐ Complete Offline Parent Portal + SMS/Toast Fixes
+- Current Branch: **system-prototype-v4** ⭐ Offline Parent Portal complete; SMS/Toast fixes; Admin/BHS data correctness (Nov 7)
 - Previous Branch: system-prototype-v3
-- Version: 4.4 (Admin Visit Parity, Data Integrity, DOB Rewrite Async, SMS Past-Date Guard)
-- Last Updated: November 6, 2025
+- Version: 4.5 (Outside Immunization Policy, Vitals Safe-Update, Visit Linkage, Vaccine/Guardian Fixes)
+- Last Updated: November 7, 2025
 - Status: Active Development - **Parent Portal Complete**, SMS System Fixed, Health Worker/Admin In Progress
 
 ---

@@ -4,6 +4,59 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ---
 
+## [system-prototype-v4] - 2025-11-07
+
+### 🩺 Data correctness: Admin/BHS immunizations & vitals (November 7, 2025)
+
+We focused on making Admin and Health Worker (BHS) submissions consistent with backend rules and preventing accidental data loss when updating existing visits.
+
+### ✨ Added
+
+- Payload reference doc consolidating Admin vs BHS request bodies and rules:
+  - `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md`
+
+### 🔄 Changed
+
+- Outside immunizations now strictly set `administered_by = null` across all paths:
+  - Admin: Visit editor “Outside Facility” mode clears health staff and sends `administered_by: null`
+  - BHS: New visit (collectedVaccinations) and existing visit flows both enforce `administered_by: null`
+- BHS existing-visit flow includes `visit_id` for outside immunizations to keep records properly linked
+- Vitals update is resilient and non-destructive when editing existing visits:
+  - Only send non-empty fields (prevents clearing values in DB)
+  - Try `/vitals` with `{ respiration, height }`, then fallback to `/vitalsigns` with `{ respiration_rate, height_length }`
+  - Applied in both Admin `VisitEditor.vue` and BHS `AddPatientImmunizationRecord.vue`
+- Vaccine selection UX:
+  - “Other” vaccines are visible even when all scheduled doses are completed
+  - Fail‑open filtering when schedules are missing to avoid hiding valid vaccines (Admin & BHS)
+- Guardian data correctness:
+  - BHS guardian dropdown fetches full list via API and refreshes Dexie cache
+  - Admin patient list Guardian column now shows the registered guardian + contact (not “mother” fallback)
+
+### 🐛 Bug Fixes
+
+- Fixed missing imports causing `api is not defined` in BHS immunization/patient composables and views
+- Fixed `currentUserId is not defined` on BHS Add Immunization submit
+
+### 📚 Files Touched (highlights)
+
+- Frontend
+  - `frontend/src/features/admin/patients/VisitEditor.vue` — outside immunization policy; vitals safe‑update with dual endpoint/field mapping
+  - `frontend/src/views/healthworker/patients/AddPatientImmunizationRecord.vue` — include `visit_id` for outside; vitals safe‑update
+  - `frontend/src/features/health-worker/patients/composables/usePatientImmunizationForm.js` — `administered_by: null` for outside in new visit collectedVaccinations
+  - Guardian fetch/normalization and vaccine filtering improvements across BHS/Admin affected components
+- Docs
+  - `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` — consolidated payloads and policies
+
+### ✅ Outcomes
+
+- Outside immunization records never carry a staff ID; policy is consistently enforced
+- Existing visit updates no longer wipe respiration/height values
+- BHS outside immunizations attached to an existing visit remain linked via `visit_id`
+- Vaccine dropdowns are correct and forgiving when schedule data is incomplete
+- Guardian data reflects the registered guardian in Admin lists; BHS dropdown is comprehensive
+
+---
+
 ## [system-prototype-v4] - 2025-11-06
 
 ### � Backend ES Module Conversion (November 6, 2025)
@@ -359,6 +412,27 @@ Database connected successfully
 - See `docs/RESET_QA_INSTRUCTIONS.md` for usage and verification steps.
 
 ### 🩺 Admin Visit Parity, Data Integrity, and SMS Behavior (November 6, 2025)
+### 🧩 BHS UI Inventory Wiring (November 6, 2025)
+
+#### Changed
+- Health Worker (BHS) Inventory UI now displays complete vaccine metadata:
+  - Disease Prevented is shown in stock cards and details view
+  - Type is shown for Vaccine, Deworming, and Vitamin A categories (Program: NIP/Other + specific type)
+  - Category is shown in the details view
+
+#### Backend Fix
+- Include `disease_prevented` and `is_nip` in `/api/vaccines/inventory/:id` join selection so details view has complete data.
+
+#### Files Touched
+- Backend
+  - `backend/models/vaccineModel.js` — added `disease_prevented` and `is_nip` to vaccinemaster selections across inventory fetches
+- Frontend
+  - `frontend/src/features/health-worker/inventory/InventoryCard.vue` — show Disease Prevented and Type chips
+  - `frontend/src/views/healthworker/inventory/InventoryDetails.vue` — show Category and Type (program + specific type)
+
+#### Outcome
+- BHS stock list and item details now correctly show Disease Prevented and Type across supported categories.
+
 
 #### ✨ Added / Changed
 - Admin portal now mirrors Health Worker rule: **one visit per patient per day**

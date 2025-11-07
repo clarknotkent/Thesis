@@ -438,12 +438,40 @@ export async function recacheAfterWrite(resourceType, resourceId, guardianId, us
         break
 
       case 'immunization':
-        // Refetch immunizations for patient
+        // Refetch immunizations for patient and normalize shape for Dexie
         const immunizationsResponse = await api.get(`/parent/children/${resourceId}/immunizations`)
-        const immunizations = Array.isArray(immunizationsResponse.data)
+        const rawList = Array.isArray(immunizationsResponse.data)
           ? immunizationsResponse.data
           : immunizationsResponse.data.data || []
-        await db.immunizations.bulkPut(immunizations)
+        if (rawList.length) {
+          const rows = rawList.map(i => ({
+            immunization_id: i.immunization_id || i.id,
+            patient_id: i.patient_id,
+            visit_id: i.visit_id,
+            vaccine_id: i.vaccine_id,
+            dose_number: i.dose_number,
+            administered_date: i.administered_date,
+            administered_time: i.administered_time,
+            administered_by: i.administered_by,
+            age_at_administration: i.age_at_administration,
+            disease_prevented: i.disease_prevented,
+            facility_name: i.facility_name,
+            immunization_facility_name: i.immunization_facility_name,
+            outside: i.outside,
+            remarks: i.remarks,
+            inventory_id: i.inventory_id,
+            vital_id: i.vital_id,
+            created_at: i.created_at,
+            updated_at: i.updated_at,
+            vaccine_name: i.vaccine_name || i.antigen_name || i.vaccine_antigen_name,
+            antigen_name: i.antigen_name || i.vaccine_antigen_name || i.vaccine_name,
+            brand_name: i.brand_name,
+            manufacturer: i.manufacturer,
+            patient_name: i.patient_name || i.full_name,
+            health_worker_name: i.health_worker_name || i.administered_by_name
+          })).filter(r => !!r.immunization_id)
+          if (rows.length) await db.immunizations.bulkPut(rows)
+        }
         console.log(`✅ Recached immunizations for patient ${resourceId}`)
         break
 

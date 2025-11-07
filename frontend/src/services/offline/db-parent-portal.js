@@ -127,6 +127,16 @@ db.version(3).stores({
   faqs: 'faq_id, updated_at'
 })
 
+// VERSION 4 - Outbox for pending uploads (sync queue)
+db.version(4).stores({
+  /**
+   * pending_uploads - Outbox tasks to sync when online
+   * Primary key: auto-increment id
+   * Indexes: type (entity), operation (create/update/delete), status, created_at
+   */
+  pending_uploads: '++id, type, operation, status, created_at, local_id'
+})
+
 // Database initialization hook
 db.on('ready', () => {
   return db

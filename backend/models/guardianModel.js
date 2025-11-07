@@ -2,7 +2,7 @@ import supabase from '../db.js';
 import { updatePhoneNumberForPatient, updateMessagesForPatient } from '../services/smsReminderService.js';
 
 const guardianModel = {
-  // Fetch all guardians (for dropdown) from users table where role='guardian'
+  // Fetch all guardians (for dropdown) from users table where role is Guardian/Parent and ensure active guardian rows exist
   getAllGuardians: async () => {
     try {
       // Join users with guardians table to get family_number (left join to include users without guardian records)
@@ -21,34 +21,55 @@ const guardianModel = {
             guardian_id,
             user_id,
             family_number,
-            is_deleted
+            is_deleted,
+            occupation
           )
         `)
-        .eq('role', 'Guardian')
+        // Support both Guardian and Parent roles (and mixed variants) in case naming varies
+        .in('role', ['Guardian','Parent','guardian','parent','guardian-parent'])
         .eq('is_deleted', false)
         .order('surname', { ascending: true });
 
       if (error) throw error;
 
-      // Transform data for dropdown compatibility
-      const guardiansWithFullName = (data || []).map(user => {
-        const g = Array.isArray(user.guardians) ? user.guardians.find(x => x && x.is_deleted === false) || user.guardians[0] : null;
-        return {
-          guardian_id: g?.guardian_id || null,
-          user_id: user.user_id,
-          surname: user.surname,
-          firstname: user.firstname,
-          middlename: user.middlename,
-          sex: user.sex || null,
-          contact_number: user.contact_number,
-          email: user.email,
-          address: user.address,
-          family_number: g?.family_number || '',
-          full_name: `${user.surname}, ${user.firstname} ${user.middlename || ''}`.trim()
-        };
-      });
+      const result = [];
+      // Ensure each eligible user has an active guardian row; restore/create when missing
+      for (const user of (data || [])) {
+        let g = Array.isArray(user.guardians) ? user.guardians.find(x => x && x.is_deleted === false) || null : null;
 
-      return guardiansWithFullName;
+        // If no active guardian row, try to ensure it exists/restored based on user role
+        if (!g) {
+          try {
+            const ensured = await guardianModel.ensureGuardianForUser(user.user_id);
+            if (ensured && ensured.guardian_id && ensured.is_deleted === false) {
+              g = ensured;
+            }
+          } catch (ensureErr) {
+            // Non-blocking: if ensure fails, we just skip adding this entry
+            console.warn('[getAllGuardians] ensureGuardianForUser failed for user', user.user_id, ensureErr?.message || ensureErr);
+          }
+        }
+
+        // Only include entries with a valid active guardian_id (frontend requires guardian_id to bind)
+        if (g && g.guardian_id) {
+          result.push({
+            guardian_id: g.guardian_id,
+            user_id: user.user_id,
+            surname: user.surname,
+            firstname: user.firstname,
+            middlename: user.middlename,
+            sex: user.sex || null,
+            contact_number: user.contact_number,
+            email: user.email,
+            address: user.address,
+            family_number: g.family_number || '',
+            occupation: g.occupation || null,
+            full_name: `${user.surname}, ${user.firstname} ${user.middlename || ''}`.trim()
+          });
+        }
+      }
+
+      return result;
     } catch (error) {
       console.error('Error fetching guardians:', error);
       throw error;

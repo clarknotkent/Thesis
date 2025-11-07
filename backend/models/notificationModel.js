@@ -2,56 +2,157 @@ import supabase from '../db.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 import { logActivity } from './activityLogger.js';
 
+// Normalize a notification row into a consistent DTO
 function mapNotificationDTO(row) {
-  if (!row) return null;
-  // Normalize legacy channel tokens (e.g., 'Push' -> 'in-app') to frontend-facing values
-  const normalizeOutChannel = (ch) => {
-    if (!ch) return ch;
-    const s = String(ch).trim().toLowerCase();
-    if (s === 'push') return 'in-app';
-    if (s === 'sms') return 'sms';
-    if (s === 'email') return 'email';
-    if (s === 'in-app' || s === 'inapp' || s === 'notification') return 'in-app';
-    return ch;
-  };
-
-  const normalizeOutStatus = (st) => {
-    if (!st) return st;
-    const s = String(st).trim().toLowerCase();
-    if (['queued','pending'].includes(s)) return 'queued';
-    if (s === 'sent') return 'sent';
-    if (s === 'failed') return 'failed';
-    if (s === 'delivered') return 'delivered';
-    return s;
-  };
-
+  if (!row) return row;
+  const {
+    notification_id,
+    channel,
+    recipient_user_id,
+    recipient_phone,
+    recipient_email,
+    template_code,
+    message_body,
+    related_entity_type,
+    related_entity_id,
+    status,
+    error_message,
+    scheduled_at,
+    sent_at,
+    read_at,
+    created_at,
+    updated_at,
+    deleted_at,
+    is_deleted,
+    created_by,
+    updated_by,
+    deleted_by,
+    created_by_name,
+  } = row;
   return {
-    notification_id: row.notification_id,
-    channel: normalizeOutChannel(row.channel),
-    recipient_user_id: row.recipient_user_id,
-    recipient_phone: row.recipient_phone,
-    recipient_email: row.recipient_email,
-    recipient_name: row.recipient_name, // from view
-    created_by: row.created_by ?? null,
-    created_by_name: row.created_by_name || null,
-    template_code: row.template_code,
-    message_body: row.message_body,
-    related_entity_type: row.related_entity_type,
-    related_entity_id: row.related_entity_id,
-    scheduled_at: row.scheduled_at,
-    sent_at: row.sent_at,
-    status: normalizeOutStatus(row.status),
-    error_message: row.error_message,
-    created_by: row.created_by,
-    created_at: row.created_at,
-    is_deleted: row.is_deleted,
-    deleted_at: row.deleted_at,
-    deleted_by: row.deleted_by,
-    updated_at: row.updated_at,
-    updated_by: row.updated_by,
-    read_at: row.read_at
+    notification_id,
+    channel,
+    recipient_user_id,
+    recipient_phone,
+    recipient_email,
+    template_code,
+    message_body,
+    related_entity_type,
+    related_entity_id,
+    status,
+    error_message,
+    scheduled_at,
+    sent_at,
+    read_at,
+    created_at,
+    updated_at,
+    deleted_at,
+    is_deleted,
+    created_by,
+    updated_by,
+    deleted_by,
+    created_by_name: created_by_name ?? row.created_by_name ?? null,
   };
 }
+// Broadcast notifications to a recipient group (by role)
+const broadcastNotifications = async (notificationData, actorId) => {
+  try {
+    const incoming = notificationData || {};
+    const coerceEmpty = (v) => (v === '' ? null : v);
+    const normalizeChannelDB = (ch) => {
+      if (!ch) return null;
+      const s = String(ch).trim().toLowerCase();
+      if (['in-app','inapp','push','notification','push-notification'].includes(s)) return 'Push';
+      if (['sms','text','mobile','sms-text','sms '].includes(s)) return 'SMS';
+      if (['email','e-mail','mail'].includes(s)) return 'Email';
+      if (['push','sms','email'].includes(s)) return s.charAt(0).toUpperCase() + s.slice(1);
+      return ch;
+    };
+    const mapGroupToRoles = (grp) => {
+      const g = String(grp || '').trim().toLowerCase();
+      if (!g || ['all','all-users','all_users','everyone'].includes(g)) return ['Admin','HealthStaff','Guardian'];
+      if (['guardian','guardians','parents','parent'].includes(g)) return ['Guardian'];
+      if (['healthstaff','health-staff','health staff','health workers','health-workers','healthworker','healthworkers','hs'].includes(g)) return ['HealthStaff'];
+      if (['admin','admins','administrator','administrators','system admin'].includes(g)) return ['Admin'];
+      return [];
+    };
+
+    const channel = normalizeChannelDB(incoming.channel);
+    if (!channel) {
+      const err = new Error('channel is required');
+      err.status = 400;
+      throw err;
+    }
+    const roles = mapGroupToRoles(incoming.recipientGroup || incoming.recipient_group);
+    if (!roles.length) {
+      const err = new Error('recipientGroup is required and must be one of admins|healthstaff|guardians|all-users');
+      err.status = 400;
+      throw err;
+    }
+    const messageBody = coerceEmpty(incoming.message_body ?? incoming.messageBody ?? incoming.message);
+    if (!messageBody) {
+      const err = new Error('message_body is required');
+      err.status = 400;
+      throw err;
+    }
+    const templateCode = coerceEmpty(incoming.template_code ?? incoming.templateCode ?? incoming.template ?? null);
+    const relatedType = coerceEmpty(incoming.related_entity_type ?? incoming.relatedEntityType ?? incoming.entity_type ?? incoming.entityType ?? null);
+    const relatedId = incoming.related_entity_id ?? incoming.relatedEntityId ?? incoming.entity_id ?? incoming.entityId ?? null;
+    const scheduledAt = coerceEmpty(incoming.scheduled_at ?? incoming.scheduledAt ?? null);
+
+    // Fetch recipients by role (active, not deleted)
+    const { data: users, error: uerr } = await supabase
+      .from('users')
+      .select('user_id, email, contact_number, is_deleted, user_status, role')
+      .in('role', roles)
+      .eq('is_deleted', false);
+    if (uerr) throw uerr;
+
+    // Build payloads per channel requirements
+    const now = new Date().toISOString();
+    const rows = [];
+    for (const u of users || []) {
+      const uStatus = String(u.user_status || 'active').toLowerCase();
+      if (uStatus !== 'active') continue;
+      const row = {
+        channel,
+        recipient_user_id: null,
+        recipient_phone: null,
+        recipient_email: null,
+        template_code: templateCode,
+        message_body: messageBody,
+        related_entity_type: relatedType,
+        related_entity_id: relatedId,
+        scheduled_at: scheduledAt,
+        status: 'Queued',
+        created_by: actorId || null,
+        updated_by: actorId || null
+      };
+      if (channel === 'Push') {
+        row.recipient_user_id = u.user_id;
+        if (!row.scheduled_at) {
+          row.status = 'Sent';
+          row.sent_at = now;
+        }
+      } else if (channel === 'SMS') {
+        if (!u.contact_number) continue;
+        row.recipient_phone = u.contact_number;
+      } else if (channel === 'Email') {
+        if (!u.email) continue;
+        row.recipient_email = u.email;
+      }
+      rows.push(row);
+    }
+    if (!rows.length) return [];
+
+    const { data, error } = await supabase.from('notifications').insert(rows).select('*');
+    if (error) throw error;
+    return (data || []).map(mapNotificationDTO);
+  } catch (error) {
+    console.error('Error broadcasting notifications:', error);
+    throw error;
+  }
+};
 
 // Create new notification
 const createNotification = async (notificationData, actorId) => {
@@ -65,7 +166,8 @@ const createNotification = async (notificationData, actorId) => {
       if (['sms','text','mobile','sms-text','sms '].includes(s)) return 'SMS';
       if (['email','e-mail','mail'].includes(s)) return 'Email';
       if (['push','sms','email'].includes(s)) return s.charAt(0).toUpperCase() + s.slice(1);
-      return ch; };
+      return ch;
+    };
 
     // Normalize incoming status to DB tokens: Queued, Sent, Failed, Delivered
     const normalizeStatusDB = (st) => {
@@ -382,5 +484,6 @@ export {
   markAsRead,
   updateStatus,
   getPendingNotifications,
-  deleteNotification
+  deleteNotification,
+  broadcastNotifications
 };

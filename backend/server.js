@@ -58,6 +58,7 @@ app.use('/api/parent', parentRoutes);
 app.use('/api/immunizations', immunizationRoutes);
 app.use('/api/deworming', dewormingRoutes);
 app.use('/api/vitamina', vitaminaRoutes);
+app.use('/api/vitalsigns', vitalsRoutes);
 app.use('/api/vitals', vitalsRoutes);
 app.use('/api/receiving-reports', receivingReportRoutes);
 app.use('/api/notifications', notificationRoutes);
