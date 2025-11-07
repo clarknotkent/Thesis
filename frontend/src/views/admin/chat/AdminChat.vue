@@ -1,11 +1,31 @@
 <template>
   <AdminLayout>
     <div class="admin-content">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            Messages
+          </li>
+        </ol>
+      </nav>
+
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 class="h4 mb-1 fw-semibold text-dark">
-            Messages
+            <i class="bi bi-chat-dots me-2" />Messages
           </h1>
           <p class="text-muted mb-0 small">
             Admin messaging center
@@ -368,6 +388,31 @@ onBeforeUnmount(() => {
 <style scoped>
 .admin-content {
   padding: 0;
+}
+
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
 }
 
 .chat-container {

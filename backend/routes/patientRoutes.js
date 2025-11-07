@@ -20,7 +20,8 @@ import { createPatient,
   listParentsWithContacts,
   listDistinctParentNames,
   getCoParentSuggestion,
-  getSmartDoseOptions } from '../controllers/patientController.js';
+  getSmartDoseOptions,
+  getPatientStats } from '../controllers/patientController.js';
 
 // NOTE: Define non-parameterized helper routes BEFORE any '/:id' routes to avoid shadowing
 // Optional: compute age detail (months, days) from DOB
@@ -43,6 +44,9 @@ router.get('/helpers/age', authenticateRequest, (req, res, _next) => {
 
 // GET /api/patients - Get all patients with pagination and filtering (no user mapping required for reads)
 router.get('/', authenticateRequest, getAllPatients);
+
+// GET /api/patients/stats - Get patient statistics (admin/staff only)
+router.get('/stats', authenticateRequest, authorizeRole(['admin','health_worker','health_staff']), getPatientStats);
 
 // GET /api/patients/parents/options - Parents (mother/father) dropdown (place before param routes)
 router.get('/parents/options', authenticateRequest, listParentsOptions);

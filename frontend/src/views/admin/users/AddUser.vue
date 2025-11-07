@@ -131,6 +131,19 @@ const handleSubmit = async (formData) => {
   color: #6c757d;
 }
 
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .border-left-primary {
   border-left: 4px solid #4e73df;
 }

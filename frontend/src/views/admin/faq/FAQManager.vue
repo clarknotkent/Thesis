@@ -1,10 +1,30 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Breadcrumb -->
+      <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+      >
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/admin/dashboard">
+              Admin
+            </router-link>
+          </li>
+          <li
+            class="breadcrumb-item active"
+            aria-current="page"
+          >
+            FAQ Manager
+          </li>
+        </ol>
+      </nav>
+
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h1 class="h3 mb-0 text-gray-800">
-            FAQ Manager
+            <i class="bi bi-question-circle me-2" />FAQ Manager
           </h1>
           <p class="text-muted mb-0">
             Create, edit and manage frequently asked questions
@@ -451,6 +471,31 @@ watch(filteredFAQs, () => {
 </script>
 
 <style scoped>
+/* Breadcrumb Styling */
+.breadcrumb {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
+}
+
+.breadcrumb-item a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6c757d;
+}
+
 .faq-manager {
   background: var(--bs-body-bg);
   background-color: transparent;

@@ -232,8 +232,12 @@ const autoSendEnabled = ref(false)
 .breadcrumb {
   background-color: transparent;
   padding: 0;
-  margin-bottom: 0;
-  font-size: 0.875rem;
+  margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  color: #6c757d;
 }
 
 .breadcrumb-item a {
@@ -246,7 +250,7 @@ const autoSendEnabled = ref(false)
 }
 
 .breadcrumb-item.active {
-  color: #858796;
+  color: #6c757d;
 }
 
 .card {

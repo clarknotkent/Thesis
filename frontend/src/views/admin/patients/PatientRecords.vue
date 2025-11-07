@@ -32,6 +32,132 @@
         </p>
       </div>
 
+      <!-- Patient Statistics Cards -->
+      <div
+        v-if="!loading"
+        class="row g-3 mb-4"
+      >
+        <!-- Total Patients -->
+        <div class="col-md">
+          <div class="card border border-primary border-3 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                    Total Patients
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ patientStats.totalPatients || 0 }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-people-fill text-primary"
+                    style="font-size: 2rem;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Male Patients -->
+        <div class="col-md">
+          <div class="card border border-info border-3 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                    Male
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ patientStats.male || 0 }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-gender-male text-info"
+                    style="font-size: 2rem;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Female Patients -->
+        <div class="col-md">
+          <div class="card border border-danger border-3 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">
+                    Female
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ patientStats.female || 0 }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-gender-female text-danger"
+                    style="font-size: 2rem;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIC (Fully Immunized Child) -->
+        <div class="col-md">
+          <div class="card border border-success border-3 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                    FIC
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ patientStats.fic || 0 }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-check-circle-fill text-success"
+                    style="font-size: 2rem;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CIC (Completely Immunized Child) -->
+        <div class="col-md">
+          <div class="card border border-warning border-3 shadow h-100 py-2">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                    CIC
+                  </div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">
+                    {{ patientStats.cic || 0 }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i
+                    class="bi bi-shield-fill-check text-warning"
+                    style="font-size: 2rem;"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div
         v-if="loading"
@@ -390,6 +516,27 @@ const itemsPerPage = ref(5) // Set to 5 items per page as requested
 const totalItems = ref(0)
 const totalPages = ref(0)
 
+// Patient Statistics
+const patientStats = ref({
+  totalPatients: 0,
+  male: 0,
+  female: 0,
+  fic: 0,
+  cic: 0
+})
+
+// Fetch patient statistics
+const fetchPatientStats = async () => {
+  try {
+    const response = await api.get('/patients/stats')
+    if (response.data.success) {
+      patientStats.value = response.data.stats
+    }
+  } catch (error) {
+    console.error('Error fetching patient statistics:', error)
+  }
+}
+
 // Methods
 const fetchPatients = async () => {
   try {
@@ -632,6 +779,7 @@ const setPatientStatus = async (patient, newStatus) => {
 // Lifecycle
 onMounted(() => {
   fetchPatients()
+  fetchPatientStats()
 })
 
 // Active first, then inactive; archived handled via Show Deleted toggle
