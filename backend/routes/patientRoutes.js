@@ -6,6 +6,7 @@ import { createPatient,
   updatePatient,
   deletePatient,
   restorePatient,
+  debugRewriteDob,
   getAllPatients,
   getPatientSchedule,
   updatePatientTag,
@@ -72,6 +73,8 @@ router.post('/:id/restore', authenticateRequest, checkUserMapping, authorizeRole
 
 // GET /api/patients/:id/schedule - Get patient vaccination schedule (ownership enforced for guardians)
 router.get('/:id/schedule', authenticateRequest, authorizePatientReadAccess, getPatientSchedule);
+// GET /api/patients/:id/rewrite-dob-debug - Run DOB rewrite and return detailed diff (admin/staff only)
+router.get('/:id/rewrite-dob-debug', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), debugRewriteDob);
 
 // PUT /api/patients/:id/tag - Update patient tag
 router.put('/:id/tag', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updatePatientTag);

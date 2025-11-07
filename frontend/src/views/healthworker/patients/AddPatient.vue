@@ -469,11 +469,11 @@ const goBack = () => {
 }
 
 const handleSubmit = async () => {
-  const validation = validateForm()
-  if (!validation.valid) {
+  const errors = validateForm()
+  if (Array.isArray(errors) && errors.length > 0) {
     addToast({
       title: 'Validation Error',
-      message: validation.errors.join(', '),
+      message: errors.join(', '),
       type: 'error',
       timeout: 5000
     })

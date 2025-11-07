@@ -42,7 +42,10 @@
         class="tab-content"
       >
         <!-- QR Code Card -->
-        <PatientQRCodeCard :patient="patient" />
+        <PatientQRCodeCard
+          v-if="patient"
+          :patient="patient"
+        />
 
         <!-- Patient Information Card -->
         <CollapsibleCard

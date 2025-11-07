@@ -71,13 +71,17 @@
           <div class="card-header">
             <i class="bi bi-shield-fill-check card-icon" />
             <h2 class="card-title">
-              Vaccine Information
+              Item Information
             </h2>
           </div>
           <div class="card-body">
             <div class="detail-row">
               <span class="detail-label">Vaccine Name</span>
               <span class="detail-value">{{ vaccineName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Category</span>
+              <span class="detail-value">{{ prettyCategory }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Disease Prevented</span>
@@ -91,15 +95,24 @@
               <span class="detail-label">Manufacturer</span>
               <span class="detail-value">{{ manufacturer }}</span>
             </div>
-            <div class="detail-row">
+            <div
+              v-if="showType"
+              class="detail-row"
+            >
               <span class="detail-label">Type</span>
-              <span class="detail-value">
+              <span
+                class="detail-value"
+                style="display:flex; gap:0.5rem; justify-content:flex-end; align-items:center; flex-wrap:wrap;"
+              >
                 <span
+                  v-if="programLabel"
                   class="type-badge"
                   :class="isNIP ? 'type-nip' : 'type-other'"
-                >
-                  {{ isNIP ? 'NIP Vaccine' : 'Other Vaccine' }}
-                </span>
+                >{{ programLabel }}</span>
+                <span
+                  v-if="vaccineType"
+                  class="type-chip"
+                >{{ vaccineType }}</span>
               </span>
             </div>
           </div>
@@ -245,6 +258,29 @@ const manufacturer = computed(() => {
 
 const isNIP = computed(() => {
   return inventory.value?.is_nip || inventory.value?.vaccinemaster?.is_nip || false
+})
+
+const category = computed(() => {
+  return inventory.value?.vaccinemaster?.category || inventory.value?.category || ''
+})
+
+const prettyCategory = computed(() => {
+  const c = String(category.value || '').toUpperCase()
+  return c === 'VACCINE' ? 'Vaccine' : c === 'DEWORMING' ? 'Deworming' : c === 'VITAMIN_A' ? 'Vitamin A' : (category.value || 'N/A')
+})
+
+const vaccineType = computed(() => {
+  return inventory.value?.vaccinemaster?.vaccine_type || inventory.value?.vaccine_type || ''
+})
+
+const programLabel = computed(() => {
+  if (!['VACCINE','DEWORMING','VITAMIN_A'].includes(String(category.value || '').toUpperCase())) return ''
+  return isNIP.value ? 'NIP' : 'Other'
+})
+
+const showType = computed(() => {
+  const c = String(category.value || '').toUpperCase()
+  return ['VACCINE','DEWORMING','VITAMIN_A'].includes(c) && (programLabel.value || vaccineType.value)
 })
 
 const currentQuantity = computed(() => {
@@ -715,6 +751,15 @@ onMounted(() => {
 .type-other {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+.type-chip {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .status-badge {

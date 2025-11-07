@@ -13,12 +13,23 @@ export function useVaccinationRecords(patientId, patientDataProp) {
   const saving = ref(false);
   const patientData = ref(null);
   const vaccineOptions = ref([]);
+  const remainingCache = ref({});
   const healthWorkers = ref([]);
   const nurses = ref([]);
   const availableDoses = ref([1, 2, 3, 4, 5]);
   const autoSelectHint = ref('');
   const vaccineCatalog = ref([]);
   const outsideImmunization = ref(false);
+  // Debug instrumentation
+  const debugMode = ref(true);
+  const debugInfo = ref({
+    inventoryRaw: [],
+    baseFiltered: [],
+    finalOptions: [],
+    catalogRaw: [],
+    catalogFinal: [],
+    decisions: {}, // keyed by vaccine_id
+  });
 
   // Visit picker state
   const showVisitPicker = ref(false);
@@ -147,18 +158,91 @@ export function useVaccinationRecords(patientId, patientDataProp) {
     try {
       const response = await api.get('/vaccines/inventory');
       const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
-      vaccineOptions.value = list.map(v => ({
-        inventory_id: v.inventory_id || v.id,
-        vaccine_id: v.vaccine_id,
-        antigen_name: v.vaccinemaster?.antigen_name || v.antigen_name || 'Unknown',
-        lot_number: v.lot_number || '',
-        manufacturer: v.vaccinemaster?.manufacturer || v.manufacturer || '',
-        disease_prevented: v.vaccinemaster?.disease_prevented || '',
-        expiration_date: v.expiration_date || '',
-        current_stock_level: v.current_stock_level || 0,
-        isExpired: v.expiration_date ? new Date(v.expiration_date) < new Date(new Date().setHours(0, 0, 0, 0)) : false,
-        display_name: `${v.vaccinemaster?.antigen_name || 'Unknown'} (${v.vaccinemaster?.disease_prevented || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Expires: ${v.expiration_date ? new Date(v.expiration_date).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : 'N/A'} - ${v.vaccinemaster?.manufacturer || 'Unknown'}`
-      }));
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      // Map first to normalized records
+      const mappedAll = list.map(v => {
+        const exp = v.expiration_date || v.expiry_date || '';
+        const stock = v.current_stock_level ?? v.current_stock ?? v.quantity ?? 0;
+        const isExpired = exp ? new Date(exp).setHours(0,0,0,0) < today.getTime() : false;
+        const antigen = v.vaccinemaster?.antigen_name || v.antigen_name || 'Unknown';
+        const disease = v.vaccinemaster?.disease_prevented || '';
+        const manufacturer = v.vaccinemaster?.manufacturer || v.manufacturer || '';
+        const isNip = !!(v.vaccinemaster?.is_nip || v.is_nip || v.isNip);
+        return ({
+          inventory_id: v.inventory_id || v.id,
+          vaccine_id: v.vaccinemaster?.vaccine_id || v.vaccine_id || v.vaccine?.vaccine_id,
+          antigen_name: antigen,
+          lot_number: v.lot_number || '',
+          manufacturer,
+          disease_prevented: disease,
+          expiration_date: exp,
+          current_stock_level: stock,
+          isExpired,
+          is_nip: isNip,
+          display_name: `${antigen} (${disease || 'Unknown'}) - Lot: ${v.lot_number || 'N/A'} - Expires: ${exp ? new Date(exp).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : 'N/A'} - ${manufacturer || 'Unknown'}`
+        });
+      });
+
+      if (debugMode.value) {
+        debugInfo.value.inventoryRaw = mappedAll;
+      }
+
+      // Base constraints: not expired, stock > 0 (collect reasoning)
+      const baseFiltered = [];
+      for (const x of mappedAll) {
+        const pass = (!x.isExpired) && Number(x.current_stock_level) > 0;
+        if (pass) baseFiltered.push(x);
+        if (debugMode.value) {
+          const key = String(x.vaccine_id);
+          const cur = debugInfo.value.decisions[key] || { vaccine_id: x.vaccine_id, antigen_name: x.antigen_name };
+          if (!cur.base) cur.base = [];
+          cur.base.push({ inventory_id: x.inventory_id, isExpired: x.isExpired, stock: x.current_stock_level, passed: pass });
+          debugInfo.value.decisions[key] = cur;
+        }
+      }
+
+      if (debugMode.value) {
+        debugInfo.value.baseFiltered = baseFiltered;
+      }
+
+      // Hide fully-completed vaccines for this patient: keep only those with remaining doses
+      let afterRemaining = baseFiltered;
+      if (patientId?.value) {
+        afterRemaining = await filterByRemainingDoses(patientId.value, baseFiltered, debugInfo);
+      }
+
+      vaccineOptions.value = afterRemaining;
+
+      if (debugMode.value) {
+        debugInfo.value.finalOptions = afterRemaining;
+        const targetNames = ['pentavalent'];
+        const present = afterRemaining.filter(v => targetNames.some(t => String(v.antigen_name).toLowerCase().includes(t)));
+        console.log('[VaccinationRecords][DEBUG] Inventory counts:', {
+          raw: mappedAll.length,
+          baseFiltered: baseFiltered.length,
+          final: afterRemaining.length,
+          pentavalentPresent: present.length,
+        });
+        if (present.length === 0) {
+          // Print decisions for vaccine_id present in raw/base with matching name
+          const rawMatch = mappedAll.filter(v => targetNames.some(t => String(v.antigen_name).toLowerCase().includes(t)));
+          const vids = Array.from(new Set(rawMatch.map(v => v.vaccine_id)));
+          console.table(rawMatch.map(v => ({
+            stage: 'raw', inventory_id: v.inventory_id, vaccine_id: v.vaccine_id, antigen_name: v.antigen_name,
+            isExpired: v.isExpired, stock: v.current_stock_level
+          })));
+          console.table(baseFiltered.filter(v => vids.includes(v.vaccine_id)).map(v => ({
+            stage: 'base', inventory_id: v.inventory_id, vaccine_id: v.vaccine_id, antigen_name: v.antigen_name,
+            isExpired: v.isExpired, stock: v.current_stock_level
+          })));
+          for (const vid of vids) {
+            const dec = debugInfo.value.decisions[String(vid)];
+            console.log('[VaccinationRecords][DEBUG] smart-doses decision for vaccine_id', vid, dec?.smartDoses || '(no record)');
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching vaccine inventory:', error);
       vaccineOptions.value = [];
@@ -170,12 +254,28 @@ export function useVaccinationRecords(patientId, patientDataProp) {
     try {
       const response = await api.get('/vaccines');
       const list = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
-      vaccineCatalog.value = list.map(v => ({
+      const mapped = list.map(v => ({
         vaccine_id: v.vaccine_id || v.id,
         antigen_name: v.antigen_name || v.name || '',
         disease_prevented: v.disease_prevented || '',
-        manufacturer: v.manufacturer || ''
+        manufacturer: v.manufacturer || '',
+        is_nip: !!(v.is_nip || v.isNip)
       }));
+
+      if (debugMode.value) {
+        debugInfo.value.catalogRaw = mapped;
+      }
+
+      let filtered = mapped;
+      // Hide fully-completed vaccines here as well
+      if (patientId?.value) {
+        filtered = await filterByRemainingDoses(patientId.value, mapped, debugInfo);
+      }
+
+      vaccineCatalog.value = filtered;
+      if (debugMode.value) {
+        debugInfo.value.catalogFinal = filtered;
+      }
     } catch (error) {
       console.error('Error fetching vaccine catalog:', error);
       vaccineCatalog.value = [];
@@ -357,6 +457,93 @@ export function useVaccinationRecords(patientId, patientDataProp) {
       console.warn('Smart dose endpoint not available or failed.', err);
       availableDoses.value = [1, 2, 3, 4, 5];
       autoSelectHint.value = '';
+    }
+  };
+
+  // Helper: keep only vaccines with remaining doses (not fully completed)
+  const filterByRemainingDoses = async (pId, list, dbg = null) => {
+    try {
+      const unique = Array.from(new Set(list.map(v => v.vaccine_id).filter(Boolean)));
+      const toCheck = unique.slice(0, 50);
+      for (const vid of toCheck) {
+        if (remainingCache.value[vid] === undefined) {
+          try {
+            const res = await api.get(`/patients/${pId}/smart-doses`, { params: { vaccine_id: vid } });
+            const data = res.data?.data || res.data || {};
+            const remainingArr = Array.isArray(data.available_doses) ? data.available_doses : [];
+            const allDosesArr = Array.isArray(data.all_doses) ? data.all_doses : [];
+            // If schedule isn't configured (no all_doses), fail-open to visible
+            if (allDosesArr.length === 0) {
+              remainingCache.value[vid] = true;
+            } else if (remainingArr.length === 0) {
+              // If no remaining according to smart-doses BUT patient still has a non-completed schedule
+              // for this vaccine (e.g., Missed/Pending/Scheduled), fail-open so the user can select it.
+              const schedules = Array.isArray(patientData.value?.nextScheduledVaccinations)
+                ? patientData.value.nextScheduledVaccinations
+                : [];
+              const hasPendingSchedule = schedules.some(s => {
+                const sVid = s.vaccineId || s.vaccine_id;
+                if (String(sVid) !== String(vid)) return false;
+                const st = String(s.status || s.schedule_status || '').toLowerCase();
+                return !['completed','done','administered','given'].includes(st);
+              });
+              remainingCache.value[vid] = hasPendingSchedule ? true : false;
+            } else {
+              remainingCache.value[vid] = true; // has remaining
+            }
+            if (debugMode.value && dbg) {
+              const key = String(vid);
+              dbg.value.decisions[key] = dbg.value.decisions[key] || { vaccine_id: vid };
+              dbg.value.decisions[key].smartDoses = {
+                all_doses: allDosesArr,
+                available_doses: remainingArr,
+                inferredRemaining: remainingCache.value[vid]
+              };
+            }
+          } catch (e) {
+            console.warn('smart-doses check failed for vaccine', vid, e?.response?.data || e.message);
+            // Fail-open: keep visible rather than accidentally hiding
+            remainingCache.value[vid] = true;
+            if (debugMode.value && dbg) {
+              const key = String(vid);
+              dbg.value.decisions[key] = dbg.value.decisions[key] || { vaccine_id: vid };
+              dbg.value.decisions[key].smartDoses = { error: e?.message || 'request failed', inferredRemaining: true };
+            }
+          }
+        }
+      }
+      return list.filter(v => remainingCache.value[v.vaccine_id] !== false);
+    } catch (e) {
+      console.error('filterByRemainingDoses error:', e);
+      return list;
+    }
+  };
+
+  // Debug helper to explain visibility of a vaccine by id or antigen name
+  const debugWhyVaccineNotShowing = (query) => {
+    try {
+      const qStr = String(query).toLowerCase();
+      const inFinal = (vaccineOptions.value || []).filter(v => String(v.vaccine_id) === qStr || String(v.antigen_name).toLowerCase().includes(qStr));
+      const inBase = (debugInfo.value.baseFiltered || []).filter(v => String(v.vaccine_id) === qStr || String(v.antigen_name).toLowerCase().includes(qStr));
+      const inRaw = (debugInfo.value.inventoryRaw || []).filter(v => String(v.vaccine_id) === qStr || String(v.antigen_name).toLowerCase().includes(qStr));
+      console.log('[VaccinationRecords][DEBUG] Query:', query);
+      console.table(inRaw.map(v => ({ stage: 'raw', inventory_id: v.inventory_id, vaccine_id: v.vaccine_id, antigen_name: v.antigen_name, isExpired: v.isExpired, stock: v.current_stock_level })));
+      console.table(inBase.map(v => ({ stage: 'base', inventory_id: v.inventory_id, vaccine_id: v.vaccine_id, antigen_name: v.antigen_name, isExpired: v.isExpired, stock: v.current_stock_level })));
+      console.table(inFinal.map(v => ({ stage: 'final', inventory_id: v.inventory_id, vaccine_id: v.vaccine_id, antigen_name: v.antigen_name, isExpired: v.isExpired, stock: v.current_stock_level })));
+      const vids = Array.from(new Set([...inRaw, ...inBase, ...inFinal].map(v => v.vaccine_id)));
+      for (const vid of vids) {
+        const dec = debugInfo.value.decisions[String(vid)];
+        console.log('[VaccinationRecords][DEBUG] smart-doses decision', vid, dec?.smartDoses || '(no record)');
+      }
+      if (inFinal.length === 0 && inBase.length > 0) {
+        console.warn('[VaccinationRecords][DEBUG] Hidden at remaining-doses stage. See smart-doses decision above.');
+      } else if (inBase.length === 0 && inRaw.length > 0) {
+        console.warn('[VaccinationRecords][DEBUG] Hidden at base stage (likely expired or out of stock).');
+      } else if (inRaw.length === 0) {
+        console.warn('[VaccinationRecords][DEBUG] Vaccine not present in inventory payload (no stock rows).');
+      }
+    } catch (e) {
+      console.error('[VaccinationRecords][DEBUG] failed to explain:', e);
     }
   };
 
@@ -743,6 +930,7 @@ export function useVaccinationRecords(patientId, patientDataProp) {
     fetchPatientData,
     fetchVaccineOptions,
     fetchVaccineCatalog,
+  filterByRemainingDoses,
     fetchHealthWorkers,
     fetchVisits,
     calculateAgeAtAdministration,
@@ -762,6 +950,9 @@ export function useVaccinationRecords(patientId, patientDataProp) {
     deriveFacility,
     isOutside,
     getMinDate,
+  debugMode,
+  debugInfo,
+  debugWhyVaccineNotShowing,
 
     // Computed
     filteredVaccinations,

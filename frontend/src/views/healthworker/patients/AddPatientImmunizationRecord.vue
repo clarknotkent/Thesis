@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <!-- Visit Selection (Nurse/Nutritionist only) -->
+        <!-- Visit Status (auto-detected: one visit per day) -->
         <VisitSelectorSection
           v-if="isNurseOrNutritionist"
           v-model:visit-mode="visitMode"
@@ -73,11 +73,10 @@
           @ensure-visits-loaded="ensureVisitsLoaded"
         />
 
-        <!-- Vital Signs -->
+        <!-- Vital Signs: always show; read-only only when a visit already exists -->
         <VitalsFormSection
-          v-if="!hideVitals && visitMode === 'new'"
           v-model="formData.vitals"
-          :readonly="vitalsReadOnly"
+          :readonly="visitMode === 'existing'"
         />
 
         <!-- Services Section -->
@@ -196,6 +195,7 @@ import { usePatientImmunizationForm } from '@/features/health-worker/patients/co
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
 import db from '@/services/offline/db'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -205,6 +205,7 @@ const {
   loading,
   submitting,
   currentPatient,
+  currentUserId,
   formData,
   addedServices,
   isBHS,
@@ -218,8 +219,6 @@ const {
   visitMode,
   availableVisits,
   existingVisitId,
-  vitalsReadOnly,
-  hideVitals,
   loadVisitsForPatient,
   ensureVisitsLoaded,
   setupVisitWatcher,
@@ -255,11 +254,26 @@ const goBack = () => {
   router.back()
 }
 
-// Reset vitals only when attaching to an existing visit AND a visit is selected
-watch(existingVisitId, (newVal) => {
-  if (visitMode.value === 'existing' && newVal) {
-    // Clear any previously typed vitals to avoid stale data hanging around
-    formData.value.vitals = {}
+// When attaching to an existing visit, fetch vitals and autofill (read-only display)
+watch(existingVisitId, async (newVal) => {
+  if (!newVal) {
+    // No visit for today — allow editing and clear vitals
+    formData.value.vitals = { temperature: '', weight: '', height: '', muac: '', respiration: '' }
+    return
+  }
+  try {
+    const res = await api.get(`/vitalsigns/${newVal}`)
+    const v = res?.data?.data || res?.data || null
+    formData.value.vitals = {
+      temperature: v?.temperature ?? '',
+      weight: v?.weight ?? '',
+      height: v?.height ?? v?.height_length ?? '',
+      muac: v?.muac ?? '',
+      respiration: v?.respiration ?? v?.respiration_rate ?? ''
+    }
+  } catch (_) {
+    // No vitals recorded yet for this existing visit — show empty values (still read-only here)
+    formData.value.vitals = { temperature: '', weight: '', height: '', muac: '', respiration: '' }
   }
 })
 
@@ -324,16 +338,124 @@ const handleSubmit = async () => {
 
   try {
     submitting.value = true
-    
-    // OFFLINE-FIRST: Save immunizations directly to Dexie (local IndexedDB)
+
+    // Prepare normalized payload from form state
     const submissionData = prepareSubmissionData(null)
-    
+
+    // ONLINE-FIRST: If network is online, submit to API
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : false
+    if (isOnline) {
+      try {
+        const patientId = submissionData.patient_id
+
+        // Case A: Attach to existing visit (ensure vitals, then create immunizations)
+  if (existingVisitId.value) {
+          // Upsert vitals for the existing visit
+          if (submissionData?.vitals) {
+            try {
+              const v = submissionData.vitals || {}
+              const v1raw = {
+                temperature: v.temperature,
+                muac: v.muac,
+                respiration: v.respiration,
+                weight: v.weight,
+                height: v.height
+              }
+              const v2raw = {
+                temperature: v.temperature,
+                muac: v.muac,
+                respiration_rate: v.respiration,
+                weight: v.weight,
+                height_length: v.height
+              }
+              const v1 = Object.fromEntries(Object.entries(v1raw).filter(([, val]) => val !== undefined && val !== null && String(val) !== ''))
+              const v2 = Object.fromEntries(Object.entries(v2raw).filter(([, val]) => val !== undefined && val !== null && String(val) !== ''))
+              let vitalsUpdated = false
+              if (Object.keys(v1).length > 0) {
+                try { await api.put(`/vitals/${existingVisitId.value}`, v1); vitalsUpdated = true } catch {}
+              }
+              if (!vitalsUpdated && Object.keys(v2).length > 0) {
+                try { await api.put(`/vitalsigns/${existingVisitId.value}`, v2); vitalsUpdated = true } catch {}
+              }
+              if (!vitalsUpdated) console.warn('Vitals update failed on both endpoints (non-blocking)')
+            } catch (vErr) {
+              // Non-blocking: backend will still validate vitals on immunization
+              console.warn('Vitals update failed (will rely on existing vitals):', vErr?.message || vErr)
+            }
+          }
+
+          // Create immunizations (outside vs in-facility)
+          for (const s of submissionData.services) {
+            const outside = !!s.outside
+            if (outside) {
+              // Outside immunization: no inventory_id, visit linkage optional, patient_id required
+              const payload = {
+                patient_id: patientId,
+                vaccine_id: s.vaccine_id,
+                disease_prevented: s.disease_prevented || null,
+                dose_number: s.dose_number,
+                administered_date: s.administered_date,
+                age_at_administration: s.age_at_administration || null,
+                // Outside immunizations should not set administered_by
+                administered_by: null,
+                facility_name: s.facility_name || null,
+                outside: true,
+                remarks: s.remarks || null,
+                // Ensure linkage to the existing visit
+                visit_id: existingVisitId.value
+              }
+              await api.post('/immunizations', payload)
+            } else {
+              // In-facility immunization: must pass inventory_id and link to visit
+              const payload = {
+                patient_id: patientId,
+                inventory_id: s.inventory_id,
+                vaccine_id: s.vaccine_id,
+                disease_prevented: s.disease_prevented || null,
+                dose_number: s.dose_number,
+                administered_date: s.administered_date,
+                age_at_administration: s.age_at_administration || null,
+                administered_by: s.administered_by || currentUserId.value || null,
+                facility_name: s.facility_name || null,
+                remarks: s.remarks || null,
+                visit_id: existingVisitId.value
+              }
+              await api.post('/immunizations', payload)
+            }
+          }
+        }
+        // Case B: Create a new visit and include vitals + collected vaccinations in one call
+        else {
+          const visitPayload = {
+            patient_id: submissionData.patient_id,
+            visit_date: new Date().toISOString(),
+            recorded_by: currentUserId.value || null,
+            findings: submissionData.findings || null,
+            service_rendered: submissionData.service_rendered || null,
+            vitals: submissionData.vitals || null,
+            collectedVaccinations: submissionData.services || [],
+            services: []
+          }
+          await api.post('/visits', visitPayload)
+        }
+
+        addToast({ title: 'Success', message: 'Record saved online.', type: 'success' })
+        router.push(`/healthworker/patients/${route.params.patientId}`)
+        return
+      } catch (onlineErr) {
+        console.warn('Online submit failed, falling back to offline path:', onlineErr?.message || onlineErr)
+        // fallthrough to offline-first path
+      }
+    }
+
+    // OFFLINE PATH: Save immunizations directly to Dexie (local IndexedDB)
     // Generate temporary IDs for each immunization
     const immunizationRecords = submissionData.services.map(service => {
       const tempId = `temp_immunization_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
+
       return {
-        id: tempId,
+        // IMPORTANT: Dexie schema primary key is immunization_id
+        immunization_id: tempId,
         patient_id: submissionData.patient_id,
         vaccine_id: service.vaccine_id,
         vaccine_name: service.vaccine_name,
@@ -381,13 +503,23 @@ const handleSubmit = async () => {
         remarks: record.remarks,
         inventory_id: record.inventory_id
       },
-      local_id: record.id,
+      local_id: record.immunization_id,
       created_at: new Date().toISOString(),
       status: 'pending'
     }))
 
-    await db.pending_uploads.bulkAdd(uploadTasks)
-    console.log('✅ Immunizations queued for sync in pending_uploads')
+    // Queue for sync when outbox is available in this build
+    try {
+      if (db.pending_uploads && typeof db.pending_uploads.bulkAdd === 'function') {
+        await db.pending_uploads.bulkAdd(uploadTasks)
+        console.log('✅ Immunizations queued for sync in pending_uploads')
+      } else {
+        // Informational only; current build has no outbox. Keep logs low-noise when online.
+        console.info('pending_uploads table not available in current offline DB schema; skipping outbox queue (non-blocking).')
+      }
+    } catch (outboxErr) {
+      console.warn('Failed to queue immunizations in pending_uploads (non-blocking):', outboxErr?.message || outboxErr)
+    }
 
     addToast({ 
       title: 'Success', 

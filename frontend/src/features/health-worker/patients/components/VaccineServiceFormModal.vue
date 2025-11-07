@@ -51,7 +51,7 @@
               class="vaccine-search-wrapper"
               @click.stop
             >
-              <input 
+              <input
                 v-model="vaccineSearchTerm"
                 type="text"
                 class="form-input"
@@ -59,48 +59,54 @@
                 autocomplete="off"
                 required
                 @input="onVaccineSearch"
-                @focus="showVaccineDropdown = true"
+                @focus="onVaccineInputFocus"
               >
               <div
                 v-if="showVaccineDropdown"
                 class="vaccine-dropdown"
               >
-                <template v-if="filteredVaccineOptions.length > 0">
-                  <button
-                    v-for="vaccine in filteredVaccineOptions"
-                    :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
-                    type="button"
-                    class="vaccine-option"
-                    :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
-                    :disabled="!outsideMode && vaccine.isExpired"
-                    @click.stop="selectVaccine(vaccine)"
-                  >
-                    <div class="vaccine-option-main">
-                      <strong>{{ vaccine.antigen_name }}</strong>
-                      <span
-                        v-if="!outsideMode"
-                        class="vaccine-brand"
-                      >{{ vaccine.manufacturer }}</span>
-                    </div>
-                    <div
-                      v-if="!outsideMode"
-                      class="vaccine-option-details"
-                    >
-                      <span>Lot: {{ vaccine.lot_number }}</span>
-                      <span>Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
-                      <span
-                        v-if="vaccine.isExpired"
-                        class="vaccine-expired"
-                      >EXPIRED</span>
-                    </div>
-                  </button>
+                <template v-if="vaccineLoading">
+                  <div class="vaccine-no-results">
+                    Loading vaccines...
+                  </div>
                 </template>
-                <div
-                  v-else
-                  class="vaccine-no-results"
-                >
-                  {{ (outsideMode ? vaccineCatalog.length : vaccineOptions.length) === 0 ? 'Loading vaccines...' : 'No vaccines found' }}
-                </div>
+                <template v-else>
+                  <template v-if="filteredVaccineOptions.length > 0">
+                    <button
+                      v-for="vaccine in filteredVaccineOptions"
+                      :key="outsideMode ? vaccine.vaccine_id : vaccine.inventory_id"
+                      type="button"
+                      class="vaccine-option"
+                      :class="{ 'disabled': !outsideMode && vaccine.isExpired }"
+                      :disabled="!outsideMode && vaccine.isExpired"
+                      @click.stop="selectVaccine(vaccine)"
+                    >
+                      <div class="vaccine-option-main">
+                        <strong>{{ vaccine.antigen_name }}</strong>
+                        <span
+                          v-if="!outsideMode"
+                          class="vaccine-brand"
+                        >{{ vaccine.manufacturer }}</span>
+                      </div>
+                      <div
+                        v-if="!outsideMode"
+                        class="vaccine-option-details"
+                      >
+                        <span>Lot: {{ vaccine.lot_number }}</span>
+                        <span>Stock: {{ vaccine.current_stock_level ?? vaccine.current_stock ?? 0 }}</span>
+                        <span
+                          v-if="vaccine.isExpired"
+                          class="vaccine-expired"
+                        >EXPIRED</span>
+                      </div>
+                    </button>
+                  </template>
+                  <template v-else>
+                    <div class="vaccine-no-results">
+                      {{ emptyDropdownMessage }}
+                    </div>
+                  </template>
+                </template>
               </div>
             </div>
           </div>
@@ -201,17 +207,20 @@
                 <option value="">
                   Select a site
                 </option>
-                <option value="left-deltoid">
-                  Left Deltoid
+                <option value="Left arm (deltoid)">
+                  Left arm (deltoid)
                 </option>
-                <option value="right-deltoid">
-                  Right Deltoid
+                <option value="Right arm (deltoid)">
+                  Right arm (deltoid)
                 </option>
-                <option value="left-thigh">
-                  Left Thigh
+                <option value="Left thigh (anterolateral)">
+                  Left thigh (anterolateral)
                 </option>
-                <option value="right-thigh">
-                  Right Thigh
+                <option value="Right thigh (anterolateral)">
+                  Right thigh (anterolateral)
+                </option>
+                <option value="Oral">
+                  Oral
                 </option>
               </select>
             </div>
@@ -277,10 +286,11 @@
 </template>
 
 <script setup>
-import { watch, onMounted, onBeforeUnmount } from 'vue'
+import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
+import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   show: {
@@ -315,6 +325,7 @@ const {
   availableDoses,
   autoSelectHint,
   serviceForm,
+  vaccineLoading,
   filteredVaccineOptions,
   refreshVaccineSources,
   onVaccineSearch,
@@ -349,6 +360,12 @@ onBeforeUnmount(() => {
 // Local handler to close dropdown when clicking outside
 const closeVaccineDropdown = () => {
   showVaccineDropdown.value = false
+}
+
+// Open dropdown and ensure sources are fresh so default filters apply immediately
+const onVaccineInputFocus = async () => {
+  showVaccineDropdown.value = true
+  await refreshVaccineSources(getPatientId())
 }
 
 // Wrapper to call composable's select and then update smart doses
@@ -532,6 +549,13 @@ watch(() => props.show, (val) => {
     // When closing, reset form
     resetServiceForm()
   }
+  if (val) {
+    // Set default date to today if empty on open, then recompute age
+    if (!serviceForm.value.dateAdministered) {
+      serviceForm.value.dateAdministered = getCurrentPHDate()
+      updateAgeCalculation()
+    }
+  }
 })
 
 const closeModal = () => {
@@ -558,6 +582,19 @@ const saveService = () => {
 
 // Watch for date changes to update age
 watch(() => serviceForm.value.dateAdministered, updateAgeCalculation)
+
+// Derived message when no vaccines are available after filtering
+const emptyDropdownMessage = computed(() => {
+  // If sources are empty, tailor message based on mode
+  const hasSource = (outsideMode.value ? vaccineCatalog.value.length : vaccineOptions.value.length) > 0
+  if (!hasSource) {
+    return outsideMode.value
+      ? 'No vaccines in catalog.'
+      : 'No stocked vaccines available.'
+  }
+  // Sources exist but filtered list is empty
+  return 'All scheduled doses are completed or filtered out. Try Outside facility or adjust filters.'
+})
 </script>
 
 <style scoped>

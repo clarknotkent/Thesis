@@ -54,7 +54,8 @@ import api from '@/services/api'
 const props = defineProps({
   patient: {
     type: Object,
-    required: true
+    required: false,
+    default: null
   },
   allowRefresh: {
     type: Boolean,

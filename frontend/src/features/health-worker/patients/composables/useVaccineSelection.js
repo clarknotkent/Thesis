@@ -19,6 +19,8 @@ export function useVaccineSelection() {
   const autoSelectHint = ref('')
   // Cache for remaining dose availability per vaccine_id
   const remainingCache = ref({})
+  // Loading state for vaccine sources
+  const vaccineLoading = ref(false)
 
   // Service form state
   const serviceForm = ref({
@@ -40,19 +42,41 @@ export function useVaccineSelection() {
 
   // Computed: Filter vaccines by NIP and search term
   const filteredVaccineOptions = computed(() => {
-    const source = outsideMode.value ? vaccineCatalog.value : vaccineOptions.value
-    let filtered = [...source]
+    const sourceInv = Array.isArray(vaccineOptions.value) ? vaccineOptions.value : []
+    const sourceCat = Array.isArray(vaccineCatalog.value) ? vaccineCatalog.value : []
 
-    // Local NIP filter
-    if (showNipOnly.value) {
-      filtered = filtered.filter(v => !!(v.is_nip || v.isNIP))
+    let base = []
+    if (outsideMode.value) {
+      // Outside mode: show catalog only
+      base = [...sourceCat.map(v => ({ ...v, __outside: true }))]
+    } else if (showNipOnly.value) {
+      // In-facility + NIP-only: show inventory (server already filtered by is_nip if param was set)
+      base = [...sourceInv]
+    } else {
+      // In-facility + NIP toggle OFF: show all inventory + add catalog vaccines not present in inventory (both NIP and non-NIP)
+      // Prefer inventory entries when antigen matches; add catalog entries not present in inventory
+      const seenAntigen = new Set(sourceInv.map(v => String(v.antigen_name || '').trim().toLowerCase()).filter(Boolean))
+      const others = sourceCat
+        .filter(v => {
+          const key = String(v.antigen_name || '').trim().toLowerCase()
+          return key && !seenAntigen.has(key)
+        })
+        .map(v => ({ ...v, __outside: true }))
+      base = [...sourceInv, ...others]
     }
 
-    // When outside mode is on, deduplicate by antigen name (case-insensitive)
-    if (outsideMode.value) {
+    let filtered = [...base]
+
+    // Local NIP filter only when explicitly requested (outside mode will already be catalog)
+    if (showNipOnly.value) {
+      filtered = filtered.filter(v => !!(v.is_nip || v.isNip))
+    }
+
+    // Deduplicate by antigen when showing catalog items (outside or merged view)
+    if (outsideMode.value || !showNipOnly.value) {
       const seen = new Set()
       filtered = filtered.filter(v => {
-        const key = String(v.antigen_name || '').trim().toLowerCase()
+        const key = String(v.antigen_name || v.vaccine_name || '').trim().toLowerCase()
         if (!key) return false
         if (seen.has(key)) return false
         seen.add(key)
@@ -62,12 +86,13 @@ export function useVaccineSelection() {
 
     // Filter by search term
     if (vaccineSearchTerm.value && vaccineSearchTerm.value.trim() !== '') {
-      const q = vaccineSearchTerm.value.toLowerCase().trim()
+      const normalize = (s) => (s ? String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() : '')
+      const q = normalize(vaccineSearchTerm.value)
       filtered = filtered.filter(v => {
-        const antigenMatch = (v.antigen_name || '').toLowerCase().includes(q)
-        const lotMatch = (v.lot_number || '').toLowerCase().includes(q)
-        const diseaseMatch = (v.disease_prevented || '').toLowerCase().includes(q)
-        const manufMatch = (v.manufacturer || '').toLowerCase().includes(q)
+        const antigenMatch = normalize(v.antigen_name || v.vaccine_name || v.name).includes(q)
+        const lotMatch = normalize(v.lot_number).includes(q)
+        const diseaseMatch = normalize(v.disease_prevented).includes(q)
+        const manufMatch = normalize(v.manufacturer).includes(q)
         return antigenMatch || lotMatch || diseaseMatch || manufMatch
       })
     }
@@ -80,6 +105,7 @@ export function useVaccineSelection() {
    */
   const fetchVaccineInventory = async (patientId = null) => {
     try {
+      vaccineLoading.value = true
       const params = {}
       if (showNipOnly.value) params.is_nip = true
       const response = await api.get('/vaccines/inventory', { params })
@@ -114,7 +140,8 @@ export function useVaccineSelection() {
 
       let result = mapped
 
-      // Filter out vaccines fully completed (no remaining doses) using smart-doses endpoint
+      // Always hide fully-completed vaccines based on patient's remaining doses
+      // NIP-only toggle only affects which set (NIP vs all) we start from; completion hiding applies in both modes
       if (patientId) {
         result = await filterByRemainingDoses(patientId, result)
       }
@@ -123,6 +150,8 @@ export function useVaccineSelection() {
     } catch (error) {
       console.error('Error fetching vaccine inventory:', error)
       vaccineOptions.value = []
+    } finally {
+      vaccineLoading.value = false
     }
   }
 
@@ -132,6 +161,7 @@ export function useVaccineSelection() {
    */
   const fetchVaccineCatalog = async (patientId = null) => {
     try {
+      vaccineLoading.value = true
       const params = {}
       if (showNipOnly.value) params.is_nip = true
 
@@ -156,7 +186,7 @@ export function useVaccineSelection() {
 
       let result = mapped
 
-      // Filter out vaccines fully completed (no remaining doses) using smart-doses endpoint
+      // Always hide fully-completed vaccines regardless of NIP-only selection
       if (patientId) {
         result = await filterByRemainingDoses(patientId, result)
       }
@@ -165,6 +195,8 @@ export function useVaccineSelection() {
     } catch (error) {
       console.error('Error fetching vaccine catalog:', error)
       vaccineCatalog.value = []
+    } finally {
+      vaccineLoading.value = false
     }
   }
 
@@ -181,8 +213,16 @@ export function useVaccineSelection() {
           try {
             const res = await api.get(`/patients/${patientId}/smart-doses`, { params: { vaccine_id: vid } })
             const data = res.data?.data || res.data || {}
-            const remaining = Array.isArray(data.available_doses) ? data.available_doses.length : 0
-            remainingCache.value[vid] = remaining > 0
+            const remainingArr = Array.isArray(data.available_doses) ? data.available_doses : []
+            const allDosesArr = Array.isArray(data.all_doses)
+              ? data.all_doses
+              : (Array.isArray(data.schedule_doses) ? data.schedule_doses : [])
+            // If schedule isn't configured (no dose definitions), fail-open (keep visible)
+            if (allDosesArr.length === 0) {
+              remainingCache.value[vid] = true
+            } else {
+              remainingCache.value[vid] = remainingArr.length > 0
+            }
           } catch (e) {
             console.warn('smart-doses check failed for vaccine', vid, e?.response?.data || e.message)
             // If we fail to check, keep it visible rather than accidentally hiding
@@ -251,21 +291,24 @@ export function useVaccineSelection() {
    * Handle vaccine selection from dropdown
    */
   const selectVaccine = async (vaccine, updateSmartDosesFn) => {
+    if (!vaccine) return
+    // Prevent selecting expired inventory in in-facility flow
     if (!outsideMode.value && vaccine.isExpired) return
 
-    if (outsideMode.value) {
-      // Outside mode: only antigen name shown and record flagged outside
+    const isOutsideSelection = outsideMode.value || !vaccine.inventory_id || vaccine.__outside === true
+    if (isOutsideSelection) {
+      // Outside selection: antigen-only, mark as outside
       vaccineSearchTerm.value = `${vaccine.antigen_name}`
       serviceForm.value.inventoryId = ''
       serviceForm.value.vaccineId = vaccine.vaccine_id
       serviceForm.value.vaccineName = vaccine.antigen_name
       serviceForm.value.diseasePrevented = vaccine.disease_prevented || ''
-      serviceForm.value.manufacturer = ''
+      serviceForm.value.manufacturer = vaccine.manufacturer || ''
       serviceForm.value.lotNumber = ''
       serviceForm.value.outsideFacility = true
       if (updateSmartDosesFn) await updateSmartDosesFn(vaccine.vaccine_id)
     } else {
-      // In-facility mode: use inventory
+      // In-facility inventory selection
       vaccineSearchTerm.value = `${vaccine.antigen_name} - ${vaccine.manufacturer || ''}`
       serviceForm.value.inventoryId = vaccine.inventory_id
       serviceForm.value.vaccineId = vaccine.vaccine_id
@@ -287,7 +330,12 @@ export function useVaccineSelection() {
     if (outsideMode.value) {
       await fetchVaccineCatalog(patientId)
     } else {
+      // Always refresh inventory
       await fetchVaccineInventory(patientId)
+      // When NIP-only is off, also refresh catalog so we can include Other Vaccines in merged view
+      if (!showNipOnly.value) {
+        await fetchVaccineCatalog(patientId)
+      }
     }
   }
 
@@ -356,14 +404,15 @@ export function useVaccineSelection() {
     availableDoses,
     autoSelectHint,
     serviceForm,
-    
+    vaccineLoading,
+
     // Computed
     filteredVaccineOptions,
-    
+
     // Methods
     fetchVaccineInventory,
     fetchVaccineCatalog,
-  filterByRemainingDoses,
+    filterByRemainingDoses,
     refreshVaccineSources,
     onVaccineSearch,
     selectVaccine,

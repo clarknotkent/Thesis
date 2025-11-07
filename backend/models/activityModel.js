@@ -13,18 +13,62 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
 
   // Apply filters
   if (filters.user_id) query = query.eq('user_id', filters.user_id);
-  if (filters.action_type) query = query.eq('action_type', filters.action_type);
+
+  // Action type filter normalization: accept friendly tokens and map to patterns/codes
+  if (filters.action_type) {
+    const at = String(filters.action_type).trim().toLowerCase();
+    if (['create','update','delete','view','login','logout'].includes(at)) {
+      switch (at) {
+        case 'login':
+          // Include success and failed logins
+          query = query.or('action_type.eq.USER_LOGIN,action_type.eq.USER_LOGIN_FAILED');
+          break;
+        case 'logout':
+          query = query.eq('action_type', 'USER_LOGOUT');
+          break;
+        case 'create':
+          query = query.ilike('action_type', '%CREATE%');
+          break;
+        case 'update':
+          query = query.ilike('action_type', '%UPDATE%');
+          break;
+        case 'delete':
+          // Handle both hard and soft delete
+          query = query.or('action_type.ilike.%DELETE%,action_type.eq.USER_SOFT_DELETE');
+          break;
+        case 'view':
+          // Best effort: treat as read/view operations or description mentions
+          query = query.or('action_type.ilike.%READ%,description.ilike.%view%');
+          break;
+      }
+    } else {
+      // Assume caller passed exact code like NOTIFICATION_CREATE
+      query = query.eq('action_type', filters.action_type);
+    }
+  }
   if (filters.entity_type) query = query.eq('entity_type', filters.entity_type);
   if (filters.entity_id) query = query.eq('entity_id', filters.entity_id);
 
   // User role filter
   if (filters.user_role) {
-    const role = String(filters.user_role).trim();
-    if (role.toLowerCase() === 'system') {
+    const roleRaw = String(filters.user_role).trim();
+    const roleLc = roleRaw.toLowerCase();
+    if (roleLc === 'system') {
       // Include rows where user_role is 'System' OR user_id is NULL (system-generated)
       query = query.or('user_role.eq.System,user_id.is.null');
     } else {
-      query = query.eq('user_role', role);
+      // Normalize common variants to stored tokens
+      const roleMap = (r) => {
+        const s = String(r).trim().toLowerCase();
+        if (['admin','administrator','system admin'].includes(s)) return ['Admin'];
+        if (['health_staff','health staff','healthworker','health_worker','health-workers','health workers','healthstaff','hs'].includes(s)) return ['HealthStaff'];
+        if (['parent','guardian','guardians'].includes(s)) return ['Guardian'];
+        // Fallback: try raw and TitleCase
+        const title = s.charAt(0).toUpperCase() + s.slice(1);
+        return [roleRaw, title];
+      };
+      const variants = roleMap(roleRaw);
+      query = query.in('user_role', variants);
     }
   }
 

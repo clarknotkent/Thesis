@@ -224,44 +224,11 @@
               </div>
             </div>
           </div>
-
-          <!-- QR Code Card -->
-          <div class="card shadow flex-grow-1">
-            <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">
-                Patient QR Code
-              </h6>
-            </div>
-            <div class="card-body text-center d-flex flex-column justify-content-center">
-              <canvas
-                ref="qrCanvas"
-                width="200"
-                height="200"
-                style="border: 1px solid #ccc; margin: 0 auto;"
-              />
-              <p class="mt-3 mb-2">
-                <small class="text-muted">Scan to access vaccination records</small>
-              </p>
-              <p
-                v-if="patientData.qr"
-                class="mt-2 mb-2"
-              >
-                <small><a
-                  :href="patientData.qr.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >Open QR link</a></small>
-              </p>
-              <button
-                v-if="patientData.qr"
-                class="btn btn-sm btn-outline-primary mt-2 mx-auto"
-                style="max-width: 150px;"
-                @click="refreshQr"
-              >
-                <i class="bi bi-arrow-clockwise me-1" />Refresh QR
-              </button>
-            </div>
-          </div>
+          <!-- QR Code (reuse shared component for parity with BHS/Parent) -->
+          <PatientQRCodeCard
+            :patient="patientData"
+            :allow-refresh="true"
+          />
         </div>
       </div>
     </div>
@@ -271,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import PatientForm from '@/features/admin/patients/PatientForm.vue'
@@ -280,7 +247,7 @@ import ScheduledVaccinations from '@/features/admin/patients/ScheduledVaccinatio
 import MedicalHistory from '@/features/admin/patients/MedicalHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import QRCode from 'qrcode'
+import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -291,9 +258,7 @@ const guardians = ref([])
 const loading = ref(true)
 const error = ref(null)
 const lastVaccination = ref(null)
-// Vaccination editor is opened via routed page, not a modal
-const activeTab = ref('info') // Tab state: 'info' or 'vaccinations'
-const qrCanvas = ref(null)
+const activeTab = ref('info')
 
 const patientId = computed(() => route.params.id)
 
@@ -332,18 +297,14 @@ const formatDate = (dateString) => {
 
 const calculateAge = (birthDate) => {
   if (!birthDate) return 'Unknown'
-  
   const today = new Date()
   const birth = new Date(birthDate)
-  
   let years = today.getFullYear() - birth.getFullYear()
   let months = today.getMonth() - birth.getMonth()
-  
   if (months < 0) {
     years--
     months += 12
   }
-  
   if (years > 0) {
     return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`
   } else {
@@ -434,43 +395,9 @@ const fetchPatientData = async () => {
   }
 }
 
-const renderQr = async () => {
-  if (qrCanvas.value && patientData.value.qr?.url) {
-    try {
-      await QRCode.toCanvas(qrCanvas.value, patientData.value.qr.url, { width: 200 })
-    } catch (e) {
-      console.error('Error rendering QR:', e)
-      // Fallback: show URL as text
-      const ctx = qrCanvas.value.getContext('2d')
-      ctx.clearRect(0, 0, qrCanvas.value.width, qrCanvas.value.height)
-      ctx.font = '12px Arial'
-      ctx.fillText('QR Error - Use link below', 10, 50)
-      ctx.fillText(patientData.value.qr.url.slice(0, 30) + '...', 10, 70)
-    }
-  }
-}
+ 
 
-const refreshQr = async () => {
-  try {
-    const res = await api.post(`/qr/patients/${patientId.value}`)
-    patientData.value.qr = res.data.data
-    await renderQr()
-    addToast({
-      title: 'Success',
-      message: 'QR code refreshed',
-      type: 'success'
-    })
-  } catch (e) {
-    console.error('Error refreshing QR:', e)
-    addToast({
-      title: 'Error',
-      message: 'Failed to refresh QR code',
-      type: 'error'
-    })
-  }
-}
-
-onMounted(() => {
+onMounted(async () => {
   fetchPatientData()
   
   // Check for hash navigation (e.g., #vaccinations)
@@ -482,13 +409,7 @@ onMounted(() => {
   }
 })
 
-// Watch for patientData.qr changes to render QR
-watch(() => patientData.value.qr, async (newQr) => {
-  if (newQr?.url) {
-    await nextTick()
-    renderQr()
-  }
-})
+// QR rendering is handled by PatientQRCodeCard
 </script>
 
 <style scoped>

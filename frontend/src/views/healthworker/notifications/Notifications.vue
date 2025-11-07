@@ -97,56 +97,20 @@
         v-else-if="filteredNotifications.length > 0"
         class="notifications-list"
       >
-        <div 
-          v-for="notification in filteredNotifications" 
-          :key="notification.id"
-          class="notification-item"
-          :class="{ 'unread': !notification.read }"
-          @click="handleNotificationClick(notification)"
-        >
-          <div
-            class="notification-icon"
-            :class="notification.type"
-          >
-            <i :class="getNotificationIcon(notification.type)" />
-          </div>
-          <div class="notification-content">
-            <div class="notification-header">
-              <h6 class="notification-title">
-                {{ notification.title }}
-              </h6>
-              <div class="notification-actions">
-                <small class="notification-time">{{ notification.time }}</small>
-                <button 
-                  class="delete-btn" 
-                  title="Delete"
-                  @click="handleDelete(notification, $event)"
-                >
-                  <i class="bi bi-x" />
-                </button>
-              </div>
-            </div>
-            <p class="notification-message">
-              {{ notification.message }}
-            </p>
-            <div class="notification-footer">
-              <span class="notification-channel">
-                <i 
-                  :class="{
-                    'bi bi-app': notification.channel === 'in-app' || notification.channel === 'Push',
-                    'bi bi-envelope': notification.channel === 'email',
-                    'bi bi-chat': notification.channel === 'sms'
-                  }"
-                />
-                {{ notification.channel }}
-              </span>
-            </div>
-            <span
-              v-if="!notification.read"
-              class="unread-indicator"
-            />
-          </div>
-        </div>
+        <NotificationItem
+          v-for="n in filteredNotifications"
+          :id="n.id"
+          :key="n.id"
+          :title="n.title"
+          :message="n.message"
+          :type="n.type"
+          :time="n.time"
+          :channel="n.channel"
+          :read="n.read"
+          :show-delete="true"
+          @click="handleNotificationClick(n)"
+          @delete="(p) => handleDelete(n, $event)"
+        />
       </div>
 
       <!-- Empty State -->
@@ -172,6 +136,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { useNotifications } from '@/features/health-worker/notifications/composables'
+import NotificationItem from '@/features/shared/notifications/NotificationItem.vue'
 
 const router = useRouter()
 

@@ -13,6 +13,12 @@
           <p class="vaccine-meta">
             {{ manufacturer }} • {{ brandName }}
           </p>
+          <p
+            v-if="diseasePrevented"
+            class="vaccine-disease"
+          >
+            {{ diseasePrevented }}
+          </p>
         </div>
       </div>
       <span
@@ -33,6 +39,24 @@
         <div class="info-item">
           <span class="info-label">Expiration</span>
           <span class="info-value">{{ expirationDate }}</span>
+        </div>
+      </div>
+
+      <div
+        v-if="showType"
+        class="type-row"
+      >
+        <span class="type-label">Type</span>
+        <div class="type-values">
+          <span
+            v-if="programLabel"
+            class="type-badge"
+            :class="isNIP ? 'type-nip' : 'type-other'"
+          >{{ programLabel }}</span>
+          <span
+            v-if="vaccineType"
+            class="type-chip"
+          >{{ vaccineType }}</span>
         </div>
       </div>
 
@@ -80,6 +104,32 @@ const brandName = computed(() => {
   return props.inventory.vaccinemaster?.brand_name || 
          props.inventory.brand_name || 
          'Generic'
+})
+
+const diseasePrevented = computed(() => {
+  return props.inventory.vaccinemaster?.disease_prevented || props.inventory.disease_prevented || ''
+})
+
+const category = computed(() => {
+  return props.inventory.vaccinemaster?.category || props.inventory.category || ''
+})
+
+const isNIP = computed(() => {
+  return !!(props.inventory.is_nip || props.inventory.vaccinemaster?.is_nip)
+})
+
+const programLabel = computed(() => {
+  if (!['VACCINE','DEWORMING','VITAMIN_A'].includes(String(category.value || '').toUpperCase())) return ''
+  return isNIP.value ? 'NIP' : 'Other'
+})
+
+const vaccineType = computed(() => {
+  return props.inventory.vaccinemaster?.vaccine_type || props.inventory.vaccine_type || ''
+})
+
+const showType = computed(() => {
+  const cat = String(category.value || '').toUpperCase()
+  return ['VACCINE','DEWORMING','VITAMIN_A'].includes(cat) && (programLabel.value || vaccineType.value)
 })
 
 const quantity = computed(() => {
@@ -199,6 +249,15 @@ const quantityClass = computed(() => {
   text-overflow: ellipsis;
 }
 
+.vaccine-disease {
+  font-size: 0.75rem;
+  color: #374151;
+  margin: 0.25rem 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .status-badge {
   padding: 0.375rem 0.625rem;
   border-radius: 0.5rem;
@@ -233,6 +292,48 @@ const quantityClass = computed(() => {
 /* Card Body */
 .card-body {
   padding: 1rem;
+}
+
+.type-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.type-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.type-values {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.type-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.type-nip { background: #dbeafe; color: #1e40af; }
+.type-other { background: #f3f4f6; color: #6b7280; }
+
+.type-chip {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 
 .info-row {

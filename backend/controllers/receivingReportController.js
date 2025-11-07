@@ -1,4 +1,7 @@
-import * as receivingReportModel from '../models/receivingReportModel.js';
+// Import the default exported model object so its methods are directly accessible.
+// Previous import used `* as` which wraps the default export under `.default`, causing
+// `receivingReportModel.listReports is not a function` at runtime.
+import receivingReportModel from '../models/receivingReportModel.js';
 
 const listReports = async (req, res, next) => {
   try {

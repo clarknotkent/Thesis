@@ -12,9 +12,27 @@
         <h1 class="page-title">
           Visit Summary
         </h1>
-        <button class="menu-button">
-          <i class="bi bi-three-dots-vertical" />
-        </button>
+        <div class="menu-wrapper">
+          <button
+            class="menu-button"
+            @click.stop="toggleMenu"
+          >
+            <i class="bi bi-three-dots-vertical" />
+          </button>
+          <div
+            v-if="showMenu"
+            class="menu-popover"
+            @click.stop
+          >
+            <button
+              class="menu-item"
+              @click="goToEdit"
+            >
+              <i class="bi bi-pencil-square" />
+              Edit Visit
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -225,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleServiceCard from '@/features/health-worker/patients/components/CollapsibleServiceCard.vue'
@@ -240,6 +258,7 @@ const loading = ref(true)
 const expandedCards = ref({
   services: true
 })
+const showMenu = ref(false)
 
 const patientName = computed(() => {
   if (patientData.value) {
@@ -331,6 +350,17 @@ const goBack = () => {
   router.back()
 }
 
+const toggleMenu = () => {
+  showMenu.value = !showMenu.value
+}
+
+const goToEdit = () => {
+  showMenu.value = false
+  const patientId = route.params.patientId
+  const visitId = route.params.visitId
+  router.push({ name: 'HealthWorkerEditVisit', params: { patientId, visitId } })
+}
+
 const fetchVisitData = async () => {
   try {
     loading.value = true
@@ -394,10 +424,52 @@ const fetchVisitData = async () => {
 
 onMounted(() => {
   fetchVisitData()
+  document.addEventListener('click', onDocumentClick)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick)
+})
+
+function onDocumentClick(e) {
+  // Close the menu when clicking outside of the menu wrapper
+  const target = e.target
+  if (!(target && target.closest && target.closest('.menu-wrapper'))) {
+    showMenu.value = false
+  }
+}
 </script>
 
 <style scoped>
+/* Menu */
+.menu-wrapper { position: relative; }
+.menu-popover {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 200;
+  min-width: 160px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #111827;
+  cursor: pointer;
+  text-align: left;
+}
+.menu-item:hover { background: #f3f4f6; }
+.menu-item i { color: #2563eb; }
 /* Fixed Header Section */
 .visit-summary-header-section {
   position: sticky;

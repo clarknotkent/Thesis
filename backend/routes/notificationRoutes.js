@@ -6,6 +6,9 @@ import { authenticateRequest } from '../middlewares/authMiddleware.js';
 // Create notification (admin)
 router.post('/', authenticateRequest, notificationController.create);
 
+// Broadcast notifications by recipient group (admin)
+router.post('/broadcast', authenticateRequest, notificationController.broadcast);
+
 // Get my notifications (inbox)
 router.get('/', authenticateRequest, notificationController.list);
 

@@ -34,8 +34,8 @@ const create = async (req, res) => {
 const startWithMessage = async (req, res) => {
   try {
     const user_id = req.user && (req.user.user_id || req.user.id);
-    const { subject = null, participants = [], message_content, message_type = 'chat', attachment_url = null } = req.body;
-    message_type = (message_type || 'chat').toString().toLowerCase();
+    const { subject = null, participants = [], message_content, message_type: incomingMessageType = 'chat', attachment_url = null } = req.body;
+    let message_type = (incomingMessageType || 'chat').toString().toLowerCase();
     if (!['chat', 'system'].includes(message_type)) message_type = 'chat';
     if (!message_content && !attachment_url) return res.status(400).json({ message: 'message_content or attachment_url required' });
     const result = await startConversationWithMessage({ subject, created_by: user_id, participants, message_content, message_type, attachment_url });
@@ -77,4 +77,27 @@ const leaveConversation = async (req, res) => {
   }
 };
 
-export { getConversations, create, startWithMessage, leaveConversation };
+// Fast unread count for current user
+const getUnreadCount = async (req, res) => {
+  try {
+    const currentUserId = (req.user && (req.user.user_id || req.user.id)) || null;
+    if (!currentUserId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const { count, error } = await supabase
+      .from('message_receipts')
+      .select('receipt_id', { count: 'exact', head: true })
+      .eq('user_id', currentUserId)
+      .is('read_at', null);
+
+    if (error) {
+      console.error('[getUnreadCount] error', error);
+      return res.status(500).json({ message: 'Failed to get unread count' });
+    }
+    return res.json({ count: count || 0 });
+  } catch (e) {
+    console.error('[getUnreadCount] exception', e);
+    res.status(500).json({ message: 'Failed to get unread count' });
+  }
+};
+
+export { getConversations, create, startWithMessage, leaveConversation, getUnreadCount };
