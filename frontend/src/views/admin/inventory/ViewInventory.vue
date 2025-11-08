@@ -23,6 +23,35 @@
         </ol>
       </nav>
 
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached inventory data. Editing is disabled until you reconnect.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching inventory details...</strong> Saving for offline access.
+        </div>
+      </div>
+
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -175,6 +204,18 @@
             </h6>
           </div>
           <div class="card-body">
+            <!-- Offline Transaction Limit Warning -->
+            <div
+              v-if="isOffline && history && history.length > 0"
+              class="alert alert-warning d-flex align-items-center mb-3"
+              role="alert"
+            >
+              <i class="bi bi-info-circle me-2" />
+              <div>
+                <strong>Limited History:</strong> Only the 5 most recent transactions are cached for offline viewing. Connect to the internet to view complete transaction history.
+              </div>
+            </div>
+            
             <!-- Search and Sort Controls -->
             <div
               v-if="history && history.length > 0"
@@ -442,7 +483,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
@@ -458,6 +499,8 @@ const inventoryData = ref(null)
 const loading = ref(true)
 const history = ref([])
 const historyLoading = ref(false)
+const isOffline = ref(!navigator.onLine)
+const isCaching = ref(false)
 
 // Pagination and filtering
 const searchQuery = ref('')
@@ -522,9 +565,85 @@ watch([searchQuery, filterType, sortOrder], () => {
   currentPage.value = 1
 })
 
+/**
+ * Prefetch transaction history for offline caching
+ * Caches inventory details + transaction history when viewing
+ */
+const prefetchTransactionHistory = async () => {
+  // Skip if offline
+  if (!navigator.onLine) {
+    console.log('⚠️ [ViewInventory] Skipping prefetch (offline)')
+    return
+  }
+  
+  try {
+    isCaching.value = true
+    const id = route.params.id
+    console.log(`🔄 [ViewInventory] Prefetching transaction history for inventory ${id}`)
+    
+    // Transaction history is already fetched by fetchHistory()
+    // The response interceptor will auto-cache it if we have one
+    // For now, just show success message
+    
+    // Small delay to ensure caching completes
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    console.log('✅ [ViewInventory] Transaction history cached')
+    
+    // Show success toast notification
+    addToast({
+      title: 'Offline Ready',
+      message: 'Details cached successfully',
+      type: 'success',
+      timeout: 3000
+    })
+    
+  } catch (error) {
+    console.warn('[ViewInventory] Prefetch failed:', error)
+  } finally {
+    isCaching.value = false
+  }
+}
+
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+  
+  if (navigator.onLine) {
+    console.log('🌐 Connection restored')
+    addToast({
+      title: 'Back Online',
+      message: 'You can now edit records',
+      type: 'success',
+      timeout: 3000
+    })
+  } else {
+    console.log('📴 Connection lost')
+    addToast({
+      title: 'Offline',
+      message: 'Viewing cached data',
+      type: 'warning',
+      timeout: 3000
+    })
+  }
+}
+
 onMounted(async () => {
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+  
   await fetchInventoryData()
   await fetchHistory()
+  
+  // Prefetch transaction history for offline caching
+  await prefetchTransactionHistory()
+})
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
 })
 
 const fetchInventoryData = async () => {

@@ -50,7 +50,45 @@ const getAllPatients = async (req, res) => {
       barangay
     } = req.query;
 
-    // Coerce pagination params to integers (req.query values are strings)
+    // SECURITY: Guardians/Parents should only see their own children
+    const userRole = req.user?.role?.toLowerCase();
+    const isGuardian = userRole === 'guardian' || userRole === 'parent';
+
+    if (isGuardian) {
+      // Get guardian_id from the user
+      const guardianId = req.user?.guardian_id;
+
+      if (!guardianId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Guardian account is not properly configured'
+        });
+      }
+
+      // Guardians can only access their own children
+      // Return filtered results from the model
+      const supabase = getSupabaseForRequest(req);
+      const { data: children, error } = await supabase
+        .from('patients_view')
+        .select('*', { count: 'exact' })
+        .eq('guardian_id', guardianId)
+        .eq('is_deleted', false);
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        data: {
+          patients: children || [],
+          totalCount: children?.length || 0,
+          page: 1,
+          limit: children?.length || 0,
+          totalPages: 1
+        }
+      });
+    }
+
+    // For admin/staff, continue with normal pagination
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 5;
 
@@ -72,6 +110,7 @@ const getAllPatients = async (req, res) => {
       // Fallback to single value if we couldn't map (future-proof)
       filters.sex = rawSex;
     }
+
     const supabase = getSupabaseForRequest(req);
     const patients = await patientModel.getAllPatients(filters, pageNum, limitNum, supabase);
 
@@ -967,7 +1006,7 @@ const restorePatient = async (req, res) => {
         entity_type: 'child',
         entity_id: patientId
       });
-    } catch (_) {}
+    } catch (_) { }
     res.json({ success: true, message: 'Patient restored successfully' });
   } catch (error) {
     console.error('Error restoring patient:', error);

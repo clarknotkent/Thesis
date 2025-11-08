@@ -27,22 +27,24 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
+// Load cache debug helpers (available in console as window.checkCache(), etc.)
+if (import.meta.env.DEV) {
+  import('./services/offline/cacheDebugHelper').catch(() => {})
+}
+
 // SECURITY: Wipe all offline databases if user is not authenticated
 // This prevents leftover sensitive data from appearing on login/landing pages
+// NOTE: Parent portal offline functionality has been removed - only staff offline DB remains
 ;(async () => {
   try {
     const token = localStorage.getItem('authToken')
     if (!token) {
-      console.log('🔒 No active session detected - wiping all offline databases for security')
+      console.log('🔒 No active session detected - wiping offline database for security')
       
-      // Dynamically import databases to avoid initialization if not needed
+      // Dynamically import staff database to avoid initialization if not needed
       const { db } = await import('./services/offline/db')
-      const parentDb = (await import('./services/offline/db-parent-portal')).default
       
-      await Promise.allSettled([
-        db.delete().then(() => console.log('✅ Wiped StaffOfflineDB')),
-        parentDb.delete().then(() => console.log('✅ Wiped ParentPortalOfflineDB'))
-      ])
+      await db.delete().then(() => console.log('✅ Wiped StaffOfflineDB'))
     }
   } catch (error) {
     console.warn('⚠️ Database cleanup skipped:', error.message)
@@ -181,42 +183,20 @@ try {
         }
         
         window.__prefetchParentData = async () => {
-          console.log('🚀 Checking offline cache status...')
-          try {
-            const { getCacheStats } = await import('@/services/offline/offlineUtils')
-            const stats = await getCacheStats()
-            console.log('📊 Cache Statistics:', stats)
-            console.log('💡 To populate cache, navigate to parent portal pages while online')
-            return stats
-          } catch (error) {
-            console.error('❌ Failed to get cache stats:', error)
-            return { error: error.message }
-          }
+          console.log('❌ Parent offline functionality has been removed')
+          return { error: 'Parent offline functionality removed - online only mode' }
         }
         
         window.__testOfflineRouting = async () => {
-          console.log('🧪 Testing offline cache...')
-          try {
-            const { getCacheStats, _clearCache } = await import('@/services/offline/offlineUtils')
-            const stats = await getCacheStats()
-            console.log('✅ Offline cache stats:', stats)
-            console.log('💡 Use clearCache() to clear all offline data')
-            console.log('💡 Navigate to pages while online to populate cache automatically')
-            return stats
-          } catch (error) {
-            console.error('❌ Cache check failed:', error)
-            return { error: error.message }
-          }
+          console.log('❌ Parent offline functionality has been removed')
+          return { error: 'Parent offline functionality removed - online only mode' }
         }
         
         console.log('🛠️ Debug helpers available:')
         console.log('   - window.__updateServiceWorker() - Update and reload SW')
-        console.log('   - window.__warmCache() - Pre-cache parent routes')
         console.log('   - window.__checkCacheStatus() - View cached resources')
         console.log('   - window.__startIdlePrefetch() - Start background prefetcher')
         console.log('   - window.__stopIdlePrefetch() - Stop background prefetcher')
-        console.log('   - window.__prefetchParentData() - Check offline cache stats')
-        console.log('   - window.__testOfflineRouting() - Test component prefetch for offline use')
       },
       onRegisterError(error) {
         console.error('❌ Service Worker registration error:', error);
@@ -228,11 +208,4 @@ try {
 	}
 } catch (_) {}
 
-// Initialize chat offline syncing (flush queued messages when back online)
-// Lazy-loaded to prevent ParentPortalOfflineDB from being created for admin users
-;(async () => {
-  try {
-    const { initializeChatOfflineSync } = await import('@/services/offline/chatOffline')
-    initializeChatOfflineSync()
-  } catch (_) {}
-})()
+// Parent chat offline sync removed - online only mode

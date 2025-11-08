@@ -1,7 +1,6 @@
 import api from './api';
-import db from '@/services/offline/db-parent-portal'
 
-// Get FAQs with offline fallback; returns an object with { data: [...] } to mimic axios-like shape
+// Get FAQs (online-only mode)
 export const getFaqs = async () => {
 	try {
 		const res = await api.get('/faqs')
@@ -17,21 +16,9 @@ export const getFaqs = async () => {
 		}
 		console.log(`❓ FAQs loaded from API: ${items.length}`)
 		return { data: items }
-	} catch (_) {
-		try {
-			const cached = await db.faqs?.toArray?.()
-			const items = Array.isArray(cached) ? cached.map(f => ({
-				faq_id: f.faq_id || f.id,
-				question: f.question || f.q,
-				answer: f.answer || f.a,
-				updated_at: f.updated_at || f.updatedAt
-			})) : []
-			console.log(`📴 FAQs loaded from offline cache: ${items.length}`)
-			return { data: items }
-		} catch {
-			console.log('📴 No FAQs in offline cache')
-			return { data: [] }
-		}
+	} catch (error) {
+		console.error('Failed to load FAQs:', error)
+		return { data: [] }
 	}
 }
 

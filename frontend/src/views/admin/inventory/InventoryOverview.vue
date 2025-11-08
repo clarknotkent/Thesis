@@ -246,6 +246,63 @@ const stats = ref({
   expiringSoon: 0
 })
 
+// Offline caching state
+const isCaching = ref(false)
+
+// Preload ViewInventory component for offline access
+const preloadInventoryComponents = () => {
+  console.log('📦 [InventoryOverview] Preloading inventory components for offline use')
+  // Eagerly import ViewInventory so it's cached by the Service Worker
+  import('@/views/admin/inventory/ViewInventory.vue').catch(() => {
+    console.warn('[Offline] ViewInventory component preload failed - will load on demand')
+  })
+}
+
+// Prefetch inventory data for offline access
+const prefetchInventoryData = async () => {
+  if (isCaching.value) return // Already caching
+  
+  try {
+    isCaching.value = true
+    console.log('📥 [InventoryOverview] Prefetching inventory data for offline access...')
+    
+    // Import the prefetch function - it will cache vaccines list and inventory
+    const { prefetchStaffData } = await import('@/services/offline/staffLoginPrefetch')
+    await prefetchStaffData()
+    
+    // After caching basic inventory, fetch transaction history for all items (limited to recent 5)
+    console.log('📥 [InventoryOverview] Fetching recent transaction history for all inventory items...')
+    
+    // Get all inventory items
+    const inventoryResponse = await api.get('/vaccines/inventory')
+    const items = inventoryResponse.data?.data || inventoryResponse.data || []
+    
+    if (Array.isArray(items) && items.length > 0) {
+      // Fetch only the 5 most recent transactions for each inventory item
+      const transactionPromises = items.map(item => {
+        const inventoryId = item.inventory_id || item.id
+        if (!inventoryId) return Promise.resolve()
+        
+        return api.get('/vaccines/transactions', {
+          params: { inventory_id: inventoryId, limit: 5 }
+        }).catch(err => {
+          console.warn(`⚠️ Failed to fetch transactions for inventory ${inventoryId}:`, err.message)
+          return null
+        })
+      })
+      
+      await Promise.all(transactionPromises)
+      console.log(`✅ [InventoryOverview] Cached recent transactions (5 per item) for ${items.length} inventory items`)
+    }
+    
+    console.log('✅ [InventoryOverview] Inventory data cached successfully')
+  } catch (error) {
+    console.error('❌ [InventoryOverview] Failed to prefetch inventory:', error)
+  } finally {
+    isCaching.value = false
+  }
+}
+
 // Handle hash navigation
 onMounted(() => {
   const hash = route.hash.replace('#', '')
@@ -253,6 +310,11 @@ onMounted(() => {
     activeTab.value = hash
   }
   
+  // Preload components and prefetch data for offline access
+  preloadInventoryComponents()
+  prefetchInventoryData()
+  
+  // Load current page data
   loadInventoryData()
 })
 

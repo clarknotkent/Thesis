@@ -26,6 +26,35 @@
         </ol>
       </nav>
 
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached data. Editing is disabled until you reconnect to the internet.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching patient data...</strong> Please wait while we save data for offline access.
+        </div>
+      </div>
+
       <!-- Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -140,11 +169,20 @@
                 />
                 <div class="d-flex justify-content-end mt-3">
                   <router-link 
+                    v-if="!isOffline"
                     :to="{ name: 'EditPatient', params: { id: patientId } }"
                     class="btn btn-primary btn-sm"
                   >
                     <i class="bi bi-pencil-square me-2" />Edit Patient Information
                   </router-link>
+                  <button
+                    v-else
+                    class="btn btn-secondary btn-sm"
+                    disabled
+                    title="Editing is disabled while offline"
+                  >
+                    <i class="bi bi-wifi-off me-2" />Edit Patient Information (Offline)
+                  </button>
                 </div>
               </div>
 
@@ -172,63 +210,132 @@
 
         <!-- Sidebar with Stats and Actions -->
         <div class="col-lg-4 d-flex flex-column">
-          <!-- Patient Stats Card -->
-          <div class="card shadow mb-4 flex-grow-1">
-            <div class="card-header py-3">
-              <h6 class="m-0 fw-bold text-primary">
-                Patient Summary
+          <!-- Patient Summary Card with QR Code -->
+          <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-primary text-white">
+              <h6 class="m-0 fw-bold">
+                <i class="bi bi-person-badge me-2" />Patient Summary
               </h6>
             </div>
             <div class="card-body">
-              <div class="mb-3">
-                <small class="text-muted d-block mb-1">Patient ID</small>
-                <strong class="text-primary">{{ patientData.id }}</strong>
+              <!-- QR Code Section -->
+              <div class="text-center mb-4 pb-4 border-bottom">
+                <div class="qr-code-container mb-3">
+                  <canvas
+                    ref="qrCanvas"
+                    width="180"
+                    height="180"
+                  />
+                </div>
+                <small class="text-muted">
+                  <i class="bi bi-qr-code me-1" />Patient QR Code
+                </small>
               </div>
-              <div class="mb-3">
-                <small class="text-muted d-block mb-1">Full Name</small>
-                <strong>{{ fullName }}</strong>
-              </div>
-              <div class="mb-3">
-                <small class="text-muted d-block mb-1">Age</small>
-                <strong>{{ calculateAge(patientData.date_of_birth) }}</strong>
-              </div>
-              <div class="mb-3">
-                <small class="text-muted d-block mb-1">Sex</small>
-                <span
-                  class="badge"
-                  :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'"
-                >
-                  {{ patientData.sex }}
-                </span>
-              </div>
-              <div
-                v-if="patientData.family_number"
-                class="mb-3"
-              >
-                <small class="text-muted d-block mb-1">Family Number</small>
-                <strong>{{ patientData.family_number }}</strong>
-              </div>
-              <div
-                v-if="lastVaccination"
-                class="mb-3"
-              >
-                <small class="text-muted d-block mb-1">Last Vaccination</small>
-                <strong>{{ formatDate(lastVaccination) }}</strong>
-              </div>
-              <div
-                v-else
-                class="mb-3"
-              >
-                <small class="text-muted d-block mb-1">Last Vaccination</small>
-                <span class="text-warning">No vaccination records</span>
-              </div>
+
+              <!-- Patient Information Table -->
+              <table class="table table-sm table-borderless patient-info-table">
+                <tbody>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-hash me-1" />Patient ID
+                    </td>
+                    <td class="text-end fw-bold text-primary">
+                      {{ patientData.id }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-person me-1" />Full Name
+                    </td>
+                    <td class="text-end fw-bold">
+                      {{ fullName }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-calendar me-1" />Age
+                    </td>
+                    <td class="text-end">
+                      {{ calculateAge(patientData.date_of_birth) }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-gender-ambiguous me-1" />Sex
+                    </td>
+                    <td class="text-end">
+                      <span
+                        class="badge"
+                        :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'"
+                      >
+                        {{ patientData.sex }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="patientData.family_number">
+                    <td class="text-muted">
+                      <i class="bi bi-house me-1" />Family No.
+                    </td>
+                    <td class="text-end">
+                      {{ patientData.family_number }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-geo-alt me-1" />Barangay
+                    </td>
+                    <td class="text-end">
+                      {{ patientData.barangay || 'N/A' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-hospital me-1" />Health Center
+                    </td>
+                    <td class="text-end">
+                      {{ patientData.health_center || 'N/A' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">
+                      <i class="bi bi-shield-check me-1" />Last Vaccination
+                    </td>
+                    <td class="text-end">
+                      <span
+                        v-if="lastVaccination"
+                        class="text-success"
+                      >
+                        {{ formatDate(lastVaccination) }}
+                      </span>
+                      <span
+                        v-else
+                        class="text-warning"
+                      >
+                        No records
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="patientData.tags && patientData.tags !== 'None'">
+                    <td class="text-muted">
+                      <i class="bi bi-tags me-1" />Status
+                    </td>
+                    <td class="text-end">
+                      <span
+                        class="badge"
+                        :class="{
+                          'bg-success': patientData.tags === 'FIC',
+                          'bg-warning': patientData.tags === 'CIC',
+                          'bg-danger': patientData.tags === 'Defaulter'
+                        }"
+                      >
+                        {{ patientData.tags }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <!-- QR Code (reuse shared component for parity with BHS/Parent) -->
-          <PatientQRCodeCard
-            :patient="patientData"
-            :allow-refresh="true"
-          />
         </div>
       </div>
     </div>
@@ -238,7 +345,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import PatientForm from '@/features/admin/patients/PatientForm.vue'
@@ -247,7 +354,44 @@ import ScheduledVaccinations from '@/features/admin/patients/ScheduledVaccinatio
 import MedicalHistory from '@/features/admin/patients/MedicalHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
-import PatientQRCodeCard from '@/features/health-worker/patients/components/PatientQRCodeCard.vue'
+import QRCode from 'qrcode'
+
+// CRITICAL: Preload lazy-loaded route components for offline use
+// This ensures that when user views a patient, all related components are cached
+// and can be accessed offline (vaccine details, visit summary, etc.)
+const preloadRelatedComponents = () => {
+  // Preload VaccineDetails component (lazy-loaded in router)
+  // Used when clicking on a specific vaccine in Vaccination History
+  import('@/views/admin/patients/VaccineDetails.vue').catch(() => {
+    console.warn('[Offline] VaccineDetails preload failed - may not be available offline')
+  })
+  
+  // Preload VisitSummary component (lazy-loaded in router)
+  // Used when clicking on a specific visit in Medical History
+  import('@/views/admin/patients/VisitSummaryPage.vue').catch(() => {
+    console.warn('[Offline] VisitSummaryPage preload failed - may not be available offline')
+  })
+  
+  // Preload MedicalHistoryPage component (lazy-loaded in router)
+  // Used when navigating to full medical history view
+  import('@/views/admin/patients/MedicalHistoryPage.vue').catch(() => {
+    console.warn('[Offline] MedicalHistoryPage preload failed - may not be available offline')
+  })
+  
+  // Preload VaccinationEditorPage component (lazy-loaded in router)
+  // Used when navigating to full vaccinations view
+  import('@/views/admin/patients/VaccinationEditorPage.vue').catch(() => {
+    console.warn('[Offline] VaccinationEditorPage preload failed - may not be available offline')
+  })
+  
+  // Preload EditPatient component (lazy-loaded in router)
+  // Used when clicking edit button
+  import('@/views/admin/patients/EditPatient.vue').catch(() => {
+    console.warn('[Offline] EditPatient preload failed - may not be available offline')
+  })
+  
+  console.log('📦 [ViewPatient] Preloading 5 related components for offline use')
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -259,6 +403,9 @@ const loading = ref(true)
 const error = ref(null)
 const lastVaccination = ref(null)
 const activeTab = ref('info')
+const isOffline = ref(!navigator.onLine)
+const isCaching = ref(false)
+const qrCanvas = ref(null)
 
 const patientId = computed(() => route.params.id)
 
@@ -345,9 +492,9 @@ const fetchPatientData = async () => {
       guardian_id: p.guardian_id || p.guardianId || null,
       family_number: p.family_number || p.familyNumber || '',
       relationship_to_guardian: p.relationship_to_guardian || p.relationshipToGuardian || '',
-      birth_weight: p.birth_weight || p.birthWeight || '',
-      birth_length: p.birth_length || p.birthLength || '',
-      place_of_birth: p.place_of_birth || p.placeOfBirth || '',
+      birth_weight: (p.medical_history && p.medical_history.birth_weight) || p.birth_weight || p.birthWeight || '',
+      birth_length: (p.medical_history && p.medical_history.birth_length) || p.birth_length || p.birthLength || '',
+      place_of_birth: (p.medical_history && p.medical_history.place_of_birth) || p.place_of_birth || p.placeOfBirth || '',
       time_of_birth: (p.medical_history && (p.medical_history.time_of_birth || p.medical_history.timeOfBirth)) || p.time_of_birth || '',
       attendant_at_birth: (p.medical_history && (p.medical_history.attendant_at_birth || p.medical_history.attendantAtBirth)) || p.attendant_at_birth || '',
       type_of_delivery: (p.medical_history && (p.medical_history.type_of_delivery || p.medical_history.typeOfDelivery)) || p.type_of_delivery || '',
@@ -395,10 +542,149 @@ const fetchPatientData = async () => {
   }
 }
 
- 
+/**
+ * Prefetch ALL patient-related data for comprehensive offline caching
+ * This ensures that when a user views a patient online, ALL related data
+ * is cached and available offline, not just the patient record itself.
+ */
+const prefetchPatientData = async () => {
+  if (!patientId.value) return
+  
+  // Skip if offline
+  if (!navigator.onLine) {
+    console.log('⚠️ [ViewPatient] Skipping prefetch (offline)')
+    return
+  }
+  
+  try {
+    isCaching.value = true
+    console.log(`🔄 [ViewPatient] Prefetching comprehensive data for patient ${patientId.value}`)
+    
+    // Track all prefetch promises
+    const prefetchPromises = []
+    
+    // Fetch immunizations (vaccination history) - will be auto-cached by response interceptor
+    prefetchPromises.push(
+      api.get('/immunizations', { 
+        params: { 
+          patient_id: patientId.value, 
+          limit: 200 
+        } 
+      }).catch(() => {})
+    )
+    
+    // Fetch visits (medical history) and their vitals - will be auto-cached by response interceptor
+    prefetchPromises.push(
+      api.get('/visits', { 
+        params: { 
+          patient_id: patientId.value, 
+          page: 1,
+          limit: 200 
+        } 
+      }).then(async (response) => {
+        // After fetching visits, fetch vitals for each visit
+        const visits = response.data?.data || response.data?.items || response.data || []
+        if (Array.isArray(visits)) {
+          const vitalPromises = visits
+            .filter(visit => visit.vital_id)
+            .map(visit => api.get(`/vitals/${visit.vital_id}`).catch(() => {}))
+          
+          return Promise.all(vitalPromises)
+        }
+      }).catch(() => {})
+    )
+    
+    // Fetch patient schedule - will be auto-cached by response interceptor
+    prefetchPromises.push(
+      api.get(`/patients/${patientId.value}/schedule`).catch(() => {})
+    )
+    
+    // Fetch vaccine inventory - needed for vaccine details page
+    prefetchPromises.push(
+      api.get('/vaccines/inventory').catch(() => {})
+    )
+    
+    // Wait for all prefetch operations to complete
+    await Promise.all(prefetchPromises)
+    
+    console.log(`✅ [ViewPatient] Prefetch completed for patient ${patientId.value}`)
+    
+    // Show success toast notification
+    addToast({
+      title: 'Offline Ready',
+      message: 'Patient data cached',
+      type: 'success',
+      timeout: 3000
+    })
+    
+  } catch (error) {
+    // Non-fatal - prefetch is opportunistic
+    console.warn('[ViewPatient] Prefetch failed:', error)
+  } finally {
+    isCaching.value = false
+  }
+}
+
+const renderQR = async () => {
+  if (!qrCanvas.value || !patientData.value.id) return
+  
+  try {
+    const origin = window.location.origin
+    const qrUrl = patientData.value.qr?.url || `${origin}/patient/${patientData.value.id}`
+    
+    await QRCode.toCanvas(qrCanvas.value, qrUrl, { 
+      width: 180,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+    console.log('✅ QR code rendered in patient summary')
+  } catch (error) {
+    console.error('❌ Error rendering QR code:', error)
+  }
+}
+
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+  
+  if (navigator.onLine) {
+    console.log('🌐 Connection restored')
+    addToast({
+      title: 'Back Online',
+      message: 'You can now edit records',
+      type: 'success',
+      timeout: 3000
+    })
+  } else {
+    console.log('📴 Connection lost')
+    addToast({
+      title: 'Offline',
+      message: 'Viewing cached data',
+      type: 'warning',
+      timeout: 3000
+    })
+  }
+}
 
 onMounted(async () => {
-  fetchPatientData()
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+  
+  await fetchPatientData()
+  
+  // Render QR code after patient data is loaded
+  await nextTick()
+  await renderQR()
+  
+  // Preload related components for offline use
+  preloadRelatedComponents()
+  
+  // Prefetch all patient-related data for offline caching (only if online)
+  await prefetchPatientData()
   
   // Check for hash navigation (e.g., #vaccinations)
   if (route.hash) {
@@ -409,7 +695,17 @@ onMounted(async () => {
   }
 })
 
-// QR rendering is handled by PatientQRCodeCard
+// Watch for patient data changes to re-render QR
+watch(() => patientData.value.id, async () => {
+  await nextTick()
+  await renderQR()
+})
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
+})
 </script>
 
 <style scoped>
@@ -440,4 +736,43 @@ onMounted(async () => {
   margin-bottom: -1rem;
   border-bottom: none;
 }
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.qr-code-container canvas {
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.patient-info-table td {
+  padding: 0.75rem 0.5rem;
+  vertical-align: middle;
+}
+
+.patient-info-table tr {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.patient-info-table tr:last-child {
+  border-bottom: none;
+}
+
+.patient-info-table .text-muted {
+  font-size: 0.875rem;
+}
+
+.patient-info-table td:first-child {
+  width: 50%;
+}
+
+.patient-info-table td:last-child {
+  width: 50%;
+}
 </style>
+

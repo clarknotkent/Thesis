@@ -142,110 +142,34 @@ const fetchSchedule = async () => {
     }
     
     try {
-      // NETWORK-FIRST: Try API if online
-      if (navigator.onLine) {
-        console.log('🌐 Fetching schedule from API (online)')
-        const response = await api.get(`/parent/children/${childId}/schedule`)
-        const data = response.data?.data || {}
-        
-        childName.value = data.childName || 'Child'
-        
-        const scheduleData = data.schedule || []
-        
-        // Format and sort schedules
-        schedules.value = scheduleData.map(item => ({
-          id: item.id || item.patient_schedule_id,
-          vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
-          dose: item.doseNumber || item.dose_number || 1,
-          scheduledDate: item.scheduledDate || item.scheduled_date,
-          status: item.status || 'upcoming',
-          recommendedAge: item.recommendedAge || ''
-        })).sort((a, b) => {
-          // Sort by date (soonest first)
-          const dateA = new Date(a.scheduledDate)
-          const dateB = new Date(b.scheduledDate)
-          return dateA - dateB
-        })
-        
-        console.log(`✅ Loaded ${schedules.value.length} schedule items`)
-      } else {
-        throw new Error('Offline - will use cache')
-      }
+      // ONLINE-ONLY MODE
+      console.log('🌐 Fetching schedule from API')
+      const response = await api.get(`/parent/children/${childId}/schedule`)
+      const data = response.data?.data || {}
+      
+      childName.value = data.childName || 'Child'
+      
+      const scheduleData = data.schedule || []
+      
+      // Format and sort schedules
+      schedules.value = scheduleData.map(item => ({
+        id: item.id || item.patient_schedule_id,
+        vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
+        dose: item.doseNumber || item.dose_number || 1,
+        scheduledDate: item.scheduledDate || item.scheduled_date,
+        status: item.status || 'upcoming',
+        recommendedAge: item.recommendedAge || ''
+      })).sort((a, b) => {
+        // Sort by date (soonest first)
+        const dateA = new Date(a.scheduledDate)
+        const dateB = new Date(b.scheduledDate)
+        return dateA - dateB
+      })
+      
+      console.log(`✅ Loaded ${schedules.value.length} schedule items`)
     } catch (apiError) {
-      // OFFLINE FALLBACK: Load from IndexedDB
-      console.log('📴 Offline or API failed - loading from IndexedDB')
-      try {
-        const db = (await import('@/services/offline/db-parent-portal')).default
-        
-        // Get patient info
-        const patient = await db.patients.get(Number(childId))
-        if (patient) {
-          childName.value = patient.full_name || patient.name || 'Child'
-        }
-        
-        // Get schedules from patientschedule table
-        const cachedSchedules = await db.patientschedule
-          .where('patient_id')
-          .equals(Number(childId))
-          .toArray()
-        
-        console.log(`📦 Found ${cachedSchedules.length} cached schedules`)
-        
-        if (cachedSchedules.length > 0) {
-          const dob = patient?.date_of_birth ? new Date(patient.date_of_birth) : null
-          const computeStatus = (scheduled, actual, currentStatus) => {
-            if (actual) return 'completed'
-            if (!scheduled) return currentStatus || 'upcoming'
-            const d = new Date(scheduled)
-            const today = new Date()
-            // zero out time for comparison
-            d.setHours(0,0,0,0); today.setHours(0,0,0,0)
-            if (d.getTime() === today.getTime()) return 'today'
-            if (d < today) return 'overdue'
-            return currentStatus || 'upcoming'
-          }
-          const computeRecommendedAge = (birth, scheduled) => {
-            if (!birth || !scheduled) return ''
-            const b = new Date(birth)
-            const s = new Date(scheduled)
-            let months = (s.getFullYear() - b.getFullYear()) * 12 + (s.getMonth() - b.getMonth())
-            // adjust if day-of-month before birth day
-            if (s.getDate() < b.getDate()) months -= 1
-            if (months < 1) {
-              const days = Math.max(0, Math.round((s - b) / (1000*60*60*24)))
-              if (days < 14) return `${days} day${days === 1 ? '' : 's'}`
-              const weeks = Math.round(days / 7)
-              return `${weeks} week${weeks === 1 ? '' : 's'}`
-            }
-            const years = Math.floor(months / 12)
-            const remMonths = months % 12
-            if (years > 0) {
-              if (remMonths === 0) return `${years} year${years === 1 ? '' : 's'}`
-              return `${years}y ${remMonths}m`
-            }
-            return `${months} month${months === 1 ? '' : 's'}`
-          }
-          // Build list with previous display behavior: prefer explicit vaccine_name
-          const list = cachedSchedules.map(item => ({
-            id: item.patient_schedule_id || item.id,
-            vaccineName: item.name || item.vaccine_name || item.antigen_name || 'Unknown Vaccine',
-            dose: item.dose_number || 1,
-            scheduledDate: item.scheduled_date,
-            status: computeStatus(item.scheduled_date, item.actual_date, item.status),
-            recommendedAge: computeRecommendedAge(dob, item.scheduled_date)
-          }))
-          schedules.value = list.sort((a, b) => {
-            const dateA = new Date(a.scheduledDate)
-            const dateB = new Date(b.scheduledDate)
-            return dateA - dateB
-          })
-        } else {
-          error.value = 'No vaccination schedule found offline'
-        }
-      } catch (dbError) {
-        console.error('Failed to load from cache:', dbError)
-        error.value = 'No vaccination schedule available offline'
-      }
+      console.error('Failed to load schedule:', apiError)
+      error.value = 'Failed to load vaccination schedule'
     }
     
   } catch (err) {

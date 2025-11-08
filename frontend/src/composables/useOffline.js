@@ -40,26 +40,16 @@ export function useOffline() {
    * Clear all offline data
    */
   const clearOfflineData = async () => {
-    try {
-      const { clearCache } = await import('@/services/offline/offlineUtils');
-      await clearCache();
-    } catch (error) {
-      console.error('Failed to clear offline data:', error);
-      throw error;
-    }
+    console.warn('Parent offline functionality removed - only staff offline data remains');
+    return Promise.resolve();
   };
 
   /**
    * Get offline storage statistics
    */
   const getStorageStats = async () => {
-    try {
-      const { getCacheStats } = await import('@/services/offline/offlineUtils');
-      return await getCacheStats();
-    } catch (error) {
-      console.error('Failed to get storage stats:', error);
-      return {};
-    }
+    console.warn('Parent offline functionality removed');
+    return {};
   };
 
   /**

@@ -59,7 +59,6 @@ import EditProfileModal from '@/features/parent/profile/components/EditProfileMo
 import ChangePasswordModal from '@/features/parent/profile/components/ChangePasswordModal.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 
 const router = useRouter()
@@ -121,16 +120,11 @@ const guardianRole = computed(() => guardian.value?.relationship_type || 'Parent
 // Methods
 const loadGuardian = async () => {
   try {
-    // Read from guardians table (v5 schema - profiles stored by guardian_id)
-    // Get current user's guardian_id from userInfo
+    // Fetch from API (online-only mode)
     const guardianId = userInfo.value?.guardian_id || userInfo.value?.id
     if (guardianId) {
-      const profile = await db.guardians.get(guardianId)
-      guardian.value = profile || null
-    } else {
-      // Fallback: try to get any guardian record for current user
-      const profiles = await db.guardians.toArray()
-      guardian.value = profiles[0] || null
+      const response = await api.get(`/guardians/${guardianId}`)
+      guardian.value = response.data?.data || response.data || null
     }
   } catch (e) {
     console.warn('Failed to load guardian profile:', e?.message || e)
@@ -191,17 +185,8 @@ const confirmLogout = () => {
 }
 
 const logout = async () => {
-  // Block logout navigation while offline to preserve cached data
+  // ONLINE-ONLY MODE: No offline check needed
   try {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      try {
-        const { addToast } = await import('@/composables/useToast')
-        addToast({ title: 'Offline', message: 'Logout is disabled offline to preserve your data. Reconnect to log out.', type: 'warning' })
-      } catch (_) {
-        alert('Offline: Logout is disabled offline to preserve your data. Reconnect to log out.')
-      }
-      return
-    }
     await authLogout()
     router.push('/auth/login')
   } catch (error) {

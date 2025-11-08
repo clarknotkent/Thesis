@@ -1,19 +1,6 @@
 <template>
   <ParentLayout>
     <div class="notifications-container">
-      <!-- Offline Warning -->
-      <div
-        v-if="!isOnline"
-        class="alert alert-warning d-flex align-items-center mb-3"
-        role="alert"
-      >
-        <i class="bi bi-wifi-off me-2" />
-        <div>
-          <strong>Offline Mode - Notifications Disabled</strong><br>
-          <small>You must be online to view notifications. Connect to the internet to access this feature.</small>
-        </div>
-      </div>
-
       <div class="section-header">
         <h5 class="section-title">
           Notifications
@@ -35,23 +22,23 @@
 
       <!-- Empty State -->
       <div
-        v-else-if="notifications.length === 0 || !isOnline"
+        v-else-if="notifications.length === 0"
         class="empty-state"
       >
         <div class="empty-state-icon">
-          <i :class="!isOnline ? 'bi bi-wifi-off' : 'bi bi-bell'" />
+          <i class="bi bi-bell" />
         </div>
         <h6 class="empty-state-title">
-          {{ !isOnline ? 'Not Available Offline' : 'No Notifications' }}
+          No Notifications
         </h6>
         <p class="empty-state-text">
-          {{ !isOnline ? 'Connect to the internet to view notifications.' : "You're all caught up!" }}
+          You're all caught up!
         </p>
       </div>
 
       <!-- Notifications List -->
       <div
-        v-else-if="isOnline"
+        v-else
         class="notifications-list"
       >
         <NotificationItem
@@ -75,11 +62,9 @@
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import NotificationItem from '@/features/shared/notifications/NotificationItem.vue'
-import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
-import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
-const { isOnline } = useOnlineStatus()
+// ONLINE-ONLY MODE: Removed offline detection
 const loading = ref(true)
 const notifications = ref([])
 
@@ -87,15 +72,7 @@ const fetchNotifications = async () => {
   try {
     loading.value = true
     
-    // Don't fetch if offline - notifications require internet connection
-    if (!navigator.onLine) {
-      console.log('📴 Offline - notifications disabled')
-      notifications.value = []
-      loading.value = false
-      return
-    }
-    
-    // Fetch from API when online
+    // ONLINE-ONLY MODE: Fetch from API
     try {
       const response = await api.get('/notifications')
       const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
@@ -124,23 +101,23 @@ const fetchNotifications = async () => {
 
 const markAsRead = async (id) => {
   try {
-    // Update local database
-    await db.notifications.update(id, { is_read: true })
-    
+    // Mark as read in UI immediately
     const target = notifications.value.find(n => n.id === id)
     if (target) target.read = true
     
-    // Note: We keep this read-only for now
-    // In the future, you could add this to pending_uploads for sync
+    // Optionally send to API (silent fail)
+    try {
+      await api.put(`/notifications/${id}/read`)
+    } catch (_) {
+      // Ignore API errors for read status
+    }
   } catch (e) {
     console.error('Failed to mark notification as read:', e)
   }
 }
 
 const handleClick = (notification) => {
-  if (!isOnline.value) {
-    return // Don't do anything when offline
-  }
+  // ONLINE-ONLY MODE: Mark as read
   if (!notification.read && notification.id) {
     markAsRead(notification.id)
   }

@@ -44,15 +44,14 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import MessagesList from '@/features/shared/chat/components/MessagesList.vue'
 import MessageComposer from '@/features/shared/chat/components/MessageComposer.vue'
 import { useToast } from '@/composables/useToast'
-import { useOnlineStatus } from '@/composables/useOnlineStatus'
 import { getUserId } from '@/services/auth'
 import { loadMessages, sendMessage, loadConversations, getConversationTitle, getParticipantList } from '@/features/shared/chat/useChatService'
 
 const route = useRoute()
 const router = useRouter()
 const { addToast } = useToast()
-const { isOnline } = useOnlineStatus()
 
+// ONLINE-ONLY MODE: Removed offline detection
 const currentUserId = ref(getUserId())
 const conversationId = computed(() => route.params.conversationId || route.params.id)
 
@@ -87,10 +86,7 @@ const fetchMessages = async () => {
 }
 
 const handleSend = async () => {
-  if (!isOnline.value) {
-    addToast({ message: 'Cannot send messages while offline. Please connect to the internet.', type: 'warning' })
-    return
-  }
+  // ONLINE-ONLY MODE: Direct send
   const text = (messageText.value || '').trim()
   if (!text) return
   if (!conversationId.value) return
@@ -116,12 +112,7 @@ const goBack = () => router.push({ name: 'ParentMessages' })
 
 
 onMounted(async () => {
-  // Redirect if offline
-  if (!isOnline.value) {
-    addToast({ message: 'Messaging is not available offline. Redirecting to messages list...', type: 'warning' })
-    router.push({ name: 'ParentMessages' })
-    return
-  }
+  // ONLINE-ONLY MODE: Direct fetch
   await fetchConversation()
   await fetchMessages()
 })

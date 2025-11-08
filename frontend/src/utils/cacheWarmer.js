@@ -45,11 +45,11 @@ export async function warmParentPortalCache() {
     '@/views/parent/ParentProfile.vue',
     
     // Child record features
-    '@/features/parent/records/DependentDetails.vue',
-    '@/features/parent/records/VaccineRecordDetails.vue',
-    '@/features/parent/records/components/PatientInfoTab.vue',
-    '@/features/parent/records/components/VaccinationTab.vue',
-    '@/features/parent/records/components/MedicalHistoryTab.vue',
+    '@/features/parent/records/patient-info/DependentDetails.vue',
+    '@/features/parent/records/vaccine-details/VaccineRecordDetails.vue',
+    '@/features/parent/records/patient-info/PatientInfoTab.vue',
+    '@/features/parent/records/vaccination-history/VaccinationHistoryTab.vue',
+    '@/features/parent/records/medical-history/MedicalHistoryTab.vue',
     
     // Shared components
     '@/components/parent/DependentCard.vue',
