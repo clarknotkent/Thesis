@@ -1,10 +1,9 @@
 /**
- * Axios API Client with Offline Cache Support
- * Clean refactored version using new offline architecture
+ * Axios API Client
+ * Note: Parent portal offline caching removed - online mode only
  */
 
 import axios from 'axios'
-import { installCacheInterceptor } from './offline/apiCacheInterceptor'
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -71,11 +70,6 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-// ========================================
-// INSTALL OFFLINE CACHE INTERCEPTOR
-// ========================================
-installCacheInterceptor(api)
 
 // ========================================
 // API HELPER FUNCTIONS

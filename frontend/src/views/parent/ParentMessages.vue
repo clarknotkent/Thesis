@@ -1,27 +1,12 @@
 <template>
   <ParentLayout>
     <div class="messages-container">
-      <!-- Offline Warning -->
-      <div
-        v-if="!isOnline"
-        class="alert alert-warning d-flex align-items-center mb-3"
-        role="alert"
-      >
-        <i class="bi bi-wifi-off me-2" />
-        <div>
-          <strong>Offline Mode - Messaging Disabled</strong><br>
-          <small>You must be online to send or view messages. Connect to the internet to access messaging features.</small>
-        </div>
-      </div>
-
       <div class="section-header d-flex justify-content-between align-items-center">
         <h5 class="section-title mb-0">
           Messages
         </h5>
         <button 
           class="btn btn-primary btn-sm" 
-          :disabled="!isOnline"
-          :title="!isOnline ? 'Not available offline' : 'Start new chat'"
           @click="openNewChat"
         >
           <i class="bi bi-plus-circle me-1" />
@@ -67,8 +52,7 @@
           v-for="message in messages" 
           :key="message.id"
           class="message-item"
-          :class="{ unread: !message.read, 'disabled-offline': !isOnline }"
-          :style="{ cursor: isOnline ? 'pointer' : 'not-allowed', opacity: isOnline ? 1 : 0.6 }"
+          :class="{ unread: !message.read }"
           @click="openConversation(message)"
         >
           <div class="message-avatar">
@@ -136,14 +120,12 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
 import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
 import api from '@/services/api'
-import { getConversationsOffline } from '@/services/offline/chatOffline'
 import { getUserId } from '@/services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { getFaqs as apiGetFaqs } from '@/services/faqService'
-import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
-const { isOnline } = useOnlineStatus()
+// ONLINE-ONLY MODE: Removed offline detection
 const loading = ref(true)
 const messages = ref([])
 const router = useRouter()
@@ -206,30 +188,8 @@ const fetchConversations = async () => {
       return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
     })
   } catch (e) {
-    // Offline fallback
-    try {
-      const items = await getConversationsOffline()
-      const me = String(getUserId())
-      messages.value = items.map(it => {
-        const id = it.conversation_id || it.id
-        const when = it.latest_message_time || it.last_message_at || it.updated_at || it.created_at
-        const txt = it.latest_message || it.last_message || it.last_message_body || it.message_preview || it.message_body || ''
-        let sender = 'Conversation'
-        let senderRole = ''
-        const list = Array.isArray(it.participants) ? it.participants : []
-        const others = list.filter(p => String(p.user_id || p.id) !== me)
-        if (others.length) {
-          const p = others[0]
-          sender = p.fullname || p.full_name || p.participant_name || `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() || sender
-          senderRole = p.role || p.user_role || p.userRole || ''
-        } else if (it.subject) {
-          sender = it.subject
-        }
-        return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
-      })
-    } catch (_) {
-      messages.value = []
-    }
+    console.error('Failed to load conversations:', e)
+    messages.value = []
   } finally {
     loading.value = false
   }
@@ -255,10 +215,7 @@ onMounted(() => {
 })
 
 const openConversation = (msg) => {
-  if (!isOnline.value) {
-    addToast({ message: 'Messaging is not available offline. Please connect to the internet to view conversations.', type: 'warning' })
-    return
-  }
+  // ONLINE-ONLY MODE: Direct navigation
   const id = msg?.id
   if (!id) return
   router.push({ name: 'ParentChat', params: { conversationId: id } })
@@ -287,10 +244,7 @@ const selectFaq = (faq) => {
 }
 
 const openNewChat = async () => {
-  if (!isOnline.value) {
-    addToast({ title: 'Offline', message: 'Cannot start new conversations while offline.', type: 'warning' })
-    return
-  }
+  // ONLINE-ONLY MODE: Direct open
   showNewModal.value = true
   if (staffOptions.value.length === 0) {
     try {

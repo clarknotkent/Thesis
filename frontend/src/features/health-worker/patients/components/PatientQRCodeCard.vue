@@ -20,28 +20,6 @@
           QR Code not available
         </p>
       </div>
-      <div
-        v-if="qrUrl"
-        class="qr-actions"
-      >
-        <a
-          :href="qrUrl"
-          target="_blank"
-          rel="noreferrer"
-          class="qr-link"
-        >
-          <i class="bi bi-box-arrow-up-right" />
-          Open Link
-        </a>
-        <button
-          v-if="allowRefresh"
-          class="refresh-qr-button"
-          @click="refreshQR"
-        >
-          <i class="bi bi-arrow-clockwise" />
-          Refresh QR
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -49,22 +27,16 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import QRCode from 'qrcode'
-import api from '@/services/api'
 
 const props = defineProps({
   patient: {
     type: Object,
     required: false,
     default: null
-  },
-  allowRefresh: {
-    type: Boolean,
-    default: true
   }
 })
 
 const qrCanvas = ref(null)
-const qrData = ref(null)
 
 const patientId = computed(() => props.patient?.patient_id || props.patient?.id)
 const fallbackFrontendUrl = computed(() => {
@@ -78,7 +50,7 @@ const fallbackFrontendUrl = computed(() => {
   }
 })
 
-const qrUrl = computed(() => qrData.value?.url || props.patient?.qr?.url || fallbackFrontendUrl.value)
+const qrUrl = computed(() => props.patient?.qr?.url || fallbackFrontendUrl.value)
 
 const renderQR = async () => {
   if (qrCanvas.value && qrUrl.value) {
@@ -106,31 +78,9 @@ const renderQR = async () => {
   }
 }
 
-const refreshQR = async () => {
-  try {
-    const patientId = props.patient?.patient_id || props.patient?.id
-    const response = await api.post(`/qr/patients/${patientId}`)
-    qrData.value = response.data.data
-    await nextTick()
-    await renderQR()
-    console.log('✅ QR code refreshed')
-  } catch (error) {
-    console.error('❌ Error refreshing QR code:', error)
-    alert('Failed to refresh QR code. Please try again.')
-  }
-}
-
 // Watch for patient data changes
 watch(() => props.patient?.qr, async (newQR) => {
   if (newQR?.url) {
-    await nextTick()
-    await renderQR()
-  }
-}, { deep: true })
-
-// Watch for qrData changes
-watch(() => qrData.value, async (newData) => {
-  if (newData?.url) {
     await nextTick()
     await renderQR()
   }
@@ -216,69 +166,6 @@ canvas {
   text-align: center;
 }
 
-.qr-actions {
-  display: flex;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.qr-link {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.qr-link:hover {
-  background: #e5e7eb;
-  color: #1f2937;
-  border-color: #9ca3af;
-}
-
-.refresh-qr-button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-}
-
-.refresh-qr-button:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-}
-
-.refresh-qr-button:active {
-  transform: translateY(0);
-}
-
-.refresh-qr-button i,
-.qr-link i {
-  font-size: 1rem;
-}
-
 /* Mobile optimizations */
 @media (max-width: 576px) {
   .qr-code-header {
@@ -296,16 +183,6 @@ canvas {
   canvas {
     width: 180px;
     height: 180px;
-  }
-  
-  .qr-actions {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .qr-link,
-  .refresh-qr-button {
-    width: 100%;
   }
 }
 </style>

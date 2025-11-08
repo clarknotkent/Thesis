@@ -55,19 +55,13 @@ export async function logout() {
     throw new Error('Cannot log out while offline')
   }
   
-  console.log('🔐 Logging out and wiping all local databases for security...')
+  console.log('🔐 Logging out and wiping local database for security...')
   
-  // CRITICAL SECURITY: Wipe ALL local IndexedDB databases
+  // CRITICAL SECURITY: Wipe local IndexedDB database
   // This prevents sensitive patient data from persisting after logout
   try {
-    // Lazy load parent DB only if needed
-    const parentDb = (await import('./offline/db-parent-portal')).default
-    
-    // Close and delete both databases
-    await Promise.all([
-      db.delete().then(() => console.log('✅ Successfully wiped StaffOfflineDB')),
-      parentDb.delete().then(() => console.log('✅ Successfully wiped ParentPortalOfflineDB'))
-    ])
+    // Only staff offline DB remains (parent offline removed)
+    await db.delete().then(() => console.log('✅ Successfully wiped StaffOfflineDB'))
   } catch (error) {
     console.error('❌ Error during database wipe:', error)
     // Continue with logout even if database wipe fails

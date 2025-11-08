@@ -740,7 +740,7 @@ const routes = [
   {
     path: '/parent/records/:id',
     name: 'ParentDependentDetails',
-    component: () => import('@/features/parent/records/DependentDetails.vue'),
+    component: () => import('@/features/parent/records/patient-info/DependentDetails.vue'),
     meta: {
       title: 'Dependent Details - ImmunizeMe',
       requiresAuth: true,
@@ -750,7 +750,7 @@ const routes = [
   {
     path: '/parent/records/:patientId/vaccine-details',
     name: 'ParentVaccineRecordDetails',
-    component: () => import('@/features/parent/records/VaccineRecordDetails.vue'),
+    component: () => import('@/features/parent/records/vaccine-details/VaccineRecordDetails.vue'),
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
@@ -760,7 +760,7 @@ const routes = [
   {
     path: '/parent/records/:patientId/visit/:visitId',
     name: 'ParentVisitSummary',
-    component: () => import('@/features/parent/records/VisitSummary.vue'),
+    component: () => import('@/features/parent/records/visit-summary/VisitSummary.vue'),
     meta: {
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
@@ -1069,12 +1069,18 @@ router.beforeEach(async (to, from, next) => {
 
 // Global error handler for failed dynamic imports (offline navigation)
 router.onError((error) => {
-  console.error('🚫 Router error:', error)
+  // Only log in development, suppress in production
+  if (import.meta.env.DEV) {
+    console.error('🚫 Router error:', error)
+  }
   
   // Check if it's a failed dynamic import (common when offline)
   if (error.message.includes('Failed to fetch dynamically imported module')) {
-    console.warn('⚠️ Failed to load route component - likely offline')
-    console.log('💡 This route needs to be visited while online first to be cached')
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Failed to load route component - likely offline')
+      console.log('💡 This route needs to be visited while online first to be cached')
+    }
     
     // Show user-friendly error message
     if (window.__showOfflineRouteError) {

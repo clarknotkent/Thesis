@@ -11,7 +11,7 @@
       title="Child Information"
       icon="person-fill"
       :is-expanded="expandedCards.patientInfo"
-      @toggle="$emit('update:expandedCards', { ...expandedCards, patientInfo: !expandedCards.patientInfo })"
+      @toggle="toggleCard('patientInfo')"
     >
       <div class="info-grid">
         <div class="info-item">
@@ -50,7 +50,7 @@
       title="Guardian & Family Information"
       icon="people-fill"
       :is-expanded="expandedCards.guardianInfo"
-      @toggle="$emit('update:expandedCards', { ...expandedCards, guardianInfo: !expandedCards.guardianInfo })"
+      @toggle="toggleCard('guardianInfo')"
     >
       <div class="info-grid">
         <div class="info-section-header">
@@ -117,7 +117,7 @@
       title="Birth History"
       icon="calendar-heart-fill"
       :is-expanded="expandedCards.birthHistory"
-      @toggle="$emit('update:expandedCards', { ...expandedCards, birthHistory: !expandedCards.birthHistory })"
+      @toggle="toggleCard('birthHistory')"
     >
       <div class="info-grid">
         <div class="info-item">
@@ -182,7 +182,13 @@ const props = defineProps({
   }
 })
 
-defineEmits(['update:expandedCards'])
+const emit = defineEmits(['update:expandedCards'])
+
+const toggleCard = (cardName) => {
+  const newExpandedCards = { ...props.expandedCards }
+  newExpandedCards[cardName] = !newExpandedCards[cardName]
+  emit('update:expandedCards', newExpandedCards)
+}
 
 const age = computed(() => {
   const birthDate = props.patient?.childInfo?.birthDate

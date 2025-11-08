@@ -41,7 +41,6 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import SummaryCards from '@/features/parent/home/components/SummaryCards.vue'
 import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
-import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 
 const { userInfo } = useAuth()
@@ -65,15 +64,16 @@ const fetchDashboardStats = async () => {
   try {
     loading.value = true
 
-    // Helper: normalize schedule payloads of various shapes into triad counts
+    // Helper: normalize schedule payloads into stats
     const deriveStats = (payload) => {
       const statsObj = payload?.stats || payload?.scheduleStats
       if (statsObj && (statsObj.completed !== undefined)) return statsObj
-      // Accept array payloads too
+      
       let sched = []
       if (Array.isArray(payload)) sched = payload
       else if (Array.isArray(payload?.schedule)) sched = payload.schedule
       else sched = []
+      
       const now = new Date()
       const normalized = sched.map((it) => {
         let status = it.status || (it.actual_date ? 'completed' : (() => {
@@ -89,6 +89,7 @@ const fetchDashboardStats = async () => {
         if (!status) status = 'upcoming'
         return { ...it, status }
       })
+      
       return {
         completed: normalized.filter(s => String(s.status).toLowerCase() === 'completed').length,
         upcoming: normalized.filter(s => ['upcoming','due','pending','scheduled','rescheduled'].includes(String(s.status).toLowerCase())).length,
@@ -96,94 +97,50 @@ const fetchDashboardStats = async () => {
       }
     }
 
-    // NETWORK-FIRST
-    if (navigator.onLine) {
-      try {
-        const response = await api.get('/parent/children')
-        const freshChildren = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
-        children.value = freshChildren
-        stats.value.totalChildren = freshChildren.length
+    // ONLINE-ONLY MODE (no offline cache)
+    const response = await api.get('/parent/children')
+    const freshChildren = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+    children.value = freshChildren
+    stats.value.totalChildren = freshChildren.length
 
-        let dueCount = 0
-        let completedCount = 0
-        if (freshChildren.length) {
+    let dueCount = 0
+    let completedCount = 0
+    
+    if (freshChildren.length) {
+      const results = await Promise.all(
+        freshChildren.map(async (c) => {
+          const id = c?.id || c?.patient_id
+          if (!id) return { completed: 0, upcoming: 0, overdue: 0 }
           try {
-            const results = await Promise.all(
-              freshChildren.map(async (c) => {
-                const id = c?.id || c?.patient_id
-                if (!id) return { completed: 0, upcoming: 0, overdue: 0 }
-                try {
-                  const res = await api.get(`/parent/children/${id}/schedule`)
-                  const payload = res?.data?.data || res?.data || {}
-                  return deriveStats(payload)
-                } catch (_) {
-                  return { completed: 0, upcoming: 0, overdue: 0 }
-                }
-              })
-            )
-            completedCount = results.reduce((sum, s) => sum + (s.completed || 0), 0)
-            const upcomingTotal = results.reduce((sum, s) => sum + (s.upcoming || 0), 0)
-            const overdueTotal = results.reduce((sum, s) => sum + (s.overdue || 0), 0)
-            dueCount = upcomingTotal + overdueTotal
-            children.value = children.value.map((c, i) => {
-              const s = results[i] || { completed: 0, upcoming: 0, overdue: 0 }
-              return {
-                ...c,
-                vaccinationSummary: {
-                  completed: s.completed || 0,
-                  total: (s.completed || 0) + (s.upcoming || 0) + (s.overdue || 0)
-                }
-              }
-            })
-          } catch (_) { /* ignore */ }
-        }
-        stats.value.dueVaccines = dueCount
-        stats.value.completedVaccines = completedCount
-      } catch (_) { /* fall through */ }
-    }
-
-    // OFFLINE or API failed: read from IndexedDB directly
-    if (!navigator.onLine || children.value.length === 0) {
-      try {
-        const cachedChildren = await db.patients.toArray()
-        if (!cachedChildren.length) throw new Error('No cached children found')
-        children.value = cachedChildren
-        stats.value.totalChildren = cachedChildren.length
-
-        let dueCount = 0
-        let completedCount = 0
-        const results = await Promise.all(
-          cachedChildren.map(async (c) => {
-            const id = c?.id || c?.patient_id
-            if (!id) return { completed: 0, upcoming: 0, overdue: 0 }
-            // Compute from cached schedules
-            const sched = await db.patientschedule.where('patient_id').equals(Number(id)).toArray()
-            return deriveStats({ schedule: sched })
-          })
-        )
-        completedCount = results.reduce((sum, s) => sum + (s.completed || 0), 0)
-        const upcomingTotal = results.reduce((sum, s) => sum + (s.upcoming || 0), 0)
-        const overdueTotal = results.reduce((sum, s) => sum + (s.overdue || 0), 0)
-        dueCount = upcomingTotal + overdueTotal
-        children.value = cachedChildren.map((c, i) => {
-          const s = results[i] || { completed: 0, upcoming: 0, overdue: 0 }
-          return {
-            ...c,
-            vaccinationSummary: {
-              completed: s.completed || 0,
-              total: (s.completed || 0) + (s.upcoming || 0) + (s.overdue || 0)
-            }
+            const res = await api.get(`/parent/children/${id}/schedule`)
+            const payload = res?.data?.data || res?.data || {}
+            return deriveStats(payload)
+          } catch (_) {
+            return { completed: 0, upcoming: 0, overdue: 0 }
           }
         })
-        stats.value.dueVaccines = dueCount
-        stats.value.completedVaccines = completedCount
-      } catch (dbError) {
-        console.error('Failed to read from IndexedDB:', dbError)
-        if (!navigator.onLine) {
-          throw new Error('Unable to load data offline. Please connect to the internet.')
+      )
+      
+      completedCount = results.reduce((sum, s) => sum + (s.completed || 0), 0)
+      const upcomingTotal = results.reduce((sum, s) => sum + (s.upcoming || 0), 0)
+      const overdueTotal = results.reduce((sum, s) => sum + (s.overdue || 0), 0)
+      dueCount = upcomingTotal + overdueTotal
+      
+      children.value = children.value.map((c, i) => {
+        const s = results[i] || { completed: 0, upcoming: 0, overdue: 0 }
+        return {
+          ...c,
+          vaccinationSummary: {
+            completed: s.completed || 0,
+            total: (s.completed || 0) + (s.upcoming || 0) + (s.overdue || 0)
+          }
         }
-      }
+      })
     }
+    
+    stats.value.dueVaccines = dueCount
+    stats.value.completedVaccines = completedCount
+    
   } catch (error) {
     console.error('💥 Error in fetchDashboardStats:', error)
   } finally {

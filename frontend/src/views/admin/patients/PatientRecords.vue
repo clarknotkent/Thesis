@@ -525,6 +525,29 @@ const patientStats = ref({
   cic: 0
 })
 
+// Offline caching state
+const isCaching = ref(false)
+
+// Prefetch patients and guardians for offline access
+const prefetchPatientsData = async () => {
+  if (isCaching.value) return // Already caching
+  
+  try {
+    isCaching.value = true
+    console.log('📥 [PatientRecords] Prefetching patients and guardians for offline access...')
+    
+    // Import the prefetch function
+    const { prefetchStaffData } = await import('@/services/offline/staffLoginPrefetch')
+    await prefetchStaffData()
+    
+    console.log('✅ [PatientRecords] Patient data cached successfully')
+  } catch (error) {
+    console.error('❌ [PatientRecords] Failed to prefetch data:', error)
+  } finally {
+    isCaching.value = false
+  }
+}
+
 // Fetch patient statistics
 const fetchPatientStats = async () => {
   try {
@@ -780,6 +803,9 @@ const setPatientStatus = async (patient, newStatus) => {
 onMounted(() => {
   fetchPatients()
   fetchPatientStats()
+  
+  // Prefetch data for offline access when page loads
+  prefetchPatientsData()
 })
 
 // Active first, then inactive; archived handled via Show Deleted toggle

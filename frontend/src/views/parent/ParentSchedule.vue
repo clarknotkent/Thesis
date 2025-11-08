@@ -71,7 +71,6 @@
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
-import db from '@/services/offline/db-parent-portal'
 import api from '@/services/api'
 
 const loading = ref(true)
@@ -113,65 +112,27 @@ const fetchChildren = async () => {
       return years
     }
     
-    // NETWORK-FIRST: If online, fetch from API directly (fast)
-    if (navigator.onLine) {
-      console.log('🌐 Fetching fresh children data from API (online)')
-      try {
-        const response = await api.get('/parent/children')
-        const freshChildren = response.data?.data || response.data || []
-        
-        // Update UI with fresh data
-        children.value = freshChildren.map(child => {
-          const birthDate = child.dateOfBirth || child.date_of_birth || child.birthDate
-          const calculatedAge = child.age !== undefined ? child.age : calculateNumericAge(birthDate)
-          
-          return {
-            id: child.id || child.patient_id,
-            name: child.name || child.full_name,
-            age: calculatedAge,
-            status: child.nextVaccine || 'No upcoming vaccines',
-            raw: child
-          }
-        })
-        
-        console.log('✅ Schedule updated with fresh data')
-      } catch (apiError) {
-        console.error('Failed to fetch from API:', apiError)
-        // Fall through to offline fallback
-      }
-    }
+    // ONLINE-ONLY MODE
+    console.log('🌐 Fetching children data from API')
+    const response = await api.get('/parent/children')
+    const freshChildren = response.data?.data || response.data || []
     
-    // OFFLINE FALLBACK: If offline or API failed, use IndexedDB
-    if (!navigator.onLine || children.value.length === 0) {
-      console.log('📴 Loading from IndexedDB cache')
-      try {
-        const cachedChildren = await db.patients.toArray()
-        
-        if (cachedChildren.length > 0) {
-          console.log('📦 Found children in IndexedDB cache')
-          
-          children.value = cachedChildren.map(child => {
-            const birthDate = child.date_of_birth || child.birthDate
-            const calculatedAge = calculateNumericAge(birthDate)
-            
-            return {
-              id: child.id || child.patient_id,
-              name: child.name || child.full_name,
-              age: calculatedAge,
-              status: child.nextVaccine || 'No upcoming vaccines',
-              raw: child
-            }
-          })
-        } else {
-          throw new Error('No cached children found')
-        }
-      } catch (dbError) {
-        console.error('Failed to read from IndexedDB:', dbError)
-        if (!navigator.onLine) {
-          error.value = 'Unable to load schedule offline. Please connect to the internet.'
-        }
+    // Update UI with data
+    children.value = freshChildren.map(child => {
+      const birthDate = child.dateOfBirth || child.date_of_birth || child.birthDate
+      const calculatedAge = child.age !== undefined ? child.age : calculateNumericAge(birthDate)
+      
+      return {
+        id: child.id || child.patient_id,
+        name: child.name || child.full_name,
+        age: calculatedAge,
+        status: child.nextVaccine || 'No upcoming vaccines',
+        raw: child
       }
-    }
+    })
+    
+    console.log('✅ Schedule loaded successfully')
+    
   } catch (err) {
     console.error('Error fetching children:', err)
     error.value = 'Failed to load children. Please try again later.'

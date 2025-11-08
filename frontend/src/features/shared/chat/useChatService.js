@@ -1,6 +1,5 @@
 import api from '@/services/api';
 import { getUserId } from '@/services/auth';
-import { getConversationsOffline, getMessagesOffline, queueOfflineMessage } from '@/services/offline/chatOffline'
 
 // Helper to normalize user ID
 const getUserKey = (u) => u?.user_id ?? u?.id ?? u?.userId ?? null;
@@ -60,10 +59,8 @@ export const loadConversations = async () => {
     console.log(`💬 Conversations loaded from API: ${Array.isArray(list) ? list.length : 0}`)
     return list;
   } catch (e) {
-    // Offline fallback
-    const offline = await getConversationsOffline();
-    console.log(`📴 Conversations loaded from offline cache: ${offline.length}`)
-    return offline;
+    console.error('Failed to load conversations:', e)
+    return [];
   }
 };
 
@@ -75,29 +72,17 @@ export const loadMessages = async (conversationId) => {
     console.log(`💬 Messages loaded from API for ${conversationId}: ${Array.isArray(list) ? list.length : 0}`)
     return list;
   } catch (e) {
-    // Offline fallback
-    const offline = await getMessagesOffline(conversationId);
-    console.log(`📴 Messages loaded from offline cache for ${conversationId}: ${offline.length}`)
-    return offline;
+    console.error('Failed to load messages:', e)
+    return [];
   }
 };
 
-// Send a message
+// Send a message (online-only mode)
 export const sendMessage = async (conversationId, messageContent) => {
-  try {
-    await api.post('/messages', { 
-      conversation_id: conversationId, 
-      message_content: messageContent 
-    });
-  } catch (e) {
-    // If offline, queue for later and resolve
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      const uid = getUserId();
-      await queueOfflineMessage(conversationId, messageContent, uid);
-      return;
-    }
-    throw e;
-  }
+  await api.post('/messages', { 
+    conversation_id: conversationId, 
+    message_content: messageContent 
+  });
 };
 
 // Create a new conversation

@@ -81,11 +81,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
-import VaccineInfoCard from './components/VaccineInfoCard.vue'
-import DoseCard from './components/DoseCard.vue'
+import VaccineInfoCard from './VaccineInfoCard.vue'
+import DoseCard from '../vaccination-history/DoseCard.vue'
 import { formatDate as formatDateUtil } from '@/composables/useDateFormat'
 import api from '@/services/api'
-import db from '@/services/offline/db-parent-portal'
 
 const router = useRouter()
 const route = useRoute()
@@ -167,92 +166,18 @@ const fetchVaccineDetails = async () => {
       return
     }
     
-    let childData = null
-    
-    // NETWORK-FIRST: If online, fetch from API directly (fast)
-    if (navigator.onLine) {
-      try {
-        console.log('🌐 Fetching vaccine details from API (online)')
-        const response = await api.get(`/parent/children/${patientId}`)
-        childData = response.data?.data || response.data
-        console.log('✅ Fetched vaccine details from API')
-      } catch (apiError) {
-        console.error('⚠️ API failed while online:', apiError.message)
-        // Fall through to offline logic
-      }
-    }
-    
-    // OFFLINE FALLBACK: If offline or API failed, try IndexedDB
-    if (!childData) {
-      console.log('📴 Loading vaccine details from IndexedDB cache')
-      try {
-        // Check db.children table first (prefetched data)
-        const cachedChild = await db.patients.get(parseInt(patientId))
-        
-        if (!cachedChild) {
-          // Try db.patients table as fallback
-          const cachedPatient = await db.patients.get(parseInt(patientId))
-          if (cachedPatient) {
-            childData = cachedPatient
-            console.log('✅ Loaded vaccine details from db.patients cache')
-          }
-        } else {
-          childData = cachedChild
-          console.log('✅ Loaded vaccine details from db.children cache')
-        }
-        
-        if (!childData) {
-          throw new Error('No cached data available for this patient')
-        }
-      } catch (dbError) {
-        console.error('❌ Failed to load from IndexedDB:', dbError)
-        throw new Error('Unable to load vaccine data. Please connect to the internet.')
-      }
-    }
+    // ONLINE-ONLY MODE
+    console.log('🌐 Fetching vaccine details from API')
+    const response = await api.get(`/parent/children/${patientId}`)
+    const childData = response.data?.data || response.data
+    console.log('✅ Fetched vaccine details from API')
     
     if (!childData) {
       throw new Error('No data available for this patient')
     }
     
     // Extract vaccination history
-    let vax = childData.vaccinationHistory || childData.vaccination_history || childData.immunizations || []
-    
-    // If offline and no vaccination history in patient object, fetch from immunizations table
-    if ((!vax || vax.length === 0) && !navigator.onLine) {
-      console.log('📋 Fetching immunizations from separate table (offline)')
-      try {
-        const cachedImmunizations = await db.immunizations
-          .where('patient_id')
-          .equals(parseInt(patientId))
-          .toArray()
-        
-        console.log(`✅ Found ${cachedImmunizations.length} immunizations in cache`)
-        
-        // Map to match expected format (avoid introducing fields not present online)
-        vax = cachedImmunizations.map(i => ({
-          immunization_id: i.immunization_id,
-          vaccine_antigen_name: i.vaccine_name || i.antigen_name,
-          vaccineName: i.vaccine_name || i.antigen_name,
-          antigen_name: i.antigen_name || i.vaccine_name,
-          antigenName: i.antigen_name || i.vaccine_name,
-          dose_number: i.dose_number,
-          administered_date: i.administered_date,
-          administered_time: i.administered_time,
-          administered_by: i.administered_by,
-          administered_by_name: i.health_worker_name,
-          age_at_administration: i.age_at_administration,
-          immunization_facility_name: i.immunization_facility_name || i.facility_name,
-          outside: i.outside,
-          remarks: i.remarks,
-          disease_prevented: i.disease_prevented,
-          brand_name: i.brand_name,
-          manufacturer: i.manufacturer,
-          // Do not fabricate lot/batch number offline if not available
-        }))
-      } catch (err) {
-        console.error('❌ Failed to fetch immunizations from cache:', err)
-      }
-    }
+    const vax = childData.vaccinationHistory || childData.vaccination_history || childData.immunizations || []
     
     // Filter for the specific vaccine
     const vaccineRecords = Array.isArray(vax) ? vax.filter(v => {

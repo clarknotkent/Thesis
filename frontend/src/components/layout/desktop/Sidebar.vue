@@ -106,30 +106,12 @@
             <small class="fw-bold">{{ connectionStatus }}</small>
           </div>
           <div class="detail-item">
-            <small class="text-muted">Info</small>
-            <small class="fw-bold">Auto-caching enabled</small>
-          </div>
-          
-          <!-- Storage Stats -->
-          <div
-            v-if="storageStats"
-            class="storage-stats mt-2"
-          >
-            <small class="text-muted d-block mb-2">Cached Records:</small>
-            <div class="stats-grid">
-              <div
-                v-for="(count, store) in storageStats"
-                :key="store"
-                class="stat-item"
-              >
-                <small class="text-muted">{{ formatStoreName(store) }}</small>
-                <small class="fw-bold">{{ count }}</small>
-              </div>
-            </div>
+            <small class="text-muted">Cache</small>
+            <small class="fw-bold">Auto-enabled</small>
           </div>
           
           <button 
-            class="btn btn-sm btn-outline-danger w-100 mt-2" 
+            class="btn btn-sm btn-outline-danger w-100 mt-3" 
             @click="handleClearData"
           >
             <i class="bi bi-trash me-1" />
@@ -160,44 +142,20 @@ const props = defineProps({
 const {
   isOnline,
   connectionStatus,
-  clearOfflineData,
-  getStorageStats
+  clearOfflineData
 } = props.userRole === 'admin' ? useOffline() : {}
 
 const showOfflineDetails = ref(false)
-const storageStats = ref(null)
 
 const toggleOfflineDetails = async () => {
   showOfflineDetails.value = !showOfflineDetails.value
-  
-  // Load storage stats when opening
-  if (showOfflineDetails.value && getStorageStats) {
-    storageStats.value = await getStorageStats()
-  }
 }
 
 const handleClearData = async () => {
   if (confirm('Clear offline cache? This will only remove locally stored data. Your data in the database is safe and will re-sync automatically.')) {
     await clearOfflineData()
-    storageStats.value = null
     showOfflineDetails.value = false
   }
-}
-
-const formatStoreName = (store) => {
-  const names = {
-    patients: 'Patients',
-    immunizations: 'Immunizations',
-    vaccines: 'Vaccines',
-    users: 'Users',
-    guardians: 'Guardians',
-    schedules: 'Schedules',
-    visits: 'Visits',
-    inventory: 'Inventory',
-    messages: 'Messages',
-    notifications: 'Notifications'
-  }
-  return names[store] || store.charAt(0).toUpperCase() + store.slice(1)
 }
 
 const statusIcon = computed(() => {

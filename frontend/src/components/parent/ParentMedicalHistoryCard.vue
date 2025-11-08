@@ -101,7 +101,7 @@ const router = useRouter()
 
 const handleNavigate = () => {
   router.push({
-    name: 'ParentMedicalHistoryDetail',
+    name: 'ParentVisitSummary',
     params: {
       patientId: props.patientId,
       visitId: props.visitId

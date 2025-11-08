@@ -707,17 +707,26 @@ const patientModel = {
         }
       }
 
-      // Fetch birth history and attach place_of_birth and address_at_birth distinctly
+      // Fetch birth history and attach all birth fields
       try {
         const { data: birthhistory, error: birthErr } = await supabase
           .from('birthhistory')
-          .select('place_of_birth, address_at_birth')
+          .select('birth_weight, birth_length, place_of_birth, address_at_birth, time_of_birth, attendant_at_birth, type_of_delivery, ballards_score, newborn_screening_result, hearing_test_date, newborn_screening_date')
           .eq('patient_id', id)
           .eq('is_deleted', false)
           .single();
         if (!birthErr && birthhistory) {
+          data.birth_weight = birthhistory.birth_weight || null;
+          data.birth_length = birthhistory.birth_length || null;
           data.place_of_birth = birthhistory.place_of_birth || null;
           data.address_at_birth = birthhistory.address_at_birth || null;
+          data.time_of_birth = birthhistory.time_of_birth || null;
+          data.attendant_at_birth = birthhistory.attendant_at_birth || null;
+          data.type_of_delivery = birthhistory.type_of_delivery || null;
+          data.ballards_score = birthhistory.ballards_score || null;
+          data.newborn_screening_result = birthhistory.newborn_screening_result || null;
+          data.hearing_test_date = birthhistory.hearing_test_date || null;
+          data.newborn_screening_date = birthhistory.newborn_screening_date || null;
         }
       } catch (err) {
         console.error('Error fetching birthhistory for patient details:', err);

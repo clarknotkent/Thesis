@@ -162,10 +162,19 @@
                     <i class="bi bi-eye me-2" />View
                   </router-link>
                   <button 
+                    v-if="!isOffline"
                     class="btn btn-sm btn-outline-danger" 
                     @click="$emit('delete', vaccine)"
                   >
                     <i class="bi bi-trash me-2" />Delete
+                  </button>
+                  <button
+                    v-else
+                    class="btn btn-sm btn-secondary"
+                    disabled
+                    title="Delete is disabled while offline"
+                  >
+                    <i class="bi bi-wifi-off me-2" />Delete
                   </button>
                 </div>
               </td>
@@ -230,6 +239,10 @@ const props = defineProps({
   itemsPerPage: {
     type: Number,
     default: 5
+  },
+  isOffline: {
+    type: Boolean,
+    default: false
   },
   formatDate: {
     type: Function,

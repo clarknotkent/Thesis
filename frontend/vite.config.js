@@ -75,33 +75,10 @@ export default defineConfig({
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /\.(vue|ts|jsx|tsx)$/], // Don't fallback for API calls or source files
         runtimeCaching: [
-          {
-            // Cache route modules served by Vite dev server
-            // Use StaleWhileRevalidate to always try network first in dev
-            urlPattern: ({ url }) => {
-              return url.pathname.startsWith('/src/') && 
-                     /\.(js|ts|vue|css|jsx|tsx)$/.test(url.pathname)
-            },
-            handler: 'NetworkFirst', // Changed from CacheFirst to NetworkFirst
-            options: {
-              cacheName: 'dev-src-modules',
-              networkTimeoutSeconds: 3, // Quick fallback to cache if network slow
-              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 days
-              cacheableResponse: { statuses: [0, 200] },
-              // Custom plugin to strip Vite's timestamp query params before caching
-              plugins: [
-                {
-                  cacheKeyWillBeUsed: async ({ request }) => {
-                    const url = new URL(request.url)
-                    // Remove Vite's timestamp parameter (t=xxx)
-                    url.searchParams.delete('t')
-                    url.searchParams.delete('import')
-                    return url.toString()
-                  }
-                }
-              ]
-            }
-          },
+          // REMOVED: .vue file caching - parent offline disabled
+          // Raw .vue files should NEVER be cached by service worker
+          // Vite compiles them on-demand, caching breaks hot-reload
+          
           {
             // Cache Vite HMR client and helper modules best-effort (dev only)
             urlPattern: ({ url }) => {
