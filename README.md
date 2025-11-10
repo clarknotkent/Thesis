@@ -1,295 +1,12 @@
-﻿# Immunization Management System
+# Immunization Management System
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> ⚠️ **November 8, 2025 - BREAKING CHANGE: PARENT OFFLINE REMOVED**
+> **📌 Current Status:** Active Development - Version 4.7  
+> **Last Updated:** November 10, 2025  
+> **Branch:** system-prototype-v4  
 >
-> **Major Architecture Changes - Critical Status Update:**
-> - ❌ **PARENT OFFLINE COMPLETELY REMOVED**: All PWA/offline functionality eliminated from parent portal
-> - ✅ **Parent Portal**: Now 100% online-only (no IndexedDB, no offline support)
-> - ❌ **Staff Offline BROKEN**: Infrastructure preserved but non-functional due to extensive refactoring
-> - ❌ **Admin Offline BROKEN**: All offline modes currently non-functional
-> - ⚠️ **Technical Debt**: Offline features disabled system-wide due to development fatigue
-> - 🚧 **Future Work Required**: Staff and Admin offline support needs complete repair
->
-> **BREAKING CHANGES** - See CHANGELOG.md (November 8, 2025) for complete list of deleted/modified files
->
-> 🎨 **November 7, 2025 - User Accounts Enhancement**
->
-> **Accurate User Statistics:**
-> - ✅ Real-time user counts across all roles (not just current page)
-> - ✅ Statistics auto-refresh after create/update/delete/restore operations
-> - ✅ Fixed role filtering to match backend display values
->
-> **Visual Improvements:**
-> - ✅ Custom color scheme: Admins (Purple #601FC2), Staff (Cyan #00B2E3), Guardians (Orange #BC4E1E)
-> - ✅ Reordered cards: Total Users → Admins → Staff → Guardians (left to right)
-> - ✅ Better role identification with distinct colors
->
-> **Terminology Updates:**
-> - ✅ "Health Workers" renamed to "Staff" (cards and filters)
-> - ✅ "Parents" renamed to "Guardians" (cards and filters)
-> - ✅ Consistent labeling throughout interface
->
-> 🎨 **November 7, 2025 - Admin UI Consistency & UX Enhancements**
->
-> **Patient Statistics Dashboard:**
-> - ✅ Added 5 statistics cards to Patient Records page (Total, Male, Female, FIC, CIC)
-> - ✅ New backend endpoint `/api/patients/stats` with gender and immunization status counts
->
-> **Visual Consistency Across Admin:**
-> - ✅ Standardized card design: `border border-{color} border-3` pattern across Dashboard, Users, Activity Logs
-> - ✅ Added Bootstrap icons to 10 admin page titles (speedometer, chat, bell, file, person, question, list, gear)
-> - ✅ Implemented breadcrumb navigation on 8 admin pages (Admin > Page Name pattern)
-> - ✅ Unified breadcrumb styling: › separator, #4e73df links, no underline by default, underline on hover
-> - ✅ Fixed SMS and Inventory breadcrumb inconsistencies (removed / separator, added missing styles)
->
-> **Pagination Improvements:**
-> - ✅ Dashboard Recent Vaccinations now uses AppPagination component
-> - ✅ Consistent pagination styling across Dashboard, Patient Records, and Inventory
-> - ✅ Professional page navigation with chevron icons and page info display
->
-> **Enhanced Components:**
-> - ✅ AppPageHeader component now supports icon slot for flexible page headers
-> - ✅ 19 admin pages updated with complete breadcrumb CSS (including sub-pages)
->
-> 🩺 **November 7, 2025 - Admin/BHS Immunization & Vitals Reliability**
->
-> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit) — additionally enforced server‑side for safety
-> - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
-> - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
-> - ✅ Vaccine dropdown fixes: "Other" vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
-> - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
-> - ✅ Immunizations added to an existing visit now reliably attach the latest `vital_id` (Admin & BHS) — server resolves if client omits
-> - 🛠️ Dev DX: PWA Workbox glob warnings suppressed in development (`devOptions.suppressWarnings`) for cleaner console
-> - 📝 Docs: Added `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` summarizing payloads and policies
-
-> **� November 6, 2025 - Backend ES Module Modernization**
->
-> - ✅ **Complete ES Module Migration** - All 86 backend files converted from CommonJS to ES6
-> - ✅ **Node.js Modern Standard** - Native `import`/`export` syntax throughout backend
-> - ✅ **Zero ESLint Warnings** - Eliminated MODULE_TYPELESS_PACKAGE_JSON warning
-> - ✅ **Server Running Successfully** - Port 3001, all services initialized
-> - 📦 Backend now uses `"type": "module"` with `.js` extensions required
->
-> **�🔧 November 6, 2025 - ESLint Code Quality Setup**
->
-> - ✅ **ESLint 9.39.1 integrated** with Vue 3 plugin for automated code quality checks
-> - ✅ **Flat config format** - Using ESLint 9's modern standard
-> - ✅ **Auto-fixed 7,744 issues** - Consistent formatting across entire codebase
-> - ✅ **Vite integration** - Real-time linting during development via vite-plugin-eslint
-> - ✅ **Team-ready** - `npm run lint` and `npm run lint:fix` scripts for everyone
-> - ✅ **Vue 3 optimized** - Composition API globals configured (defineProps, defineEmits, etc.)
-> - 📦 Push includes: eslint.config.js, updated package.json, vite.config.js
->
-> **� November 6, 2025 - Admin Visit Parity & Data Integrity**
->
-> - ✅ Admin UI now enforces **one visit per patient per day** (parity with Health Worker)
-> - ✅ Same‑day existing visit is auto‑adopted; vitals **auto‑fill and are read‑only**
-> - ✅ Staff dropdown mapping fixed; `hs_type` values normalized
-> - ✅ DOB change rules: lock when any vaccine completed; otherwise async schedule rewrite (no timeouts)
-> - ✅ SMS reschedule guard: no SMS when new scheduled date is already in the past
-> - ✅ Data integrity: `recorded_by` must be numeric `user_id`; `updated_by` stamped by server (prevents 22P02)
->
-> **�🧹 November 6, 2025 - QA RESET TOOL ADDED**
->
-> - ✅ New non-production QA reset script with full backup, deep cleanup, ID resequencing, and admin/FAQ re-log
-> - 📄 See: `docs/RESET_QA_INSTRUCTIONS.md` and `backend/scripts/reset_clean_for_QA.sql`
-> - ⚠️ Safe to run only in QA/Staging — creates `backup_reset_YYYYMMDD_HHMM` snapshot automatically
->
-> **🎉 November 5, 2025 - SMS & TOAST NOTIFICATIONS FIXED!**
-> 
-> **Critical System Fixes:**
-> - ✅ **SMS Bulk Toggle Fixed** - 500 error resolved with Supabase upsert conflict handling
-> - ✅ **Individual Guardian Toggle Fixed** - Auto-send settings work correctly
-> - ✅ **Toast Notifications Standardized** - 16 files updated across all admin subsystems
-> - ✅ **Guardian Details Modal** - View button shows comprehensive SMS statistics
-> - ✅ **Router Cleanup** - Removed duplicate SMS routes
-> - ✅ **100% Admin Verification** - All subsystems checked and validated
->
-> **⚡ November 5, 2025 - OFFLINE PARENT PORTAL: PERFORMANCE & RELIABILITY**
->
-> **Targeted Offline Refactor (Parent Portal):**
-> - ✅ Transactional prefetch — sequential, per-child transactions; global resources handled one-by-one
-> - ✅ Chunked Dexie writes — bulkPut in chunks of 500 for faster, safer writes
-> - ✅ Deterministic "Cached" toast — shown only after all IndexedDB writes complete
-> - ✅ Schedules/Vitals/Visits parity — broader response-shape support; stable vital_id fallback; status/age computed
-> - ✅ Vaccine name fallback — name || vaccine_name || antigen_name for offline views
-> - ✅ FAQs offline — inconsistent API shapes normalized and cached
-> - ✅ Chat previews offline — last message text/time derived from cached messages
-> - ✅ Block logout when offline — prevents accidental data loss while disconnected
-> - ✅ Quieter logs — summary-only per batch/endpoint
-> 
-> **November 4, 2025 - PARENT PORTAL 100% OFFLINE!**
-> 
-> **Revolutionary One-Login Offline Access:**
-> - ✅ **Complete data cached on login** - No page visits required
-> - ✅ **9 route components prefetched** - Navigate offline instantly
-> - ✅ **10 Supabase-mirrored tables** - Local database matches cloud
-> - ✅ **15 immunization records** - Full vaccination history offline
-> - ✅ **Guardian & birth history** - Complete medical records cached
-> - ✅ **20-30x faster** - Instant page loads from IndexedDB
-> - ✅ **Zero API calls** - Works 100% offline after one login
-> 
-> **Bulk Prefetch System:** `prefetchParentDataOnLogin()` caches everything in ~2-2.5 seconds (optimized!)
->
-> See [BULK-CACHE-ON-LOGIN.md](docs/parent-offline/BULK-CACHE-ON-LOGIN.md) for complete details.
-
-> **🆕 November 10, 2025 - Immunization Date Constraints & System Utilities**
->
-> **New Date Validation System:**
-> - ✅ **useImmunizationDateBounds** composable - Dynamic min/max date calculation for immunizations
-> - ✅ Calculates constraints based on patient DOB + vaccine schedule (due_after_days, absolute_latest_days)
-> - ✅ Prevents invalid immunization dates outside recommended windows
-> - ✅ Reactive date bounds for form validation and UX
->
-> **Enhanced Text Processing:**
-> - ✅ **stringUtils.js** - Smart title casing with medical acronym preservation
-> - ✅ Handles SMS, BCG, OPV, IPV, PCV, MMR, JE, HPV, COVID, DPT acronyms correctly
-> - ✅ **vaccineOrder.js** - Vaccine ordering utilities with eligibility-based sorting
-> - ✅ Normalizes vaccine names and compares by first-dose eligible dates
->
-> **Enhanced User Management:**
-> - ✅ **Smart User Identifier** - Single field accepts username or email input
-> - ✅ **Auto Email Generation** - Creates username@immunizeme.com when username entered
-> - ✅ **Intelligent Parsing** - Detects email vs username and handles appropriately
-> - ✅ **Philippine Phone Formatting** - Auto-formats contact numbers (+639**-***-****)
-> - ✅ **Role-based Form Fields** - Dynamic fields based on user role selection
-> - ✅ **BHS Role Access Control** - Barangay Health Staff restricted to outside vaccination records only
-> - ✅ **BHS Restrictions** - Cannot edit in-facility immunization records, guided to contact nurses/nutritionists
->
-> **Backend Testing Infrastructure:**
-> - ✅ **test_template.js** - SMS template rendering validation
-> - ✅ Tests variable replacement in notification templates
-> - ✅ Ensures SMS content renders correctly with real data
->
-> **System-wide Component Improvements:**
-> - ✅ 50+ frontend components enhanced across Admin, Health Worker, and Parent portals
-> - ✅ 25+ backend files refined for ES module consistency
-> - ✅ Better error handling, validation, and user experience
-> - ✅ Continued code quality improvements and bug fixes
->
-> 🎨 **November 7, 2025 - User Accounts Enhancement**
->
-> **Accurate User Statistics:**
-> - ✅ Real-time user counts across all roles (not just current page)
-> - ✅ Statistics auto-refresh after create/update/delete/restore operations
-> - ✅ Fixed role filtering to match backend display values
->
-> **Visual Improvements:**
-> - ✅ Custom color scheme: Admins (Purple #601FC2), Staff (Cyan #00B2E3), Guardians (Orange #BC4E1E)
-> - ✅ Reordered cards: Total Users → Admins → Staff → Guardians (left to right)
-> - ✅ Better role identification with distinct colors
->
-> **Terminology Updates:**
-> - ✅ "Health Workers" renamed to "Staff" (cards and filters)
-> - ✅ "Parents" renamed to "Guardians" (cards and filters)
-> - ✅ Consistent labeling throughout interface
->
-> 🎨 **November 7, 2025 - Admin UI Consistency & UX Enhancements**
->
-> **Patient Statistics Dashboard:**
-> - ✅ Added 5 statistics cards to Patient Records page (Total, Male, Female, FIC, CIC)
-> - ✅ New backend endpoint `/api/patients/stats` with gender and immunization status counts
->
-> **Visual Consistency Across Admin:**
-> - ✅ Standardized card design: `border border-{color} border-3` pattern across Dashboard, Users, Activity Logs
-> - ✅ Added Bootstrap icons to 10 admin page titles (speedometer, chat, bell, file, person, question, list, gear)
-> - ✅ Implemented breadcrumb navigation on 8 admin pages (Admin > Page Name pattern)
-> - ✅ Unified breadcrumb styling: › separator, #4e73df links, no underline by default, underline on hover
-> - ✅ Fixed SMS and Inventory breadcrumb inconsistencies (removed / separator, added missing styles)
->
-> **Pagination Improvements:**
-> - ✅ Dashboard Recent Vaccinations now uses AppPagination component
-> - ✅ Consistent pagination styling across Dashboard, Patient Records, and Inventory
-> - ✅ Professional page navigation with chevron icons and page info display
->
-> **Enhanced Components:**
-> - ✅ AppPageHeader component now supports icon slot for flexible page headers
-> - ✅ 19 admin pages updated with complete breadcrumb CSS (including sub-pages)
->
-> 🩺 **November 7, 2025 - Admin/BHS Immunization & Vitals Reliability**
->
-> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit) — additionally enforced server‑side for safety
-> - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
-> - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
-> - ✅ Vaccine dropdown fixes: “Other” vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
-> - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
-> - ✅ Immunizations added to an existing visit now reliably attach the latest `vital_id` (Admin & BHS) — server resolves if client omits
-> - 🛠️ Dev DX: PWA Workbox glob warnings suppressed in development (`devOptions.suppressWarnings`) for cleaner console
-> - 📝 Docs: Added `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` summarizing payloads and policies
-
-> **� November 6, 2025 - Backend ES Module Modernization**
->
-> - ✅ **Complete ES Module Migration** - All 86 backend files converted from CommonJS to ES6
-> - ✅ **Node.js Modern Standard** - Native `import`/`export` syntax throughout backend
-> - ✅ **Zero ESLint Warnings** - Eliminated MODULE_TYPELESS_PACKAGE_JSON warning
-> - ✅ **Named Exports Pattern** - Improved tree-shaking and code organization
-> - ✅ **Server Running Successfully** - Port 3001, all services initialized
-> - 📦 Backend now uses `"type": "module"` with `.js` extensions required
->
-> **�🔧 November 6, 2025 - ESLint Code Quality Setup**
->
-> - ✅ **ESLint 9.39.1 integrated** with Vue 3 plugin for automated code quality checks
-> - ✅ **Flat config format** (eslint.config.js) using ESLint 9's modern standard
-> - ✅ **Auto-fixed 7,744 issues** - Consistent formatting across entire codebase
-> - ✅ **Vite integration** - Real-time linting during development via vite-plugin-eslint
-> - ✅ **Team-ready** - `npm run lint` and `npm run lint:fix` scripts for everyone
-> - ✅ **Vue 3 optimized** - Composition API globals configured (defineProps, defineEmits, etc.)
-> - 📦 Push includes: eslint.config.js, updated package.json, vite.config.js
->
-> **� November 6, 2025 - Admin Visit Parity & Data Integrity**
->
-> - ✅ Admin UI now enforces **one visit per patient per day** (parity with Health Worker)
-> - ✅ Same‑day existing visit is auto‑adopted; vitals **auto‑fill and are read‑only**
-> - ✅ Staff dropdown mapping fixed; `hs_type` values normalized
-> - ✅ DOB change rules: lock when any vaccine completed; otherwise async schedule rewrite (no timeouts)
-> - ✅ SMS reschedule guard: no SMS when new scheduled date is already in the past
-> - ✅ Data integrity: `recorded_by` must be numeric `user_id`; `updated_by` stamped by server (prevents 22P02)
->
-> **�🧹 November 6, 2025 - QA RESET TOOL ADDED**
->
-> - ✅ New non-production QA reset script with full backup, deep cleanup, ID resequencing, and admin/FAQ re-log
-> - 📄 See: `docs/RESET_QA_INSTRUCTIONS.md` and `backend/scripts/reset_clean_for_QA.sql`
-> - ⚠️ Safe to run only in QA/Staging — creates `backup_reset_YYYYMMDD_HHMM` snapshot automatically
->
-> **🎉 November 5, 2025 - SMS & TOAST NOTIFICATIONS FIXED!**
-> 
-> **Critical System Fixes:**
-> - ✅ **SMS Bulk Toggle Fixed** - 500 error resolved with Supabase upsert conflict handling
-> - ✅ **Individual Guardian Toggle Fixed** - Auto-send settings work correctly
-> - ✅ **Toast Notifications Standardized** - 16 files updated across all admin subsystems
-> - ✅ **Guardian Details Modal** - View button shows comprehensive SMS statistics
-> - ✅ **Router Cleanup** - Removed duplicate SMS routes
-> - ✅ **100% Admin Verification** - All subsystems checked and validated
->
-> **⚡ November 5, 2025 - OFFLINE PARENT PORTAL: PERFORMANCE & RELIABILITY**
->
-> **Targeted Offline Refactor (Parent Portal):**
-> - ✅ Transactional prefetch — sequential, per-child transactions; global resources handled one-by-one
-> - ✅ Chunked Dexie writes — bulkPut in chunks of 500 for faster, safer writes
-> - ✅ Deterministic “Cached” toast — shown only after all IndexedDB writes complete
-> - ✅ Schedules/Vitals/Visits parity — broader response-shape support; stable vital_id fallback; status/age computed
-> - ✅ Vaccine name fallback — name || vaccine_name || antigen_name for offline views
-> - ✅ FAQs offline — inconsistent API shapes normalized and cached
-> - ✅ Chat previews offline — last message text/time derived from cached messages
-> - ✅ Block logout when offline — prevents accidental data loss while disconnected
-> - ✅ Quieter logs — summary-only per batch/endpoint
-> 
-> **November 4, 2025 - PARENT PORTAL 100% OFFLINE!**
-> 
-> **Revolutionary One-Login Offline Access:**
-> - ✅ **Complete data cached on login** - No page visits required
-> - ✅ **9 route components prefetched** - Navigate offline instantly
-> - ✅ **10 Supabase-mirrored tables** - Local database matches cloud
-> - ✅ **15 immunization records** - Full vaccination history offline
-> - ✅ **Guardian & birth history** - Complete medical records cached
-> - ✅ **20-30x faster** - Instant page loads from IndexedDB
-> - ✅ **Zero API calls** - Works 100% offline after one login
-> 
-> **Bulk Prefetch System:** `prefetchParentDataOnLogin()` caches everything in ~2-2.5 seconds (optimized!)
-> 
-> See [BULK-CACHE-ON-LOGIN.md](docs/parent-offline/BULK-CACHE-ON-LOGIN.md) for complete details.
+> **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history with all dated changes and improvements.
 
 ---
 
@@ -297,11 +14,11 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 - [Features](#features)
 - [User Roles](#user-roles)
+- [Architecture](#architecture)
 - [Development Guidelines](#development-guidelines)
 - [API Documentation](#api-documentation)
 - [Deployment](#deployment)
@@ -318,45 +35,20 @@ The Immunization Management System is designed to digitize and streamline the im
 
 ### Key Features
 
-- **🔌 Parent Portal: Online-Only** ⭐ NEW (Nov 8): All offline/PWA functionality removed
-- **⚠️ Offline Status**: Staff and Admin offline modes broken (requires repair)
 - **Patient Record Management**: Digital health records for children and guardians
 - **Vaccination Tracking**: Complete immunization history with scheduled and completed vaccines
 - **Inventory Management**: Real-time vaccine stock levels, receiving reports, and expiry tracking
 - **SMS Notifications**: Automated reminders and updates via PhilSMS integration
 - **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs
 - **Multi-User Access**: Role-based portals for administrators, health workers, and parents
-- **Progressive Web App**: Service worker active (staff-focused, parent offline removed)
-
-### Offline Support Status
-
-- ❌ **Parent Portal**: Offline/PWA functionality completely removed (November 8, 2025)
-  - ❌ All IndexedDB tables deleted (db-parent-portal.js removed)
-  - ❌ Prefetch system removed (parentLoginPrefetch.js deleted)
-  - ❌ Cache interceptor removed (apiCacheInterceptor.js deleted)
-  - ❌ Offline utilities removed (offlineUtils.js deleted)
-  - ❌ Chat offline sync removed (chatOffline.js deleted)
-  - ✅ Parent portal now works 100% online-only (API-dependent)
-  - ⚠️ No offline support - requires active internet connection
-- ❌ **Health Worker Portal**: Offline infrastructure broken (requires repair)
-  - ⚠️ StaffOfflineDB preserved but non-functional
-  - ⚠️ Service worker active but not utilized
-  - ⚠️ Needs complete offline refactoring
-- ❌ **Admin Portal**: Offline infrastructure broken (requires repair)
-  - ⚠️ No offline write support
-  - ⚠️ Read-only cache not functional
-  - ⚠️ Needs offline implementation from scratch
-
-> **Important:** Due to extensive refactoring under development fatigue, all offline modes are currently broken system-wide. Parent portal has been converted to online-only. Staff and Admin offline features require future repair work.
+- **Progressive Web App**: Service worker enabled for enhanced user experience
 
 ### Project Status
 
 - Repository: https://github.com/clarknotkent/Thesis
-- Current Branch: **system-prototype-v4** ⭐ Parent Offline REMOVED; All offline modes broken
-- Previous Branch: system-prototype-v3
-- Version: 4.6 (Breaking Change: Parent Offline Removed)
-- Last Updated: November 8, 2025
-- Status: Active Development - **Parent Portal Online-Only**, Staff/Admin Offline Broken
+- Current Branch: **system-prototype-v4**
+- Version: 4.7 (November 10, 2025)
+- Status: Active Development
 
 ---
 
@@ -364,155 +56,36 @@ The Immunization Management System is designed to digitize and streamline the im
 
 ### Frontend
 
-- Framework: Vue.js 3 with Composition API
-- Build Tool: Vite 7.x
-- Routing: Vue Router 4
-- State Management: Vue Reactivity API (ref, computed, reactive)
-- **Code Quality**: ESLint 9.39.1 with Vue plugin and flat config format ⭐ NEW (Nov 6)
-- **Linting Integration**: vite-plugin-eslint for real-time feedback during development ⭐ NEW (Nov 6)
-- ❌ **Offline Features REMOVED**: Parent offline/PWA completely eliminated ⭐ BREAKING (Nov 8)
-- ⚠️ **Staff Offline BROKEN**: IndexedDB infrastructure preserved but non-functional
-- **Local Storage**: Dexie.js 4.x (IndexedDB wrapper) - Staff only, not utilized
-- UI Framework: Bootstrap 5
-- Icons: Bootstrap Icons
-- HTTP Client: Axios (standard API calls, no caching)
-- Charts: Chart.js
-- QR Code: html5-qrcode
-- PWA: vite-plugin-pwa with Workbox (service worker active but parent offline removed)
+- **Framework**: Vue.js 3 with Composition API
+- **Build Tool**: Vite 7.x
+- **Routing**: Vue Router 4
+- **State Management**: Vue Reactivity API (ref, computed, reactive)
+- **Code Quality**: ESLint 9.39.1 with Vue plugin and flat config format
+- **UI Framework**: Bootstrap 5
+- **Icons**: Bootstrap Icons
+- **HTTP Client**: Axios
+- **Charts**: Chart.js
+- **QR Code**: html5-qrcode
+- **PWA**: vite-plugin-pwa with Workbox
 
 ### Backend
 
-- Runtime: Node.js 20+ with **ES Modules** ⭐ NEW (Nov 6)
-- Framework: Express.js
-- **Module System**: Native ES6 `import`/`export` (not CommonJS) ⭐ NEW (Nov 6)
-- **Import Extensions**: All relative imports require `.js` extension ⭐ NEW (Nov 6)
-- Database: PostgreSQL 14+ (hosted on Supabase)
-- Authentication: JWT (JSON Web Tokens)
-- File Upload: Multer
-- SMS Integration: PhilSMS API
-- Security: bcrypt, CORS, helmet
-- Logging: Custom activity logger
+- **Runtime**: Node.js 20+ with ES Modules
+- **Framework**: Express.js
+- **Module System**: Native ES6 `import`/`export`
+- **Database**: PostgreSQL 14+ (hosted on Supabase)
+- **Authentication**: JWT (JSON Web Tokens)
+- **File Upload**: Multer
+- **SMS Integration**: PhilSMS API
+- **Security**: bcrypt, CORS, helmet
+- **Logging**: Custom activity logger
 
 ### Database
 
-- DBMS: PostgreSQL 14+
-- Hosting: Supabase
-- Features: Row Level Security (RLS), Triggers, Functions, Views
-- Migrations: Version-controlled SQL files
-
----
-
-## Architecture
-
-### Frontend Architecture
-
-The frontend follows a feature-based architecture organized by user roles and business domains:
-
-```
-frontend/src/
-├── components/
-│   ├── layout/              # Layout wrappers (AdminLayout, HealthWorkerLayout, ParentLayout)
-│   └── ui/                  # Global reusable UI components
-│       ├── base/            # Primitive components (buttons, cards, modals, tables)
-│       ├── form/            # Form inputs (date, time, searchable select)
-│       └── feedback/        # User feedback (toasts, confirm dialogs)
-│
-├── features/                # Business domain modules
-│   ├── admin/               # Admin-specific components (SMS, inventory, analytics)
-│   ├── health-worker/       # Health worker components
-│   ├── parent/              # Parent portal components (online-only)
-│   └── shared/              # Shared components across roles
-│
-├── views/                   # Page components (routes)
-│   ├── admin/               # Admin portal pages
-│   ├── healthworker/        # Health worker portal pages
-│   └── parent/              # Parent portal pages (no offline support)
-│
-├── services/                # API services
-│   ├── offline/             # ⚠️ BROKEN: Offline services (staff only, non-functional)
-│   │   ├── db.js           # StaffOfflineDB schema (preserved but broken)
-│   │   ├── syncService.js  # Background sync (non-functional)
-│   │   └── index.js        # Initialization (needs repair)
-│   ├── api.js              # HTTP client (standard Axios, no caching)
-│   └── auth.js             # Authentication service
-│
-├── composables/             # Reusable composition functions
-└── router/                  # Vue Router configuration
-```
-
-**Architecture Changes (November 8, 2025):**
-- ❌ Removed all parent offline infrastructure (5 files deleted)
-- ❌ Parent portal now 100% API-dependent (no IndexedDB)
-- ⚠️ Staff offline preserved but broken (requires repair)
-- ✅ Service worker still active via vite-plugin-pwa
-
-### Backend Architecture
-
-The backend follows a standard MVC pattern with additional service layers, now fully modernized with ES modules:
-
-```
-backend/
-├── constants/               # Constant values (activity types, status codes)
-├── controllers/             # Request handlers for each resource (20 files - ES6 named exports)
-├── middlewares/             # Authentication, error handling, validation (ES6 exports)
-├── migrations/              # ⭐ Database migrations for offline support
-│   └── 001_add_updated_at_columns.sql  # Conflict detection timestamps
-├── models/                  # Database models and queries (15 files - ES6 named exports)
-├── routes/                  # API route definitions (19 files - ES6 imports)
-├── services/                # Business logic (SMS, notifications, reports - ES6 exports)
-├── utils/                   # Utility functions and helpers (ES6 exports)
-├── scripts/                 # Background workers and utilities (ES6 modules)
-├── db.js                    # Database connection (ES6 default export)
-├── server.js                # Express server entry point (ES6 imports)
-└── package.json             # "type": "module" enabled ⭐ NEW (Nov 6)
-```
-
-### ES Module Architecture ⭐ NEW (November 6, 2025)
-
-**Modern JavaScript Standards:**
-- **Native ES6 Modules**: All 86 backend files use `import`/`export`
-- **Named Exports Pattern**: Controllers and models use `export { functionA, functionB }`
-- **Namespace Imports**: Models imported as `import * as model from './model.js'`
-- **File Extensions Required**: `import x from './file.js'` (`.js` mandatory)
-- **Top-Level Await**: Supported throughout codebase
-- **Zero CommonJS**: No `require()` or `module.exports` remaining
-
-**Conversion Achievements:**
-- 86 files migrated from CommonJS to ES6
-- 12 critical manual fixes (inline functions, nested imports)
-- 77+ import patterns updated (default → named)
-- Zero syntax errors, clean server startup
-- ESLint MODULE_TYPELESS_PACKAGE_JSON warning eliminated
-
-**Import Pattern Examples:**
-```javascript
-// Controllers (named exports)
-import * as patientController from './controllers/patientController.js';
-
-// Models (named exports)
-import * as patientModel from './models/patientModel.js';
-
-// Services (named exports)
-import * as smsScheduler from './services/smsScheduler.js';
-
-// Database (default export)
-import supabase from './db.js';
-
-// Middleware (named exports)
-import { authenticate, authorize } from './middlewares/authMiddleware.js';
-```
-
-### Design Principles
-
-1. **Modern JavaScript**: ES6 modules throughout backend for better maintainability ⭐ NEW
-2. **Online-First Parent Portal** ⭐ BREAKING: Parent offline removed, requires active internet
-3. **Broken Offline Infrastructure**: Staff/Admin offline needs repair (technical debt)
-4. Separation of Concerns: UI components, business logic, and API services are separated
-5. Role-Based Access: Each user role has dedicated features and components
-6. Reusability: Shared components and composables for common functionality
-7. Type Safety: Consistent data structures across frontend and backend
-8. Scalability: Feature-based structure allows easy addition of new modules
-9. Composition API: All Vue components use Composition API with script setup syntax
+- **DBMS**: PostgreSQL 14+
+- **Hosting**: Supabase
+- **Features**: Row Level Security (RLS), Triggers, Functions, Views
+- **Migrations**: Version-controlled SQL files
 
 ---
 
@@ -527,26 +100,26 @@ import { authenticate, authorize } from './middlewares/authMiddleware.js';
 
 ### Installation
 
-1. Clone the repository
+1. **Clone the repository**
 
 ```bash
 git clone https://github.com/clarknotkent/Thesis.git
 cd Thesis
-git checkout system-prototype-v4  # ⭐ NEW: Use v4 for offline features
+git checkout system-prototype-v4
 ```
 
-2. Install dependencies for both frontend and backend
+2. **Install dependencies**
 
 ```bash
 npm install
 ```
 
-This will install dependencies for the root project and both frontend and backend workspaces.
+This will install dependencies for both frontend and backend workspaces.
 
-3. Set up environment variables
+3. **Set up environment variables**
 
-Backend (.env file in backend/ directory):
-```
+**Backend** (.env file in backend/ directory):
+```env
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
@@ -555,382 +128,34 @@ NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
 ```
 
-Frontend (.env.development file in frontend/ directory):
-```
+**Frontend** (.env.development file in frontend/ directory):
+```env
 VITE_API_BASE_URL=http://localhost:3001
 NODE_ENV=development
 ```
 
-4. Build the frontend (required for PWA features)
+4. **Run the application**
 
-```bash
-npm run build
-```
-
-This compiles the frontend with Vite and generates the PWA service worker with 224 precached files for offline support.
-
-5. Run the application
-
-**Option A: Development Mode** (with hot-reload)
+**Development Mode** (with hot-reload):
 ```bash
 npm run dev
 ```
 
-**Option B: Production Mode** (serves the built frontend)
+**Production Mode** (serves the built frontend):
 ```bash
+npm run build
 npm run start
 ```
 
-Both commands start the backend API server and frontend concurrently. Use `npm run dev` during development for hot-reload, or `npm run start` to test the production build with PWA features.
-
 ### Access Points
 
-- Frontend Application: http://localhost:5173
-- Backend API: http://localhost:3001
-- API Health Check: http://localhost:3001/api/health
-
-### Progressive Web App (PWA) Features
-
-⚠️ **November 8, 2025 Update: Parent Offline Removed**
-
-This application has PWA capabilities, but **parent offline features have been completely removed**:
-
-**Current PWA Status:**
-- ✅ Service worker active (vite-plugin-pwa)
-- ✅ Workbox configured for caching
-- ✅ App installable on devices
-- ❌ Parent portal offline removed (online-only)
-- ❌ Staff offline broken (requires repair)
-- ⚠️ PWA features preserved but not actively utilized
-
-**Installation (Still Works):**
-- Install on Android: Tap "Add to Home Screen" from browser menu
-- Install on iOS: Tap Share button → "Add to Home Screen"
-- Install on Desktop: Click install icon in browser address bar
-- Runs as standalone app after installation
-
-**PWA Assets:**
-- 8 icon sizes (72x72 to 512x512) for all devices
-- Custom splash screens for app launch
-- Theme colors matching brand identity
-- Manifest configured for optimal user experience
-
-**Testing PWA:**
-1. Build the frontend: `npm run build`
-2. Start production server: `npm run start`
-3. Open http://localhost:5173 in browser
-4. Check DevTools → Application → Service Workers
-5. Run Lighthouse audit for PWA score
-
-> **Note:** While PWA infrastructure remains, offline functionality has been disabled. Parent portal requires internet connection.
+- **Frontend Application**: http://localhost:5173
+- **Backend API**: http://localhost:3001
+- **API Health Check**: http://localhost:3001/api/health
 
 ### Default Credentials
 
 Contact your system administrator for default login credentials or refer to your database setup documentation.
-
----
-
-## 📴 Offline Features Status (OUTDATED - November 8, 2025)
-
-> ⚠️ **CRITICAL: THIS ENTIRE SECTION IS OUTDATED AND NO LONGER APPLICABLE**
-> 
-> **Parent offline functionality has been completely removed.** The information below describes features that NO LONGER EXIST in v4.6.
-> 
-> **Current Reality:**
-> - ❌ Parent portal: 100% online-only (no offline support)
-> - ❌ Staff portal: Offline infrastructure broken
-> - ❌ Admin portal: No offline functionality
-> 
-> **For accurate information, see:**
-> - CHANGELOG.md (November 8, 2025) - Breaking changes documentation
-> - "Offline Support Status" section above - Current system status
-> 
-> The content below is preserved for historical reference only.
-
----
-
-## 📴 Offline-First Features (v4.1 - DEPRECATED)
-
-### Overview
-
-**system-prototype-v4.1** introduces automatic data caching with zero manual code, enabling the system to work reliably in areas with poor or no internet connectivity—critical for rural health centers in the Philippines.
-
-### ⭐ NEW: Auto-Caching (November 4, 2025)
-
-**Revolutionary Transparent Caching:**
-- **Zero Manual Code**: All GET requests automatically cached to IndexedDB
-- **Response Interceptor**: Centralized caching logic in `api.js`
-- **Intelligent Field Mapping**: Handles 90+ field name variations automatically
-- **Parent Portal Complete**: 100% offline-ready with full data persistence
-- **1,473 Lines Removed**: Eliminated all legacy offline wrapper code
-
-**Before vs After:**
-```javascript
-// BEFORE (Legacy - Required manual caching):
-import api from '@/services/offlineAPI'
-// Complex offline handling in every component...
-
-// AFTER (Modern - Auto-caching):
-import api from '@/services/api'
-const data = await api.get('/parent/children')
-// Data automatically cached to IndexedDB! ✨
-```
-
-### Key Technologies
-
-- **Auto-Caching Interceptor**: Response interceptor pattern for transparent offline ⭐ NEW
-- **Dexie.js v4.x**: IndexedDB wrapper for local browser storage
-- **Modern syncService**: Background queue processing with conflict detection
-- **Role-Based Caching**: Different strategies for parents (read) and health workers (write)
-
-### Offline Capabilities by Portal
-
-#### Parent Portal ✅ (100% Offline-Ready)
-- ✅ **View children records offline** - All data auto-cached after any API call
-- ✅ **Access vaccination schedules** - Automatically persisted to IndexedDB
-- ✅ **Read notifications offline** - Messages cached transparently
-- ✅ **View profile information** - Guardian data auto-saved locally
-- ✅ **Visit history** - Complete offline access to all visits
-- ✅ **Instant page loads** - 20-40x faster than online-only version
-- ✅ **Zero manual caching** - No code changes needed for offline support
-
-#### Health Worker Portal 🚧 (In Progress)
-- ⚠️ **Register patients** - Basic offline support, advanced features pending
-- ⚠️ **Record immunizations** - Write queue implementation in progress
-- ⚠️ **Background sync** - Automatic upload when connection restored
-- ⚠️ **Conflict detection** - Timestamp validation in development
-
-#### Admin Portal 🚧 (In Progress)
-- ⚠️ **Inventory management** - Read-only offline support via auto-caching
-- ⚠️ **Patient management** - Offline writes pending implementation
-- ⚠️ **Reports generation** - Offline analytics in development
-
-#### For Parents/Guardians 👨‍👩‍👧 ✅ COMPLETE
-- ✅ **View children records offline** - All data cached after login
-- ✅ **Access vaccination schedules** - No internet needed after initial sync
-- ✅ **Read notifications offline** - Messages available without connection
-- ✅ **Instant page loads** - 20-40x faster (2-4 seconds → <100ms)
-- ✅ **95% fewer API calls** - Reduced mobile data usage
-
-### Performance Improvements
-
-| Metric | v3 (Online-Only) | v4 (Offline-First) | Improvement |
-|--------|------------------|-------------------|-------------|
-| Page Load Time | 2-4 seconds | <100ms | **20-40x faster** |
-| API Calls (Health Worker) | 5-10 per form | 0 (queued) | **100% reduction** |
-| API Calls (Parent) | 4-6 per page | 0 (cached) | **100% reduction** |
-| Works Offline | ❌ No | ✅ Yes | **Infinite** 🎉 |
-| Data Loss Risk | ⚠️ High offline | ✅ None | **Complete protection** |
-
-### How It Works
-
-#### Outbox Pattern Implementation
-
-1. **User Action**: Health worker submits patient form
-2. **Local Save**: Data immediately saved to Dexie (IndexedDB)
-3. **Queue Task**: Upload task added to `pending_uploads` table
-4. **User Feedback**: Success message shown immediately
-5. **Background Sync**: When online, syncService processes queue
-6. **Upload**: Data sent to server via REST API
-7. **Conflict Check**: Server compares timestamps
-8. **Resolution**: Update local record with server ID or reject on conflict
-9. **Cleanup**: Remove from queue on success
-
-#### Data Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    User Action (Offline)                    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ↓
-┌─────────────────────────────────────────────────────────────┐
-│              Dexie.js (IndexedDB) - Local Storage           │
-│  Tables: patients, immunizations, pending_uploads,          │
-│          children, schedules, notifications                 │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ↓ When online
-┌─────────────────────────────────────────────────────────────┐
-│                   syncService.js                            │
-│  • Monitors online/offline status                           │
-│  • Processes queue (FIFO order)                             │
-│  • Detects conflicts (timestamp-based)                      │
-│  • Retries on failure                                       │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ↓
-┌─────────────────────────────────────────────────────────────┐
-│              Express Backend → Supabase                     │
-│  • Receives API calls                                       │
-│  • Validates data                                           │
-│  • Saves to PostgreSQL                                      │
-│  • Returns server IDs and timestamps                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Database Schema (Dexie)
-
-#### Parent Portal Tables (✅ Auto-Cached - Complete)
-```javascript
-children: 'id, guardian_id, name'           // Parent's children
-schedules: 'id, patient_id, scheduled_date' // Vaccination schedules
-notifications: 'id, created_at'             // User notifications
-guardian_profile: 'id'                      // Guardian info (single record)
-visits: 'id, patient_id, visit_date'        // Visit history
-immunizations: 'id, patient_id, updated_at' // Vaccination records
-```
-
-#### ParentPortalOfflineDB (Supabase-Mirrored, 10 tables)
-```javascript
-patients: 'patient_id'                 // Children basic info
-guardians: 'guardian_id'               // Parent/guardian info
-birthhistory: 'birthhistory_id, patient_id'
-immunizations: 'immunization_id, patient_id, updated_at'
-visits: 'visit_id, patient_id, visit_date'
-vitalsigns: 'vital_id, visit_id, patient_id'
-patientschedule: 'patient_schedule_id, patient_id, scheduled_date'
-notifications: 'notification_id, created_at'
-vaccinemaster: 'vaccine_id, antigen_name'
-_sync_metadata: 'key'
-```
-See `frontend/src/services/offline/db-parent-portal.js`.
-
-**Auto-Caching Endpoints (Parent Portal):**
-- `GET /parent/children` → Automatically saved to `children` table
-- `GET /parent/profile` → Auto-cached to `guardian_profile` table
-- `GET /parent/children/:id` → Child details auto-saved
-- `GET /parent/children/:id/schedules` → Schedules auto-cached
-- `GET /parent/children/:id/visits` → Visit history persisted
-- `GET /immunizations/:id` → Immunization data auto-saved
-- `GET /patients/:id` → Patient details cached
-- `GET /vitals/:id` → Vitals auto-cached
-- `GET /deworming/:id` → Deworming records persisted
-- `GET /vitamin-a/:id` → Vitamin A data auto-saved
-
-#### Health Worker Tables (🚧 Write Operations - In Progress)
-```javascript
-patients: 'id, updated_at, lastName'        // Patient records
-pending_uploads: '++id, type'               // Sync queue (Outbox)
-```
-
-#### Parent Tables (Read Operations)
-```javascript
-children: 'id, guardian_id, name'           // Parent's children
-schedules: 'id, patient_id, scheduled_date' // Vaccination schedules
-notifications: 'id, created_at'             // User notifications
-guardian_profile: 'id'                      // Guardian info (single record)
-```
-
-### Auto-Caching Implementation
-
-**Response Interceptor Pattern:**
-```javascript
-// In frontend/src/services/api.js
-api.interceptors.response.use(async (response) => {
-  if (response.config.method === 'get') {
-    const url = response.config.url
-    
-    // Automatic caching based on endpoint
-    if (url.includes('/parent/children')) {
-      // Format and save to IndexedDB
-      const formatted = data.map(child => ({
-        id: child.patient_id || child.id,
-        patient_id: child.patient_id || child.id,
-        name: child.name || child.full_name || child.patient_name,
-        date_of_birth: child.date_of_birth || child.dob || child.birthdate,
-        // ... 90+ field mappings with intelligent fallbacks
-        raw: child // Preserve original for debugging
-      }))
-      
-      await db.children.bulkPut(formatted)
-      console.log(`✅ Saved ${formatted.length} children to IndexedDB`)
-    }
-    
-    // Similar logic for 9+ other endpoints...
-  }
-  return response
-})
-```
-
-**Benefits:**
-- ✅ Zero code changes needed in components
-- ✅ All API calls automatically cached
-- ✅ Handles API field inconsistencies automatically
-- ✅ Console logging for debugging
-- ✅ Raw data preserved for troubleshooting
-
-### Conflict Resolution
-
-**Strategy**: "Reject & Refresh" (Server Wins)
-
-1. Local change has `updated_at` timestamp
-2. Server record has newer `updated_at` timestamp
-3. **Conflict Detected** → Local changes rejected
-4. User notified: "Data was modified by another user"
-5. Local data refreshed with server version
-6. User can re-apply their changes
-
-**Why this approach?**
-- Prevents accidental data overwrites
-- Simple and predictable behavior
-- Preserves data integrity
-- User maintains control
-
-### Testing Offline Functionality
-
-#### Quick Test (Parent Portal)
-```bash
-1. Login as parent/guardian
-2. Navigate to children list, schedules, notifications
-3. Open DevTools (F12) → Application → IndexedDB
-4. Verify data is automatically cached in Dexie tables:
-   - children
-   - schedules  
-   - notifications
-   - guardian_profile
-   - visits
-   - immunizations
-5. Go offline (DevTools → Network → Offline)
-6. Refresh pages - data loads instantly from cache ✅
-7. Go back online - new data syncs automatically
-```
-
-#### Advanced Test (Health Worker - In Progress)
-```bash
-1. Open DevTools (F12) → Network tab
-2. Enable "Offline" mode checkbox
-3. Register a patient or record immunization
-4. ⚠️ Should succeed with "Saved locally" message (pending completion)
-5. Check IndexedDB → pending_uploads table
-6. Disable "Offline" mode
-7. Data auto-syncs within seconds
-8. Check toast notification: "Synced successfully"
-```
-
-### Documentation
-
-All offline architecture documentation is in **docs/offline-architecture/**:
-
-- **JAPETH.md** - Developer quick start guide (start here!)
-- **OFFLINE_ARCHITECTURE.md** - Complete system architecture
-- **REFACTOR_SUMMARY.md** - Implementation details
-- **PARENT_OFFLINE_SUMMARY.md** - Parent features guide (✅ Complete)
-- **TESTING_GUIDE.md** - 8 step-by-step test scenarios
-- **OFFLINE_CHECKLIST.md** - Deployment checklist
-
-**November 4 Update:**
-- Parent Portal auto-caching is 100% complete and production-ready
-- Health Worker and Admin portal offline features are work in progress
-- Auto-caching interceptor pattern documented in CHANGELOG.md
-- 77 files migrated from legacy to modern architecture
-
-**November 5 Update:**
-- Performance & reliability refactor delivered (transactional prefetch, chunked writes, normalized shapes)
-- FAQs and conversation previews work offline; logout blocked while offline
-- “Cached” toast is shown only after all Dexie writes successfully finish
-
-See **docs/offline-architecture/README.md** for documentation index.
 
 ---
 
@@ -941,31 +166,35 @@ See **docs/offline-architecture/README.md** for documentation index.
 | File | Description |
 |------|-------------|
 | package.json | Root package with scripts to run both services |
-| RAILWAY_DEPLOYMENT_GUIDE.md | Railway deployment guide for PWA conversion |
-| DEPLOYMENT.md | General deployment reference |
-| CLEANUP_FOR_V3.md | System cleanup checklist |
-| CHANGELOG.md | Version history and changes log |
-| README.md | This file |
+| CHANGELOG.md | Complete version history with all dated changes |
+| README.md | This file - project overview and documentation |
+| RAILWAY_DEPLOYMENT_GUIDE.md | Railway deployment instructions |
 
 ### Frontend Structure
 
 ```
 frontend/
 ├── public/                  # Static assets
-│   ├── icons/              # PWA icons (72x72 to 512x512)
-│   └── manifest.json       # PWA manifest configuration
+│   ├── icons/              # PWA icons
+│   └── manifest.json       # PWA manifest
 ├── src/
 │   ├── assets/             # Images, styles, fonts
 │   ├── components/         # Reusable UI components
-│   ├── composables/        # Global composition functions
-│   ├── features/           # Feature modules organized by role
-│   ├── router/             # Vue Router setup and route definitions
-│   ├── services/           # API services and HTTP client
+│   │   ├── layout/         # Layout wrappers
+│   │   └── ui/             # Global UI components
+│   ├── composables/        # Composition functions
+│   ├── features/           # Feature modules by role
+│   │   ├── admin/          # Admin-specific
+│   │   ├── health-worker/  # Health worker-specific
+│   │   ├── parent/         # Parent portal
+│   │   └── shared/         # Shared across roles
+│   ├── router/             # Vue Router config
+│   ├── services/           # API services
+│   ├── utils/              # Utility functions
 │   ├── views/              # Page components
 │   ├── App.vue             # Root component
-│   └── main.js             # Application entry point
-├── .env.development        # Development environment variables
-├── .env.production         # Production environment variables
+│   └── main.js             # Application entry
+├── eslint.config.js        # ESLint configuration
 ├── package.json            # Frontend dependencies
 └── vite.config.js          # Vite configuration
 ```
@@ -975,16 +204,19 @@ frontend/
 ```
 backend/
 ├── constants/              # Constant values
-├── controllers/            # Request handlers
+├── controllers/            # Request handlers (ES6 modules)
 ├── middlewares/            # Express middlewares
-├── models/                 # Database models
+├── models/                 # Database models (ES6 modules)
 ├── routes/                 # API route definitions
-├── services/               # Business logic
+├── services/               # Business logic services
 ├── utils/                  # Utility functions
-├── .env                    # Environment variables (not committed)
+├── scripts/                # Background workers and utilities
+├── migrations/             # Database migrations
+├── .env                    # Environment variables
 ├── db.js                   # Database connection
+├── eslint.config.cjs       # ESLint configuration
 ├── package.json            # Backend dependencies
-└── server.js               # Express server entry point
+└── server.js               # Express server entry
 ```
 
 ---
@@ -993,75 +225,44 @@ backend/
 
 ### Admin Portal
 
-The admin portal provides complete system oversight and management capabilities:
-
-- Dashboard: Overview of vaccinations, patients, inventory levels, and system activity
-- User Management: Create and manage health worker and parent accounts
-- Patient Management: View and manage all patient records across the system
-- Vaccine Inventory: 
+- **Dashboard**: Overview of vaccinations, patients, inventory levels, and system activity
+- **User Management**: Create and manage health worker and parent accounts
+- **Patient Management**: View and manage all patient records across the system
+- **Vaccine Inventory**: 
   - Stock management with real-time levels
   - Receiving reports for incoming shipments
   - Expiry tracking and alerts
-  - Vaccine distribution history
-- SMS Management:
+  - Distribution history
+- **SMS Management**:
   - Send bulk and individual notifications
   - Manage SMS templates
   - View SMS logs and delivery status
   - Configure automated reminders
-- Analytics and Reporting:
-  - Vaccination coverage statistics
-  - Trends and insights
-  - Custom report generation
-  - Export capabilities
-- Activity Logs: System-wide activity tracking and audit trails
+- **Analytics and Reporting**: Coverage statistics, trends, custom reports
+- **Activity Logs**: System-wide activity tracking and audit trails
 
 ### Health Worker Portal
 
-Health workers use this portal for day-to-day patient care operations:
-
-- Dashboard: Daily tasks, upcoming vaccinations, recent activities
-- Patient Management:
+- **Dashboard**: Daily tasks, upcoming vaccinations, recent activities
+- **Patient Management**:
   - Add and edit patient records
   - Record immunization visits with vitals
   - Manage vaccination records
   - Track complete patient history
   - Schedule upcoming vaccinations
-- Inventory: 
-  - View vaccine stock levels
-  - Check expiry dates
-  - Request vaccine restocking
-- Messaging System:
-  - Communicate with parents and guardians
-  - Send appointment reminders
-  - Answer queries about vaccinations
-- Notifications: Real-time updates and alerts for important events
-- Tools:
-  - QR code scanner for quick patient lookup
-  - Print vaccination cards
-  - Generate reports
+- **Inventory**: View vaccine stock levels and expiry dates
+- **Messaging System**: Communicate with parents and guardians
+- **Notifications**: Real-time updates and alerts
+- **Tools**: QR code scanner, print vaccination cards, generate reports
 
 ### Parent Portal
 
-Parents and guardians can access their children's immunization information:
-
-- Dashboard: 
-  - Upcoming vaccination schedules
-  - Recent updates and notifications
-  - Health reminders
-- Dependents: 
-  - View all children's immunization records
-  - Manage dependent information
-  - Track growth and development milestones
-- Vaccination Schedule:
-  - See upcoming required vaccines
-  - View completed vaccination history
-  - Receive schedule reminders
-- Notifications: 
-  - SMS and in-app reminders
-  - Important health alerts
-  - Appointment confirmations
-- Messaging: Direct communication channel with health workers
-- Profile: Update contact information and preferences
+- **Dashboard**: Upcoming vaccination schedules, recent updates, health reminders
+- **Dependents**: View all children's immunization records and track growth
+- **Vaccination Schedule**: See upcoming required vaccines and completed history
+- **Notifications**: SMS and in-app reminders, appointment confirmations
+- **Messaging**: Direct communication channel with health workers
+- **Profile**: Update contact information and preferences
 
 ---
 
@@ -1099,17 +300,67 @@ Limited access focused on their dependents:
 
 ---
 
+## Architecture
+
+### Frontend Architecture
+
+The frontend follows a feature-based architecture organized by user roles and business domains:
+
+**Key Principles:**
+1. **Separation of Concerns**: UI components, business logic, and API services are separated
+2. **Role-Based Access**: Each user role has dedicated features and components
+3. **Reusability**: Shared components and composables for common functionality
+4. **Composition API**: All Vue components use Composition API with script setup syntax
+5. **Modern JavaScript**: ES6 modules throughout with proper imports
+
+### Backend Architecture
+
+The backend follows a standard MVC pattern with additional service layers, fully modernized with ES modules:
+
+**Modern JavaScript Standards:**
+- **Native ES6 Modules**: All 86 backend files use `import`/`export`
+- **Named Exports Pattern**: Controllers and models use `export { functionA, functionB }`
+- **File Extensions Required**: `import x from './file.js'` (`.js` mandatory)
+- **Top-Level Await**: Supported throughout codebase
+- **Zero CommonJS**: No `require()` or `module.exports`
+
+**Import Pattern Examples:**
+```javascript
+// Controllers (named exports)
+import * as patientController from './controllers/patientController.js';
+
+// Models (named exports)
+import * as patientModel from './models/patientModel.js';
+
+// Database (default export)
+import supabase from './db.js';
+
+// Middleware (named exports)
+import { authenticate, authorize } from './middlewares/authMiddleware.js';
+```
+
+### Design Principles
+
+1. **Modern JavaScript**: ES6 modules throughout for better maintainability
+2. **Type Safety**: Consistent data structures across frontend and backend
+3. **Scalability**: Feature-based structure allows easy addition of new modules
+4. **Security First**: Authentication, authorization, and data protection at every level
+5. **Performance**: Optimized queries, caching strategies, efficient data structures
+
+---
+
 ## Development Guidelines
 
 ### Code Style Standards
 
-- Vue Components: Use Composition API with script setup syntax
-- Naming Conventions:
+- **Vue Components**: Use Composition API with script setup syntax
+- **Naming Conventions**:
   - PascalCase for component names
   - camelCase for functions and variables
   - kebab-case for file names
-- File Organization: Keep components under 600 lines (extract to composables or sub-components)
-- Composables: Extract reusable logic into composables with "use" prefix
+- **File Organization**: Keep components under 600 lines (extract to composables or sub-components)
+- **Composables**: Extract reusable logic into composables with "use" prefix
+- **ESLint**: Run `npm run lint` before committing
 
 ### Best Practices
 
@@ -1123,9 +374,9 @@ Limited access focused on their dependents:
 
 #### State Management
 
-- Use ref() for primitive values
-- Use reactive() for objects and arrays
-- Use computed() for derived state
+- Use `ref()` for primitive values
+- Use `reactive()` for objects and arrays
+- Use `computed()` for derived state
 - Avoid deeply nested reactive objects
 - Keep state as local as possible
 
@@ -1135,7 +386,7 @@ Limited access focused on their dependents:
 - Handle loading states consistently
 - Show appropriate user feedback (toasts, errors)
 - Implement proper error handling
-- Cache responses when appropriate
+- Validate data before submission
 
 #### Error Handling
 
@@ -1145,23 +396,14 @@ Limited access focused on their dependents:
 - Implement retry logic for transient failures
 - Validate data before submission
 
-### Recent Refactoring (November 2025)
-
-Major improvements to code maintainability:
-- AddPatientImmunizationRecord.vue: Reduced from 1,615 to 575 lines
-- Messages.vue: Reduced from 1,082 to 482 lines
-- Created reusable components: VisitSelectorSection, VitalsFormSection, ServicesListSection
-- Extracted composables: usePatientImmunizationForm, useVaccineSelection, useConversations
-- Improved code organization with feature-based structure
-
 ---
 
 ## API Documentation
 
 ### Base URL
 
-Development: http://localhost:3001/api
-Production: (To be configured)
+- Development: http://localhost:3001/api
+- Production: (To be configured)
 
 ### Authentication
 
@@ -1174,33 +416,37 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ### Main API Endpoints
 
 #### Authentication
-- POST /api/auth/login - User login
-- POST /api/auth/register - User registration
-- POST /api/auth/logout - User logout
-- GET /api/auth/me - Get current user
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
 
 #### Patients
-- GET /api/patients - Get all patients
-- GET /api/patients/:id - Get patient by ID
-- POST /api/patients - Create new patient
-- PUT /api/patients/:id - Update patient
-- DELETE /api/patients/:id - Delete patient
+- `GET /api/patients` - Get all patients
+- `GET /api/patients/:id` - Get patient by ID
+- `GET /api/patients/stats` - Get patient statistics
+- `POST /api/patients` - Create new patient
+- `PUT /api/patients/:id` - Update patient
+- `DELETE /api/patients/:id` - Delete patient
 
 #### Immunizations
-- GET /api/immunizations - Get all immunizations
-- GET /api/immunizations/patient/:id - Get patient immunizations
-- POST /api/immunizations - Record immunization
-- PUT /api/immunizations/:id - Update immunization record
+- `GET /api/immunizations` - Get all immunizations
+- `GET /api/immunizations/patient/:id` - Get patient immunizations
+- `POST /api/immunizations` - Record immunization
+- `PUT /api/immunizations/:id` - Update immunization record
 
 #### Inventory
-- GET /api/vaccines - Get vaccine inventory
-- POST /api/vaccines/receive - Record vaccine receipt
-- PUT /api/vaccines/:id - Update vaccine stock
+- `GET /api/vaccines` - Get vaccine inventory
+- `GET /api/vaccines/inventory/:id` - Get vaccine details
+- `POST /api/vaccines/receive` - Record vaccine receipt
+- `PUT /api/vaccines/:id` - Update vaccine stock
 
 #### SMS
-- POST /api/sms/send - Send SMS notification
-- GET /api/sms/logs - Get SMS logs
-- GET /api/sms/templates - Get SMS templates
+- `POST /api/sms/send` - Send SMS notification
+- `GET /api/sms/logs` - Get SMS logs
+- `GET /api/sms/templates` - Get SMS templates
+- `POST /api/sms/guardians/bulk-toggle` - Bulk toggle auto-send
+- `PUT /api/sms/guardians/:guardianId` - Toggle individual guardian
 
 For complete API documentation, see backend/API_DOCUMENTATION.md
 
@@ -1212,7 +458,7 @@ For complete API documentation, see backend/API_DOCUMENTATION.md
 
 #### Backend Required Variables
 
-```
+```env
 SUPABASE_URL=your_production_supabase_url
 SUPABASE_KEY=your_production_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_production_service_role_key
@@ -1223,7 +469,7 @@ CORS_ORIGIN=your_frontend_production_url
 
 #### Frontend Required Variables
 
-```
+```env
 VITE_API_BASE_URL=your_backend_api_url
 NODE_ENV=production
 ```
@@ -1232,21 +478,15 @@ NODE_ENV=production
 
 #### Railway Deployment
 
-This project is configured for Railway deployment. See RAILWAY_DEPLOYMENT_GUIDE.md for detailed instructions.
+This project is configured for Railway deployment. See [RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md) for detailed instructions.
 
 #### Manual Deployment
 
-1. Build the frontend (includes PWA assets):
+1. **Build the frontend**:
 ```bash
 cd frontend
 npm run build
 ```
-
-This generates:
-- Optimized production build in `dist/`
-- Service worker (`sw.js`) with 224+ precached files
-- PWA manifest and icons
-- All static assets
 
 2. Deploy backend to your Node.js hosting service
 3. Deploy frontend build to static hosting (Netlify, Vercel, etc.)
@@ -1258,15 +498,8 @@ This generates:
 The application is production-ready as a Progressive Web App:
 - Service worker automatically registers on deployment
 - All PWA assets generated during build process
-- Works offline after first visit
 - Installable on all major platforms (Android, iOS, Desktop)
 - Lighthouse PWA score: Ready for audit
-
-For PWA-specific deployment considerations, see PWA_READINESS_AND_UNUSED_FILES_REPORT.md
-
-### Future Plans
-
-This project has been successfully converted to a Progressive Web App (PWA) with full offline capabilities and mobile installation support.
 
 ---
 
@@ -1274,61 +507,47 @@ This project has been successfully converted to a Progressive Web App (PWA) with
 
 ### Main Documentation Files
 
-- **docs/offline-architecture/** ⭐ NEW - Complete offline-first implementation guide
-  - JAPETH.md - Developer quick start
-  - OFFLINE_ARCHITECTURE.md - System architecture
-  - TESTING_GUIDE.md - Testing procedures
-  - (7 comprehensive guides total)
-- RESET_QA_INSTRUCTIONS.md ⭐ NEW (Nov 6) - QA data reset instructions
-- RAILWAY_DEPLOYMENT_GUIDE.md - Railway deployment instructions
-- DEPLOYMENT.md - General deployment reference and best practices
-- CLEANUP_FOR_V3.md - System cleanup checklist for v3 branch
-- CHANGELOG.md - Version history and notable changes (⭐ updated for v4)
+- **[CHANGELOG.md](CHANGELOG.md)** - Complete version history with all dated changes
+- **[RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md)** - Railway deployment instructions
+- **[docs/README.md](docs/README.md)** - Complete documentation index (start here!)
 
-### Documentation Folder
+### Documentation Structure
 
-Comprehensive documentation is organized in the docs/ folder:
+All documentation is organized in the `docs/` folder with a clean structure:
 
-#### Offline Architecture (v4) ⭐ NEW
-- **docs/offline-architecture/README.md** - Documentation index
-- **docs/offline-architecture/JAPETH.md** - Developer guide
-- **docs/offline-architecture/BRANCH_README_V4.md** - Branch overview
-- **docs/offline-architecture/OFFLINE_ARCHITECTURE.md** - Complete architecture
-- **docs/offline-architecture/REFACTOR_SUMMARY.md** - Implementation details
-- **docs/offline-architecture/PARENT_OFFLINE_SUMMARY.md** - Parent features
-- **docs/offline-architecture/TESTING_GUIDE.md** - Testing procedures
-- **docs/offline-architecture/OFFLINE_CHECKLIST.md** - Deployment checklist
+```
+docs/
+├── README.md                    # Complete documentation index
+├── backend/                     # Backend documentation (7 files)
+├── frontend/                    # Frontend documentation (organized)
+│   ├── components/              # Component docs
+│   ├── features/                # Feature docs by portal
+│   └── services/                # Service documentation
+├── reference/                   # Active reference docs (✅ Current)
+├── offline-architecture/        # Offline system (⚠️ Deprecated)
+├── parent-offline/              # Parent offline (⚠️ Deprecated)
+└── archive/                     # Historical docs (🗄️ Archived)
+```
 
-#### Getting Started
-- docs/README.md - Documentation index and navigation
-- docs/INDEX.md - Complete file mapping reference
+### Quick Links by Topic
 
-#### Feature Guides
-- docs/HEALTH_WORKER_FEATURES_QUICK_GUIDE.md - Health worker portal guide
-- docs/HEALTH_WORKER_CHAT_NOTIFICATIONS.md - Chat and notification system
+**Backend Development:**
+- [API Documentation](docs/backend/API_VACCINE_INVENTORY.md) - Vaccine inventory API
+- [SMS Integration](docs/backend/SMS_BACKEND_README.md) - SMS system
+- [System Logging](docs/backend/SYSTEM_LOGGING.md) - Activity logs
+- [Ledger System](docs/backend/LEDGER_README.md) - Transaction ledger
 
-#### SMS System
-- docs/SMS_SYSTEM_COMPLETE.md - Complete SMS system documentation
-- docs/SMS_MANAGEMENT_README.md - SMS management features
-- docs/SMS_QUICK_REFERENCE.md - Quick reference for SMS operations
+**Frontend Development:**
+- [Features Overview](docs/frontend/features/overview.md) - All features
+- [Admin Portal](docs/frontend/features/admin-features.md) - Admin features
+- [Health Worker Portal](docs/frontend/features/health-worker-features.md) - Health worker features
+- [Parent Portal](docs/frontend/features/parent-features.md) - Parent features
 
-#### Architecture
-- docs/HEALTH_WORKER_ARCHITECTURE.md - Health worker portal architecture
-- docs/ForJapeth.md - Setup instructions and implementation notes
+**System Administration:**
+- [QA Reset Instructions](docs/reference/QA-RESET-INSTRUCTIONS.md) - Database reset
+- [API Payloads](docs/reference/API-PAYLOADS.md) - Request payload documentation
 
-### Backend Documentation
-
-Backend-specific documentation in the backend/ folder:
-
-- backend/API_VACCINE_INVENTORY.md - Vaccine inventory API specifications
-- backend/LEDGER_README.md - Ledger system documentation
-- backend/SMS_BACKEND_README.md - SMS backend integration guide
-- backend/SYSTEM_LOGGING.md - Activity logging system reference
-
-### Archived Documentation
-
-Historical refactoring and analysis documents are archived in:
-- docs/archive/refactoring-history/ - Contains analysis from November 2025 refactoring
+**Complete Index:** See [docs/README.md](docs/README.md) for the full documentation index with 44+ organized files
 
 ---
 
@@ -1371,37 +590,37 @@ This is an academic thesis project. Contributions and inquiries are welcome:
 
 ### How to Contribute
 
-1. Create a feature branch from system-prototype-v3
+1. **Create a feature branch from system-prototype-v4**
 ```bash
-git checkout system-prototype-v3
-git pull origin system-prototype-v3
+git checkout system-prototype-v4
+git pull origin system-prototype-v4
 git checkout -b feature/your-feature-name
 ```
 
-2. Follow the code style guidelines outlined above
+2. **Follow the code style guidelines outlined above**
 
-3. Test thoroughly before committing
+3. **Test thoroughly before committing**
 ```bash
-npm run test
 npm run lint
+npm run test
 ```
 
-4. Commit with clear, descriptive messages
+4. **Commit with clear, descriptive messages**
 ```bash
 git commit -m "feat: Add new feature description"
 ```
 
-5. Submit pull request with detailed description of changes
+5. **Submit pull request with detailed description of changes**
 
 ### Commit Message Guidelines
 
-- feat: New feature
-- fix: Bug fix
-- docs: Documentation changes
-- style: Code style changes (formatting)
-- refactor: Code refactoring
-- test: Test additions or changes
-- chore: Maintenance tasks
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `style:` Code style changes (formatting)
+- `refactor:` Code refactoring
+- `test:` Test additions or changes
+- `chore:` Maintenance tasks
 
 ---
 
@@ -1409,31 +628,31 @@ git commit -m "feat: Add new feature description"
 
 ### Contact Information
 
-- Repository: https://github.com/clarknotkent/Thesis
- - Branch: system-prototype-v4
-- Issues: Use GitHub Issues for bug reports and feature requests
+- **Repository**: https://github.com/clarknotkent/Thesis
+- **Branch**: system-prototype-v4
+- **Issues**: Use GitHub Issues for bug reports and feature requests
 
 ### Documentation Resources
 
 - Complete documentation: docs/ folder
-- Deployment guides: RAILWAY_DEPLOYMENT_GUIDE.md, DEPLOYMENT.md
+- Deployment guides: RAILWAY_DEPLOYMENT_GUIDE.md
 - API documentation: backend/API_DOCUMENTATION.md
-- Changelog: CHANGELOG.md
+- **Version history**: CHANGELOG.md (with all dated changes)
 
 ### Getting Help
 
 1. Check the docs/ folder for comprehensive guides
-2. Review closed issues on GitHub for similar problems
-3. Open a new issue with detailed description and steps to reproduce
-4. Contact the maintainer for urgent matters
+2. Review CHANGELOG.md for recent changes and fixes
+3. Review closed issues on GitHub for similar problems
+4. Open a new issue with detailed description and steps to reproduce
+5. Contact the maintainer for urgent matters
 
 ---
 
-Project: Immunization Management System
-Version: 4.7 (Immunization Date Constraints & System Utilities)
-Last Updated: November 10, 2025
-Maintained by: Clark Kent (clarknotkent), JapethDee and RobertBite15
-License: Academic Thesis Project
+**Project**: Immunization Management System  
+**Version**: 4.7  
+**Last Updated**: November 10, 2025  
+**Maintained by**: Clark Kent (clarknotkent), JapethDee and RobertBite15  
+**License**: Academic Thesis Project
 
-**Major Update v4.7**: Added immunization date validation system, enhanced text processing utilities, and comprehensive component improvements. See CHANGELOG.md (November 10, 2025) for complete details.
-
+**For complete update history with all dates and changes, see [CHANGELOG.md](CHANGELOG.md)**

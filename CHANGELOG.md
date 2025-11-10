@@ -1,6 +1,12 @@
 # Changelog
 
-All notable changes to the ImmunizeMe project will be documented in this file.
+All notable changes to the Immunization Management System will be documented in this file.
+
+> **📚 Documentation Structure:**
+> - **This file (CHANGELOG.md)**: Complete version history with all dated changes and updates
+> - **[README.md](README.md)**: Project overview, setup instructions, and general documentation
+>
+> For project information and getting started guides, see [README.md](README.md)
 
 ---
 
