@@ -99,4 +99,9 @@ pnpm-debug.log*
 *git-change-report-*.patch
 *git-change-report-*.txt
 
+# Thesis code snippets (keep local only)
+snippets.js
+snippets.sql
+snippets.txt
+
 
