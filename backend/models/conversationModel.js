@@ -7,11 +7,6 @@ const toTitleCase = (str) => {
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 };
 
-const toSentenceCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
 // Utility: normalize to string UUIDs and sort for stable signatures
 const toId = (v) => (v === null || v === undefined ? '' : String(v));
 const makeParticipantSignature = (ids = []) => ids.map(toId).sort().join('|');

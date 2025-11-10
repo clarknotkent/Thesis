@@ -4,17 +4,6 @@ function withClient(client) {
   return client || serviceSupabase;
 }
 
-// Normalization functions
-const toTitleCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-};
-
-const toSentenceCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
 const createDeworming = async (data, client) => {
   const supabase = withClient(client);
   const payload = {

@@ -7,11 +7,6 @@ const toTitleCase = (str) => {
   return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
 
-const toSentenceCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
 // Map any incoming variant to DB-enforced tokens: 'Admin','HealthStaff','Guardian'
 const mapIncomingRoleToStored = (role) => {
   const r = (role || '').trim().toLowerCase();
@@ -221,13 +216,13 @@ const userModel = {
       if (!userData.username && userData.email && !userData.email.includes('@immunizeme.com')) {
         userData.username = userData.email.split('@')[0];
       }
-      
+
       // Normalize text fields
       const normalizedFirstname = userData.firstname ? toTitleCase(userData.firstname) : userData.firstname;
       const normalizedMiddlename = userData.middlename ? toTitleCase(userData.middlename) : userData.middlename;
       const normalizedSurname = userData.surname ? toTitleCase(userData.surname) : userData.surname;
       const normalizedAddress = userData.address ? toTitleCase(userData.address) : userData.address;
-      
+
       const payload = {
         username: userData.username,
         email: userData.email,
@@ -352,12 +347,13 @@ const userModel = {
       if (filtered.contact_number) {
         filtered.contact_number = normalizeContactNumber(filtered.contact_number);
       }
-      
+
       // Normalize text fields
       if (filtered.firstname) filtered.firstname = toTitleCase(filtered.firstname);
       if (filtered.middlename) filtered.middlename = toTitleCase(filtered.middlename);
       if (filtered.surname) filtered.surname = toTitleCase(filtered.surname);
-      if (filtered.address) filtered.address = toTitleCase(filtered.address);      // Role-based pruning
+      if (filtered.address) filtered.address = toTitleCase(filtered.address);
+      // Role-based pruning
       // Decide effective role for pruning: newly provided or existing DB value
       let effectiveRole = (filtered.role || '').toLowerCase();
       if (!effectiveRole) {

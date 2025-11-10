@@ -800,7 +800,7 @@ import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds'
 
-const todayIso = getCurrentPHDate()
+const _todayIso = getCurrentPHDate()
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()

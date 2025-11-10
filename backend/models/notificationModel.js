@@ -3,11 +3,6 @@ import { ACTIVITY } from '../constants/activityTypes.js';
 import { logActivity } from './activityLogger.js';
 
 // Normalization functions
-const toTitleCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-};
-
 const toSentenceCase = (str) => {
   if (!str || typeof str !== 'string') return str;
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -97,7 +92,7 @@ const broadcastNotifications = async (notificationData, actorId) => {
       if (!ch) return null;
       const s = String(ch).trim().toLowerCase();
       if (['in-app','inapp','push','notification','push-notification'].includes(s)) return 'Push';
-      if (['sms','text','mobile','sms-text','sms '].includes(s)) return 'SMS';
+      if (['sms','text','mobile','sms-text','sms'].includes(s)) return 'SMS';
       if (['email','e-mail','mail'].includes(s)) return 'Email';
       if (['push','sms','email'].includes(s)) return s.charAt(0).toUpperCase() + s.slice(1);
       return ch;
@@ -197,7 +192,7 @@ const createNotification = async (notificationData, actorId) => {
       if (!ch) return null;
       const s = String(ch).trim().toLowerCase();
       if (['in-app','inapp','push','notification','push-notification'].includes(s)) return 'Push';
-      if (['sms','text','mobile','sms-text','sms '].includes(s)) return 'SMS';
+      if (['sms','text','mobile','sms-text','sms'].includes(s)) return 'SMS';
       if (['email','e-mail','mail'].includes(s)) return 'Email';
       if (['push','sms','email'].includes(s)) return s.charAt(0).toUpperCase() + s.slice(1);
       return ch;
@@ -217,15 +212,15 @@ const createNotification = async (notificationData, actorId) => {
     // Accept both snake_case and camelCase field names from clients
     const incoming = notificationData || {};
     console.log('Incoming notificationData:', JSON.stringify(incoming, null, 2));
-    
+
     // For custom messages (empty template_code), use header as template_code
     let effectiveTemplateCode = coerceEmpty(incoming.template_code ?? incoming.templateCode ?? incoming.template ?? null);
     const headerValue = coerceEmpty(incoming.header ?? incoming.notificationHeader ?? null);
-    
+
     if (!effectiveTemplateCode && headerValue) {
       effectiveTemplateCode = headerValue;
     }
-    
+
     const insertPayload = {
       channel: normalizeChannelDB(incoming.channel),
       recipient_user_id: coerceEmpty(

@@ -1,10 +1,6 @@
 import supabase from '../db.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 
-// Helper to use provided client or default service client
-function withClient(client) {
-  return client || supabase;
-}
 
 // Normalization functions
 const toTitleCase = (str) => {

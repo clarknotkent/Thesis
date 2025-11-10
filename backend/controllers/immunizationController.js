@@ -494,7 +494,7 @@ const manualReschedulePatientSchedule = async (req, res) => {
     // Use the model helper which calls smart_reschedule_patientschedule inside the DB
     let result = null;
     let updatedRow = beforeRow; // Default to original row for demo mode
-    
+
     if (!demo) {
       // Normal mode: actually update the database
       result = await immunizationModel.updatePatientSchedule(

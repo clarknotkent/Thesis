@@ -67,7 +67,7 @@ const createImmunization = async (immunizationData, client) => {
         const doseInfo = Array.isArray(vaccineSchedule.schedule_doses)
           ? vaccineSchedule.schedule_doses.find(d => d.dose_number === payload.dose_number)
           : vaccineSchedule.schedule_doses;
-        
+
         if (doseInfo?.absolute_latest_days) {
           // Get patient DOB to calculate absolute latest date
           const { data: patient, error: patientErr } = await supabase
