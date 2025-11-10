@@ -39,6 +39,11 @@ const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
     updated_at: new Date().toISOString()
   };
 
+  // Include updated_by if provided (for audit trail when vitals are modified)
+  if (vitalsData.updated_by !== undefined) {
+    vitalsPayload.updated_by = vitalsData.updated_by;
+  }
+
   if (existing) {
     // Update existing vitals
     const { data, error } = await supabase
@@ -51,12 +56,19 @@ const updateVitalsignsByVisitId = async (visitId, vitalsData, client) => {
     return data;
   } else {
     // Create new vitals for this visit
+    const vitalsPayloadWithCreated = {
+      ...vitalsPayload,
+      created_at: new Date().toISOString()
+    };
+    // Include created_by if provided for new vitals
+    if (vitalsData.created_by !== undefined) {
+      vitalsPayloadWithCreated.created_by = vitalsData.created_by;
+    }
     const { data, error } = await supabase
       .from('vitalsigns')
       .insert({
         visit_id: visitId,
-        ...vitalsPayload,
-        created_at: new Date().toISOString()
+        ...vitalsPayloadWithCreated
       })
       .select()
       .single();

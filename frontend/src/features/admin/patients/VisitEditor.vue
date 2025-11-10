@@ -75,7 +75,6 @@
                 v-model="form.recorded_by"
                 :options="healthWorkers"
                 :disabled="viewOnly"
-                :required="true"
                 placeholder="Search or select health staff..."
                 label-key="fullname"
                 value-key="user_id"
@@ -351,7 +350,6 @@
           v-model="form.recorded_by"
           :options="healthWorkers"
           :disabled="viewOnly"
-          :required="true"
           placeholder="Search or select health staff..."
           label-key="fullname"
           value-key="user_id"
@@ -544,8 +542,13 @@
                 v-model="vaccinationForm.dateAdministered"
                 :required="true"
                 output-format="iso"
+                :max="immunizationDateMax"
+                :min="immunizationDateMin"
                 @update:model-value="updateAgeCalculation"
               />
+              <div class="form-text small text-muted">
+                Min: {{ immunizationDateMin || 'Patient DOB' }} | Max: {{ immunizationDateMax || 'Today' }}
+              </div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Age at Administration</label>
@@ -608,7 +611,6 @@
               <select
                 v-model="vaccinationForm.healthWorkerId"
                 class="form-select"
-                required
               >
                 <option value="">
                   Select health staff
@@ -793,11 +795,18 @@ import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { getCurrentPHDate, utcToPH } from '@/utils/dateUtils'
+import { getUserId } from '@/services/auth'
 import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
+import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds'
+
+const todayIso = getCurrentPHDate()
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
+
+// Use the immunization date bounds composable
+const { immunizationDateMin, immunizationDateMax, updateImmunizationDateConstraints } = useImmunizationDateBounds()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -919,7 +928,7 @@ const recordedByDisplayName = computed(() => {
 
 const form = ref({
   patient_id: '',
-  recorded_by: '',
+  recorded_by: getUserId() || '',
   visit_date: getCurrentPHDate(),
   vitals: {
     temperature: '',
@@ -955,6 +964,9 @@ const vaccinationForm = ref({
   remarks: '',
   outside: false
 })
+
+// Reactive date constraints for immunization
+// Now handled by useImmunizationDateBounds composable
 
 const fetchPatients = async () => {
   try {
@@ -1446,6 +1458,11 @@ const onVaccineSelect = async (newInventoryId) => {
     availableDoses.value = [1,2,3,4,5]
     autoSelectHint.value = ''
   }
+
+  // Update date constraints if dose is selected
+  if (vaccinationForm.value.doseNumber) {
+    await updateImmunizationDateConstraints(form.value.patient_id, selectedVaccine?.vaccine_id, vaccinationForm.value.doseNumber)
+  }
 }
 
 const onVaccineCatalogSelect = async (newVaccineId) => {
@@ -1489,6 +1506,11 @@ const onVaccineCatalogSelect = async (newVaccineId) => {
     availableDoses.value = [1,2,3,4,5]
     autoSelectHint.value = ''
   }
+
+  // Update date constraints if dose is selected
+  if (vaccinationForm.value.doseNumber) {
+    await updateImmunizationDateConstraints(form.value.patient_id, newVaccineId, vaccinationForm.value.doseNumber)
+  }
 }
 
 const saveVaccination = async () => {
@@ -1531,7 +1553,8 @@ const saveVaccination = async () => {
           dose_number: vaccinationForm.value.doseNumber,
           administered_date: vaccinationForm.value.dateAdministered,
           age_at_administration: vaccinationForm.value.ageAtAdministration,
-          administered_by: vaccinationForm.value.healthWorkerId,
+          // If no health staff was selected, default to the current user id (admin/system user)
+          administered_by: vaccinationForm.value.healthWorkerId || getUserId() || null,
           facility_name: vaccinationForm.value.facilityName,
           vaccine_name: vaccinationForm.value.vaccineName,
           remarks: vaccinationForm.value.siteOfAdministration 
@@ -1585,6 +1608,9 @@ const updateAgeCalculation = () => {
   }
 }
 
+// Helper function to update immunization date constraints based on selected vaccine and dose
+// Now handled by useImmunizationDateBounds composable
+
 const closeVaccinationForm = () => {
   showVaccinationForm.value = false
   // Reset form when closing
@@ -1606,7 +1632,7 @@ const closeVaccinationForm = () => {
   }
 }
 
-const editService = (index) => {
+const editService = async (index) => {
   const service = localCollectedVaccinations.value[index]
   if (!service) return
 
@@ -1633,6 +1659,11 @@ const editService = (index) => {
 
   // Store the index being edited for later update
   vaccinationForm.value.editingIndex = index
+
+  // Update date constraints for the selected vaccine and dose
+  if (vaccinationForm.value.doseNumber && vaccinationForm.value.vaccineId) {
+    await updateImmunizationDateConstraints(form.value.patient_id, vaccinationForm.value.vaccineId, vaccinationForm.value.doseNumber)
+  }
 }
 
 const removeService = async (index) => {
@@ -1661,20 +1692,15 @@ const saveVisit = async () => {
     return
   }
   try {
+    // Ensure recorded_by is set to current user if not selected so save isn't blocked
+    form.value.recorded_by = normalizeId(form.value.recorded_by) || getUserId() || ''
     loading.value = true
 
   console.log('🔄 [VISIT_SAVE_FRONTEND] collectedVaccinations before save:', localCollectedVaccinations.value)
 
-    // In full visit mode: If vaccines are queued, require at least one vital sign
-    if (!props.recordMode && localCollectedVaccinations.value && localCollectedVaccinations.value.length > 0) {
-      const v = form.value.vitals || {}
-      const vitalsProvided = [v.temperature, v.muac, v.respiration, v.weight, v.height].some(x => x !== '' && x !== null && typeof x !== 'undefined')
-      if (!vitalsProvided) {
-        addToast({ title: 'Validation', message: 'Please enter at least one vital sign when recording vaccinations in-facility.', type: 'error' })
-        loading.value = false
-        return
-      }
-    }
+    // NOTE: Previously this flow required at least one vital sign when vaccines were queued.
+    // That validation has been removed so vaccinations can be recorded even when no vitals are provided.
+    // (Vitals validation / outside checks are handled inside the Add Vaccine form toggle.)
 
     // If adding to existing visit (explicit or auto-adopted), save services directly or update visit
     const targetExistingId = effectiveExistingVisitId.value
@@ -1683,7 +1709,8 @@ const saveVisit = async () => {
 
       // Prepare update payload for visit (exclude vitals)
       const updatePayload = {
-        recorded_by: normalizeId(form.value.recorded_by) || undefined,
+        // If no health staff selected for recorded_by, default to current user id
+        recorded_by: normalizeId(form.value.recorded_by) || getUserId() || undefined,
         visit_date: form.value.visit_date,
         findings: form.value.findings,
         service_rendered: form.value.service_rendered,
@@ -1770,7 +1797,7 @@ const saveVisit = async () => {
     const visitPayload = {
       ...form.value,
       // In recordMode, omit findings/service_rendered and recorded_by if empty
-      ...(props.recordMode ? { recorded_by: normalizeId(form.value.recorded_by) || undefined, findings: undefined, service_rendered: undefined, vitals: form.value.vitals || {} } : { recorded_by: normalizeId(form.value.recorded_by) || undefined }),
+  ...(props.recordMode ? { recorded_by: normalizeId(form.value.recorded_by) || getUserId() || undefined, findings: undefined, service_rendered: undefined, vitals: form.value.vitals || {} } : { recorded_by: normalizeId(form.value.recorded_by) || getUserId() || undefined }),
   collectedVaccinations: localCollectedVaccinations.value || [],
       services: [] // Add services array for future use (deworming, etc.)
     }
@@ -2096,11 +2123,33 @@ watch(() => vaccinationForm.value.dateAdministered, (newDate) => {
   }
 })
 
-watch(() => vaccinationForm.value.inventoryId, (val) => {
-  if (val) updateAgeCalculation()
+watch(() => vaccinationForm.value.inventoryId, async (val) => {
+  if (val) {
+    updateAgeCalculation()
+    // Update date constraints if dose is selected
+    if (vaccinationForm.value.doseNumber) {
+      await updateImmunizationDateConstraints(form.value.patient_id, vaccinationForm.value.vaccineId, vaccinationForm.value.doseNumber)
+    }
+  }
 })
-watch(() => vaccinationForm.value.vaccineId, (val) => {
-  if (val) updateAgeCalculation()
+watch(() => vaccinationForm.value.vaccineId, async (val) => {
+  if (val) {
+    updateAgeCalculation()
+    // Update date constraints if dose is selected
+    if (vaccinationForm.value.doseNumber) {
+      await updateImmunizationDateConstraints(form.value.patient_id, val, vaccinationForm.value.doseNumber)
+    }
+  }
+})
+watch(() => vaccinationForm.value.doseNumber, async (val) => {
+  if (val) {
+    updateAgeCalculation()
+    // Update date constraints
+    const vaccineId = vaccinationForm.value.vaccineId || vaccinationForm.value.vaccineId // This should be vaccinationForm.value.vaccineId
+    if (vaccineId) {
+      await updateImmunizationDateConstraints(form.value.patient_id, vaccineId, val)
+    }
+  }
 })
 
 // Watch for outside toggle changes to refresh vaccine list

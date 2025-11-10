@@ -8,6 +8,7 @@
 import { ref, computed } from 'vue'
 import { getUser, getUserId, getRole } from '@/services/auth'
 import api from '@/services/api'
+import { db } from '@/services/offline/db'
 
 export function usePatientImmunizationForm(patientId) {
   // Loading states
@@ -246,7 +247,10 @@ export function usePatientImmunizationForm(patientId) {
     return {
       patient_id: formData.value.patient_id,
       visit_id: visitId,
-      vitals: formData.value.vitals,
+      vitals: {
+        ...formData.value.vitals,
+        recorded_by: formData.value.vitals.recorded_by || currentUserId.value || null
+      },
       findings: formData.value.findings,
       service_rendered: formData.value.service_rendered,
       services: addedServices.value.map(s => {
@@ -284,8 +288,8 @@ export function usePatientImmunizationForm(patientId) {
           // Lot number can be provided for both modes (outside entries may carry external lot info)
           lot_number: s.lotNumber || s.lot_number || null,
           site: s.site || null,
-          // who administered: for outside entries, this must be null; otherwise default to current user / provided
-          administered_by: outsideFacility ? null : (s.administered_by || s.healthStaff || currentUserId.value || null),
+          // who administered: for outside entries, this must be null; for in-facility, only set if explicitly provided
+          administered_by: outsideFacility ? null : (s.administered_by || s.healthStaff || null),
           // Facility name (source facility for outside, internal for in-facility)
           facility_name: s.facilityName || s.facility_name || null,
           // keep a boolean 'outside' flag as faith uses

@@ -8,7 +8,7 @@ router.post('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRol
 // PUT /api/vaccines/:id/schedule - Update scheduling for a vaccine type
 router.put('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), manageScheduling);
 // GET /api/vaccines/:id/schedule - Retrieve schedule for a vaccine type
-router.get('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getScheduleForVaccine);
+router.get('/:id/schedule', authenticateRequest, checkUserMapping, authorizeRole(['admin', 'healthstaff']), getScheduleForVaccine);
 import { addVaccine,
   getVaccine,
   updateVaccine,

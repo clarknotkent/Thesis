@@ -24,7 +24,7 @@ export const utcToPH = (utcString) => moment.utc(utcString).tz(PH_TIMEZONE);
  * Format date for display in PH timezone
  * Handles timestamps that may already be in PH time from backend
  */
-export const formatPHDate = (date, format = 'MMM DD, YYYY') => {
+export const formatPHDate = (date, format = 'MM/DD/YYYY') => {
   if (!date) return '';
 
   // If it's a Date object, assume it's already in correct timezone
@@ -53,7 +53,7 @@ export const formatPHDate = (date, format = 'MMM DD, YYYY') => {
  * Format date and time for display in PH timezone
  * Handles timestamps that may already be in PH time from backend
  */
-export const formatPHDateTime = (date, format = 'MMM DD, YYYY hh:mm A') => {
+export const formatPHDateTime = (date, format = 'MM/DD/YYYY hh:mm A') => {
   if (!date) return '';
 
   if (date instanceof Date) {

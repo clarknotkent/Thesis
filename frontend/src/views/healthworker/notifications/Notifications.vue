@@ -102,6 +102,7 @@
           :id="n.id"
           :key="n.id"
           :title="n.title"
+          :header="n.header"
           :message="n.message"
           :type="n.type"
           :time="n.time"

@@ -65,6 +65,7 @@
           <DateInput 
             v-model="localForm.birthdate"
             :readonly="readOnly"
+            :max="maxBirthdate"
           />
         </div>
         <div class="col-md-6">
@@ -89,16 +90,40 @@
         <i class="bi bi-envelope me-2" />Account Information
       </h6>
       <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Email Address <span class="text-danger">*</span></label>
-          <input 
-            v-model="localForm.email" 
-            type="email" 
-            class="form-control"
-            :readonly="readOnly"
-            required
-          >
-        </div>
+        <!-- Add Mode: Single Username or Email field -->
+        <template v-if="mode === 'add'">
+          <div class="col-md-6">
+            <label class="form-label">Username or Email <span class="text-danger">*</span></label>
+            <input 
+              v-model="localForm.userIdentifier" 
+              type="text" 
+              class="form-control"
+              :readonly="readOnly"
+              required
+            >
+          </div>
+        </template>
+        <!-- Edit Mode or Read-Only: Separate Email and Username fields -->
+        <template v-else-if="mode === 'edit' || readOnly">
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input 
+              v-model="localForm.email" 
+              type="email" 
+              class="form-control"
+              readonly
+            >
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Username</label>
+            <input 
+              v-model="localForm.username" 
+              type="text" 
+              class="form-control"
+              :readonly="readOnly"
+            >
+          </div>
+        </template>
         <div
           v-if="!isEditing && !readOnly"
           class="col-md-3"
@@ -140,7 +165,7 @@
           <select 
             v-model="localForm.role" 
             class="form-select"
-            :disabled="readOnly"
+            :disabled="readOnly || isEditing"
             required
           >
             <option value="">
@@ -183,7 +208,7 @@
           </select>
         </div>
         <div
-          v-if="localForm.role === 'health_staff' || localForm.role === 'admin'"
+          v-if="(localForm.role === 'health_staff' || localForm.role === 'admin') && (mode === 'edit' || readOnly)"
           class="col-md-4"
         >
           <label class="form-label">Employee ID</label>
@@ -191,7 +216,7 @@
             v-model="localForm.employeeId" 
             type="text" 
             class="form-control"
-            :readonly="readOnly"
+            :readonly="readOnly || isEditing"
           >
         </div>
       </div>
@@ -256,7 +281,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
 
@@ -280,6 +305,11 @@ const props = defineProps({
   submitLabel: {
     type: String,
     default: ''
+  },
+  mode: {
+    type: String,
+    default: 'add', // 'add' or 'edit'
+    validator: (value) => ['add', 'edit'].includes(value)
   }
 })
 
@@ -290,6 +320,8 @@ const localForm = ref({
   firstName: '',
   lastName: '',
   middleName: '',
+  userIdentifier: '',
+  username: '',
   email: '',
   role: '',
   hsType: '',
@@ -301,6 +333,16 @@ const localForm = ref({
   sex: '',
   birthdate: '',
   address: ''
+})
+
+// Max birthdate: today in ISO format (YYYY-MM-DD)
+const maxBirthdate = computed(() => {
+  const today = new Date()
+  const phTime = new Date(today.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+  const yyyy = phTime.getFullYear()
+  const mm = String(phTime.getMonth() + 1).padStart(2, '0')
+  const dd = String(phTime.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 })
 
 // Watch for initial data changes (when editing)
@@ -321,6 +363,19 @@ watch(() => props.initialData, (newData) => {
     merged.role = normalizeRole(merged.role)
     // also normalize hsType keys to lower-case tokens
     if (merged.hsType) merged.hsType = String(merged.hsType).toLowerCase()
+    
+    if (props.mode === 'edit' || props.readOnly) {
+      // For edit mode or read-only, set separate username and email fields
+      merged.username = merged.username || ''
+      merged.email = merged.email || ''
+      merged.userIdentifier = '' // Not used in edit/view mode
+    } else {
+      // For add mode, set userIdentifier from username or email
+      merged.userIdentifier = merged.username || merged.email || ''
+      merged.username = ''
+      merged.email = ''
+    }
+    
     localForm.value = merged
   }
 }, { immediate: true, deep: true })

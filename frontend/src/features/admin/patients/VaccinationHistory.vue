@@ -201,34 +201,6 @@ const { addToast } = useToast()
 const vaccinations = ref([])
 const loading = ref(true)
 
-// Define vaccine order for proper sorting
-const VACCINE_ORDER = [
-  'BCG',
-  'Hepatitis B',
-  'Pentavalent',
-  'DPT-HepB-Hib',
-  'DPT-Hep B-HIB',
-  'Oral Polio',
-  'OPV',
-  'Inactivated Polio',
-  'IPV',
-  'Pneumococcal',
-  'PCV',
-  'Measles',
-  'MMR',
-  'Measles, Mumps, Rubella'
-]
-
-const getVaccineOrderIndex = (vaccineName) => {
-  const name = vaccineName.toUpperCase()
-  for (let i = 0; i < VACCINE_ORDER.length; i++) {
-    if (name.includes(VACCINE_ORDER[i].toUpperCase())) {
-      return i
-    }
-  }
-  return 999 // Unknown vaccines go to the end
-}
-
 const groupedVaccinations = computed(() => {
   if (!vaccinations.value || vaccinations.value.length === 0) return []
   
@@ -272,8 +244,10 @@ const groupedVaccinations = computed(() => {
     group.totalDoses = group.doses.length
     return group
   }).sort((a, b) => {
-    // Sort by vaccine order
-    return getVaccineOrderIndex(a.vaccineName) - getVaccineOrderIndex(b.vaccineName)
+    // Sort by earliest administered date instead of predefined order
+    const dateA = new Date(a.doses[0]?.administeredDate || 0)
+    const dateB = new Date(b.doses[0]?.administeredDate || 0)
+    return dateA - dateB
   })
 })
 

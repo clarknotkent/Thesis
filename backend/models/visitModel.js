@@ -5,6 +5,17 @@ function withClient(client) {
   return client || serviceSupabase;
 }
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+};
+
+const toSentenceCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const listVisits = async (filters = {}, page = 1, limit = 20, client) => {
   const supabase = withClient(client);
   let query = supabase.from('visits_view').select('*', { count: 'exact' });
@@ -195,8 +206,8 @@ const createVisit = async (visitPayload, client) => {
   }
 
   // Create final concatenated strings
-  const serviceRendered = serviceRenderedParts.length > 0 ? serviceRenderedParts.join(', ') : null;
-  const findings = findingsParts.length > 0 ? findingsParts.join(', ') : visitData.findings || null;
+  const serviceRendered = serviceRenderedParts.length > 0 ? toTitleCase(serviceRenderedParts.join(', ')) : null;
+  const findings = findingsParts.length > 0 ? toSentenceCase(findingsParts.join(', ')) : (visitData.findings ? toSentenceCase(visitData.findings) : null);
 
   console.log('🔗 [CONCATENATION] Service Rendered:', serviceRendered);
   console.log('🔍 [CONCATENATION] Findings:', findings);

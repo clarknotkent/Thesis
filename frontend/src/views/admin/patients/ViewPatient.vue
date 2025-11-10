@@ -210,130 +210,124 @@
 
         <!-- Sidebar with Stats and Actions -->
         <div class="col-lg-4 d-flex flex-column">
-          <!-- Patient Summary Card with QR Code -->
+          <!-- Patient Summary Card -->
           <div class="card shadow mb-4">
             <div class="card-header py-3 bg-primary text-white">
               <h6 class="m-0 fw-bold">
                 <i class="bi bi-person-badge me-2" />Patient Summary
               </h6>
             </div>
-            <div class="card-body">
-              <!-- QR Code Section -->
-              <div class="text-center mb-4 pb-4 border-bottom">
-                <div class="qr-code-container mb-3">
-                  <canvas
-                    ref="qrCanvas"
-                    width="180"
-                    height="180"
-                  />
+            <div class="card-body p-0">
+              <!-- Patient Overview Section -->
+              <div class="p-4 bg-light border-bottom">
+                <div class="summary-header mb-2">
+                  <div class="summary-name-block">
+                    <h5 class="mb-1 text-dark fw-semibold">
+                      {{ fullName }}
+                    </h5>
+                    <div class="text-muted small">
+                      {{ calculateAge(patientData.date_of_birth) }} • {{ patientData.sex }}
+                    </div>
+                  </div>
+                  <div class="status-block text-center">
+                    <span
+                      class="badge bg-secondary me-1"
+                      title="Patient ID"
+                    >
+                      #{{ patientData.id }}
+                    </span>
+                    <span
+                      v-if="patientStatus"
+                      class="badge status-badge me-1"
+                      :class="patientStatusClass"
+                    >
+                      {{ patientStatusDisplay }}
+                    </span>
+                    <span
+                      v-if="patientData.tags && patientData.tags !== 'None'"
+                      class="badge tag-badge"
+                      :class="tagClass"
+                    >
+                      {{ patientData.tags }}
+                    </span>
+                  </div>
                 </div>
-                <small class="text-muted">
-                  <i class="bi bi-qr-code me-1" />Patient QR Code
-                </small>
               </div>
 
-              <!-- Patient Information Table -->
-              <table class="table table-sm table-borderless patient-info-table">
-                <tbody>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-hash me-1" />Patient ID
-                    </td>
-                    <td class="text-end fw-bold text-primary">
-                      {{ patientData.id }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-person me-1" />Full Name
-                    </td>
-                    <td class="text-end fw-bold">
-                      {{ fullName }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-calendar me-1" />Age
-                    </td>
-                    <td class="text-end">
-                      {{ calculateAge(patientData.date_of_birth) }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-gender-ambiguous me-1" />Sex
-                    </td>
-                    <td class="text-end">
-                      <span
-                        class="badge"
-                        :class="patientData.sex === 'Male' ? 'bg-primary' : 'bg-danger'"
-                      >
-                        {{ patientData.sex }}
-                      </span>
-                    </td>
-                  </tr>
-                  <tr v-if="patientData.family_number">
-                    <td class="text-muted">
-                      <i class="bi bi-house me-1" />Family No.
-                    </td>
-                    <td class="text-end">
-                      {{ patientData.family_number }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-geo-alt me-1" />Barangay
-                    </td>
-                    <td class="text-end">
-                      {{ patientData.barangay || 'N/A' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-hospital me-1" />Health Center
-                    </td>
-                    <td class="text-end">
-                      {{ patientData.health_center || 'N/A' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-muted">
-                      <i class="bi bi-shield-check me-1" />Last Vaccination
-                    </td>
-                    <td class="text-end">
+              <!-- Key Information -->
+              <div class="p-4">
+                <div class="info-section mb-3">
+                  <h6 class="section-title text-primary mb-3">
+                    <i class="bi bi-info-circle me-2" />Basic Information
+                  </h6>
+                  <div class="info-item mb-2">
+                    <div class="info-label">
+                      Date of Birth
+                    </div>
+                    <div class="info-value">
+                      {{ formatDate(patientData.date_of_birth) }}
+                    </div>
+                  </div>
+                  <div class="info-item mb-2">
+                    <div class="info-label">
+                      Barangay
+                    </div>
+                    <div class="info-value">
+                      {{ patientData.barangay || 'Not specified' }}
+                    </div>
+                  </div>
+                  <div class="info-item mb-0">
+                    <div class="info-label">
+                      Health Center
+                    </div>
+                    <div class="info-value">
+                      {{ patientData.health_center || 'Not specified' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="info-section mb-3">
+                  <h6 class="section-title text-success mb-3">
+                    <i class="bi bi-shield-check me-2" />Vaccination Status
+                  </h6>
+                  <div class="info-item mb-0">
+                    <div class="info-label">
+                      Last Vaccination
+                    </div>
+                    <div class="info-value">
                       <span
                         v-if="lastVaccination"
-                        class="text-success"
+                        class="text-success fw-bold"
                       >
                         {{ formatDate(lastVaccination) }}
                       </span>
                       <span
                         v-else
-                        class="text-warning"
+                        class="text-muted"
                       >
                         No records
                       </span>
-                    </td>
-                  </tr>
-                  <tr v-if="patientData.tags && patientData.tags !== 'None'">
-                    <td class="text-muted">
-                      <i class="bi bi-tags me-1" />Status
-                    </td>
-                    <td class="text-end">
-                      <span
-                        class="badge"
-                        :class="{
-                          'bg-success': patientData.tags === 'FIC',
-                          'bg-warning': patientData.tags === 'CIC',
-                          'bg-danger': patientData.tags === 'Defaulter'
-                        }"
-                      >
-                        {{ patientData.tags }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="text-center">
+                  <h6 class="section-title text-info mb-3">
+                    <i class="bi bi-qr-code me-2" />Patient QR Code
+                  </h6>
+                  <div class="qr-code-container">
+                    <canvas
+                      ref="qrCanvas"
+                      width="120"
+                      height="120"
+                    />
+                  </div>
+                  <small class="text-muted d-block mt-2">
+                    Scan for quick access
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -416,6 +410,39 @@ const fullName = computed(() => {
     patientData.value.surname
   ].filter(Boolean)
   return parts.join(' ')
+})
+
+// Derive patient status display & classes (Active / Inactive / Archived)
+const patientStatus = computed(() => {
+  const raw = (patientData.value.status || '').toString().trim().toLowerCase()
+  if (!raw) return null
+  if (['active', 'inactive', 'archived'].includes(raw)) return raw
+  // Fallback mappings (e.g., 1/0 or A/I codes) if needed
+  if (raw === '1') return 'active'
+  if (raw === '0') return 'inactive'
+  return raw
+})
+
+const patientStatusDisplay = computed(() => {
+  if (!patientStatus.value) return ''
+  return patientStatus.value.charAt(0).toUpperCase() + patientStatus.value.slice(1)
+})
+
+const patientStatusClass = computed(() => {
+  switch (patientStatus.value) {
+    case 'active': return 'bg-success'
+    case 'inactive': return 'bg-secondary'
+    case 'archived': return 'bg-dark'
+    default: return 'bg-info'
+  }
+})
+
+const tagClass = computed(() => {
+  const t = patientData.value.tags
+  if (t === 'FIC') return 'bg-success'
+  if (t === 'CIC') return 'bg-warning'
+  if (t === 'Defaulter') return 'bg-danger'
+  return 'bg-primary'
 })
 
 const goBack = () => {
@@ -502,7 +529,9 @@ const fetchPatientData = async () => {
       newborn_screening_result: (p.medical_history && (p.medical_history.newborn_screening_result || p.medical_history.newbornScreeningResult)) || p.newborn_screening_result || '',
       hearing_test_date: formatForInput((p.medical_history && (p.medical_history.hearing_test_date || p.medical_history.hearingTestDate)) || p.hearing_test_date),
       newborn_screening_date: formatForInput((p.medical_history && (p.medical_history.newborn_screening_date || p.medical_history.newbornScreeningDate)) || p.newborn_screening_date),
-      qr: p.qr // Include the QR data from backend
+      qr: p.qr, // Include the QR data from backend
+      tags: p.tags || 'None',
+      status: p.status || p.patient_status || p.patientStatus || null
     }
 
     // Resolve family number from guardian if missing
@@ -773,6 +802,103 @@ onUnmounted(() => {
 
 .patient-info-table td:last-child {
   width: 50%;
+}
+
+/* New patient summary styles */
+.avatar-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* New summary layout without avatar */
+.summary-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.summary-name-block h5 {
+  font-size: 1.075rem;
+}
+
+.status-block .badge {
+  font-size: 0.65rem;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.status-block {
+  text-align: center;
+}
+
+.status-badge {
+  font-weight: 600;
+}
+
+.tag-badge {
+  font-weight: 500;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 1rem;
+}
+
+.info-section {
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  color: #495057;
+  font-weight: 600;
+  text-align: right;
+}
+
+.qr-code-container {
+  display: inline-block;
+  padding: 1rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-container canvas {
+  display: block;
+  border-radius: 0.25rem;
 }
 </style>
 

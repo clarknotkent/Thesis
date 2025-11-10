@@ -178,11 +178,15 @@ const sortedDoses = computed(() => {
 
 const formatDate = (date) => {
   if (!date) return '—'
-  return new Date(date).toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  try {
+    const d = new Date(date)
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const year = d.getFullYear()
+    return `${month}/${day}/${year}`
+  } catch {
+    return date
+  }
 }
 
 const getAdministeredBy = (dose) => {

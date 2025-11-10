@@ -36,11 +36,15 @@ const sendSMSNotification = async (req, res) => {
         });
       }
 
+      console.log('[DEBUG] Template from DB:', JSON.stringify(templateRow.template));
+
       // Replace variables in template
       finalMessage = smsService.replaceTemplateVariables(
         templateRow.template,
         variables || {}
       );
+
+      console.log('[DEBUG] After variable replacement:', JSON.stringify(finalMessage));
     }
 
     if (!phoneNumber || !finalMessage) {
@@ -277,28 +281,37 @@ const getSMSTemplates = async (req, res) => {
 // Create SMS template
 const createSMSTemplate = async (req, res) => {
   try {
-    const { name, template, trigger_type, time_range, is_active = true } = req.body;
+    const { name, template, trigger_type, is_active = true } = req.body;
     const actorId = req.user && (req.user.user_id || req.user.id) || null;
 
+    // Validate required fields
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Template name is required' });
+    }
+    if (!template) {
+      return res.status(400).json({ success: false, message: 'Template content is required' });
+    }
+    if (!trigger_type || !trigger_type.trim()) {
+      return res.status(400).json({ success: false, message: 'Trigger type is required' });
+    }
+
     const allowedTriggers = new Set(['1-week','3-days','1-day','0-day','manual']);
-    if (!name || !template || !trigger_type) {
+    const normalizedTriggerType = String(trigger_type).trim();
+    if (!allowedTriggers.has(normalizedTriggerType)) {
       return res.status(400).json({
         success: false,
-        message: 'Name, template, and trigger_type are required'
+        message: `Invalid trigger_type: '${normalizedTriggerType}'. Allowed: 1-week, 3-days, 1-day, 0-day, manual`
       });
-    }
-    if (!allowedTriggers.has(String(trigger_type))) {
-      return res.status(400).json({ success: false, message: 'Invalid trigger_type. Allowed: 1-week, 3-days, 1-day, 0-day, manual' });
     }
 
     const { data, error } = await supabase
       .from('sms_templates')
       .insert({
-        name,
-        template,
-        trigger_type,
-        time_range,
-        is_active,
+        name: name.trim(),
+        template: template, // Preserve newlines - don't trim
+        trigger_type: normalizedTriggerType,
+        time_range: null, // Always set to NULL
+        is_active: Boolean(is_active),
         created_by: actorId,
         updated_by: actorId,
         created_at: new Date().toISOString(),
@@ -329,33 +342,60 @@ const createSMSTemplate = async (req, res) => {
 const updateSMSTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, template, trigger_type, time_range, is_active } = req.body;
+    const { name, template, trigger_type, is_active } = req.body;
     const actorId = req.user && (req.user.user_id || req.user.id) || null;
-    if (trigger_type) {
-      const allowedTriggers = new Set(['1-week','3-days','1-day','0-day','manual']);
-      if (!allowedTriggers.has(String(trigger_type))) {
-        return res.status(400).json({ success: false, message: 'Invalid trigger_type. Allowed: 1-week, 3-days, 1-day, 0-day, manual' });
-      }
+
+    console.log('updateSMSTemplate called with:', { id, name, template: JSON.stringify(template), trigger_type, is_active });
+
+    // Validate required fields
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Template name is required' });
     }
+    if (!template) {
+      return res.status(400).json({ success: false, message: 'Template content is required' });
+    }
+    if (!trigger_type || !trigger_type.trim()) {
+      return res.status(400).json({ success: false, message: 'Trigger type is required' });
+    }
+
+    // Validate trigger_type
+    const allowedTriggers = new Set(['1-week','3-days','1-day','0-day','manual']);
+    const normalizedTriggerType = String(trigger_type).trim();
+    console.log('Validating trigger_type:', { original: trigger_type, normalized: normalizedTriggerType, allowed: Array.from(allowedTriggers) });
+    if (!allowedTriggers.has(normalizedTriggerType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid trigger_type: '${normalizedTriggerType}'. Allowed: 1-week, 3-days, 1-day, 0-day, manual`
+      });
+    }
+
+    const updateData = {
+      name: name.trim(),
+      template: template, // Preserve newlines - don't trim
+      trigger_type: normalizedTriggerType,
+      time_range: null, // Always set to NULL
+      is_active: Boolean(is_active),
+      updated_by: actorId,
+      updated_at: new Date().toISOString()
+    };
+    console.log('Updating template with data:', updateData);
 
     const { data, error } = await supabase
       .from('sms_templates')
-      .update({
-        name,
-        template,
-        trigger_type,
-        time_range,
-        is_active,
-        updated_by: actorId,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
+      .eq('is_deleted', false) // Only update non-deleted templates
       .select()
       .single();
-    if (error && error.code !== 'PGRST116') throw error;
-    if (!data) {
-      return res.status(404).json({ success: false, message: 'Template not found' });
+    if (error && error.code !== 'PGRST116') {
+      console.error('Supabase update error:', error);
+      throw error;
     }
+    if (!data) {
+      console.log('Template not found or deleted');
+      return res.status(404).json({ success: false, message: 'Template not found or already deleted' });
+    }
+    console.log('Template updated successfully:', data);
     res.json({ success: true, message: 'Template updated successfully', data });
   } catch (error) {
     console.error('Error updating SMS template:', error);

@@ -132,6 +132,24 @@
                   </select>
                 </div>
 
+                <!-- Header Field - Only show for Custom Message -->
+                <div
+                  v-if="!form.template_code"
+                  class="mb-3"
+                >
+                  <label class="form-label">Header</label>
+                  <input
+                    v-model="form.header"
+                    type="text"
+                    class="form-control"
+                    placeholder="Enter notification header..."
+                    required
+                  >
+                  <div class="form-text">
+                    This header will be used as the notification template/title
+                  </div>
+                </div>
+
                 <!-- Message Body -->
                 <div class="mb-3">
                   <label class="form-label">Message</label>
@@ -191,6 +209,21 @@
               <div class="alert alert-info">
                 <strong>Channel:</strong> {{ form.channel || 'Not selected' }}<br>
                 <strong>Recipient:</strong> {{ getRecipientPreview() }}<br>
+                <strong>Template:</strong> {{ form.template_code || 'Custom Message' }}<br>
+                <strong>Header:</strong>
+                <span v-if="!form.template_code && form.header">{{ form.header }}</span>
+                <span
+                  v-else-if="form.template_code && form.header"
+                >{{ form.header }}</span>
+                <span
+                  v-else-if="!form.template_code && !form.header"
+                  class="text-muted"
+                >Not provided</span>
+                <span
+                  v-else-if="form.template_code && !form.header"
+                  class="text-muted"
+                >Optional</span>
+                <br>
                 <strong>Message:</strong><br>
                 {{ form.message_body || 'No message' }}
               </div>
@@ -227,6 +260,7 @@ export default {
         channel: 'in-app',
         template_code: '',
         message_body: '',
+        header: '',
         scheduled_at: ''
       }
     }
@@ -264,10 +298,33 @@ export default {
       return `All ${this.form.recipientType}s`
     },
 
+    getDerivedHeader() {
+      if (!this.form.message_body) return 'No header available'
+      
+      // Extract header from the first line or first sentence (same logic as backend)
+      const lines = this.form.message_body.split('\n').filter(line => line.trim());
+      if (lines.length > 0) {
+        const firstLine = lines[0].trim();
+        if (firstLine.length <= 50) {
+          return firstLine;
+        } else {
+          // Take first sentence if line is long
+          const firstSentence = this.form.message_body.split(/[.!?]/)[0].trim();
+          if (firstSentence.length <= 50) {
+            return firstSentence;
+          }
+        }
+      }
+      return 'Header too long - will be truncated';
+    },
+
     async submitNotification() {
       this.loading = true
       try {
         const payload = { ...this.form }
+
+        // For custom messages, header is required and used as the template
+        // For predefined templates, header is optional
 
         // Handle bulk recipients
         if (this.form.recipientType !== 'user') {
@@ -328,6 +385,7 @@ export default {
         channel: 'in-app',
         template_code: '',
         message_body: '',
+        header: '',
         scheduled_at: ''
       }
     }

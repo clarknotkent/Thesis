@@ -38,7 +38,6 @@ const registerUser = async (req, res) => {
     const {
       username,
       password,
-      email,
       firstname,
       surname,
       contact_number,
@@ -50,9 +49,9 @@ const registerUser = async (req, res) => {
       status
     } = req.body;
     console.log('[registerUser] DEBUG: Received request body:', req.body);
-    if (!email || !password) {
-      console.warn('[registerUser] DEBUG: Missing email or password');
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!username || !password) {
+      console.warn('[registerUser] DEBUG: Missing username or password');
+      return res.status(400).json({ message: 'Username and password are required' });
     }
     if (!contact_number || !String(contact_number).trim()) {
       console.warn('[registerUser] DEBUG: Missing contact_number');
@@ -64,6 +63,10 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: norm.error });
     }
     const normalizedContact = norm.normalized;
+
+    // Generate email from username
+    const email = `${username}@immunizeme.com`;
+
     // Create Supabase Auth user (email is the only enabled provider)
     const admin = getAuthClient();
     console.log('[registerUser] DEBUG: About to call admin.auth.admin.createUser');

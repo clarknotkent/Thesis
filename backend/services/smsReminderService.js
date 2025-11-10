@@ -100,7 +100,7 @@ function getReminderOffsets() {
 
 // Parse reminder send time from env (PHT). Accepts formats like "08:00", "8:00 AM", "20:30". Defaults to 08:00.
 function getReminderTime(tz = 'Asia/Manila') {
-  const raw = (process.env.SMS_REMINDER_TIME || '04:17').trim();
+  const raw = (process.env.SMS_REMINDER_TIME || '10:31').trim();
   // Try common patterns
   let m = moment.tz(raw, ['H:mm', 'HH:mm', 'h:mm A', 'h:mmA', 'hh:mm A', 'hh:mmA'], true, tz);
   if (!m.isValid()) {
@@ -223,12 +223,12 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
     ? doseList.join(', ')
     : 'Dose 1';
 
-  // Build clean multi-line vaccine list (e.g., "Antigen — Dose 1,\nAntigen — Dose 2")
+  // Build clean multi-line vaccine list (e.g., "- Vaccine A (Dose 1)\n- Vaccine B (Dose 2)")
   const vaccineLines = allSchedsOnDay.map(s => {
     const name = (vaccineNames[allSchedsOnDay.indexOf(s)] || 'vaccine');
     const dose = `Dose ${s.dose_number || 1}`;
-    return `${name} — ${dose}`;
-  }).join(',\n');
+    return `- ${name} (${dose})`;
+  }).join('\n');
   const patientScheduleIds = allSchedsOnDay.map(s => s.patient_schedule_id);
 
   const nowISO = new Date().toISOString();
@@ -394,24 +394,24 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
 // Helper to render template with variable replacement
 function renderTemplate(template, vars) {
   return template
-    .replace(/{patient_name}/gi, vars.patientName || '')
-    .replace(/{patient_first_name}/gi, (vars.patientName || '').split(' ')[0] || '')
-    .replace(/{guardian_title}/gi, vars.guardianTitle || '')
-    .replace(/{vaccine_name}/gi, vars.vaccineName || '')
-    .replace(/{dose_number}/gi, vars.doseNumber || '')
-    .replace(/{vaccine_lines}/gi, vars.vaccineLines || '')
-    .replace(/{vaccine_list}/gi, vars.vaccineLines || '')
-    .replace(/{scheduled_date}/gi, vars.scheduledDate || '')
-    .replace(/{appointment_date}/gi, vars.scheduledDate || '')
+    .replace(/{\s*patient_name\s*}/gi, vars.patientName || '')
+    .replace(/{\s*patient_first_name\s*}/gi, (vars.patientName || '').split(' ')[0] || '')
+    .replace(/{\s*guardian_title\s*}/gi, vars.guardianTitle || '')
+    .replace(/{\s*vaccine_name\s*}/gi, vars.vaccineName || '')
+    .replace(/{\s*dose_number\s*}/gi, vars.doseNumber || '')
+    .replace(/{\s*vaccine_lines\s*}/gi, vars.vaccineLines || '')
+    .replace(/{\s*vaccine_list\s*}/gi, vars.vaccineLines || '')
+    .replace(/{\s*scheduled_date\s*}/gi, vars.scheduledDate || '')
+    .replace(/{\s*appointment_date\s*}/gi, vars.scheduledDate || '')
     // Prefer provided appointmentTime; default to 08:00 AM PHT for clarity
-    .replace(/{appointment_time}/gi, vars.appointmentTime || getReminderTime('Asia/Manila').display)
-    .replace(/{days_until}/gi, vars.daysUntil || '')
-    .replace(/{schedule_summary}/gi, vars.scheduleSummary || '')
-    .replace(/{guardian_name}/gi, '')
-    .replace(/{guardian_first_name}/gi, '')
-    .replace(/{guardian_last_name}/gi, vars.guardianLastName || '')
-    .replace(/{greeting_time}/gi, vars.greetingTime || '')
-    .replace(/{health_center}/gi, 'Barangay Health Center');
+    .replace(/{\s*appointment_time\s*}/gi, vars.appointmentTime || getReminderTime('Asia/Manila').display)
+    .replace(/{\s*days_until\s*}/gi, vars.daysUntil || '')
+    .replace(/{\s*schedule_summary\s*}/gi, vars.scheduleSummary || '')
+    .replace(/{\s*guardian_name\s*}/gi, '')
+    .replace(/{\s*guardian_first_name\s*}/gi, '')
+    .replace(/{\s*guardian_last_name\s*}/gi, vars.guardianLastName || '')
+    .replace(/{\s*greeting_time\s*}/gi, vars.greetingTime || '')
+    .replace(/{\s*health_center\s*}/gi, 'Barangay Health Center');
 }
 
 /**
@@ -503,10 +503,10 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
 
     // Fallback template
     if (!templateText) {
-      templateText = 'Good Day, {guardian_title} {guardian_last_name}! Your child, {patient_name}, has updated appointments. New schedule(s): {schedule_summary}. Thank you!';
+      templateText = 'Good Day, {guardian_title} {guardian_last_name}!\n\nYour child, {patient_name}, has updated appointments. New schedule(s):\n\n{schedule_summary}\n\nThank you!';
     }
 
-    let message = renderTemplate(templateText, {
+    const message = renderTemplate(templateText, {
       patientName: patient.full_name,
       guardianTitle,
       guardianLastName: patient.guardian_last_name || patient.full_name?.split(' ').pop() || '',
@@ -516,28 +516,7 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
       scheduledDate: ''
     });
 
-    // Sanitize message but preserve intended newlines for reschedule notifications.
-    // Collapse multiple spaces within lines, trim each line, and limit consecutive blank lines to 2.
-    if (typeof message === 'string') {
-      // Normalize CRLF -> LF then split into lines
-      const lines = message.replace(/\r\n/g, '\n').split('\n').map(l => l.replace(/\s+/g, ' ').trim());
-      // Trim leading/trailing blank lines
-      while (lines.length && lines[0] === '') lines.shift();
-      while (lines.length && lines[lines.length - 1] === '') lines.pop();
-      // Collapse more than 2 consecutive blank lines
-      const collapsed = [];
-      let blankCount = 0;
-      for (const l of lines) {
-        if (l === '') {
-          blankCount++;
-          if (blankCount <= 2) collapsed.push('');
-        } else {
-          blankCount = 0;
-          collapsed.push(l);
-        }
-      }
-      message = collapsed.join('\n');
-    }
+    // Preserve template formatting exactly - no sanitization
 
     // Stronger dedupe: if an identical manual message for this patient/phone was created very recently, skip sending a duplicate
     const dedupeWindowMs = Number(process.env.SMS_RESCHEDULE_DEDUPE_MS || 60_000); // default 60s
@@ -982,7 +961,7 @@ async function updateMessagesForPatient(patientId, client) {
 
         // Fallback template
         if (!template) {
-          template = 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!';
+          template = 'Good Day, {guardian_title} {guardian_last_name}!\n\nThis is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!';
         }
 
         // Render message
@@ -1032,4 +1011,5 @@ async function updateMessagesForPatient(patientId, client) {
 export { scheduleReminderLogsForPatientSchedule,
   updatePhoneNumberForPatient,
   handleScheduleReschedule,
-  updateMessagesForPatient };
+  updateMessagesForPatient,
+  getPatientSmsInfo };

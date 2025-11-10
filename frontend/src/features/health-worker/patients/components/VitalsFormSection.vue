@@ -15,6 +15,17 @@
 
     <div class="vitals-grid">
       <div class="form-group">
+        <label class="form-label">Recorded By</label>
+        <input 
+          type="text" 
+          class="form-input" 
+          :value="recordedByName"
+          readonly
+          disabled
+        >
+      </div>
+
+      <div class="form-group">
         <label class="form-label">Temperature (°C)</label>
         <input 
           type="number" 
@@ -101,6 +112,10 @@ const props = defineProps({
   readonly: {
     type: Boolean,
     default: false
+  },
+  recordedByName: {
+    type: String,
+    default: ''
   }
 })
 
@@ -157,7 +172,7 @@ const updateField = (field, value) => {
 
 .vitals-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
 }
 

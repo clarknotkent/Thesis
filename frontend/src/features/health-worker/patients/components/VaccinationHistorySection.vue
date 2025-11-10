@@ -19,7 +19,7 @@
         class="vaccination-history"
       >
         <div 
-          v-for="vaccination in vaccinationHistory" 
+          v-for="vaccination in sortedVaccinationHistory" 
           :key="vaccination.id"
           class="vaccination-item"
         >
@@ -76,6 +76,44 @@ const hasHistory = computed(() => {
   return props.vaccinationHistory && props.vaccinationHistory.length > 0
 })
 
+// Canonical order list for consistent display (aligned with Philippine EPI schedule - vaccines given together grouped)
+const VACCINE_ORDER = [
+  'BCG', 'BCG Vaccine',
+  'Hepatitis B', 'Hepa B', 'Hep B', 'Hepatitis B Vaccine',
+  'Pentavalent', 'DPT-HepB-Hib', 'DPT-Hep B-HIB', 'DPT-HepB-Hib Vaccine', 'Pentavalent Vaccine',
+  'Pneumococcal', 'PCV', 'Pneumococcal Conjugate', 'Pneumococcal Vaccine', 'Pneumococcal Conjugate Vaccine',
+  'Oral Polio', 'OPV', 'Oral Poliovirus', 'Oral Polio Vaccine', 'Oral Poliovirus Vaccine',
+  'Inactivated Polio', 'IPV', 'Inactivated Poliovirus', 'Inactivated Polio Vaccine', 'Inactivated Poliovirus Vaccine',
+  'Measles', 'MMR', 'Measles, Mumps, Rubella', 'Measles Vaccine', 'MMR Vaccine', 'Measles Mumps Rubella Vaccine'
+]
+
+const getOrderIndex = (name) => {
+  if (!name) return 999
+  const upper = String(name).toUpperCase().trim()
+  for (let i = 0; i < VACCINE_ORDER.length; i++) {
+    if (upper.includes(VACCINE_ORDER[i].toUpperCase())) return i
+  }
+  // Debug: log unmatched vaccine names
+  console.warn('Unmatched vaccine name for ordering:', name)
+  return 999
+}
+
+// Sorted vaccination history by canonical vaccine order
+const sortedVaccinationHistory = computed(() => {
+  if (!props.vaccinationHistory) return []
+  return [...props.vaccinationHistory].sort((a, b) => {
+    const nameA = a.vaccineName || a.vaccine_antigen_name || a.antigen_name || a.antigenName || 'Unknown Vaccine'
+    const nameB = b.vaccineName || b.vaccine_antigen_name || b.antigen_name || b.antigenName || 'Unknown Vaccine'
+    const orderA = getOrderIndex(nameA)
+    const orderB = getOrderIndex(nameB)
+    if (orderA !== orderB) return orderA - orderB
+    // If same vaccine, sort by dose number
+    const doseA = a.dose_number || a.doseNumber || a.dose || 0
+    const doseB = b.dose_number || b.doseNumber || b.dose || 0
+    return doseA - doseB
+  })
+})
+
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value
   emit('toggle', isExpanded.value)
@@ -83,11 +121,15 @@ const toggleExpanded = () => {
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Not specified'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  try {
+    const date = new Date(dateString)
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${month}/${day}/${year}`
+  } catch {
+    return dateString
+  }
 }
 
 defineExpose({

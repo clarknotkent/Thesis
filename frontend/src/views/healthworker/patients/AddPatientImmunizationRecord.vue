@@ -65,7 +65,7 @@
 
         <!-- Visit Status (auto-detected: one visit per day) -->
         <VisitSelectorSection
-          v-if="isNurseOrNutritionist"
+          v-if="isNurseOrNutritionist || isBHS"
           v-model:visit-mode="visitMode"
           v-model:existing-visit-id="existingVisitId"
           :available-visits="availableVisits"
@@ -77,11 +77,11 @@
         <VitalsFormSection
           v-model="formData.vitals"
           :readonly="visitMode === 'existing'"
+          :recorded-by-name="displayedRecordedByName"
         />
 
         <!-- Services Section -->
         <div
-          v-if="!isBHS"
           class="form-section"
         >
           <div class="section-header">
@@ -108,7 +108,6 @@
 
         <!-- Findings Card -->
         <div
-          v-if="!isBHS"
           class="form-section"
         >
           <h3 class="section-title">
@@ -130,7 +129,6 @@
 
         <!-- Service Rendered Card -->
         <div
-          v-if="!isBHS"
           class="form-section"
         >
           <h3 class="section-title">
@@ -194,8 +192,10 @@ import VaccineServiceFormModal from '@/features/health-worker/patients/component
 import { usePatientImmunizationForm } from '@/features/health-worker/patients/composables'
 import { useVisitManagement } from '@/features/health-worker/patients/composables'
 import { addToast } from '@/composables/useToast'
-// NOTE: No direct DB import needed - caching handled by API interceptor
 import api from '@/services/api'
+import { useAuth } from '@/composables/useAuth'
+// Import Dexie offline DB (required for offline immunization save path)
+import { db } from '@/services/offline/db'
 
 const router = useRouter()
 const route = useRoute()
@@ -205,10 +205,10 @@ const {
   loading,
   submitting,
   currentPatient,
+  currentUser,
   currentUserId,
   formData,
   addedServices,
-  isBHS,
   isNurseOrNutritionist,
   fetchCurrentPatient,
   validateForm,
@@ -225,11 +225,30 @@ const {
   formatDate
 } = useVisitManagement(formData)
 
+// Get user authentication and role
+const { userInfo } = useAuth()
+const isBHS = computed(() => {
+  const user = userInfo.value
+  return user && user.role === 'HealthStaff' && user.hs_type === 'bhs'
+})
+
 // Local state
 const showServiceForm = ref(false)
 const editingServiceIndex = ref(null)
 const loadingVisits = ref(false)
 const editingService = computed(() => editingServiceIndex.value !== null ? addedServices.value[editingServiceIndex.value] : null)
+
+// Recorded by name for display
+const recordedByName = ref('')
+
+// Computed properties
+const currentUserName = computed(() => {
+  if (!currentUser.value) return ''
+  return [currentUser.value.firstname, currentUser.value.surname].filter(Boolean).join(' ') || currentUser.value.name || ''
+})
+
+// Displayed recorded by name (current user or existing visit's recorded by)
+const displayedRecordedByName = computed(() => recordedByName.value || currentUserName.value)
 
 // Initialize
 onMounted(async () => {
@@ -237,7 +256,7 @@ onMounted(async () => {
   try {
     await fetchCurrentPatient()
     
-    if (isNurseOrNutritionist.value) {
+    if (isNurseOrNutritionist.value || isBHS.value) {
       loadingVisits.value = true
       await loadVisitsForPatient(route.params.patientId)
       setupVisitWatcher()
@@ -254,14 +273,25 @@ const goBack = () => {
   router.back()
 }
 
-// When attaching to an existing visit, fetch vitals and autofill (read-only display)
+// When attaching to an existing visit, fetch vitals and visit details for recorded by
 watch(existingVisitId, async (newVal) => {
   if (!newVal) {
-    // No visit for today — allow editing and clear vitals
+    // No visit for today — allow editing and clear vitals, reset recorded by
     formData.value.vitals = { temperature: '', weight: '', height: '', muac: '', respiration: '' }
+    recordedByName.value = ''
     return
   }
   try {
+    // Fetch visit details to get recorded_by_name
+    const visitRes = await api.get(`/visits/${newVal}`)
+    const visit = visitRes?.data?.data || visitRes?.data || null
+    if (visit?.recorded_by_name) {
+      recordedByName.value = visit.recorded_by_name
+    } else {
+      recordedByName.value = '' // Fallback if not available
+    }
+
+    // Fetch vitals
     const res = await api.get(`/vitalsigns/${newVal}`)
     const v = res?.data?.data || res?.data || null
     formData.value.vitals = {
@@ -272,8 +302,9 @@ watch(existingVisitId, async (newVal) => {
       respiration: v?.respiration ?? v?.respiration_rate ?? ''
     }
   } catch (_) {
-    // No vitals recorded yet for this existing visit — show empty values (still read-only here)
+    // No vitals or visit details recorded yet — show empty values (still read-only here)
     formData.value.vitals = { temperature: '', weight: '', height: '', muac: '', respiration: '' }
+    recordedByName.value = ''
   }
 })
 
@@ -415,7 +446,8 @@ const handleSubmit = async () => {
                 dose_number: s.dose_number,
                 administered_date: s.administered_date,
                 age_at_administration: s.age_at_administration || null,
-                administered_by: s.administered_by || currentUserId.value || null,
+                // Only set administered_by if explicitly provided; do not fallback to current user
+                administered_by: s.administered_by || null,
                 facility_name: s.facility_name || null,
                 remarks: s.remarks || null,
                 visit_id: existingVisitId.value

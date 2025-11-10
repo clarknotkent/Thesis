@@ -452,7 +452,7 @@ const getSmartDoseOptions = async (req, res) => {
     // Fetch schedule doses via schedule_master for this vaccine
     const { data: sm, error: smErr } = await supabase
       .from('schedule_master')
-      .select('id, schedule_doses(dose_number)')
+      .select('id, schedule_doses(dose_number, due_after_days)')
       .eq('vaccine_id', vaccineId)
       .eq('is_deleted', false)
       .maybeSingle();
@@ -471,7 +471,35 @@ const getSmartDoseOptions = async (req, res) => {
     const remaining = allDoseNumbers.filter(n => !completedSet.has(n));
     const autoSelect = remaining.length === 1 ? remaining[0] : null;
 
-    res.json({ success: true, data: { available_doses: remaining, all_doses: allDoseNumbers, completed_doses: Array.from(completedSet), auto_select: autoSelect } });
+    // Get patient's birth date to calculate smart dates
+    const { data: patient, error: pErr } = await supabase
+      .from('patients')
+      .select('date_of_birth')
+      .eq('patient_id', patientId)
+      .eq('is_deleted', false)
+      .single();
+    if (pErr) throw pErr;
+
+    // Calculate smart dates for remaining doses
+    const smartDates = {};
+    if (patient?.date_of_birth && Array.isArray(sm?.schedule_doses)) {
+      const birthDate = new Date(patient.date_of_birth);
+      for (const dose of sm.schedule_doses) {
+        if (remaining.includes(dose.dose_number)) {
+          const dueDate = new Date(birthDate);
+          dueDate.setDate(dueDate.getDate() + (dose.due_after_days || 0));
+          smartDates[dose.dose_number] = dueDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        }
+      }
+    }
+
+    res.json({ success: true, data: {
+      available_doses: remaining,
+      all_doses: allDoseNumbers,
+      completed_doses: Array.from(completedSet),
+      auto_select: autoSelect,
+      smart_dates: smartDates
+    } });
   } catch (error) {
     console.error('Error computing smart dose options:', error);
     res.status(500).json({ success:false, message:'Failed to compute smart dose options', error: error.message });

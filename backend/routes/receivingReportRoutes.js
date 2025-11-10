@@ -19,5 +19,7 @@ router.put('/:id/items/:itemId', authenticateRequest, checkUserMapping, ctrl.upd
 router.post('/:id/complete', authenticateRequest, checkUserMapping, ctrl.completeReport);
 // Cancel report
 router.post('/:id/cancel', authenticateRequest, checkUserMapping, ctrl.cancelReport);
+// Update storage locations for completed report
+router.put('/:id/update-storage', authenticateRequest, checkUserMapping, ctrl.updateStorage);
 
 export default router;

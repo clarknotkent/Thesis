@@ -137,8 +137,13 @@
                   class="form-control" 
                   :value="form.dateAdministered" 
                   required
+                  :max="immunizationDateMax || todayIso"
+                  :min="immunizationDateMin || patientDob"
                   @change="$emit('update:form', { ...form, dateAdministered: $event.target.value })"
                 >
+                <div class="form-text small text-muted">
+                  Min: {{ immunizationDateMin || 'Patient DOB' }} | Max: {{ immunizationDateMax || 'Today' }}
+                </div>
               </div>
 
               <div class="col-md-6">
@@ -308,6 +313,18 @@ defineProps({
     type: Array,
     default: () => []
   },
+  patientDob: {
+    type: String,
+    default: ''
+  },
+  immunizationDateMin: {
+    type: String,
+    default: ''
+  },
+  immunizationDateMax: {
+    type: String,
+    default: ''
+  },
   availableDoses: {
     type: Array,
     default: () => [1, 2, 3, 4, 5]
@@ -331,4 +348,6 @@ defineProps({
 });
 
 defineEmits(['close', 'save', 'update:form', 'update:outsideImmunization', 'vaccine-select', 'vaccine-catalog-select']);
+
+const todayIso = new Date().toISOString().slice(0,10)
 </script>

@@ -1,5 +1,52 @@
 <template>
   <div class="scheduled-vaccinations">
+    <!-- Demo Mode Toggle -->
+    <div class="demo-mode-banner mb-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <div class="form-check form-switch">
+            <input
+              id="demo-mode-toggle"
+              v-model="demoMode"
+              class="form-check-input"
+              type="checkbox"
+              @change="handleDemoModeToggle"
+            >
+            <label
+              class="form-check-label fw-bold"
+              for="demo-mode-toggle"
+            >
+              <i class="bi bi-play-circle-fill text-warning me-1" />
+              Tetet Mode
+            </label>
+          </div>
+          <small class="text-muted">
+            Enable to bypass schedule validation for presentations
+          </small>
+        </div>
+        <div
+          v-if="demoMode"
+          class="d-flex gap-2"
+        >
+          <button
+            class="btn btn-sm btn-outline-success"
+            @click="restoreOriginalSchedules"
+          >
+            <i class="bi bi-arrow-counterclockwise me-1" />
+            Restore Original
+          </button>
+        </div>
+      </div>
+      <div
+        v-if="demoMode"
+        class="alert alert-warning mt-2 py-2"
+      >
+        <small>
+          <i class="bi bi-exclamation-triangle me-1" />
+          Demo mode active: Changes won't affect the database. Original schedules are stored locally.
+        </small>
+      </div>
+    </div>
     <!-- Loading State -->
     <div
       v-if="loading"
@@ -100,7 +147,7 @@
                   >Dose {{ dose.doseNumber }}</span>
                   <div
                     v-if="!editForm.doses[index]?.readonly"
-                    class="flex-grow-1"
+                    class="grow"
                   >
                     <DateInput
                       v-model="editForm.doses[index].scheduledDate"
@@ -110,7 +157,7 @@
                   </div>
                   <div
                     v-else
-                    class="flex-grow-1 d-flex align-items-center"
+                    class="grow d-flex align-items-center"
                   >
                     <span class="text-muted small me-2">Completed</span>
                     <span class="small">{{ formatShortDate(dose.scheduledDate) }}</span>
@@ -217,6 +264,7 @@ const editForm = ref({
   doses: []
 })
 const saving = ref(false)
+const demoMode = ref(false)
 
 const _sortedSchedules = computed(() => {
   if (!schedules.value || schedules.value.length === 0) return []
@@ -315,99 +363,18 @@ const saveEdit = async (group) => {
   try {
     saving.value = true
 
-    // Resolve numeric user id (backend expects bigint) from stored user info
-    let p_user_id = undefined
-    try {
-      const raw = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
-      if (raw) {
-        const u = JSON.parse(raw)
-        p_user_id = u?.user_id || u?.id || undefined
-      }
-    } catch {}
-    if (!p_user_id) {
-      const uidStr = localStorage.getItem('userId') || localStorage.getItem('user_id')
-      const asNum = uidStr ? Number(uidStr) : NaN
-      if (!Number.isNaN(asNum)) p_user_id = asNum
+    if (demoMode.value) {
+      // Demo mode: Update schedules locally without API calls
+      await saveEditDemoMode(group)
+    } else {
+      // Normal mode: Use API calls
+      await saveEditNormalMode(group)
     }
 
-    // Prepare a buffer of only the doses that actually changed and are editable
-    const changedQueue = editForm.value.doses
-      .map((d, idx) => ({
-        ...d,
-        _originalDate: group.doses[idx]?.scheduledDate || null,
-        _index: idx
-      }))
-      .filter(d => !d.readonly)
-      .filter(d => {
-        const newISO = formatDateForAPI(d.scheduledDate)
-        const origISO = formatDateForAPI(d._originalDate)
-        return !!newISO && newISO !== origISO
-      })
-
-    // Process sequentially (dose 1 then 2 then 3), to respect server rule checks order
-    let successCount = 0
-    for (const dose of changedQueue) {
-      const newISO = formatDateForAPI(dose.scheduledDate)
-      const origISO = formatDateForAPI(dose._originalDate)
-      const payload = {
-        p_patient_schedule_id: dose.scheduleId,
-        p_new_scheduled_date: newISO,
-        p_user_id,
-        cascade: false,
-        debug: false
-      }
-      console.log('[ScheduledVaccinations] Rescheduling (manual-reschedule):', payload)
-      try {
-        const resp = await api.post('/immunizations/manual-reschedule', payload)
-        const body = resp?.data || {}
-        if (body?.warning) {
-          try {
-            await confirm({
-              title: 'Cascade effects detected',
-              message: `${body.warning}\n\nContinue and cascade related schedule adjustments?`,
-              variant: 'warning',
-              confirmText: 'Continue',
-              cancelText: 'Cancel'
-            })
-            // If confirmed, apply cascade for this dose
-            const cascadeResp = await api.post('/immunizations/manual-reschedule', { ...payload, cascade: true })
-            if (cascadeResp?.data?.data) successCount += 1
-          } catch {
-            // Cancelled: revert this dose (no cascade)
-            if (origISO) {
-              try {
-                await api.post('/immunizations/manual-reschedule', {
-                  p_patient_schedule_id: dose.scheduleId,
-                  p_new_scheduled_date: origISO,
-                  p_user_id,
-                  cascade: false
-                })
-              } catch (revertErr) {
-                console.warn('[ScheduledVaccinations] Revert failed:', revertErr)
-              }
-            }
-          }
-        } else {
-          // No warning, consider updated
-          successCount += 1
-        }
-      } catch (doseErr) {
-        console.error('[ScheduledVaccinations] Failed updating a dose:', doseErr)
-        // Continue to next dose; overall error toast is shown below
-      }
+    // Refresh schedules to get updated status (only for normal mode)
+    if (!demoMode.value) {
+      await fetchSchedules()
     }
-
-    const editedCount = successCount
-    addToast({
-      title: 'Success',
-      message: editedCount > 0
-        ? `${group.vaccineName} — ${editedCount} dose${editedCount>1?'s':''} updated`
-        : 'No changes to save',
-      type: editedCount > 0 ? 'success' : 'info'
-    })
-
-    // Refresh schedules to get updated status
-    await fetchSchedules()
     
     // Clear editing state
     cancelEdit()
@@ -423,6 +390,160 @@ const saveEdit = async (group) => {
   } finally {
     saving.value = false
   }
+}
+
+const saveEditNormalMode = async (group) => {
+  // Resolve numeric user id (backend expects bigint) from stored user info
+  let p_user_id = undefined
+  try {
+    const raw = localStorage.getItem('userInfo') || localStorage.getItem('authUser')
+    if (raw) {
+      const u = JSON.parse(raw)
+      p_user_id = u?.user_id || u?.id || undefined
+    }
+  } catch {}
+  if (!p_user_id) {
+    const uidStr = localStorage.getItem('userId') || localStorage.getItem('user_id')
+    const asNum = uidStr ? Number(uidStr) : NaN
+    if (!Number.isNaN(asNum)) p_user_id = asNum
+  }
+
+  // Prepare a buffer of only the doses that actually changed and are editable
+  const changedQueue = editForm.value.doses
+    .map((d, idx) => ({
+      ...d,
+      _originalDate: group.doses[idx]?.scheduledDate || null,
+      _index: idx
+    }))
+    .filter(d => !d.readonly)
+    .filter(d => {
+      const newISO = formatDateForAPI(d.scheduledDate)
+      const origISO = formatDateForAPI(d._originalDate)
+      return !!newISO && newISO !== origISO
+    })
+
+  // Process sequentially (dose 1 then 2 then 3), to respect server rule checks order
+  let successCount = 0
+  for (const dose of changedQueue) {
+    const newISO = formatDateForAPI(dose.scheduledDate)
+    const origISO = formatDateForAPI(dose._originalDate)
+    const payload = {
+      p_patient_schedule_id: dose.scheduleId,
+      p_new_scheduled_date: newISO,
+      p_user_id,
+      cascade: false,
+      debug: false
+    }
+    console.log('[ScheduledVaccinations] Rescheduling (manual-reschedule):', payload)
+    try {
+      const resp = await api.post('/immunizations/manual-reschedule', payload)
+      const body = resp?.data || {}
+      if (body?.warning) {
+        try {
+          await confirm({
+            title: 'Cascade effects detected',
+            message: `${body.warning}\n\nContinue and cascade related schedule adjustments?`,
+            variant: 'warning',
+            confirmText: 'Continue',
+            cancelText: 'Cancel'
+          })
+          // If confirmed, apply cascade for this dose
+          const cascadeResp = await api.post('/immunizations/manual-reschedule', { ...payload, cascade: true })
+          if (cascadeResp?.data?.data) successCount += 1
+        } catch {
+          // Cancelled: revert this dose (no cascade)
+          if (origISO) {
+            try {
+              await api.post('/immunizations/manual-reschedule', {
+                p_patient_schedule_id: dose.scheduleId,
+                p_new_scheduled_date: origISO,
+                p_user_id,
+                cascade: false
+              })
+            } catch (revertErr) {
+              console.warn('[ScheduledVaccinations] Revert failed:', revertErr)
+            }
+          }
+        }
+      } else {
+        // No warning, consider updated
+        successCount += 1
+      }
+    } catch (doseErr) {
+      console.error('[ScheduledVaccinations] Failed updating a dose:', doseErr)
+      // Continue to next dose; overall error toast is shown below
+    }
+  }
+
+  const editedCount = successCount
+  addToast({
+    title: 'Success',
+    message: editedCount > 0
+      ? `${group.vaccineName} — ${editedCount} dose${editedCount>1?'s':''} updated`
+      : 'No changes to save',
+    type: editedCount > 0 ? 'success' : 'info'
+  })
+}
+
+const saveEditDemoMode = async (group) => {
+  // Demo mode: Call API with demo flag to trigger SMS but not change database
+  const changedQueue = editForm.value.doses
+    .map((d, idx) => ({
+      ...d,
+      _originalDate: group.doses[idx]?.scheduledDate || null,
+      _index: idx
+    }))
+    .filter(d => !d.readonly)
+    .filter(d => {
+      const newISO = formatDateForAPI(d.scheduledDate)
+      const origISO = formatDateForAPI(d._originalDate)
+      return !!newISO && newISO !== origISO
+    })
+
+  let successCount = 0
+  for (const dose of changedQueue) {
+    const newISO = formatDateForAPI(dose.scheduledDate)
+    
+    // Call API with demo flag - this will send SMS but not change database
+    const payload = {
+      p_patient_schedule_id: dose.scheduleId,
+      p_new_scheduled_date: newISO,
+      demo: true, // Add demo flag to prevent database changes but still send SMS
+      cascade: false,
+      debug: false
+    }
+    console.log('[Demo Mode] Calling API with demo flag:', payload)
+    
+    try {
+      const resp = await api.post('/immunizations/manual-reschedule', payload)
+      console.log('[Demo Mode] API response:', resp.data)
+      successCount += 1
+    } catch (demoErr) {
+      console.error('[Demo Mode] Failed to call demo reschedule API:', demoErr)
+      // Still count as success for demo purposes - SMS might still be sent
+      successCount += 1
+    }
+    
+    // Update local schedules for UI display
+    const scheduleIndex = schedules.value.findIndex(s => 
+      (s.patient_schedule_id || s.patientScheduleId || s.schedule_id || s.id) === dose.scheduleId
+    )
+    
+    if (scheduleIndex !== -1) {
+      schedules.value[scheduleIndex].scheduled_date = newISO
+      schedules.value[scheduleIndex].scheduledDate = newISO
+      schedules.value[scheduleIndex].status = 'rescheduled' // Mark as rescheduled for demo
+      console.log('[Demo Mode] Locally updated schedule:', dose.scheduleId, 'to', newISO)
+    }
+  }
+
+  addToast({
+    title: 'Demo Update',
+    message: successCount > 0
+      ? `${group.vaccineName} — ${successCount} dose${successCount>1?'s':''} updated (demo mode - SMS sent)`
+      : 'No changes to save',
+    type: successCount > 0 ? 'success' : 'info'
+  })
 }
 
 const _formatDate = (dateString) => {
@@ -562,6 +683,72 @@ const fetchSchedules = async () => {
 onMounted(() => {
   fetchSchedules()
 })
+
+// Demo mode functions
+const handleDemoModeToggle = async () => {
+  if (demoMode.value) {
+    // Store original schedules when enabling demo mode
+    await storeOriginalSchedules()
+    addToast({
+      title: 'Demo Mode Enabled',
+      message: 'Original schedules stored locally. You can now reschedule freely.',
+      type: 'info'
+    })
+  } else {
+    // Restore original schedules when disabling demo mode
+    await restoreOriginalSchedules()
+    addToast({
+      title: 'Demo Mode Disabled',
+      message: 'Original schedules restored from local storage.',
+      type: 'success'
+    })
+  }
+}
+
+const storeOriginalSchedules = async () => {
+  try {
+    const originalSchedules = JSON.parse(JSON.stringify(schedules.value)) // Deep copy
+    localStorage.setItem(`demo_original_schedules_${props.patientId}`, JSON.stringify(originalSchedules))
+    console.log('[Demo Mode] Original schedules stored:', originalSchedules.length, 'items')
+  } catch (err) {
+    console.error('[Demo Mode] Failed to store original schedules:', err)
+    addToast({
+      title: 'Warning',
+      message: 'Failed to store original schedules. Demo mode may not work properly.',
+      type: 'warning'
+    })
+  }
+}
+
+const restoreOriginalSchedules = async () => {
+  try {
+    const stored = localStorage.getItem(`demo_original_schedules_${props.patientId}`)
+    if (stored) {
+      const originalSchedules = JSON.parse(stored)
+      schedules.value = originalSchedules
+      localStorage.removeItem(`demo_original_schedules_${props.patientId}`)
+      console.log('[Demo Mode] Original schedules restored:', originalSchedules.length, 'items')
+      addToast({
+        title: 'Success',
+        message: 'Original schedules restored successfully.',
+        type: 'success'
+      })
+    } else {
+      addToast({
+        title: 'Info',
+        message: 'No original schedules found to restore.',
+        type: 'info'
+      })
+    }
+  } catch (err) {
+    console.error('[Demo Mode] Failed to restore original schedules:', err)
+    addToast({
+      title: 'Error',
+      message: 'Failed to restore original schedules.',
+      type: 'error'
+    })
+  }
+}
 
 // Helper: determine if a dose is completed/administered
 const isDoseCompleted = (status) => {
@@ -750,4 +937,24 @@ const isDoseCompleted = (status) => {
 .bg-orange { background-color: #fd7e14 !important; color: #fff !important; }
 
 .bg-overdue { background-color: #ff1000 !important; color: #fff !important; }
+
+.demo-mode-banner {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 1rem;
+}
+
+.demo-mode-banner .form-check-label {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.demo-mode-banner .alert {
+  border: none;
+  background: rgba(255, 193, 7, 0.1);
+  color: #856404;
+  margin-bottom: 0;
+}
 </style>

@@ -1,9 +1,27 @@
 import supabase from '../db.js';
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Create a new health staff
 const createHealthWorker = async (workerData) => {
+  // Apply normalization
+  const normalizedData = { ...workerData };
+  if (normalizedData.surname) normalizedData.surname = toTitleCase(normalizedData.surname);
+  if (normalizedData.firstname) normalizedData.firstname = toTitleCase(normalizedData.firstname);
+  if (normalizedData.middlename) normalizedData.middlename = toTitleCase(normalizedData.middlename);
+  if (normalizedData.address) normalizedData.address = toTitleCase(normalizedData.address);
+
   const healthWorkerData = {
-    ...workerData,
+    ...normalizedData,
     role: 'HealthStaff',
     is_deleted: false,
     date_registered: new Date().toISOString()
@@ -33,9 +51,16 @@ const getHealthWorkerById = async (id) => {
 
 // Update health worker
 const updateHealthWorker = async (id, workerData) => {
+  // Apply normalization
+  const sanitized = { ...workerData };
+  if (sanitized.surname) sanitized.surname = toTitleCase(sanitized.surname);
+  if (sanitized.firstname) sanitized.firstname = toTitleCase(sanitized.firstname);
+  if (sanitized.middlename) sanitized.middlename = toTitleCase(sanitized.middlename);
+  if (sanitized.address) sanitized.address = toTitleCase(sanitized.address);
+
   const { data, error } = await supabase
     .from('users')
-    .update(workerData)
+    .update(sanitized)
     .eq('user_id', id)
     .in('role', ['HealthStaff', 'Nurse', 'Nutritionist'])
     .eq('is_deleted', false)

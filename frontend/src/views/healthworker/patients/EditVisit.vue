@@ -116,11 +116,8 @@
           </small>
         </div>
 
-        <!-- Services quick-add (Nurse/Nutritionist only) -->
-        <div
-          v-if="isNurseOrNutritionist"
-          class="card"
-        >
+        <!-- Services quick-add -->
+        <div class="card">
           <h3 class="card-title">
             <i class="bi bi-ui-checks" /> Add Services
           </h3>
@@ -133,7 +130,7 @@
               <i class="bi bi-plus-circle" /> Add Service
             </button>
           </div>
-          <small class="form-hint">Use the Add Immunization page to record vaccines.</small>
+          <small class="form-hint">Add an immunization linked to this visit. BHS can only record outside immunizations.</small>
         </div>
         
         <!-- Vaccine Service Modal (reuse same component as Add Immunization page) -->
@@ -142,6 +139,7 @@
           :editing-index="null"
           :editing-service="null"
           :current-patient="modalPatient"
+          :role="hsType.value"
           @save="saveVaccineService"
         />
 
@@ -198,13 +196,23 @@ const form = ref({
   findings: '',
   vitals: { temperature: '', weight: '', height: '', muac: '', respiration: '' }
 })
-const showVaccineForm = ref(false)
 const currentUser = ref(getUser())
 const hsType = computed(() => String(currentUser.value?.hs_type || currentUser.value?.type || '').toLowerCase())
-const isNurseOrNutritionist = computed(() => ['nurse','nutritionist'].some(t => hsType.value.includes(t)))
-const modalPatient = computed(() => ({ patient_id: route.params.patientId }))
+const modalPatient = ref(null)
+const showVaccineForm = ref(false)
 
-const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'})
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  try {
+    const date = new Date(dateStr)
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${month}/${day}/${year}`
+  } catch {
+    return dateStr
+  }
+}
 
 const goBack = () => router.back()
 
@@ -214,6 +222,16 @@ const load = async () => {
   try {
     loading.value = true
     const { patientId: _patientId, visitId } = route.params
+    
+    // Fetch patient data for the modal
+    try {
+      const patientRes = await api.get(`/patients/${_patientId}`)
+      modalPatient.value = patientRes.data?.data || patientRes.data || { patient_id: _patientId }
+    } catch (e) {
+      // Fallback to just patient_id if patient fetch fails
+      modalPatient.value = { patient_id: _patientId }
+    }
+    
     const res = await api.get(`/visits/${visitId}`)
     const data = res.data?.data || res.data || null
     visit.value = data
@@ -239,6 +257,8 @@ const load = async () => {
           muac: v.muac ?? form.value.vitals.muac,
           respiration: v.respiration ?? v.respiration_rate ?? form.value.vitals.respiration,
         }
+        // Save original snapshot to detect changes later
+        originalVitals.value = { ...form.value.vitals }
       }
     } catch(_) { /* ignore 404: vitals may not exist yet */ }
   } catch (e) {
@@ -248,20 +268,32 @@ const load = async () => {
   }
 }
 
+// Track original vitals to decide if updated_by should be applied
+const originalVitals = ref(null)
+
 const save = async () => {
   try {
     saving.value = true
     const { visitId } = route.params
-    // Update visit findings
-    await api.put(`/visits/${visitId}`, { findings: form.value.findings })
-    // Upsert vitals for this visit (backend supports PUT /vitalsigns/:visitId)
-    await api.put(`/vitalsigns/${visitId}`, { 
+    const updatedBy = currentUser.value?.user_id || null
+    // Update visit with updated_by
+    await api.put(`/visits/${visitId}`, { findings: form.value.findings, updated_by: updatedBy })
+    // Determine if vitals changed
+    const vitalsChanged = (() => {
+      if (!originalVitals.value) return true
+      const keys = ['temperature','weight','height','muac','respiration']
+      return keys.some(k => String(originalVitals.value[k] || '') !== String(form.value.vitals[k] || ''))
+    })()
+    // Upsert vitals for this visit; include updated_by only if changed
+    const vitalsPayload = {
       temperature: form.value.vitals.temperature || null,
       weight: form.value.vitals.weight || null,
       height: form.value.vitals.height || null,
       muac: form.value.vitals.muac || null,
       respiration: form.value.vitals.respiration || null,
-    })
+    }
+    if (vitalsChanged) vitalsPayload.updated_by = updatedBy
+    await api.put(`/vitalsigns/${visitId}`, vitalsPayload)
     addToast({ title: 'Saved', message: 'Visit updated successfully', type: 'success' })
     goBack()
   } catch (e) {
@@ -297,7 +329,8 @@ const saveVaccineService = async (svc) => {
       manufacturer: svc.manufacturer || null,
       lot_number: svc.lotNumber || svc.lot_number || null,
       site: svc.site || null,
-      administered_by: currentUser.value?.user_id || null,
+  // Admin attribution: outside -> null; inside -> only if explicitly provided (none in quick-add UI)
+  administered_by: outsideFacility ? null : (svc.administered_by || null),
       facility_name: svc.facilityName || svc.facility_name || null,
       outside: outsideFacility,
       remarks: (() => {
@@ -311,6 +344,8 @@ const saveVaccineService = async (svc) => {
           if (svc.site) parts.push(`Site: ${svc.site}`)
           const fac = svc.facilityName || svc.facility_name
           if (fac) parts.push(`Facility: ${fac}`)
+          const adminName = svc.healthStaff || svc.administered_by_name
+          if (adminName) parts.push(`Administered by: ${adminName}`)
         }
         if (base && parts.length) return `${base} | ${parts.join(' | ')}`
         if (!base && parts.length) return parts.join(' | ')

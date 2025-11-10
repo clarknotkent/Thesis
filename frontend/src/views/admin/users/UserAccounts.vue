@@ -241,7 +241,7 @@
                     Name
                   </th>
                   <th class="text-center">
-                    Email
+                    Username
                   </th>
                   <th class="text-center">
                     Role
@@ -270,7 +270,7 @@
                     {{ user.name }}
                   </td>
                   <td class="text-center align-middle">
-                    {{ user.email }}
+                    {{ user.username }}
                   </td>
                   <td class="text-center align-middle">
                     <span
@@ -432,7 +432,10 @@
                       </div>
                       <div class="col-xl-3 col-lg-4 col-md-6">
                         <label class="form-label">Birthdate:</label>
-                        <DateInput v-model="userForm.birthdate" />
+                        <DateInput 
+                          v-model="userForm.birthdate"
+                          :max="maxBirthdate"
+                        />
                       </div>
                       <div class="col-xl-9 col-lg-8 col-md-6">
                         <label class="form-label">Address:</label>
@@ -451,14 +454,14 @@
                 <div class="row mb-4">
                   <div class="col-12">
                     <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-envelope me-2" />Account Information
+                      <i class="bi bi-person-circle me-2" />Account Information
                     </h6>
                     <div class="row g-4">
                       <div class="col-xl-6 col-lg-6 col-md-6">
-                        <label class="form-label">Email Address: <span class="text-danger">*</span></label>
+                        <label class="form-label">Username or Email: <span class="text-danger">*</span></label>
                         <input
-                          v-model="userForm.email"
-                          type="email"
+                          v-model="userForm.userIdentifier"
+                          type="text"
                           class="form-control"
                           required
                         >
@@ -546,7 +549,7 @@
                         </select>
                       </div>
                       <div
-                        v-if="userForm.role === 'health_worker' || userForm.role === 'admin'"
+                        v-if="(userForm.role === 'health_worker' || userForm.role === 'admin') && isEditing"
                         class="col-xl-4 col-lg-4 col-md-6"
                       >
                         <label class="form-label">Employee ID:</label>
@@ -554,6 +557,7 @@
                           v-model="userForm.employeeId"
                           type="text"
                           class="form-control"
+                          readonly
                         >
                       </div>
                       <div
@@ -780,7 +784,7 @@ const userForm = ref({
   firstName: '',
   lastName: '',
   middleName: '',
-  email: '',
+  userIdentifier: '',
   role: '',
   hwType: '',
   status: 'active',
@@ -791,6 +795,16 @@ const userForm = ref({
   sex: '',
   birthdate: '',
   address: ''
+})
+
+// Max birthdate: today in ISO format (YYYY-MM-DD)
+const maxBirthdate = computed(() => {
+  const today = new Date()
+  const phTime = new Date(today.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+  const yyyy = phTime.getFullYear()
+  const mm = String(phTime.getMonth() + 1).padStart(2, '0')
+  const dd = String(phTime.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 })
 
 // Computed properties
@@ -857,7 +871,7 @@ const fetchUsers = async () => {
       return {
         id: u.id,
         name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
-        email: u.email,
+        username: u.username,
         role: mapBackendRoleToOption(u.role),
         hwType: u.hw_type || '',
         status: u.status || 'active',
@@ -933,7 +947,7 @@ const openUserModal = async (user = null) => {
         firstName: full.firstname || user.firstName || '',
         lastName: full.surname || user.lastName || '',
         middleName: full.middlename || user.middleName || '',
-        email: full.email || user.email,
+        userIdentifier: full.username || full.email || '',
         role: mapBackendRoleToOption(full.role || user.role || ''),
         hwType: full.hw_type || '',
         status: full.is_deleted ? 'archived' : (full.status || user.status || 'active'),
@@ -954,6 +968,7 @@ const openUserModal = async (user = null) => {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email,
+        userIdentifier: user.username || user.email || '',
         hwType: user.hwType || '',
         status: user.status,
         password: '',
@@ -972,14 +987,13 @@ const openUserModal = async (user = null) => {
       firstName: '',
       lastName: '',
       middleName: '',
-      email: '',
+      userIdentifier: '',
       role: '',
       hwType: '',
       status: 'active',
       password: '',
       licenseNumber: '',
       employeeId: '',
-      phoneNumber: '',
       contactNumber: '',
       sex: '',
       birthdate: '',
@@ -996,7 +1010,7 @@ const closeUserModal = () => {
     firstName: '',
     lastName: '',
     middleName: '',
-    email: '',
+    userIdentifier: '',
     role: '',
     hwType: '',
     status: 'active',
@@ -1013,9 +1027,22 @@ const closeUserModal = () => {
 const saveUser = async () => {
   saving.value = true
   try {
+    // Detect if userIdentifier is email or username
+    let username = ''
+    let email = ''
+    if (userForm.value.userIdentifier.includes('@')) {
+      // User entered an email - use it as-is, extract username from before @
+      email = userForm.value.userIdentifier
+      username = userForm.value.userIdentifier.split('@')[0]
+    } else {
+      // User entered a username - append @immunizeme.com to create email
+      username = userForm.value.userIdentifier
+      email = `${userForm.value.userIdentifier}@immunizeme.com`
+    }
+
     const payload = {
-      username: (userForm.value.email || '').split('@')[0],
-      email: userForm.value.email,
+      username: username,
+      email: email,
       role: userForm.value.role,
       firstname: userForm.value.firstName,
       middlename: userForm.value.middleName || null,
@@ -1027,7 +1054,8 @@ const saveUser = async () => {
       birthdate: convertToISODate(userForm.value.birthdate) || userForm.value.birthdate || null,
       address: userForm.value.address || null,
       professional_license_no: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
-      employee_id: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.employeeId || null) : null
+      // employee_id is autogenerated for admin and health_worker roles when creating new users
+      ...(isEditing.value || userForm.value.role !== 'admin' && userForm.value.role !== 'health_worker' ? { employee_id: userForm.value.employeeId || null } : {})
     }
     if (userForm.value.role === 'health_worker') {
       payload.hw_type = userForm.value.hwType || null

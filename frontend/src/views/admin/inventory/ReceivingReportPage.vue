@@ -58,7 +58,15 @@
                 <DateInput
                   v-model="form.delivery_date"
                   :disabled="isReadOnly"
+                  :max="todayPH"
+                  :class="{ 'is-invalid': formErrors.delivery_date }"
                 />
+                <div
+                  v-if="formErrors.delivery_date"
+                  class="invalid-feedback d-block"
+                >
+                  {{ formErrors.delivery_date }}
+                </div>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Delivered By *</label>
@@ -209,7 +217,15 @@
                         v-model="it.expiration_date"
                         small
                         :disabled="isReadOnly"
+                        :min="form.delivery_date ? getNextDay(form.delivery_date) : tomorrowPH"
+                        :class="{ 'is-invalid': formErrors.items && formErrors.items[idx] && formErrors.items[idx].expiration_date }"
                       />
+                      <div
+                        v-if="formErrors.items && formErrors.items[idx] && formErrors.items[idx].expiration_date"
+                        class="invalid-feedback d-block"
+                      >
+                        {{ formErrors.items[idx].expiration_date }}
+                      </div>
                     </td>
                     <td>
                       <div class="input-group qty-group">
@@ -247,7 +263,7 @@
                       <input
                         v-model="it.storage_location"
                         class="form-control form-control-sm"
-                        :disabled="isReadOnly"
+                        :disabled="isStorageReadOnly"
                         list="storageList"
                       >
                     </td>
@@ -429,7 +445,7 @@
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                Complete Vaccine Details
+                Edit Vaccine Details
               </h5>
               <button
                 class="btn-close"
@@ -438,7 +454,7 @@
             </div>
             <div class="modal-body">
               <p class="text-muted">
-                Some vaccines created from this receiving report are missing details. Please review and complete them.
+                Edit the details for vaccines in this receiving report.
               </p>
               <div
                 v-for="f in detailsForms"
@@ -451,21 +467,12 @@
                     <input
                       v-model="f.antigen_name"
                       class="form-control"
-                      readonly
                     >
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Brand</label>
                     <input
                       v-model="f.brand_name"
-                      class="form-control"
-                      readonly
-                    >
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Manufacturer</label>
-                    <input
-                      v-model="f.manufacturer"
                       class="form-control"
                     >
                   </div>
@@ -478,6 +485,26 @@
                     >
                   </div>
                   <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <select
+                      v-model="f.category"
+                      class="form-select"
+                    >
+                      <option value="VACCINE">
+                        Vaccine
+                      </option>
+                      <option value="DEWORMING">
+                        Deworming
+                      </option>
+                      <option value="VITAMIN_A">
+                        Vitamin A
+                      </option>
+                    </select>
+                  </div>
+                  <div
+                    v-if="f.category === 'VACCINE'"
+                    class="col-md-4"
+                  >
                     <label class="form-label">Vaccine Type</label>
                     <select
                       v-model="f.vaccine_type"
@@ -493,17 +520,16 @@
                     </select>
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label">Category</label>
+                    <label class="form-label">NIP Status</label>
                     <select
-                      v-model="f.category"
+                      v-model="f.is_nip"
                       class="form-select"
                     >
-                      <option
-                        v-for="c in categoryOptions"
-                        :key="c"
-                        :value="c"
-                      >
-                        {{ c }}
+                      <option :value="true">
+                        NIP Vaccine
+                      </option>
+                      <option :value="false">
+                        Non-NIP Vaccine
                       </option>
                     </select>
                   </div>
@@ -545,27 +571,52 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
-// Click outside directive
-const vClickOutside = {
-  mounted(el, binding) {
-    el.clickOutsideEvent = function(event) {
-      if (!(el === event.target || el.contains(event.target))) {
-        binding.value(event)
-      }
-    }
-    document.body.addEventListener('click', el.clickOutsideEvent)
-  },
-  unmounted(el) {
-    document.body.removeEventListener('click', el.clickOutsideEvent)
-  }
-}
+// Helper function to get today's date in Philippine timezone
+const getTodayInPH = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(new Date());
+};
+
+// Helper function to get tomorrow's date in Philippine timezone
+const getTomorrowInPH = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(tomorrow);
+};
+
+// Helper function to get the next day after a given date
+const getNextDay = (dateStr) => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + 1);
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(date);
+};
+
+const todayPH = computed(() => getTodayInPH());
+const tomorrowPH = computed(() => getTomorrowInPH());
 
 const route = useRoute()
 const router = useRouter()
@@ -577,13 +628,97 @@ const isNew = computed(() => !id.value)
 const saving = ref(false)
 const form = ref({ report_id: null, report_number: '', status: 'DRAFT', delivery_date: '', delivered_by: '', supplier_notes: '' })
 const items = ref([])
+const formErrors = ref({})
+
+// Date validation functions
+const validateDeliveryDate = (dateStr) => {
+  if (!dateStr) return 'Delivery date is required'
+  
+  const deliveryDate = new Date(dateStr)
+  const today = new Date(getTodayInPH())
+  today.setHours(23, 59, 59, 999) // End of today
+  
+  if (deliveryDate > today) {
+    return 'Delivery date cannot be in the future'
+  }
+  
+  return null
+}
+
+const validateExpiryDate = (expiryStr, deliveryDateStr) => {
+  if (!expiryStr) return 'Expiry date is required'
+  
+  const expiryDate = new Date(expiryStr)
+  const today = new Date(getTodayInPH())
+  today.setHours(0, 0, 0, 0) // Start of today
+  
+  if (expiryDate <= today) {
+    return 'Expiry date must be in the future'
+  }
+  
+  if (deliveryDateStr) {
+    const deliveryDate = new Date(deliveryDateStr)
+    if (expiryDate <= deliveryDate) {
+      return 'Expiry date must be after delivery date'
+    }
+  }
+  
+  return null
+}
+
+const validateForm = () => {
+  const errors = {}
+  
+  // Validate delivery date
+  const deliveryError = validateDeliveryDate(form.value.delivery_date)
+  if (deliveryError) {
+    errors.delivery_date = deliveryError
+  }
+  
+  // Validate expiry dates for all items
+  const itemErrors = {}
+  visibleItems.value.forEach((item, index) => {
+    const expiryError = validateExpiryDate(item.expiration_date, form.value.delivery_date)
+    if (expiryError) {
+      itemErrors[index] = { expiration_date: expiryError }
+    }
+  })
+  
+  if (Object.keys(itemErrors).length > 0) {
+    errors.items = itemErrors
+  }
+  
+  formErrors.value = errors
+  return Object.keys(errors).length === 0
+}
+
+// Watchers to clear validation errors
+watch(() => form.value.delivery_date, () => {
+  if (formErrors.value.delivery_date) {
+    formErrors.value.delivery_date = null
+  }
+})
+
+// Watch for item expiry date changes
+watch(() => items.value, (newItems) => {
+  newItems.forEach((item, index) => {
+    watch(() => item.expiration_date, () => {
+      if (formErrors.value.items && formErrors.value.items[index]) {
+        formErrors.value.items[index].expiration_date = null
+      }
+    })
+  })
+}, { deep: true })
 
 const vaccineTypes = ref([])
 const manufacturerOptions = ref([])
 const storageOptions = ref(['Cold Room A', 'Cold Room B', 'Refrigerator 1', 'Refrigerator 2', 'Freezer -20C', 'Freezer -80C'])
 
 const isCompleted = computed(() => form.value.status === 'COMPLETED')
-const isReadOnly = computed(() => form.value.status !== 'DRAFT')
+const isReadOnly = computed(() => form.value.status === 'CANCELLED')
+
+// Allow editing of storage location even after completion
+const isStorageReadOnly = computed(() => form.value.status === 'CANCELLED')
 const visibleItems = computed(() => items.value.filter(it => !it.is_deleted))
 
 // Complete/Cancel modals
@@ -600,7 +735,6 @@ const showDetailsModal = ref(false)
 const detailsForms = ref([])
 const reportItemsCache = ref([])
 const vaccineTypeOptions = ['inactivated','live-attenuated','toxoid','mrna','viral-vector','conjugate','subunit','other']
-const categoryOptions = ['VACCINE','DEWORMING','VITAMIN_A']
 
 const goBack = () => router.back()
 
@@ -636,7 +770,7 @@ function addItemRow() {
     brand_name: '', 
     manufacturer: '', 
     lot_number: '', 
-    expiration_date: new Date().toISOString().split('T')[0], 
+    expiration_date: getTomorrowInPH(), 
     quantity_received: 1, 
     storage_location: '', 
     is_deleted: false 
@@ -726,6 +860,12 @@ async function fetchReport() {
 }
 
 async function save() {
+  // Validate form before saving
+  if (!validateForm()) {
+    addToast({ title: 'Validation Error', message: 'Please fix the errors before saving', type: 'error' })
+    return
+  }
+  
   try {
     saving.value = true
     const payload = {
@@ -759,22 +899,35 @@ async function save() {
       // Navigate to edit URL
       router.replace({ name: 'ReceivingReportView', params: { id: form.value.report_id } })
     } else {
-      const { data } = await api.put(`/receiving-reports/${form.value.report_id}`, payload)
-      form.value = data.data.header || data.data
-      const arr = data.data.items || []
-      items.value = arr.map(x => ({
-        item_id: x.item_id,
-        vaccine_id: x.vaccine_id,
-        antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
-        brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
-        manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
-        lot_number: x.lot_number,
-        expiration_date: x.expiration_date,
-        quantity_received: Number(x.quantity_received) || 0,
-        storage_location: x.storage_location,
-        is_deleted: false
-      }))
-      addToast({ title: 'Saved', message: 'Report and items updated.', type: 'success' })
+      // For completed reports, only update storage locations
+      if (form.value.status === 'COMPLETED') {
+        const payload = {
+          items: visibleItems.value.map(it => ({ 
+            item_id: it.item_id,
+            storage_location: it.storage_location
+          }))
+        }
+        await api.put(`/receiving-reports/${form.value.report_id}/update-storage`, payload)
+        addToast({ title: 'Updated', message: 'Storage locations updated successfully.', type: 'success' })
+      } else {
+        // Regular update for draft reports
+        const { data } = await api.put(`/receiving-reports/${form.value.report_id}`, payload)
+        form.value = data.data.header || data.data
+        const arr = data.data.items || []
+        items.value = arr.map(x => ({
+          item_id: x.item_id,
+          vaccine_id: x.vaccine_id,
+          antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
+          brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
+          manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
+          lot_number: x.lot_number,
+          expiration_date: x.expiration_date,
+          quantity_received: Number(x.quantity_received) || 0,
+          storage_location: x.storage_location,
+          is_deleted: false
+        }))
+        addToast({ title: 'Saved', message: 'Report and items updated.', type: 'success' })
+      }
     }
   } catch (e) {
     console.error('Failed to save report', e)
@@ -792,38 +945,55 @@ function openCompleteConfirm() {
 }
 
 async function confirmComplete() {
+  // Validate form before completing
+  if (!validateForm()) {
+    addToast({ title: 'Validation Error', message: 'Please fix the date errors before completing the report', type: 'error' })
+    showCompleteModal.value = false
+    return
+  }
+  
+  // Check if there are new vaccines (not from existing list)
+  const newVaccineIds = new Set()
+  visibleItems.value.forEach(it => {
+    if (!it.vaccine_id || !vaccineTypes.value.find(v => v.id === it.vaccine_id)) {
+      // This is a new vaccine, collect its details
+      newVaccineIds.add(it.antigen_name + '|' + it.brand_name)
+    }
+  })
+  const hasNewVaccines = newVaccineIds.size > 0
+  
   try {
     completing.value = true
     await api.post(`/receiving-reports/${form.value.report_id}/complete`)
     addToast({ title: 'Completed', message: 'Report completed and inventory created.', type: 'success' })
-    // Reload and check for incomplete vaccine details
-    const { data } = await api.get(`/receiving-reports/${form.value.report_id}`)
-    const arr = data.data.items || []
-    reportItemsCache.value = arr
-    const byVaccine = new Map()
-    for (const it of arr) {
-      const vm = it.vaccinemaster || {}
-      const incomplete = !vm.disease_prevented || !vm.vaccine_type || !vm.category || (vm.vaccine_type === 'inactivated' && !vm.disease_prevented)
-      if (incomplete && it.vaccine_id) {
-        const key = String(it.vaccine_id)
-        if (!byVaccine.has(key)) {
-          byVaccine.set(key, {
-            vaccine_id: it.vaccine_id,
-            antigen_name: vm.antigen_name || it.antigen_name || '',
-            brand_name: vm.brand_name || it.brand_name || '',
-            manufacturer: vm.manufacturer || it.manufacturer || '',
-            disease_prevented: vm.disease_prevented || '',
-            vaccine_type: vm.vaccine_type || 'inactivated',
-            category: vm.category || 'VACCINE',
-            default_storage_location: ''
-          })
+    
+    if (hasNewVaccines) {
+      // Reload and show vaccine details modal for new vaccines only
+      const { data } = await api.get(`/receiving-reports/${form.value.report_id}`)
+      const arr = data.data.items || []
+      reportItemsCache.value = arr
+      const byVaccine = new Map()
+      for (const it of arr) {
+        const vm = it.vaccinemaster || {}
+        const key = it.antigen_name + '|' + it.brand_name
+        if (newVaccineIds.has(key)) {
+          const vaccineKey = String(it.vaccine_id)
+          if (!byVaccine.has(vaccineKey)) {
+            byVaccine.set(vaccineKey, {
+              vaccine_id: it.vaccine_id,
+              antigen_name: vm.antigen_name || it.antigen_name || '',
+              brand_name: vm.brand_name || it.brand_name || '',
+              manufacturer: vm.manufacturer || it.manufacturer || '',
+              disease_prevented: vm.disease_prevented || '',
+              vaccine_type: vm.vaccine_type || 'inactivated',
+              category: vm.category || 'VACCINE',
+              is_nip: vm.is_nip || false,
+              default_storage_location: ''
+            })
+          }
         }
       }
-    }
-    detailsForms.value = Array.from(byVaccine.values())
-    showCompleteModal.value = false
-    form.value.status = 'COMPLETED'
-    if (detailsForms.value.length > 0) {
+      detailsForms.value = Array.from(byVaccine.values())
       showDetailsModal.value = true
     }
   } catch (e) {
@@ -831,6 +1001,8 @@ async function confirmComplete() {
     addToast({ title: 'Error', message: 'Failed to complete report', type: 'error' })
   } finally {
     completing.value = false
+    showCompleteModal.value = false
+    form.value.status = 'COMPLETED'
   }
 }
 
@@ -863,7 +1035,8 @@ async function saveCompletedDetails() {
         manufacturer: f.manufacturer,
         disease_prevented: f.disease_prevented,
         vaccine_type: f.vaccine_type,
-        category: f.category
+        category: f.category,
+        is_nip: f.is_nip
       }
       await api.put(`/vaccines/${f.vaccine_id}`, payload)
 

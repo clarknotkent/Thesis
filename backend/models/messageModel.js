@@ -1,6 +1,17 @@
 import supabase from '../db.js';
 import * as notificationModel from './notificationModel.js';
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Feature flag: control whether creating a chat message also creates an in-app notification
 // Default is OFF; set NOTIFY_ON_NEW_MESSAGE=true to enable per-message notifications
 const SHOULD_NOTIFY_NEW_MESSAGE = String(process.env.NOTIFY_ON_NEW_MESSAGE ?? 'false').toLowerCase() === 'true';
@@ -11,6 +22,7 @@ const createMessage = async (payload) => {
 
   const withAudit = {
     ...messagePayload,
+    message_content: toSentenceCase(messagePayload.message_content),
     created_by: messagePayload.sender_id || messagePayload.created_by || null,
     updated_by: messagePayload.sender_id || messagePayload.updated_by || null,
   };

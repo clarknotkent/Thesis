@@ -5,6 +5,100 @@ import { logActivity } from '../models/activityLogger.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 import { getActorId } from '../utils/actor.js';
 import { debugReschedule } from '../utils/scheduleDebugger.js';
+import { handleScheduleReschedule, getPatientSmsInfo } from '../services/smsReminderService.js';
+import smsService from '../services/smsService.js';
+
+async function sendDemoRescheduleNotification(patientScheduleId, newScheduledDate, client) {
+  const supabase = client;
+
+  try {
+    // Get schedule details
+    const { data: scheduleData, error: schedErr } = await supabase
+      .from('patientschedule')
+      .select('patient_id, vaccine_id, dose_number')
+      .eq('patient_schedule_id', patientScheduleId)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (schedErr) throw schedErr;
+    if (!scheduleData) {
+      console.warn(`[sendDemoRescheduleNotification] Schedule ${patientScheduleId} not found`);
+      return { sent: 0, reason: 'schedule_not_found' };
+    }
+
+    const patientId = scheduleData.patient_id;
+
+    // Get patient info using the proper function
+    const patient = await getPatientSmsInfo(patientId, supabase);
+    const normalizedPhone = patient?.guardian_contact_number ? smsService.formatPhoneNumber(patient.guardian_contact_number) : null;
+    if (!patient || !normalizedPhone) {
+      console.log('[sendDemoRescheduleNotification] Skipped: no guardian phone for patient', patientId);
+      return { sent: 0, reason: 'no-guardian-phone' };
+    }
+
+    // Get vaccine name
+    const { data: vaccine, error: vacErr } = await supabase
+      .from('vaccinemaster')
+      .select('antigen_name')
+      .eq('vaccine_id', scheduleData.vaccine_id)
+      .maybeSingle();
+
+    if (vacErr) {
+      console.warn('[sendDemoRescheduleNotification] Vaccine lookup failed:', vacErr?.message || vacErr);
+    }
+
+    const vaccineName = vaccine?.antigen_name || 'vaccine';
+    const dose = `Dose ${scheduleData.dose_number || 1}`;
+
+    // Format new date
+    const moment = (await import('moment-timezone')).default;
+    const formattedDate = moment.tz(newScheduledDate, 'Asia/Manila').format('MMMM DD, YYYY');
+
+    // Determine guardian title
+    const relationship = (patient.guardian_relationship || '').toLowerCase();
+    const guardianTitle = relationship === 'mother' ? 'Ms.' : relationship === 'father' ? 'Mr.' : '';
+
+    // Create simple demo reschedule message
+    const message = `Good Day, ${guardianTitle} ${patient.guardian_last_name || patient.full_name?.split(' ').pop() || ''}!\n\nGood Day! Your child, ${patient.full_name}, has a rescheduled appointment.\n\nNew Schedule:\n${formattedDate}:\n- ${vaccineName} (${dose})\n\nThank you!`;
+
+    // Send SMS directly
+    const sendRes = await smsService.sendSMS(normalizedPhone, message);
+
+    // Log to sms_logs as manual message
+    if (sendRes.success) {
+      const nowISO = new Date().toISOString();
+      const { data: logEntry, error: logErr } = await supabase
+        .from('sms_logs')
+        .insert({
+          guardian_id: patient.guardian_id || null,
+          patient_id: patientId,
+          phone_number: normalizedPhone,
+          message,
+          type: 'manual',
+          status: 'sent',
+          error_message: null,
+          template_id: null,
+          scheduled_at: nowISO,
+          sent_at: nowISO,
+          created_at: nowISO,
+          updated_at: nowISO,
+        })
+        .select('id')
+        .single();
+
+      if (!logErr && logEntry) {
+        console.log(`[sendDemoRescheduleNotification] ✅ Logged demo SMS ${logEntry.id} for patient ${patientId}`);
+      }
+    }
+
+    console.log(`[sendDemoRescheduleNotification] ${sendRes.success ? '✅ Sent' : '❌ Failed to send'} demo SMS for patient ${patientId}`);
+
+    return { sent: sendRes.success ? 1 : 0, id: null, error: sendRes.error };
+  } catch (e) {
+    console.warn('[sendDemoRescheduleNotification] Failed to send demo SMS:', e?.message || e);
+    return { sent: 0, reason: 'error', error: e?.message || String(e) };
+  }
+}
 
 async function resolveVaccineId(supabase, { inventory_id, vaccine_id }) {
   if (vaccine_id) return vaccine_id;
@@ -249,7 +343,7 @@ const updateImmunizationRecord = async (req, res) => {
     // Load old row for activity diff
     let oldRow = null;
     try { oldRow = await immunizationModel.getImmunizationById(req.params.id, supabase); } catch(_) {}
-    if (!payload.administered_by && actorId) payload.administered_by = actorId;
+    if (!payload.administered_by && actorId) payload.administered_by = null;
     const updatedImmunization = await immunizationModel.updateImmunization(req.params.id, payload, supabase);
     if (!updatedImmunization) return res.status(404).json({ success:false, message: 'Immunization not found' });
     try {
@@ -348,7 +442,7 @@ const enforceVaccineInterval = async (req, res) => {
 const manualReschedulePatientSchedule = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
-    const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade } = req.body;
+    const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade, demo } = req.body;
 
     if (!p_patient_schedule_id || !p_new_scheduled_date) {
       return res.status(400).json({ message: 'patient_schedule_id and new_scheduled_date are required' });
@@ -367,7 +461,7 @@ const manualReschedulePatientSchedule = async (req, res) => {
         patient_schedule_id: p_patient_schedule_id,
         requested_date: p_new_scheduled_date,
         user_id: p_user_id || req.user?.user_id || null,
-        meta
+        demo: !!demo
       });
     } catch (_) {}
 
@@ -398,28 +492,60 @@ const manualReschedulePatientSchedule = async (req, res) => {
     }
 
     // Use the model helper which calls smart_reschedule_patientschedule inside the DB
-    const result = await immunizationModel.updatePatientSchedule(
-      p_patient_schedule_id,
-      { scheduled_date: p_new_scheduled_date, updated_by: p_user_id || req.user?.user_id || null, force_override: !!force_override, cascade: !!cascade },
-      supabase
-    );
+    let result = null;
+    let updatedRow = beforeRow; // Default to original row for demo mode
+    
+    if (!demo) {
+      // Normal mode: actually update the database
+      result = await immunizationModel.updatePatientSchedule(
+        p_patient_schedule_id,
+        { scheduled_date: p_new_scheduled_date, updated_by: p_user_id || req.user?.user_id || null, force_override: !!force_override, cascade: !!cascade },
+        supabase
+      );
 
-    // Fetch the updated schedule row for client convenience
-    const { data: updatedRow, error: fetchErr } = await supabase
-      .from('patientschedule')
-      .select('*')
-      .eq('patient_schedule_id', p_patient_schedule_id)
-      .single();
-    if (fetchErr) {
-      return res.status(200).json({ success: true, data: null, warning: result?.warning || null, note: 'Rescheduled, but failed to fetch updated row.' });
+      // Fetch the updated schedule row for client convenience
+      const { data: fetchedRow, error: fetchErr } = await supabase
+        .from('patientschedule')
+        .select('*')
+        .eq('patient_schedule_id', p_patient_schedule_id)
+        .single();
+      if (!fetchErr) {
+        updatedRow = fetchedRow;
+      }
+    } else {
+      // Demo mode: simulate the update without changing database
+      console.info('[manualReschedule][DEMO] Simulating reschedule without database changes');
+      result = { warning: 'Demo mode - no database changes made' };
+      // Create a simulated updated row
+      updatedRow = { ...beforeRow, scheduled_date: p_new_scheduled_date, status: 'rescheduled' };
+    }
+
+    // CASCADE UPDATE: Recreate SMS reminders for rescheduled date (ALWAYS trigger in demo mode for SMS)
+    if (demo || result) {
+      setImmediate(async () => {
+        try {
+          if (demo) {
+            // Demo mode: Send simple SMS notification about rescheduled schedule
+            await sendDemoRescheduleNotification(p_patient_schedule_id, p_new_scheduled_date, supabase);
+            console.log(`[manualReschedule] Successfully sent demo SMS notification for schedule ${p_patient_schedule_id} (DEMO MODE)`);
+          } else {
+            // Normal mode: Use full reschedule logic
+            const oldDate = beforeRow?.scheduled_date;
+            await handleScheduleReschedule(p_patient_schedule_id, oldDate, supabase);
+            console.log(`[manualReschedule] Successfully recreated SMS reminders for schedule ${p_patient_schedule_id}`);
+          }
+        } catch (smsErr) {
+          console.warn('[manualReschedule] Failed to send SMS notification after reschedule:', smsErr?.message || smsErr);
+        }
+      });
     }
 
     // Determine if any change happened to scheduled_date
     const originalDate = beforeRow?.scheduled_date || null;
     const changed = !originalDate || (new Date(updatedRow.scheduled_date).toDateString() !== new Date(originalDate).toDateString());
 
-    // Log only if the date actually changed
-    if (changed) {
+    // Log only if the date actually changed and not in demo mode
+    if (changed && !demo) {
       try {
         await logActivity({
           action_type: 'SCHEDULE_UPDATE',
@@ -432,7 +558,13 @@ const manualReschedulePatientSchedule = async (req, res) => {
       } catch (_) {}
     }
 
-    return res.status(200).json({ success: true, data: updatedRow, warning: result?.warning || null, noChange: !changed });
+    return res.status(200).json({
+      success: true,
+      data: updatedRow,
+      warning: result?.warning || null,
+      noChange: !changed,
+      demo: !!demo
+    });
   } catch (error) {
     console.error('Manual reschedule error:', error);
     // On error, also run checkpoints for visibility

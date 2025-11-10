@@ -97,15 +97,17 @@
               </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label">Date of Birth <span class="required">*</span></label>
-              <input 
-                v-model="formData.date_of_birth" 
-                type="date" 
-                class="form-input" 
-                required
-              >
-            </div>
+                    <div class="form-group">
+                      <label class="form-label">Date of Birth <span class="required">*</span></label>
+                      <input 
+                        v-model="formData.date_of_birth" 
+                        type="date" 
+                        class="form-input" 
+                        required
+                        :max="maxDob"
+                      >
+                      <small v-if="dobError" class="form-hint error">{{ dobError }}</small>
+                    </div>
 
             <div class="form-group">
               <label class="form-label">Barangay <span class="required">*</span></label>
@@ -434,7 +436,7 @@
 
 <script setup>
 import { addToast } from '@/composables/useToast'
-import { onMounted } from 'vue'
+import { onMounted, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleCard from '@/features/health-worker/patients/components/CollapsibleCard.vue'
@@ -442,6 +444,10 @@ import { usePatientForm } from '@/features/health-worker/patients/composables'
 import ParentNameSelector from '@/features/admin/patients/ParentNameSelector.vue'
 
 const router = useRouter()
+
+// Maximum allowed DOB (today) to prevent future dates
+const maxDob = new Date().toISOString().slice(0,10)
+const dobError = ref('')
 
 // Use patient form composable
 const {
@@ -461,6 +467,29 @@ const {
   submitPatient
 } = usePatientForm()
 
+// Watch for DOB changes to autofill screening dates
+watch(() => formData.value.date_of_birth, (newDob) => {
+  if (newDob) {
+    // Validate DOB is not in the future
+    const selectedDate = new Date(newDob)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    selectedDate.setHours(0, 0, 0, 0)
+    
+    if (selectedDate > today) {
+      dobError.value = 'Date of birth cannot be in the future.'
+    } else {
+      dobError.value = ''
+    }
+    
+    // Autofill newborn screening and hearing test dates with DOB
+    formData.value.newborn_screening_date = newDob
+    formData.value.hearing_test_date = newDob
+  } else {
+    dobError.value = ''
+  }
+})
+
 // Local navigation function
 const goBack = () => {
   if (confirm('Are you sure you want to cancel? Unsaved data will be lost.')) {
@@ -469,6 +498,17 @@ const goBack = () => {
 }
 
 const handleSubmit = async () => {
+  // Check for DOB validation errors
+  if (dobError.value) {
+    addToast({
+      title: 'Validation Error',
+      message: dobError.value,
+      type: 'error',
+      timeout: 5000
+    })
+    return
+  }
+  
   const errors = validateForm()
   if (Array.isArray(errors) && errors.length > 0) {
     addToast({
@@ -684,6 +724,11 @@ textarea.form-input {
   font-size: 0.8125rem;
   color: #6b7280;
   font-style: italic;
+}
+
+.form-hint.error {
+  color: #ef4444;
+  font-style: normal;
 }
 
 .section-divider {
