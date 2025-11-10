@@ -2,11 +2,6 @@ import supabase from '../db.js';
 import * as notificationModel from './notificationModel.js';
 
 // Normalization functions
-const toTitleCase = (str) => {
-  if (!str || typeof str !== 'string') return str;
-  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-};
-
 const toSentenceCase = (str) => {
   if (!str || typeof str !== 'string') return str;
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();

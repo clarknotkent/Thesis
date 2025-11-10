@@ -7,11 +7,6 @@ const toTitleCase = (str) => {
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 };
 
-const toSentenceCase = (str) => {
-  if (typeof str !== 'string') return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
 const guardianModel = {
   // Fetch all guardians (for dropdown) from users table where role is Guardian/Parent and ensure active guardian rows exist
   getAllGuardians: async () => {

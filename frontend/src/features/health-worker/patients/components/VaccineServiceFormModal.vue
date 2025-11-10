@@ -291,7 +291,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
@@ -542,93 +542,6 @@ const updateAgeCalculation = () => {
   }
 }
 
-// Normalize free-typed date to MM/DD/YYYY if possible
-const normalizeDate = () => {
-  dateError.value = '' // Clear previous errors
-  const raw = serviceForm.value.dateAdministered
-  if (!raw) return
-  // Accept patterns: MM/DD/YYYY, YYYY-MM-DD, YYYY/MM/DD, MM/DD/YYYY, DD/MM/YYYY
-  let y,m,d
-  const usDash = raw.match(/^\s*(\d{1,2})-(\d{1,2})-(\d{4})\s*$/)
-  if (usDash) {
-    m = +usDash[1]; d = +usDash[2]; y = +usDash[3]
-  } else {
-    const iso = raw.match(/^\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*$/)
-    if (iso) {
-      y = +iso[1]; m = +iso[2]; d = +iso[3]
-    } else {
-      const us = raw.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/)
-      const euro = raw.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/)
-      if (us) { m = +us[1]; d = +us[2]; y = +us[3] }
-      else if (euro) { d = +euro[1]; m = +euro[2]; y = +euro[3] }
-    }
-  }
-  if (!y || !m || !d) {
-    // Try Date parsing fallback
-    const dt = new Date(raw)
-    if (!isNaN(dt.getTime())) {
-      y = dt.getFullYear(); m = dt.getMonth()+1; d = dt.getDate()
-    }
-  }
-  if (!y || !m || !d) return
-  // Basic range validation
-  if (y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return
-  const mm = String(m).padStart(2,'0')
-  const dd = String(d).padStart(2,'0')
-  // Build selected date for comparisons
-  const selected = new Date(y, m - 1, d)
-  selected.setHours(0,0,0,0)
-  // Prevent future dates
-  const today = new Date()
-  today.setHours(0,0,0,0)
-  if (selected > today) {
-    dateError.value = 'Date administered cannot be in the future.'
-    return
-  }
-  // Prevent dates before patient's birthdate if available
-  const patient = props.currentPatient || {}
-  const birth = patient?.date_of_birth || patient?.dob || patient?.birth_date || patient?.childInfo?.birthDate || null
-  if (birth) {
-    const bd = new Date(birth)
-    bd.setHours(0,0,0,0)
-    if (selected < bd) {
-      dateError.value = 'Date administered cannot be before patient date of birth.'
-      return
-    }
-  }
-
-  serviceForm.value.dateAdministered = `${mm}/${dd}/${y}`
-  updateAgeCalculation()
-}
-
-// Format date input as user types (MM/DD/YYYY)
-const formatDateInput = (event) => {
-  let value = event.target.value.replace(/\D/g, '') // Remove non-digits
-  if (value.length >= 2) {
-    value = value.slice(0, 2) + '/' + value.slice(2)
-  }
-  if (value.length >= 5) {
-    value = value.slice(0, 5) + '/' + value.slice(5)
-  }
-  value = value.slice(0, 10) // Limit to MM/DD/YYYY (10 chars)
-  serviceForm.value.dateAdministered = value
-}
-
-const onDatePickerChange = () => {
-  // Convert ISO date (YYYY-MM-DD) to MM/DD/YYYY format
-  if (serviceForm.value.dateAdministered) {
-    const date = new Date(serviceForm.value.dateAdministered)
-    if (!isNaN(date.getTime())) {
-      const mm = String(date.getMonth() + 1).padStart(2, '0')
-      const dd = String(date.getDate()).padStart(2, '0')
-      const yyyy = date.getFullYear()
-      serviceForm.value.dateAdministered = `${mm}/${dd}/${yyyy}`
-    }
-  }
-  showDatePicker.value = false
-  updateAgeCalculation()
-}
-
 /**
  * Prefill service form when editing an existing service
  */
@@ -737,12 +650,6 @@ watch(() => serviceForm.value.doseNumber, async (newDoseNumber) => {
     await updateImmunizationDateConstraints(getPatientId(), serviceForm.value.vaccineId, newDoseNumber)
   }
 })
-
-// Helper to check if the previous date was a smart date
-const wasPreviouslySmartDate = (oldDose, smartDates) => {
-  if (!oldDose || !smartDates[oldDose]) return false
-  return serviceForm.value.dateAdministered === smartDates[oldDose]
-}
 
 // Derived message when no vaccines are available after filtering
 const emptyDropdownMessage = computed(() => {

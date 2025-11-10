@@ -17,7 +17,7 @@
               for="demo-mode-toggle"
             >
               <i class="bi bi-play-circle-fill text-warning me-1" />
-              Tetet Mode
+              Test Mode
             </label>
           </div>
           <small class="text-muted">

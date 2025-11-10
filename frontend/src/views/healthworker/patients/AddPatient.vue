@@ -97,17 +97,22 @@
               </select>
             </div>
 
-                    <div class="form-group">
-                      <label class="form-label">Date of Birth <span class="required">*</span></label>
-                      <input 
-                        v-model="formData.date_of_birth" 
-                        type="date" 
-                        class="form-input" 
-                        required
-                        :max="maxDob"
-                      >
-                      <small v-if="dobError" class="form-hint error">{{ dobError }}</small>
-                    </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required">*</span></label>
+              <input 
+                v-model="formData.date_of_birth" 
+                type="date" 
+                class="form-input" 
+                required
+                :max="maxDob"
+              >
+              <small
+                v-if="dobError"
+                class="form-hint error"
+              >
+                {{ dobError }}
+              </small>
+            </div>
 
             <div class="form-group">
               <label class="form-label">Barangay <span class="required">*</span></label>
