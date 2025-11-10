@@ -59,6 +59,18 @@ export function usePatientForm() {
     hearing_test_date: ''
   })
 
+  // Autofill newborn screening and hearing test dates with DOB when DOB is entered
+  watch(() => formData.value.date_of_birth, (newDob) => {
+    try {
+      if (!newDob) return
+      // Only autofill if the fields are empty so user can still edit them
+      if (!formData.value.newborn_screening_date) formData.value.newborn_screening_date = newDob
+      if (!formData.value.hearing_test_date) formData.value.hearing_test_date = newDob
+    } catch (e) {
+      // Non-blocking
+    }
+  })
+
   /**
    * Computed mother options (deduplicated and sorted)
    */
@@ -584,6 +596,18 @@ export function usePatientForm() {
     if (!formData.value.firstname) errors.push('First name is required')
     if (!formData.value.sex) errors.push('Sex is required')
     if (!formData.value.date_of_birth) errors.push('Date of birth is required')
+    else {
+      try {
+        const dob = new Date(formData.value.date_of_birth)
+        const today = new Date()
+        // Zero time portion for safe comparison
+        dob.setHours(0,0,0,0)
+        today.setHours(0,0,0,0)
+        if (dob > today) errors.push('Date of birth cannot be in the future')
+      } catch (e) {
+        // ignore parse errors here; other checks cover missing/invalid
+      }
+    }
     if (!formData.value.mother_name) errors.push('Mother name is required')
     if (!formData.value.guardian_id) errors.push('Guardian is required')
     if (!formData.value.relationship_to_guardian) errors.push('Relationship to guardian is required')

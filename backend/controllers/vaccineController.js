@@ -214,13 +214,13 @@ const updateInventory = async (req, res) => {
   try {
     const actorId = req.user?.user_id || null;
     const { id } = req.params;
-    const updates = {
-      vaccine_id: req.body.vaccine_id,
-      lot_number: req.body.lot_number,
-      expiration_date: req.body.expiration_date,
-      current_stock_level: req.body.current_stock_level,
-      storage_location: req.body.storage_location
-    };
+    const updates = {};
+    // Only include fields that are provided (not undefined)
+    if (req.body.vaccine_id !== undefined) updates.vaccine_id = req.body.vaccine_id;
+    if (req.body.lot_number !== undefined) updates.lot_number = req.body.lot_number;
+    if (req.body.expiration_date !== undefined) updates.expiration_date = req.body.expiration_date;
+    if (req.body.current_stock_level !== undefined) updates.current_stock_level = req.body.current_stock_level;
+    if (req.body.storage_location !== undefined) updates.storage_location = req.body.storage_location;
     // Validate expiration change: block setting past expiration
     if (updates.expiration_date) {
       const exp = new Date(updates.expiration_date);

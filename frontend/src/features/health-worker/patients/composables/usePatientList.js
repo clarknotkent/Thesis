@@ -166,6 +166,12 @@ export function usePatientList() {
       
       // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
       try {
+        // Ensure database is open before using it
+        if (!db.isOpen()) {
+          await db.open()
+          console.log('✅ StaffOfflineDB opened for patient list fetch')
+        }
+        
         const cachedPatients = await db.patients.toArray()
         
         if (cachedPatients.length > 0) {

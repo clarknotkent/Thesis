@@ -50,11 +50,15 @@ export function useVisitManagement(formData) {
    */
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A'
-    return new Date(dateStr).toLocaleDateString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    try {
+      const date = new Date(dateStr)
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}/${day}/${year}`
+    } catch {
+      return dateStr
+    }
   }
 
   /**

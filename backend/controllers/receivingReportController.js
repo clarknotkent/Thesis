@@ -90,6 +90,18 @@ const cancelReport = async (req, res, next) => {
   }
 };
 
+const updateStorage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body || {};
+    const userId = req.user?.user_id || req.user?.id || null;
+    const data = await receivingReportModel.updateStorage(Number(id), items || [], userId);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export {
   listReports,
   getReport,
@@ -98,5 +110,6 @@ export {
   addItem,
   updateItem,
   completeReport,
-  cancelReport
+  cancelReport,
+  updateStorage
 };

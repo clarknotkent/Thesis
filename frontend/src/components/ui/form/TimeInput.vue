@@ -166,7 +166,7 @@ const handleInput = (e) => {
   
   // Restore cursor position
   setTimeout(() => {
-    input.setSelectionRange(cursor, cursor)
+    input.setSelectionRange(displayValue.value.length, displayValue.value.length)
   }, 0)
 }
 

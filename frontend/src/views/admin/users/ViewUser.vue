@@ -85,6 +85,7 @@
               <UserForm
                 :initial-data="userData"
                 :read-only="true"
+                mode="edit"
               />
             </div>
           </div>
@@ -319,6 +320,7 @@ const fetchUserData = async () => {
       firstName: user.firstname || user.firstName || '',
       middleName: user.middlename || user.middleName || '',
       lastName: user.surname || user.lastName || '',
+      username: user.username || '',
       email: user.email || '',
       role: user.role || '',
     // prefer new hs_type field, but fall back to older names for compatibility

@@ -99,6 +99,9 @@
       :nurses="nurses"
       :saving="saving"
       :can-save="canSave"
+      :patient-dob="patientData?.date_of_birth"
+      :immunization-date-min="immunizationDateMin"
+      :immunization-date-max="immunizationDateMax"
       @close="closeVaccinationModal"
       @save="handleSaveVaccination"
       @vaccine-select="onVaccineSelect"
@@ -268,6 +271,9 @@
     :nurses="nurses"
     :saving="saving"
     :can-save="canSave"
+    :patient-dob="patientData?.date_of_birth"
+    :immunization-date-min="immunizationDateMin"
+    :immunization-date-max="immunizationDateMax"
     @close="closeVaccinationModal"
     @save="handleSaveVaccination"
     @vaccine-select="onVaccineSelect"
@@ -335,6 +341,7 @@ import VaccinationScheduleTable from './components/VaccinationScheduleTable.vue'
 import VaccinationFormModal from './components/VaccinationFormModal.vue';
 import VisitPickerModal from './components/VisitPickerModal.vue';
 import { useVaccinationRecords } from '@/composables/useVaccinationRecords';
+import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds';
 
 const router = useRouter();
 
@@ -413,6 +420,9 @@ const {
   upcomingSchedules,
   canSave
 } = useVaccinationRecords(toRef(props, 'patientId'), toRef(props, 'patientData'));
+
+// Use the immunization date bounds composable
+const { immunizationDateMin, immunizationDateMax, updateImmunizationDateConstraints } = useImmunizationDateBounds();
 
 // Local state
 const showNewVaccinationModal = ref(false);
@@ -496,6 +506,11 @@ const editVaccinationRecord = async (index) => {
   showEditVaccinationModal.value = true;
 
   calculateAgeAtAdministration();
+
+  // Update date constraints for edit
+  if (vaccinationForm.value.vaccineId && vaccinationForm.value.doseNumber) {
+    await updateImmunizationDateConstraints(props.patientId, vaccinationForm.value.vaccineId, vaccinationForm.value.doseNumber);
+  }
 };
 
 const openEditForRecordId = async (recordId) => {
@@ -595,15 +610,25 @@ watch(() => vaccinationForm.value.dateAdministered, () => {
   calculateAgeAtAdministration();
 });
 
-// Watch outside toggle to reset conflicting fields
-watch(() => outsideImmunization.value, (isOutside) => {
-  if (isOutside) {
-    vaccinationForm.value.inventoryId = '';
-    vaccinationForm.value.lotNumber = '';
-    fetchVaccineCatalog();
-  } else {
-    vaccinationForm.value.vaccineId = '';
-    fetchVaccineOptions();
+// Watch for vaccine and dose changes to update date constraints
+watch(() => vaccinationForm.value.inventoryId, async (newId) => {
+  if (newId) {
+    await onVaccineSelect();
+    await updateImmunizationDateConstraints(props.patientId, vaccinationForm.value.vaccineId, vaccinationForm.value.doseNumber);
+  }
+});
+
+watch(() => vaccinationForm.value.vaccineId, async (newId) => {
+  if (newId) {
+    await onVaccineCatalogSelect();
+    await updateImmunizationDateConstraints(props.patientId, newId, vaccinationForm.value.doseNumber);
+  }
+});
+
+watch(() => vaccinationForm.value.doseNumber, async (newDose) => {
+  if (newDose && (vaccinationForm.value.vaccineId || vaccinationForm.value.inventoryId)) {
+    const vaccineId = vaccinationForm.value.vaccineId || vaccinationForm.value.vaccineId; // This was wrong, should be vaccinationForm.value.vaccineId
+    await updateImmunizationDateConstraints(props.patientId, vaccineId, newDose);
   }
 });
 

@@ -56,10 +56,14 @@
             v-for="dose in otherDoses"
             :key="dose.immunization_id || dose.id"
             class="dose-pill"
-            :class="{ active: String(dose.immunization_id || dose.id) === String(recordId) }"
+            :class="{ 
+              active: String(dose.immunization_id || dose.id) === String(recordId),
+              disabled: isBHS && !isDoseOutside(dose)
+            }"
+            :title="isBHS && !isDoseOutside(dose) ? 'BHS users can only access outside vaccination records' : ''"
             role="button"
             tabindex="0"
-            @click="jumpToDose(dose.immunization_id || dose.id)"
+            @click="handleDosePillClick(dose)"
           >
             <div class="dose-label">
               Dose {{ dose.dose_number || dose.dose || dose.doseNumber || '—' }}
@@ -90,36 +94,39 @@
               v-model="form.doseNumber" 
               class="form-input"
               required
+              @change="onDoseChange"
             >
               <option value="">
                 Select dose number
               </option>
-              <option value="1">
-                Dose 1
-              </option>
-              <option value="2">
-                Dose 2
-              </option>
-              <option value="3">
-                Dose 3
-              </option>
-              <option value="4">
-                Booster
+              <option 
+                v-for="dose in availableDoses" 
+                :key="dose"
+                :value="dose"
+              >
+                Dose {{ dose }}
               </option>
             </select>
+            <small
+              v-if="autoSelectHint"
+              class="form-hint success"
+            >{{ autoSelectHint }}</small>
           </div>
 
           <!-- Date Administered -->
           <div class="form-group">
             <label class="form-label">Date Administered *</label>
-            <input 
-              v-model="form.dateAdministered" 
-              type="date" 
-              class="form-input"
-              required
-              :max="todayDate"
-              @change="calculateAge"
-            >
+            <DateInput 
+              v-model="form.dateAdministered"
+              :required="true"
+              output-format="iso"
+              :max="immunizationDateMax"
+              :min="immunizationDateMin"
+              @update:model-value="calculateAge"
+            />
+            <div class="form-text small text-muted">
+              Min: {{ immunizationDateMin || 'Patient DOB' }} | Max: {{ immunizationDateMax || 'Today' }}
+            </div>
           </div>
 
           <!-- Age at Administration (Auto-calculated) -->
@@ -309,6 +316,9 @@ import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vu
 import { useVaccinationRecordEditor } from '@/features/health-worker/patients/composables'
 import ApprovalModal from '@/components/ApprovalModal.vue'
 import api from '@/services/api'
+import { useAuth } from '@/composables/useAuth'
+import DateInput from '@/components/ui/form/DateInput.vue'
+import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds'
 
 const router = useRouter()
 const route = useRoute()
@@ -316,6 +326,24 @@ const route = useRoute()
 // Props from route params
 const patientId = computed(() => route.params.patientId)
 const recordId = computed(() => route.params.recordId)
+
+// Get user authentication and role
+const { userInfo } = useAuth()
+const isBHS = computed(() => {
+  const user = userInfo.value
+  return user && user.role === 'HealthStaff' && user.hs_type === 'bhs'
+})
+
+// Use the immunization date bounds composable
+const { immunizationDateMin, immunizationDateMax, updateImmunizationDateConstraints } = useImmunizationDateBounds()
+
+// Debug role detection
+console.log('🔍 [EditVaccinationRecord] Role detection:', {
+  userInfo: userInfo.value,
+  isBHS: isBHS.value,
+  userRole: userInfo.value?.role,
+  hsType: userInfo.value?.hs_type
+})
 
 // Use vaccination record editor composable
 const {
@@ -325,7 +353,6 @@ const {
   vaccinationRecord,
   nurses,
   form,
-  todayDate,
   isFormValid,
   otherDoses,
   calculateAge,
@@ -333,9 +360,37 @@ const {
   prepareUpdateData
 } = useVaccinationRecordEditor(patientId, recordId)
 
+// Debug otherDoses data
+watch(otherDoses, (newDoses) => {
+  console.log('🔍 [EditVaccinationRecord] otherDoses updated:', newDoses.map(dose => ({
+    id: dose.immunization_id || dose.id,
+    dose_number: dose.dose_number || dose.dose,
+    immunization_outside: dose.immunization_outside,
+    vaccine_name: dose.vaccine_antigen_name || dose.vaccineName
+  })))
+}, { immediate: true })
+
+// Watch for vaccination record changes to update smart dates
+watch(vaccinationRecord, async (newRecord) => {
+  if (newRecord && form.value.doseNumber) {
+    await updateImmunizationDateConstraints(patientId.value, newRecord.vaccine_id, form.value.doseNumber)
+  }
+}, { immediate: true })
+
+// Watch for dose changes to update date constraints
+watch(() => form.value.doseNumber, async (newDoseNumber) => {
+  if (newDoseNumber && vaccinationRecord.value?.vaccine_id) {
+    await updateImmunizationDateConstraints(patientId.value, vaccinationRecord.value.vaccine_id, newDoseNumber)
+  }
+})
+
 // Local state for approval modal
 const showApproval = ref(false)
 const pendingUpdateData = ref(null)
+
+// Smart dose state
+const availableDoses = ref([1, 2, 3, 4])
+const autoSelectHint = ref('')
 
 // Navigation and local methods
 const handleBack = () => {
@@ -354,16 +409,75 @@ const handleSubmit = async () => {
 
   // Prepare the update data using composable
   const updateData = prepareUpdateData()
-  
+  if (!updateData) {
+    // prepareUpdateData sets composable error.value; show toast to surface to user
+    addToast({ title: 'Invalid', message: (error.value || 'Invalid administered date'), type: 'error' })
+    return
+  }
+
   pendingUpdateData.value = updateData
   // Show approval modal for secondary sign-off
   showApproval.value = true
+}
+
+// Handle dose pill click with BHS restrictions and debugging
+const handleDosePillClick = (dose) => {
+  const doseId = dose.immunization_id || dose.id
+  const isOutside = isDoseOutside(dose)
+  
+  console.log('🔍 [EditVaccinationRecord] Dose pill clicked:', {
+    doseId,
+    isBHS: isBHS.value,
+    isOutside,
+    shouldRestrict: isBHS.value && !isOutside,
+    userInfo: userInfo.value,
+    doseData: {
+      immunization_outside: dose.immunization_outside,
+      vaccine_name: dose.vaccine_antigen_name
+    }
+  })
+  
+  if (isBHS.value && !isOutside) {
+    console.log('🚫 [EditVaccinationRecord] BHS user blocked from clicking in-facility dose - DEBUGGER WOULD PAUSE HERE')
+    console.log('🔍 [EditVaccinationRecord] Current state:', {
+      userInfo: userInfo.value,
+      isBHS: isBHS.value,
+      doseId,
+      isOutside,
+      dose
+    })
+    // Show warning toast for BHS users trying to access in-facility records
+    addToast({ 
+      title: 'Access Restricted', 
+      message: 'BHS health staff can only access outside vaccination records. Please contact a nurse or nutritionist for in-facility records.', 
+      type: 'warning' 
+    })
+    // Uncomment the next line to enable debugger: debugger
+    return
+  }
+  
+  jumpToDose(doseId)
 }
 
 // Navigate to edit a different dose (routes to same component with new recordId)
 const jumpToDose = (id) => {
   if (!id) return
   router.push({ name: 'EditVaccinationRecord', params: { patientId: patientId.value, recordId: id } })
+}
+
+// Check if a dose record is outside immunization
+const isDoseOutside = (dose) => {
+  const result = !!(dose?.immunization_outside || dose?.is_outside || dose?.isOutside || dose?.outside_immunization || dose?.outside)
+  console.log('🔍 [EditVaccinationRecord] isDoseOutside check:', {
+    doseId: dose?.immunization_id || dose?.id,
+    immunization_outside: dose?.immunization_outside,
+    is_outside: dose?.is_outside,
+    isOutside: dose?.isOutside,
+    outside_immunization: dose?.outside_immunization,
+    outside: dose?.outside,
+    result
+  })
+  return result
 }
 
 // Ensure we re-fetch when the route recordId changes (same component instance)
@@ -377,7 +491,10 @@ const formatDisplayDate = (d) => {
     const v = d?.administered_date || d?.date_administered || d?.dateAdministered || d
     if (!v) return '—'
     const dt = new Date(v)
-    return dt.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+    const month = String(dt.getMonth() + 1).padStart(2, '0')
+    const day = String(dt.getDate()).padStart(2, '0')
+    const year = dt.getFullYear()
+    return `${month}/${day}/${year}`
   } catch {
     return '—'
   }
@@ -408,6 +525,67 @@ const onApproverApproved = async (approver) => {
 const onApproverCancel = () => {
   showApproval.value = false
   pendingUpdateData.value = null
+}
+
+// Handle dose change to update smart dates
+const onDoseChange = async () => {
+  await updateSmartDates()
+  // Also update immunization date constraints
+  if (vaccinationRecord.value?.vaccine_id && form.value.doseNumber) {
+    await updateImmunizationDateConstraints(patientId.value, vaccinationRecord.value.vaccine_id, form.value.doseNumber)
+  }
+}
+
+// Query backend for smart-dose info and update date suggestions
+const updateSmartDates = async () => {
+  try {
+    if (!vaccinationRecord.value?.vaccine_id) {
+      autoSelectHint.value = ''
+      return
+    }
+    
+    const pid = patientId.value
+    if (!pid) return
+    
+    const res = await api.get(`/patients/${pid}/smart-doses`, { 
+      params: { vaccine_id: vaccinationRecord.value.vaccine_id } 
+    })
+    const data = res.data?.data || res.data || {}
+
+    // Determine all possible doses for the schedule
+    let all = data.all_doses || data.schedule_doses || []
+    if (typeof all === 'number') {
+      all = Array.from({ length: all }, (_, i) => i + 1)
+    }
+    const allArr = Array.isArray(all) ? all : []
+    availableDoses.value = allArr.length > 0 ? allArr : [1, 2, 3, 4]
+
+    // If backend suggests a dose, apply and hint it
+    autoSelectHint.value = ''
+    const suggested = data.auto_select != null ? Number(data.auto_select) : null
+    if (suggested && allArr.includes(suggested) && !form.value.dateAdministered) {
+      // Auto-set date_administered based on smart date for the suggested dose
+      const smartDates = data.smart_dates || {}
+      if (smartDates[suggested]) {
+        form.value.dateAdministered = smartDates[suggested]
+        calculateAge()
+        autoSelectHint.value = `Suggested date for Dose ${suggested}`
+      }
+    } else if (form.value.doseNumber && !form.value.dateAdministered) {
+      // Auto-set date for the currently selected dose
+      const smartDates = data.smart_dates || {}
+      const currentDose = Number(form.value.doseNumber)
+      if (smartDates[currentDose]) {
+        form.value.dateAdministered = smartDates[currentDose]
+        calculateAge()
+        autoSelectHint.value = `Suggested date for Dose ${currentDose}`
+      }
+    }
+  } catch (e) {
+    // On failure, don't block UI; keep existing selections
+    console.warn('updateSmartDates failed', e?.response?.data || e.message)
+    autoSelectHint.value = ''
+  }
 }
 
 // Parse structured remarks produced by admin UI into discrete fields.
@@ -725,6 +903,10 @@ select.form-input {
   color: #6b7280;
 }
 
+.form-hint.success {
+  color: #059669;
+}
+
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -836,6 +1018,19 @@ select.form-input {
   background: linear-gradient(90deg, #667eea, #764ba2);
   color: white;
   border-color: transparent;
+}
+
+.dose-pill.disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dose-pill.disabled:hover {
+  background: #f3f4f6;
+  color: #9ca3af;
 }
 
 .dose-label {

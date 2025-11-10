@@ -61,6 +61,7 @@
               v-model="formData.date_of_birth"
               :disabled="readOnly || dobLocked"
               :required="true"
+              :max="todayISO"
               output-format="iso"
             />
             <div
@@ -499,6 +500,16 @@ const formData = ref({
 // No local state needed for dob lock; controlled by parent via prop
 const dobLocked = computed(() => props.dobLocked)
 
+// Computed property for today's date in ISO format to prevent future DOBs (Philippine timezone)
+const todayISO = computed(() => {
+  // Get current date in Philippine timezone
+  const now = new Date()
+  const phTime = new Date(now.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+  // Add 8 hours
+  phTime.setHours(phTime.getHours() + 8)
+  return phTime.toISOString().slice(0, 10)
+})
+
 
 // Keep the last selected guardian object for autofill purposes
 const selectedGuardian = ref(null)
@@ -637,6 +648,15 @@ watch(() => formData.value.relationship_to_guardian, (newRel) => {
   if (!newRel) return
   resetParentFields()
   applyParentAutofill(selectedGuardian.value, newRel, true)
+})
+
+// Watch for DOB changes to autofill screening dates
+watch(() => formData.value.date_of_birth, (newDob) => {
+  if (newDob) {
+    // Autofill newborn screening and hearing test dates with DOB
+    formData.value.newborn_screening_date = newDob
+    formData.value.hearing_test_date = newDob
+  }
 })
 
 // Suggestions come exclusively from backend patients data (already deduped, with contacts)

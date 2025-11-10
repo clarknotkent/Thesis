@@ -1,6 +1,17 @@
 import supabase from '../db.js';
 import { updatePhoneNumberForPatient, updateMessagesForPatient } from '../services/smsReminderService.js';
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const guardianModel = {
   // Fetch all guardians (for dropdown) from users table where role is Guardian/Parent and ensure active guardian rows exist
   getAllGuardians: async () => {
@@ -102,20 +113,24 @@ const guardianModel = {
       if (!familyNumber) {
         familyNumber = 'FAM-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1e4).toString().padStart(4, '0');
       }
+      // Apply normalization
+      const normalizedData = {
+        surname: toTitleCase(guardianData.surname),
+        firstname: toTitleCase(guardianData.firstname),
+        middlename: guardianData.middlename ? toTitleCase(guardianData.middlename) : null,
+        birthdate: guardianData.birthdate,
+        address: guardianData.address ? toTitleCase(guardianData.address) : null,
+        occupation: guardianData.occupation ? toTitleCase(guardianData.occupation) : null,
+        contact_number: guardianData.contact_number,
+        alternative_contact_number: guardianData.alternative_contact_number,
+        email: guardianData.email,
+        family_number: familyNumber,
+        user_id: guardianData.user_id
+      };
       const { data, error } = await supabase
         .from('guardians')
         .insert({
-          surname: guardianData.surname,
-          firstname: guardianData.firstname,
-          middlename: guardianData.middlename,
-          birthdate: guardianData.birthdate,
-          address: guardianData.address,
-          occupation: guardianData.occupation,
-          contact_number: guardianData.contact_number,
-          alternative_contact_number: guardianData.alternative_contact_number,
-          email: guardianData.email,
-          family_number: familyNumber,
-          user_id: guardianData.user_id,
+          ...normalizedData,
           created_by: guardianData.created_by || guardianData.user_id || null,
           updated_by: guardianData.updated_by || guardianData.user_id || null
         })
@@ -144,10 +159,18 @@ const guardianModel = {
         return data?.contact_number;
       })() : null;
 
+      // Apply normalization
+      const sanitized = { ...guardianData };
+      if (sanitized.surname) sanitized.surname = toTitleCase(sanitized.surname);
+      if (sanitized.firstname) sanitized.firstname = toTitleCase(sanitized.firstname);
+      if (sanitized.middlename) sanitized.middlename = toTitleCase(sanitized.middlename);
+      if (sanitized.address) sanitized.address = toTitleCase(sanitized.address);
+      if (sanitized.occupation) sanitized.occupation = toTitleCase(sanitized.occupation);
+
       const { data, error } = await supabase
         .from('guardians')
         .update({
-          ...guardianData,
+          ...sanitized,
           updated_at: new Date().toISOString()
         })
         .eq('guardian_id', id)
@@ -304,11 +327,11 @@ const guardianModel = {
               is_deleted: false,
               deleted_at: null,
               deleted_by: null,
-              surname: userRow.surname,
-              firstname: userRow.firstname,
-              middlename: userRow.middlename || null,
+              surname: toTitleCase(userRow.surname),
+              firstname: toTitleCase(userRow.firstname),
+              middlename: userRow.middlename ? toTitleCase(userRow.middlename) : null,
               email: userRow.email || null,
-              address: userRow.address || null,
+              address: userRow.address ? toTitleCase(userRow.address) : null,
               contact_number: userRow.contact_number || null,
               updated_at: new Date().toISOString(),
               birthdate: userRow.birthdate || null,
@@ -354,11 +377,11 @@ const guardianModel = {
         .from('guardians')
         .insert({
           user_id: userRow.user_id,
-          surname: userRow.surname,
-          firstname: userRow.firstname,
-          middlename: userRow.middlename || null,
+          surname: toTitleCase(userRow.surname),
+          firstname: toTitleCase(userRow.firstname),
+          middlename: userRow.middlename ? toTitleCase(userRow.middlename) : null,
           email: userRow.email || null,
-          address: userRow.address || null,
+          address: userRow.address ? toTitleCase(userRow.address) : null,
           contact_number: userRow.contact_number || null,
           family_number: familyNumber,
           birthdate: userRow.birthdate || null,
@@ -417,11 +440,11 @@ const guardianModel = {
       const { data: updated, error: updErr } = await supabase
         .from('guardians')
         .update({
-          surname: userRow.surname,
-          firstname: userRow.firstname,
-          middlename: userRow.middlename || null,
+          surname: toTitleCase(userRow.surname),
+          firstname: toTitleCase(userRow.firstname),
+          middlename: userRow.middlename ? toTitleCase(userRow.middlename) : null,
           email: userRow.email || null,
-          address: userRow.address || null,
+          address: userRow.address ? toTitleCase(userRow.address) : null,
           contact_number: userRow.contact_number || null,
           birthdate: userRow.birthdate || null,
           updated_by: actorId || userRow.user_id || null,

@@ -2,6 +2,17 @@ import supabase from '../db.js';
 
 const receivingReportModel = {};
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Helper to build full name
 function fullName(u) {
   if (!u) return null;
@@ -37,14 +48,25 @@ receivingReportModel.generateReportNumber = async () => {
 
 // Create report header (DRAFT)
 receivingReportModel.createReport = async (payload, userId) => {
+  // Validate delivery date - should not be in the future
+  if (payload.delivery_date) {
+    const deliveryDate = new Date(payload.delivery_date);
+    deliveryDate.setHours(0, 0, 0, 0); // Normalize to start of day
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    if (deliveryDate > today) {
+      throw new Error('Delivery date cannot be in the future');
+    }
+  }
+
   const report_number = await receivingReportModel.generateReportNumber();
   const insert = {
     report_number,
     delivery_date: payload.delivery_date,
-    delivered_by: payload.delivered_by,
+    delivered_by: toTitleCase(payload.delivered_by),
     received_by: payload.received_by || userId || null,
-    supplier_name: payload.supplier_name || 'Main Office',
-    supplier_notes: payload.supplier_notes || null,
+    supplier_name: toTitleCase(payload.supplier_name || 'Main Office'),
+    supplier_notes: toSentenceCase(payload.supplier_notes || null),
     status: 'DRAFT',
     created_by: userId || null,
     updated_by: userId || null
@@ -70,14 +92,24 @@ receivingReportModel.createReport = async (payload, userId) => {
 };
 
 receivingReportModel.updateReport = async (reportId, payload, userId) => {
+  // Validate delivery date - should not be in the future
+  if (payload.delivery_date !== undefined && payload.delivery_date !== null && payload.delivery_date !== '') {
+    const deliveryDate = new Date(payload.delivery_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    if (deliveryDate > today) {
+      throw new Error('Delivery date cannot be in the future');
+    }
+  }
+
   const update = {
     updated_by: userId || null
   };
   if (payload.delivery_date !== undefined && payload.delivery_date !== null && payload.delivery_date !== '') update.delivery_date = payload.delivery_date;
-  if (payload.delivered_by !== undefined && payload.delivered_by !== null && payload.delivered_by !== '') update.delivered_by = payload.delivered_by;
+  if (payload.delivered_by !== undefined && payload.delivered_by !== null && payload.delivered_by !== '') update.delivered_by = toTitleCase(payload.delivered_by);
   // received_by should not be updated
-  if (payload.supplier_name !== undefined && payload.supplier_name !== null) update.supplier_name = payload.supplier_name;
-  if (payload.supplier_notes !== undefined && payload.supplier_notes !== null) update.supplier_notes = payload.supplier_notes;
+  if (payload.supplier_name !== undefined && payload.supplier_name !== null) update.supplier_name = toTitleCase(payload.supplier_name);
+  if (payload.supplier_notes !== undefined && payload.supplier_notes !== null) update.supplier_notes = toSentenceCase(payload.supplier_notes);
 
   const { data, error } = await supabase.from('receiving_reports').update(update).eq('report_id', reportId).select('*').single();
   if (error) throw error;
@@ -174,18 +206,28 @@ receivingReportModel.getReportById = async (reportId) => {
 };
 
 receivingReportModel.addItem = async (reportId, item, _userId) => {
+  // Validate expiration date - should not be in the past (can be today or future)
+  if (item.expiration_date) {
+    const expirationDate = new Date(item.expiration_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    if (expirationDate < today) {
+      throw new Error('Expiration date cannot be in the past');
+    }
+  }
+
   const insert = {
     report_id: reportId,
     vaccine_id: item.vaccine_id && item.vaccine_id !== '' ? item.vaccine_id : null,
-    antigen_name: item.antigen_name || null,
-    brand_name: item.brand_name || null,
-    manufacturer: item.manufacturer || null,
+    antigen_name: toTitleCase(item.antigen_name || null),
+    brand_name: toTitleCase(item.brand_name || null),
+    manufacturer: toTitleCase(item.manufacturer || null),
     lot_number: item.lot_number,
     expiration_date: item.expiration_date,
     quantity_received: item.quantity_received,
-    storage_location: item.storage_location || null,
+    storage_location: toTitleCase(item.storage_location || null),
     unit_cost: item.unit_cost || null,
-    remarks: item.remarks || null
+    remarks: toSentenceCase(item.remarks || null)
   };
   const { data, error } = await supabase.from('receiving_report_items').insert(insert).select('*').single();
   if (error) throw error;
@@ -211,17 +253,27 @@ receivingReportModel.addItem = async (reportId, item, _userId) => {
 };
 
 receivingReportModel.updateItem = async (itemId, item, _userId) => {
+  // Validate expiration date - should not be in the past (can be today or future)
+  if (item.expiration_date !== undefined && item.expiration_date !== null && item.expiration_date !== '') {
+    const expirationDate = new Date(item.expiration_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    if (expirationDate < today) {
+      throw new Error('Expiration date cannot be in the past');
+    }
+  }
+
   const update = {
     vaccine_id: item.vaccine_id && item.vaccine_id !== '' ? item.vaccine_id : null,
-    antigen_name: item.antigen_name || null,
-    brand_name: item.brand_name || null,
-    manufacturer: item.manufacturer || null,
+    antigen_name: toTitleCase(item.antigen_name || null),
+    brand_name: toTitleCase(item.brand_name || null),
+    manufacturer: toTitleCase(item.manufacturer || null),
     lot_number: item.lot_number,
     expiration_date: item.expiration_date,
     quantity_received: item.quantity_received,
-    storage_location: item.storage_location || null,
+    storage_location: toTitleCase(item.storage_location || null),
     unit_cost: item.unit_cost || null,
-    remarks: item.remarks || null
+    remarks: toSentenceCase(item.remarks || null)
   };
   const { data, error } = await supabase.from('receiving_report_items').update(update).eq('item_id', itemId).select('*').single();
   if (error) throw error;
@@ -273,6 +325,67 @@ receivingReportModel.cancelReport = async (reportId, userId, reason = null) => {
   } catch (_err) {
     await supabase.from('receiving_reports').update({ status: 'CANCELLED', updated_by: userId || null }).eq('report_id', reportId);
   }
+  return await receivingReportModel.getReportById(reportId);
+};
+
+receivingReportModel.updateStorage = async (reportId, items, userId) => {
+  // Validate that the report exists and is completed
+  const { data: report, error: reportError } = await supabase
+    .from('receiving_reports')
+    .select('report_id, status')
+    .eq('report_id', reportId)
+    .single();
+
+  if (reportError || !report) {
+    throw new Error('Receiving report not found');
+  }
+
+  if (report.status !== 'COMPLETED') {
+    throw new Error('Storage locations can only be updated for completed reports');
+  }
+
+  // Update storage locations for each item
+  for (const item of items) {
+    const { item_id, storage_location } = item;
+    const { error } = await supabase
+      .from('receiving_report_items')
+      .update({
+        storage_location: storage_location || null,
+        updated_by: userId || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('item_id', item_id)
+      .eq('report_id', reportId); // Ensure item belongs to this report
+
+    if (error) {
+      throw new Error(`Failed to update storage location for item ${item_id}: ${error.message}`);
+    }
+
+    // Also update the corresponding inventory record if it exists
+    const { data: itemData, error: itemError } = await supabase
+      .from('receiving_report_items')
+      .select('inventory_id')
+      .eq('item_id', item_id)
+      .single();
+
+    if (!itemError && itemData && itemData.inventory_id) {
+      const { error: inventoryError } = await supabase
+        .from('inventory')
+        .update({
+          storage_location: storage_location || null,
+          updated_by: userId || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('inventory_id', itemData.inventory_id);
+
+      if (inventoryError) {
+        console.error(`Failed to update inventory storage for inventory_id ${itemData.inventory_id}: ${inventoryError.message}`);
+        // Don't throw error here, continue with other items
+      }
+    }
+  }
+
+  // Return updated report
   return await receivingReportModel.getReportById(reportId);
 };
 

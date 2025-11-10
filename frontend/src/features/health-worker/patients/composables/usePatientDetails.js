@@ -17,6 +17,9 @@ export function usePatientDetails(patientId) {
   const loading = ref(true)
   const activeTab = ref('patient-info')
 
+  // Sorting state for scheduled vaccinations
+  const scheduledVaccinationsSort = ref('due-date') // 'due-date', 'name-asc', 'name-desc'
+
   // Tab configuration
   const tabs = [
     { id: 'patient-info', label: 'Patient Information' },
@@ -70,16 +73,16 @@ export function usePatientDetails(patientId) {
   })
 
   /**
-   * Format date for display (Philippine locale)
+   * Format date for display (MM/DD/YYYY format)
    */
   const formatDate = (dateString) => {
     if (!dateString) return '—'
     try {
-      return new Date(dateString).toLocaleDateString('en-PH', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
+      const date = new Date(dateString)
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}/${day}/${year}`
     } catch {
       return dateString
     }
@@ -136,33 +139,82 @@ export function usePatientDetails(patientId) {
    */
   const groupedVaccinations = computed(() => {
     const groups = {}
-    
+
+    // Canonical order list (aligned with admin view) for consistent display
+    const VACCINE_ORDER = [
+      'BCG',
+      'Hepatitis B', 'Hepa B', 'Hep B',
+      'Pentavalent', 'DPT-HepB-Hib', 'DPT-Hep B-HIB',
+      'Oral Polio', 'OPV',
+      'Inactivated Polio', 'IPV',
+      'Pneumococcal', 'PCV',
+      'Measles', 'MMR', 'Measles, Mumps, Rubella'
+    ]
+
+    const getOrderIndex = (name) => {
+      if (!name) return 999
+      const upper = String(name).toUpperCase()
+      for (let i = 0; i < VACCINE_ORDER.length; i++) {
+        if (upper.includes(VACCINE_ORDER[i].toUpperCase())) return i
+      }
+      return 999
+    }
+
     vaccinationHistory.value.forEach(vaccination => {
-      const vaccineName = vaccination.vaccine_antigen_name || 
-                         vaccination.vaccineName || 
-                         vaccination.antigen_name || 
-                         vaccination.antigenName || 
-                         'Unknown Vaccine'
-      
+      const vaccineName = vaccination.vaccine_antigen_name ||
+        vaccination.vaccineName ||
+        vaccination.antigen_name ||
+        vaccination.antigenName ||
+        'Unknown Vaccine'
+
       if (!groups[vaccineName]) {
         groups[vaccineName] = {
-          vaccineName: vaccineName,
+          vaccineName,
           doses: []
         }
       }
-      
       groups[vaccineName].doses.push(vaccination)
     })
-    
-    // Convert to array and sort doses by dose number within each group
-    return Object.values(groups).map(group => ({
-      ...group,
-      doses: group.doses.sort((a, b) => {
-        const doseA = a.dose_number || a.doseNumber || a.dose || 0
-        const doseB = b.dose_number || b.doseNumber || b.dose || 0
-        return doseA - doseB
-      })
-    }))
+
+    return Object.values(groups)
+      .map(group => ({
+        ...group,
+        doses: group.doses.sort((a, b) => {
+          const doseA = a.dose_number || a.doseNumber || a.dose || 0
+          const doseB = b.dose_number || b.doseNumber || b.dose || 0
+          return doseA - doseB
+        })
+      }))
+      .sort((a, b) => getOrderIndex(a.vaccineName) - getOrderIndex(b.vaccineName))
+  })
+
+  /**
+   * Sorted scheduled vaccinations based on current sort option
+   */
+  const sortedScheduledVaccinations = computed(() => {
+    const vaccines = [...scheduledVaccinations.value]
+
+    switch (scheduledVaccinationsSort.value) {
+      case 'name-asc':
+        return vaccines.sort((a, b) => {
+          const nameA = (a.vaccine_name || a.antigen_name || a.vaccineName || 'Unknown Vaccine').toLowerCase()
+          const nameB = (b.vaccine_name || b.antigen_name || b.vaccineName || 'Unknown Vaccine').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+      case 'name-desc':
+        return vaccines.sort((a, b) => {
+          const nameA = (a.vaccine_name || a.antigen_name || a.vaccineName || 'Unknown Vaccine').toLowerCase()
+          const nameB = (b.vaccine_name || b.antigen_name || b.vaccineName || 'Unknown Vaccine').toLowerCase()
+          return nameB.localeCompare(nameA)
+        })
+      case 'due-date':
+      default:
+        return vaccines.sort((a, b) => {
+          const dateA = new Date(a.scheduled_date || '9999-12-31')
+          const dateB = new Date(b.scheduled_date || '9999-12-31')
+          return dateA - dateB
+        })
+    }
   })
 
   /**
@@ -241,6 +293,12 @@ export function usePatientDetails(patientId) {
       
       // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
       try {
+        // Ensure database is open before using it
+        if (!db.isOpen()) {
+          await db.open()
+          console.log('✅ StaffOfflineDB opened for patient details fetch')
+        }
+        
         const cachedPatient = await db.patients.get(Number(id))
         
         if (cachedPatient) {
@@ -337,6 +395,13 @@ export function usePatientDetails(patientId) {
     activeTab.value = tabId
   }
 
+  /**
+   * Set scheduled vaccinations sort option
+   */
+  const setScheduledVaccinationsSort = (sortOption) => {
+    scheduledVaccinationsSort.value = sortOption
+  }
+
   return {
     // State
     patient,
@@ -348,6 +413,9 @@ export function usePatientDetails(patientId) {
     tabs,
     expandedCards,
     
+    // Sorting state
+    scheduledVaccinationsSort,
+    
     // Computed
     age,
     formattedBirthDate,
@@ -357,6 +425,7 @@ export function usePatientDetails(patientId) {
     formattedBirthWeight,
     formattedBirthLength,
     groupedVaccinations,
+    sortedScheduledVaccinations,
     
     // Methods
     formatDate,
@@ -365,6 +434,7 @@ export function usePatientDetails(patientId) {
     fetchMedicalHistory,
     rescheduleVaccination,
     toggleCard,
-    setActiveTab
+    setActiveTab,
+    setScheduledVaccinationsSort
   }
 }

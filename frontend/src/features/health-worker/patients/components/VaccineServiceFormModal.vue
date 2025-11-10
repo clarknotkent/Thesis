@@ -41,6 +41,7 @@
                 <input
                   v-model="outsideMode"
                   type="checkbox"
+                  :disabled="isBHS"
                   @change="handleOutsideToggle"
                 >
                 <span>Outside facility</span>
@@ -152,13 +153,17 @@
             </div>
             <div class="form-group">
               <label class="form-label">Date Administered *</label>
-              <input 
+              <DateInput 
                 v-model="serviceForm.dateAdministered"
-                type="date"
-                class="form-input"
-                required
-                @change="updateAgeCalculation"
-              >
+                :required="true"
+                output-format="iso"
+                :max="immunizationDateMax"
+                :min="immunizationDateMin"
+                @update:model-value="updateAgeCalculation"
+              />
+              <div class="form-text small text-muted">
+                Min: {{ immunizationDateMin || 'Patient DOB' }} | Max: {{ immunizationDateMax || 'Today' }}
+              </div>
             </div>
           </div>
 
@@ -286,11 +291,13 @@
 </template>
 
 <script setup>
-import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import api from '@/services/api'
 import { addToast } from '@/composables/useToast'
 import { useVaccineSelection } from '@/features/health-worker/patients/composables'
-import { getCurrentPHDate } from '@/utils/dateUtils'
+import { useAuth } from '@/composables/useAuth'
+import DateInput from '@/components/ui/form/DateInput.vue'
+import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds'
 
 const props = defineProps({
   show: {
@@ -313,6 +320,16 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:show', 'save'])
+
+// Get user authentication and role
+const { userInfo } = useAuth()
+const isBHS = computed(() => {
+  const user = userInfo.value
+  return user && user.role === 'HealthStaff' && user.hs_type === 'bhs'
+})
+
+// Use the immunization date bounds composable
+const { immunizationDateMin, immunizationDateMax, updateImmunizationDateConstraints } = useImmunizationDateBounds()
 
 // Use vaccine selection composable
 const {
@@ -346,9 +363,15 @@ const handleOutsideToggle = async () => {
 
 // Initialize on mount
 onMounted(async () => {
-  await refreshVaccineSources(getPatientId())
-
-  // Close dropdown when clicking outside
+  if (isBHS.value) {
+    // Force outside mode for BHS
+    if (!outsideMode.value) {
+      outsideMode.value = true
+    }
+    await onOutsideToggle(getPatientId())
+  } else {
+    await refreshVaccineSources(getPatientId())
+  }
   document.addEventListener('click', closeVaccineDropdown)
 })
 
@@ -404,17 +427,35 @@ const updateSmartDoses = async (vaccineId) => {
     if (suggested && allArr.includes(suggested)) {
       serviceForm.value.doseNumber = suggested
       autoSelectHint.value = `Suggested: Dose ${suggested}`
+
+      // Auto-set date_administered based on smart date for the suggested dose
+      const smartDates = data.smart_dates || {}
+      if (smartDates[suggested] && !serviceForm.value.dateAdministered) {
+        serviceForm.value.dateAdministered = smartDates[suggested]
+      }
     } else if (avail.length > 0) {
       const next = Math.min(...avail)
       if (allArr.includes(next)) {
         serviceForm.value.doseNumber = next
         autoSelectHint.value = `Suggested: Dose ${next}`
+
+        // Auto-set date_administered based on smart date for the next dose
+        const smartDates = data.smart_dates || {}
+        if (smartDates[next] && !serviceForm.value.dateAdministered) {
+          serviceForm.value.dateAdministered = smartDates[next]
+        }
       }
     } else if (allArr.length > 0 && completed.length > 0) {
       const firstRemaining = allArr.find(d => !completed.includes(Number(d)))
       if (firstRemaining) {
         serviceForm.value.doseNumber = Number(firstRemaining)
         autoSelectHint.value = `Suggested: Dose ${firstRemaining}`
+
+        // Auto-set date_administered based on smart date for the first remaining dose
+        const smartDates = data.smart_dates || {}
+        if (smartDates[firstRemaining] && !serviceForm.value.dateAdministered) {
+          serviceForm.value.dateAdministered = smartDates[firstRemaining]
+        }
       }
     } else if (
       serviceForm.value.doseNumber &&
@@ -501,6 +542,93 @@ const updateAgeCalculation = () => {
   }
 }
 
+// Normalize free-typed date to MM/DD/YYYY if possible
+const normalizeDate = () => {
+  dateError.value = '' // Clear previous errors
+  const raw = serviceForm.value.dateAdministered
+  if (!raw) return
+  // Accept patterns: MM/DD/YYYY, YYYY-MM-DD, YYYY/MM/DD, MM/DD/YYYY, DD/MM/YYYY
+  let y,m,d
+  const usDash = raw.match(/^\s*(\d{1,2})-(\d{1,2})-(\d{4})\s*$/)
+  if (usDash) {
+    m = +usDash[1]; d = +usDash[2]; y = +usDash[3]
+  } else {
+    const iso = raw.match(/^\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*$/)
+    if (iso) {
+      y = +iso[1]; m = +iso[2]; d = +iso[3]
+    } else {
+      const us = raw.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/)
+      const euro = raw.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/)
+      if (us) { m = +us[1]; d = +us[2]; y = +us[3] }
+      else if (euro) { d = +euro[1]; m = +euro[2]; y = +euro[3] }
+    }
+  }
+  if (!y || !m || !d) {
+    // Try Date parsing fallback
+    const dt = new Date(raw)
+    if (!isNaN(dt.getTime())) {
+      y = dt.getFullYear(); m = dt.getMonth()+1; d = dt.getDate()
+    }
+  }
+  if (!y || !m || !d) return
+  // Basic range validation
+  if (y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return
+  const mm = String(m).padStart(2,'0')
+  const dd = String(d).padStart(2,'0')
+  // Build selected date for comparisons
+  const selected = new Date(y, m - 1, d)
+  selected.setHours(0,0,0,0)
+  // Prevent future dates
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  if (selected > today) {
+    dateError.value = 'Date administered cannot be in the future.'
+    return
+  }
+  // Prevent dates before patient's birthdate if available
+  const patient = props.currentPatient || {}
+  const birth = patient?.date_of_birth || patient?.dob || patient?.birth_date || patient?.childInfo?.birthDate || null
+  if (birth) {
+    const bd = new Date(birth)
+    bd.setHours(0,0,0,0)
+    if (selected < bd) {
+      dateError.value = 'Date administered cannot be before patient date of birth.'
+      return
+    }
+  }
+
+  serviceForm.value.dateAdministered = `${mm}/${dd}/${y}`
+  updateAgeCalculation()
+}
+
+// Format date input as user types (MM/DD/YYYY)
+const formatDateInput = (event) => {
+  let value = event.target.value.replace(/\D/g, '') // Remove non-digits
+  if (value.length >= 2) {
+    value = value.slice(0, 2) + '/' + value.slice(2)
+  }
+  if (value.length >= 5) {
+    value = value.slice(0, 5) + '/' + value.slice(5)
+  }
+  value = value.slice(0, 10) // Limit to MM/DD/YYYY (10 chars)
+  serviceForm.value.dateAdministered = value
+}
+
+const onDatePickerChange = () => {
+  // Convert ISO date (YYYY-MM-DD) to MM/DD/YYYY format
+  if (serviceForm.value.dateAdministered) {
+    const date = new Date(serviceForm.value.dateAdministered)
+    if (!isNaN(date.getTime())) {
+      const mm = String(date.getMonth() + 1).padStart(2, '0')
+      const dd = String(date.getDate()).padStart(2, '0')
+      const yyyy = date.getFullYear()
+      serviceForm.value.dateAdministered = `${mm}/${dd}/${yyyy}`
+    }
+  }
+  showDatePicker.value = false
+  updateAgeCalculation()
+}
+
 /**
  * Prefill service form when editing an existing service
  */
@@ -512,13 +640,15 @@ const populateFromEditingService = async (svc) => {
   serviceForm.value.vaccineName = svc.vaccineName || svc.vaccine_name || svc.antigen_name || svc.vaccineName || ''
   serviceForm.value.diseasePrevented = svc.diseasePrevented || svc.disease_prevented || ''
   serviceForm.value.doseNumber = svc.doseNumber || svc.dose_number || svc.dose || ''
-  // Ensure date format is yyyy-mm-dd for input[type=date]
+  // Ensure date format is mm/dd/yyyy for input
   const rawDate = svc.dateAdministered || svc.date_administered || svc.date || ''
   if (rawDate) {
     const d = new Date(rawDate)
     if (!isNaN(d.getTime())) {
-      const iso = d.toISOString().slice(0,10)
-      serviceForm.value.dateAdministered = iso
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      const yyyy = d.getFullYear()
+      serviceForm.value.dateAdministered = `${mm}/${dd}/${yyyy}`
     } else {
       serviceForm.value.dateAdministered = rawDate
     }
@@ -542,18 +672,32 @@ watch(() => props.editingService, (val) => {
   if (val) populateFromEditingService(val)
 })
 
+// Watch currentPatient to recalculate age when patient data changes
+watch(() => props.currentPatient, () => {
+  updateAgeCalculation()
+}, { deep: true })
+
 // Also populate when modal is shown and editingService already exists
-watch(() => props.show, (val) => {
-  if (val && props.editingService) populateFromEditingService(props.editingService)
+watch(() => props.show, async (val) => {
   if (!val) {
-    // When closing, reset form
     resetServiceForm()
   }
   if (val) {
-    // Set default date to today if empty on open, then recompute age
-    if (!serviceForm.value.dateAdministered) {
-      serviceForm.value.dateAdministered = getCurrentPHDate()
+    resetServiceForm() // Reset for new service
+    if (props.editingService) {
+      populateFromEditingService(props.editingService)
+    } else {
+      // For new service, set default date to today and calculate age
+      const today = new Date()
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      const yyyy = today.getFullYear()
+      serviceForm.value.dateAdministered = `${mm}/${dd}/${yyyy}`
       updateAgeCalculation()
+    }
+    if (isBHS.value && !outsideMode.value) {
+      outsideMode.value = true
+      await onOutsideToggle(getPatientId())
     }
   }
 })
@@ -580,8 +724,25 @@ const saveService = () => {
   closeModal()
 }
 
-// Watch for date changes to update age
-watch(() => serviceForm.value.dateAdministered, updateAgeCalculation)
+// Watch for vaccine changes to update date constraints
+watch(() => serviceForm.value.vaccineId, async (newVaccineId) => {
+  if (newVaccineId && serviceForm.value.doseNumber) {
+    await updateImmunizationDateConstraints(getPatientId(), newVaccineId, serviceForm.value.doseNumber)
+  }
+})
+
+// Watch for dose changes to update date constraints
+watch(() => serviceForm.value.doseNumber, async (newDoseNumber) => {
+  if (newDoseNumber && serviceForm.value.vaccineId) {
+    await updateImmunizationDateConstraints(getPatientId(), serviceForm.value.vaccineId, newDoseNumber)
+  }
+})
+
+// Helper to check if the previous date was a smart date
+const wasPreviouslySmartDate = (oldDose, smartDates) => {
+  if (!oldDose || !smartDates[oldDose]) return false
+  return serviceForm.value.dateAdministered === smartDates[oldDose]
+}
 
 // Derived message when no vaccines are available after filtering
 const emptyDropdownMessage = computed(() => {
@@ -730,6 +891,61 @@ const emptyDropdownMessage = computed(() => {
   gap: 1rem;
 }
 
+.date-input-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.date-input-container .form-input {
+  padding-right: 3rem;
+  flex: 1;
+}
+
+.calendar-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 3rem;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+  z-index: 10;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-left: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-btn:hover {
+  background: #f8f9fa;
+  border-color: #3b82f6;
+}
+
+.date-picker-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.date-picker-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
 .vaccine-search-wrapper {
   position: relative;
 }
@@ -812,6 +1028,10 @@ const emptyDropdownMessage = computed(() => {
 
 .form-hint.success {
   color: #059669;
+}
+
+.form-hint.error {
+  color: #ef4444;
 }
 
 .modal-actions {

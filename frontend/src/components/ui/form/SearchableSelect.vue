@@ -221,8 +221,11 @@ const updateSearchTerm = (newVal) => {
   
   if (matchingOption) {
     searchTerm.value = getOptionLabel(matchingOption)
-  } else if (typeof newVal === 'string' || typeof newVal === 'number') {
+  } else if (props.allowCustom && (typeof newVal === 'string' || typeof newVal === 'number')) {
     searchTerm.value = String(newVal)
+  } else {
+    // No matching option and custom not allowed - clear the search term
+    searchTerm.value = ''
   }
 }
 

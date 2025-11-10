@@ -116,6 +116,8 @@
                 <DateInput
                   v-model="form.dateAdministered"
                   :required="true"
+                  :max="todayIso"
+                  :min="patientData?.date_of_birth"
                   @update:model-value="calculateAge"
                 />
               </div>
@@ -246,6 +248,8 @@ import { useToast } from '@/composables/useToast'
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
+
+const todayIso = new Date().toISOString().slice(0,10)
 
 const patientId = computed(() => route.params.patientId)
 const recordId = computed(() => route.params.recordId)
@@ -443,6 +447,34 @@ const saveVaccinationRecord = async () => {
   try {
     saving.value = true
 
+    // Validate administered date: not future and not before DOB
+    const isoDate = formatDateForAPI(form.value.dateAdministered)
+    if (!isoDate) {
+      addToast({ title: 'Invalid Date', message: 'Date administered is invalid.', type: 'error' })
+      return
+    }
+    try {
+      const sel = new Date(isoDate)
+      sel.setHours(0,0,0,0)
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      if (sel > today) {
+        addToast({ title: 'Invalid Date', message: 'Date administered cannot be in the future.', type: 'error' })
+        return
+      }
+      if (patientData.value?.date_of_birth) {
+        const bd = new Date(patientData.value.date_of_birth)
+        bd.setHours(0,0,0,0)
+        if (sel < bd) {
+          addToast({ title: 'Invalid Date', message: 'Date administered cannot be before patient date of birth.', type: 'error' })
+          return
+        }
+      }
+    } catch (e) {
+      addToast({ title: 'Invalid Date', message: 'Date administered is invalid.', type: 'error' })
+      return
+    }
+
     // Prepare remarks - keep site info in remarks if present
     const remarksWithSite = form.value.siteOfAdministration 
       ? `${form.value.remarks || ''} (Site: ${form.value.siteOfAdministration})`.trim()
@@ -453,7 +485,8 @@ const saveVaccinationRecord = async () => {
       administered_date: formatDateForAPI(form.value.dateAdministered),
       dose_number: parseInt(form.value.doseNumber),
       site_of_administration: form.value.siteOfAdministration || null,
-      administered_by: form.value.administeredBy,
+      // If administeredBy is empty/blank, send null instead of falling back to current user
+      administered_by: form.value.administeredBy || null,
       facility_name: form.value.facilityName || null,
       remarks: remarksWithSite
     }

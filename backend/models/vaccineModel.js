@@ -1,6 +1,22 @@
 import supabase from '../db.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 
+// Helper to use provided client or default service client
+function withClient(client) {
+  return client || supabase;
+}
+
+// Normalization functions
+const toTitleCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Lightweight status derivation (mirrors frontend logic)
 import { logActivity } from './activityLogger.js';
 function deriveInventoryStatus(row) {
@@ -143,11 +159,11 @@ const vaccineModel = {
         total_doses: scheduleData.total_doses !== null ? Number(scheduleData.total_doses) : null,
         concurrent_allowed: !!scheduleData.concurrent_allowed,
         code: scheduleData.code || null,
-        name: scheduleData.name || null,
+        name: scheduleData.name ? toTitleCase(scheduleData.name) : null,
         min_age_days: scheduleData.min_age_days !== null ? Number(scheduleData.min_age_days) : null,
         max_age_days: scheduleData.max_age_days !== null ? Number(scheduleData.max_age_days) : null,
         catchup_strategy: scheduleData.catchup_strategy || null,
-        notes: scheduleData.notes || null,
+        notes: scheduleData.notes ? toSentenceCase(scheduleData.notes) : null,
         updated_by: actorId || null,
         updated_at: new Date().toISOString()
       };
@@ -190,7 +206,7 @@ const vaccineModel = {
         skippable: !!d.skippable,
         grace_period_days: d.grace_period_days !== null ? Number(d.grace_period_days) : null,
         absolute_latest_days: d.absolute_latest_days !== null ? Number(d.absolute_latest_days) : null,
-        notes: d.notes || null,
+        notes: d.notes ? toSentenceCase(d.notes) : null,
         created_by: actorId || null,
         updated_by: actorId || null,
         created_at: new Date().toISOString()
@@ -249,14 +265,19 @@ const vaccineModel = {
         .single();
       if (existing) { const err = new Error('Duplicate vaccine (antigen_name, brand_name, category)'); err.status = 409; throw err; }
 
-      const insertPayload = {
-        antigen_name: vaccineData.antigen_name,
-        brand_name: vaccineData.brand_name,
-        disease_prevented: vaccineData.disease_prevented || null,
-        manufacturer: vaccineData.manufacturer,
+      // Apply normalization
+      const normalizedData = {
+        antigen_name: toTitleCase(vaccineData.antigen_name),
+        brand_name: toTitleCase(vaccineData.brand_name),
+        manufacturer: toTitleCase(vaccineData.manufacturer),
+        disease_prevented: vaccineData.disease_prevented ? toTitleCase(vaccineData.disease_prevented) : null,
         vaccine_type: vaccineData.vaccine_type,
         is_nip: vaccineData.is_nip === true || vaccineData.is_nip === 'true' || false,
-        category: vaccineData.category,
+        category: vaccineData.category
+      };
+
+      const insertPayload = {
+        ...normalizedData,
         created_by: actorId || null,
         // Also stamp updated_by on create so audit fields are never null
         updated_by: actorId || null
@@ -286,6 +307,11 @@ const vaccineModel = {
           else patch[k] = updates[k];
         }
       }
+      // Apply normalization to string fields
+      if (patch.antigen_name) patch.antigen_name = toTitleCase(patch.antigen_name);
+      if (patch.brand_name) patch.brand_name = toTitleCase(patch.brand_name);
+      if (patch.manufacturer) patch.manufacturer = toTitleCase(patch.manufacturer);
+      if (patch.disease_prevented) patch.disease_prevented = toTitleCase(patch.disease_prevented);
       if (patch.category && !['VACCINE','DEWORMING','VITAMIN_A'].includes(patch.category)) { const e = new Error('Invalid category'); e.status=400; throw e; }
       patch.updated_at = new Date().toISOString();
       patch.updated_by = actorId || null;
@@ -631,7 +657,7 @@ const vaccineModel = {
       if (updErr) throw updErr;
 
       // Handle stock change through a single transaction insert to avoid doubling
-      if (inventoryData.current_stock_level !== null) {
+      if ('current_stock_level' in inventoryData && inventoryData.current_stock_level !== null) {
         const newQty = Number(inventoryData.current_stock_level);
         if (isNaN(newQty) || newQty < 0) { const e = new Error('Invalid current_stock_level'); e.status=400; throw e; }
         const delta = newQty - (before.current_stock_level || 0);

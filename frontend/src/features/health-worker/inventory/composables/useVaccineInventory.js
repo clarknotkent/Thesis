@@ -149,6 +149,12 @@ export function useVaccineInventory() {
       
       // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
       try {
+        // Ensure database is open before using it
+        if (!db.isOpen()) {
+          await db.open()
+          console.log('✅ StaffOfflineDB opened for vaccine inventory fetch')
+        }
+        
         const cachedInventory = await db.inventory.toArray()
         
         if (cachedInventory.length > 0) {

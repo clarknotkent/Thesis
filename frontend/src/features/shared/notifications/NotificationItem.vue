@@ -13,7 +13,7 @@
     <div class="notification-content">
       <div class="notification-header">
         <h6 class="notification-title">
-          {{ title || 'Notification' }}
+          {{ displayTitle }}
         </h6>
         <div class="notification-actions">
           <small class="notification-time">{{ displayTime }}</small>
@@ -26,6 +26,12 @@
             <i class="bi bi-x" />
           </button>
         </div>
+      </div>
+      <div
+        v-if="header"
+        class="notification-header-text"
+      >
+        {{ header }}
       </div>
       <p class="notification-message">
         {{ message }}
@@ -49,6 +55,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { normalizeNotificationTitle } from '@/utils/stringUtils'
 
 defineEmits(['click', 'delete'])
 
@@ -56,6 +63,7 @@ const props = defineProps({
   id: { type: [String, Number], default: null },
   title: { type: String, default: '' },
   message: { type: String, default: '' },
+  header: { type: String, default: '' },
   type: { type: String, default: 'system' },
   time: { type: String, default: null }, // preformatted time
   createdAt: { type: String, default: null }, // raw ISO
@@ -63,6 +71,9 @@ const props = defineProps({
   read: { type: Boolean, default: false },
   showDelete: { type: Boolean, default: false },
 })
+
+// Standardize header casing for display only (do not mutate original value)
+const displayTitle = computed(() => normalizeNotificationTitle(props.title || 'Notification'))
 
 const displayTime = computed(() => {
   if (props.time) return props.time
@@ -134,6 +145,7 @@ const channelLabel = computed(() => {
 .delete-btn { background:none; border:none; color:#dc3545; cursor:pointer; padding:0; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition: background-color .2s; opacity:0; }
 .notification-item:hover .delete-btn { opacity:1; }
 .delete-btn:hover { background: rgba(220,53,69,.1); }
+.notification-header-text { font-weight:600; color:#1f2937; font-size:.875rem; margin-bottom:.375rem; padding: .5rem; background:#f8fafc; border-radius:.375rem; border-left:3px solid #007bff; }
 .notification-message { margin:0 0 .5rem 0; color:#555; font-size:.875rem; line-height:1.4; }
 .notification-footer { display:flex; align-items:center; gap:.5rem; }
 .notification-channel { display:inline-flex; align-items:center; gap:.25rem; font-size:.75rem; color:#6c757d; background:#f8f9fa; padding:.25rem .5rem; border-radius:.25rem; }

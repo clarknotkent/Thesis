@@ -43,119 +43,26 @@ class SMSService {
 
   /**
    * Return a sanitized/finalized message string that will be sent to the provider.
-   * Exposed so callers (scheduler) can preview the final payload before sending.
+   * Preserves template formatting exactly as written.
    */
   sanitizeMessage(message) {
-    // Preserve intentional newlines while normalizing whitespace.
-    // - Normalize CRLF -> LF
-    // - Trim each line and collapse multiple spaces/tabs inside a line to single space
-    // - Collapse more than one consecutive blank line into a single blank line
     if (typeof message !== 'string') return message;
 
-    // Normalize CRLF to LF
-    const s = message.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    // Split into lines, trim each line and collapse internal whitespace to single spaces
-    const lines = s.split('\n').map(line => line.replace(/\s+/g, ' ').trim());
-
-    // Collapse consecutive blank lines into a single blank line
-    const collapsed = [];
-    let lastWasBlank = false;
-    for (const ln of lines) {
-      const isBlank = ln === '';
-      if (isBlank && lastWasBlank) continue; // skip extra blank line
-      collapsed.push(ln);
-      lastWasBlank = isBlank;
-    }
-
-    // Ensure at least one empty line after lines ending with ':' (common in templates)
-    const withParagraphs = [];
-    for (let i = 0; i < collapsed.length; i++) {
-      const ln = collapsed[i];
-      withParagraphs.push(ln);
-      try {
-        if (ln && ln.trim().endsWith(':')) {
-          // If next line exists and is not already blank, insert a blank line
-          const next = collapsed[i + 1];
-          if (typeof next !== 'undefined' && next !== '') {
-            withParagraphs.push('');
-          }
-        }
-      } catch (_) {}
-    }
-
-    // Ensure at least one empty line BEFORE a closing/signature line like "Thank you" or "Thanks"
-    const withSignatures = [];
-    for (let i = 0; i < withParagraphs.length; i++) {
-      const ln = withParagraphs[i];
-      const isSignature = typeof ln === 'string' && /^\s*(Thank you|Thanks)([.!]?|\b)/i.test(ln.trim());
-      if (isSignature) {
-        // if previous line exists and is not blank, insert a blank line before the signature
-        const prev = withSignatures.length > 0 ? withSignatures[withSignatures.length - 1] : undefined;
-        if (typeof prev !== 'undefined' && prev !== '') {
-          withSignatures.push('');
-        }
-      }
-      withSignatures.push(ln);
-    }
-
-    // Rejoin with LF — providers commonly accept \n; keep as-is so scheduler and logs show real newlines
-    return withSignatures.join('\n').trim();
+    // Normalize CRLF to LF to ensure consistent line endings
+    // Preserve all whitespace and formatting exactly as in template
+    return message.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   }
 
   /**
    * Normalize message for telco (GSM-7 friendly):
-   * - convert newlines to spaces
-   * - collapse whitespace
+   * - preserve newlines and formatting from sanitizeMessage
    * - replace common Unicode punctuation with ASCII equivalents
-   * - remove remaining non-ASCII characters
+   * - remove remaining non-ASCII characters except newlines
    */
   normalizeForTelco(message) {
     if (typeof message !== 'string') return message;
 
     let s = String(message);
-    // Normalize CRLF and CR to LF
-    s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    // Collapse internal whitespace on each line but preserve newlines
-    const lines = s.split('\n').map(line => line.replace(/\s+/g, ' ').trim());
-    // Collapse multiple blank lines to a single blank line
-    const collapsed = [];
-    let lastBlank = false;
-    for (const ln of lines) {
-      const isBlank = ln === '';
-      if (isBlank && lastBlank) continue;
-      collapsed.push(ln);
-      lastBlank = isBlank;
-    }
-    // Ensure at least one empty line after lines that end with ':'
-    const withParagraphs = [];
-    for (let i = 0; i < collapsed.length; i++) {
-      const ln = collapsed[i];
-      withParagraphs.push(ln);
-      try {
-        if (ln && ln.trim().endsWith(':')) {
-          const next = collapsed[i + 1];
-          if (typeof next !== 'undefined' && next !== '') {
-            withParagraphs.push('');
-          }
-        }
-      } catch (_) {}
-    }
-    // Ensure at least one empty line BEFORE a closing/signature line like "Thank you" or "Thanks"
-    const withSignatures = [];
-    for (let i = 0; i < withParagraphs.length; i++) {
-      const ln = withParagraphs[i];
-      const isSignature = typeof ln === 'string' && /^\s*(Thank you|Thanks)([.!]?|\b)/i.test(ln.trim());
-      if (isSignature) {
-        const prev = withSignatures.length > 0 ? withSignatures[withSignatures.length - 1] : undefined;
-        if (typeof prev !== 'undefined' && prev !== '') {
-          withSignatures.push('');
-        }
-      }
-      withSignatures.push(ln);
-    }
-    s = withSignatures.join('\n');
 
     // common punctuation replacements
     s = s.replace(/[–—]/g, '-')      // en-dash / em-dash -> hyphen
@@ -166,7 +73,7 @@ class SMSService {
     // Remove any remaining non-ASCII characters except newline
     s = s.replace(/[^\x00-\x7F\n]/g, '');
 
-    return s.trim();
+    return s;
   }
 
   /**
@@ -188,6 +95,8 @@ class SMSService {
 
     // Sanitize message to avoid provider rejection due to newlines/smart-quotes/etc.
     const sanitizedMessage = this.sanitizeMessage(message);
+    console.log('[DEBUG] Original message:', JSON.stringify(message));
+    console.log('[DEBUG] Sanitized message:', JSON.stringify(sanitizedMessage));
 
     // Log a compact debug message (do not print API key)
     console.log(`[smsService] Sending SMS to ${formattedRecipient} (msgLen=${String(sanitizedMessage || '').length})`);
@@ -219,6 +128,7 @@ class SMSService {
 
     // Normalize for telco to avoid GSM issues (also covers scheduled messages)
     const normalizedMessage = this.normalizeForTelco(sanitizedMessage);
+    console.log('[DEBUG] Normalized message:', JSON.stringify(normalizedMessage));
     try {
       try {
         console.log(`[smsService] normalized message length=${String(normalizedMessage || '').length} preview="${String(normalizedMessage || '').slice(0,100)}"`);
@@ -331,6 +241,12 @@ class SMSService {
     for (const [key, value] of Object.entries(replacements)) {
       message = message.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
     }
+
+    // Add proper spacing for SMS readability
+    message = message.replace(/!\n/g, '!\n\n');
+    message = message.replace(/schedule\(s\):\n/g, 'schedule(s):\n\n');
+    message = message.replace(/(\d{4}:)\n/g, '$1\n\n');
+    message = message.replace(/\nThank you!/g, '\n\nThank you!');
 
     return message;
   }

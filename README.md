@@ -58,6 +58,161 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 > - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit) — additionally enforced server‑side for safety
 > - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
 > - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
+> - ✅ Vaccine dropdown fixes: "Other" vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
+> - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
+> - ✅ Immunizations added to an existing visit now reliably attach the latest `vital_id` (Admin & BHS) — server resolves if client omits
+> - 🛠️ Dev DX: PWA Workbox glob warnings suppressed in development (`devOptions.suppressWarnings`) for cleaner console
+> - 📝 Docs: Added `docs/PAYLOADS__ADMIN_AND_BHS_2025-11-07.md` summarizing payloads and policies
+
+> **� November 6, 2025 - Backend ES Module Modernization**
+>
+> - ✅ **Complete ES Module Migration** - All 86 backend files converted from CommonJS to ES6
+> - ✅ **Node.js Modern Standard** - Native `import`/`export` syntax throughout backend
+> - ✅ **Zero ESLint Warnings** - Eliminated MODULE_TYPELESS_PACKAGE_JSON warning
+> - ✅ **Server Running Successfully** - Port 3001, all services initialized
+> - 📦 Backend now uses `"type": "module"` with `.js` extensions required
+>
+> **�🔧 November 6, 2025 - ESLint Code Quality Setup**
+>
+> - ✅ **ESLint 9.39.1 integrated** with Vue 3 plugin for automated code quality checks
+> - ✅ **Flat config format** - Using ESLint 9's modern standard
+> - ✅ **Auto-fixed 7,744 issues** - Consistent formatting across entire codebase
+> - ✅ **Vite integration** - Real-time linting during development via vite-plugin-eslint
+> - ✅ **Team-ready** - `npm run lint` and `npm run lint:fix` scripts for everyone
+> - ✅ **Vue 3 optimized** - Composition API globals configured (defineProps, defineEmits, etc.)
+> - 📦 Push includes: eslint.config.js, updated package.json, vite.config.js
+>
+> **� November 6, 2025 - Admin Visit Parity & Data Integrity**
+>
+> - ✅ Admin UI now enforces **one visit per patient per day** (parity with Health Worker)
+> - ✅ Same‑day existing visit is auto‑adopted; vitals **auto‑fill and are read‑only**
+> - ✅ Staff dropdown mapping fixed; `hs_type` values normalized
+> - ✅ DOB change rules: lock when any vaccine completed; otherwise async schedule rewrite (no timeouts)
+> - ✅ SMS reschedule guard: no SMS when new scheduled date is already in the past
+> - ✅ Data integrity: `recorded_by` must be numeric `user_id`; `updated_by` stamped by server (prevents 22P02)
+>
+> **�🧹 November 6, 2025 - QA RESET TOOL ADDED**
+>
+> - ✅ New non-production QA reset script with full backup, deep cleanup, ID resequencing, and admin/FAQ re-log
+> - 📄 See: `docs/RESET_QA_INSTRUCTIONS.md` and `backend/scripts/reset_clean_for_QA.sql`
+> - ⚠️ Safe to run only in QA/Staging — creates `backup_reset_YYYYMMDD_HHMM` snapshot automatically
+>
+> **🎉 November 5, 2025 - SMS & TOAST NOTIFICATIONS FIXED!**
+> 
+> **Critical System Fixes:**
+> - ✅ **SMS Bulk Toggle Fixed** - 500 error resolved with Supabase upsert conflict handling
+> - ✅ **Individual Guardian Toggle Fixed** - Auto-send settings work correctly
+> - ✅ **Toast Notifications Standardized** - 16 files updated across all admin subsystems
+> - ✅ **Guardian Details Modal** - View button shows comprehensive SMS statistics
+> - ✅ **Router Cleanup** - Removed duplicate SMS routes
+> - ✅ **100% Admin Verification** - All subsystems checked and validated
+>
+> **⚡ November 5, 2025 - OFFLINE PARENT PORTAL: PERFORMANCE & RELIABILITY**
+>
+> **Targeted Offline Refactor (Parent Portal):**
+> - ✅ Transactional prefetch — sequential, per-child transactions; global resources handled one-by-one
+> - ✅ Chunked Dexie writes — bulkPut in chunks of 500 for faster, safer writes
+> - ✅ Deterministic "Cached" toast — shown only after all IndexedDB writes complete
+> - ✅ Schedules/Vitals/Visits parity — broader response-shape support; stable vital_id fallback; status/age computed
+> - ✅ Vaccine name fallback — name || vaccine_name || antigen_name for offline views
+> - ✅ FAQs offline — inconsistent API shapes normalized and cached
+> - ✅ Chat previews offline — last message text/time derived from cached messages
+> - ✅ Block logout when offline — prevents accidental data loss while disconnected
+> - ✅ Quieter logs — summary-only per batch/endpoint
+> 
+> **November 4, 2025 - PARENT PORTAL 100% OFFLINE!**
+> 
+> **Revolutionary One-Login Offline Access:**
+> - ✅ **Complete data cached on login** - No page visits required
+> - ✅ **9 route components prefetched** - Navigate offline instantly
+> - ✅ **10 Supabase-mirrored tables** - Local database matches cloud
+> - ✅ **15 immunization records** - Full vaccination history offline
+> - ✅ **Guardian & birth history** - Complete medical records cached
+> - ✅ **20-30x faster** - Instant page loads from IndexedDB
+> - ✅ **Zero API calls** - Works 100% offline after one login
+> 
+> **Bulk Prefetch System:** `prefetchParentDataOnLogin()` caches everything in ~2-2.5 seconds (optimized!)
+>
+> See [BULK-CACHE-ON-LOGIN.md](docs/parent-offline/BULK-CACHE-ON-LOGIN.md) for complete details.
+
+> **🆕 November 10, 2025 - Immunization Date Constraints & System Utilities**
+>
+> **New Date Validation System:**
+> - ✅ **useImmunizationDateBounds** composable - Dynamic min/max date calculation for immunizations
+> - ✅ Calculates constraints based on patient DOB + vaccine schedule (due_after_days, absolute_latest_days)
+> - ✅ Prevents invalid immunization dates outside recommended windows
+> - ✅ Reactive date bounds for form validation and UX
+>
+> **Enhanced Text Processing:**
+> - ✅ **stringUtils.js** - Smart title casing with medical acronym preservation
+> - ✅ Handles SMS, BCG, OPV, IPV, PCV, MMR, JE, HPV, COVID, DPT acronyms correctly
+> - ✅ **vaccineOrder.js** - Vaccine ordering utilities with eligibility-based sorting
+> - ✅ Normalizes vaccine names and compares by first-dose eligible dates
+>
+> **Enhanced User Management:**
+> - ✅ **Smart User Identifier** - Single field accepts username or email input
+> - ✅ **Auto Email Generation** - Creates username@immunizeme.com when username entered
+> - ✅ **Intelligent Parsing** - Detects email vs username and handles appropriately
+> - ✅ **Philippine Phone Formatting** - Auto-formats contact numbers (+639**-***-****)
+> - ✅ **Role-based Form Fields** - Dynamic fields based on user role selection
+> - ✅ **BHS Role Access Control** - Barangay Health Staff restricted to outside vaccination records only
+> - ✅ **BHS Restrictions** - Cannot edit in-facility immunization records, guided to contact nurses/nutritionists
+>
+> **Backend Testing Infrastructure:**
+> - ✅ **test_template.js** - SMS template rendering validation
+> - ✅ Tests variable replacement in notification templates
+> - ✅ Ensures SMS content renders correctly with real data
+>
+> **System-wide Component Improvements:**
+> - ✅ 50+ frontend components enhanced across Admin, Health Worker, and Parent portals
+> - ✅ 25+ backend files refined for ES module consistency
+> - ✅ Better error handling, validation, and user experience
+> - ✅ Continued code quality improvements and bug fixes
+>
+> 🎨 **November 7, 2025 - User Accounts Enhancement**
+>
+> **Accurate User Statistics:**
+> - ✅ Real-time user counts across all roles (not just current page)
+> - ✅ Statistics auto-refresh after create/update/delete/restore operations
+> - ✅ Fixed role filtering to match backend display values
+>
+> **Visual Improvements:**
+> - ✅ Custom color scheme: Admins (Purple #601FC2), Staff (Cyan #00B2E3), Guardians (Orange #BC4E1E)
+> - ✅ Reordered cards: Total Users → Admins → Staff → Guardians (left to right)
+> - ✅ Better role identification with distinct colors
+>
+> **Terminology Updates:**
+> - ✅ "Health Workers" renamed to "Staff" (cards and filters)
+> - ✅ "Parents" renamed to "Guardians" (cards and filters)
+> - ✅ Consistent labeling throughout interface
+>
+> 🎨 **November 7, 2025 - Admin UI Consistency & UX Enhancements**
+>
+> **Patient Statistics Dashboard:**
+> - ✅ Added 5 statistics cards to Patient Records page (Total, Male, Female, FIC, CIC)
+> - ✅ New backend endpoint `/api/patients/stats` with gender and immunization status counts
+>
+> **Visual Consistency Across Admin:**
+> - ✅ Standardized card design: `border border-{color} border-3` pattern across Dashboard, Users, Activity Logs
+> - ✅ Added Bootstrap icons to 10 admin page titles (speedometer, chat, bell, file, person, question, list, gear)
+> - ✅ Implemented breadcrumb navigation on 8 admin pages (Admin > Page Name pattern)
+> - ✅ Unified breadcrumb styling: › separator, #4e73df links, no underline by default, underline on hover
+> - ✅ Fixed SMS and Inventory breadcrumb inconsistencies (removed / separator, added missing styles)
+>
+> **Pagination Improvements:**
+> - ✅ Dashboard Recent Vaccinations now uses AppPagination component
+> - ✅ Consistent pagination styling across Dashboard, Patient Records, and Inventory
+> - ✅ Professional page navigation with chevron icons and page info display
+>
+> **Enhanced Components:**
+> - ✅ AppPageHeader component now supports icon slot for flexible page headers
+> - ✅ 19 admin pages updated with complete breadcrumb CSS (including sub-pages)
+>
+> 🩺 **November 7, 2025 - Admin/BHS Immunization & Vitals Reliability**
+>
+> - ✅ Outside immunizations now ALWAYS send `administered_by: null` in Admin and BHS (new/existing visit) — additionally enforced server‑side for safety
+> - ✅ BHS existing visit posts include `visit_id` for outside entries to keep records linked
+> - ✅ Vitals safe-update: send only non-empty fields; try `/vitals` `{ respiration, height }` then fallback `/vitalsigns` `{ respiration_rate, height_length }` — prevents clearing values
 > - ✅ Vaccine dropdown fixes: “Other” vaccines shown even when schedules complete; fail‑open when schedules missing (Admin & BHS)
 > - ✅ Guardian data fixes: BHS dropdown fetches full list + refreshes Dexie; Admin list shows registered guardian + contact
 > - ✅ Immunizations added to an existing visit now reliably attach the latest `vital_id` (Admin & BHS) — server resolves if client omits
@@ -1275,10 +1430,10 @@ git commit -m "feat: Add new feature description"
 ---
 
 Project: Immunization Management System
-Version: 4.6 (BREAKING: Parent Offline Removed)
-Last Updated: November 8, 2025
+Version: 4.7 (Immunization Date Constraints & System Utilities)
+Last Updated: November 10, 2025
 Maintained by: Clark Kent (clarknotkent), JapethDee and RobertBite15
 License: Academic Thesis Project
 
-**Major Update v4.6**: Parent offline/PWA completely removed. All offline modes broken. System converted to online-only for parent portal. See CHANGELOG.md (November 8, 2025) for complete breaking changes.
+**Major Update v4.7**: Added immunization date validation system, enhanced text processing utilities, and comprehensive component improvements. See CHANGELOG.md (November 10, 2025) for complete details.
 

@@ -2,6 +2,17 @@ import supabase from '../db.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 import { logActivity } from './activityLogger.js';
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Normalize a notification row into a consistent DTO
 function mapNotificationDTO(row) {
   if (!row) return row;
@@ -13,6 +24,7 @@ function mapNotificationDTO(row) {
     recipient_email,
     template_code,
     message_body,
+    header,
     related_entity_type,
     related_entity_id,
     status,
@@ -29,6 +41,27 @@ function mapNotificationDTO(row) {
     deleted_by,
     created_by_name,
   } = row;
+
+  // Derive header from template if it's a custom message (no template_code)
+  let derivedHeader = header;
+  if (!template_code && message_body) {
+    // For custom messages, extract header from the first line or first sentence
+    const lines = message_body.split('\n').filter(line => line.trim());
+    if (lines.length > 0) {
+      // Take first line if it's short (likely a header), or first sentence
+      const firstLine = lines[0].trim();
+      if (firstLine.length <= 50) {
+        derivedHeader = firstLine;
+      } else {
+        // Take first sentence if line is long
+        const firstSentence = message_body.split(/[.!?]/)[0].trim();
+        if (firstSentence.length <= 50) {
+          derivedHeader = firstSentence;
+        }
+      }
+    }
+  }
+
   return {
     notification_id,
     channel,
@@ -37,6 +70,7 @@ function mapNotificationDTO(row) {
     recipient_email,
     template_code,
     message_body,
+    header: derivedHeader ?? null,
     related_entity_type,
     related_entity_id,
     status,
@@ -89,7 +123,7 @@ const broadcastNotifications = async (notificationData, actorId) => {
       err.status = 400;
       throw err;
     }
-    const messageBody = coerceEmpty(incoming.message_body ?? incoming.messageBody ?? incoming.message);
+    const messageBody = coerceEmpty(toSentenceCase(incoming.message_body ?? incoming.messageBody ?? incoming.message));
     if (!messageBody) {
       const err = new Error('message_body is required');
       err.status = 400;
@@ -183,6 +217,15 @@ const createNotification = async (notificationData, actorId) => {
     // Accept both snake_case and camelCase field names from clients
     const incoming = notificationData || {};
     console.log('Incoming notificationData:', JSON.stringify(incoming, null, 2));
+    
+    // For custom messages (empty template_code), use header as template_code
+    let effectiveTemplateCode = coerceEmpty(incoming.template_code ?? incoming.templateCode ?? incoming.template ?? null);
+    const headerValue = coerceEmpty(incoming.header ?? incoming.notificationHeader ?? null);
+    
+    if (!effectiveTemplateCode && headerValue) {
+      effectiveTemplateCode = headerValue;
+    }
+    
     const insertPayload = {
       channel: normalizeChannelDB(incoming.channel),
       recipient_user_id: coerceEmpty(
@@ -197,8 +240,8 @@ const createNotification = async (notificationData, actorId) => {
       ),
       recipient_phone: coerceEmpty(incoming.recipient_phone ?? incoming.recipientPhone ?? incoming.phone ?? incoming.contact_number ?? incoming.contactNumber ?? incoming.recepient_phone ?? incoming.recepientPhone ?? null),
       recipient_email: coerceEmpty(incoming.recipient_email ?? incoming.recipientEmail ?? incoming.email ?? incoming.recepient_email ?? incoming.recepientEmail ?? null),
-      template_code: coerceEmpty(incoming.template_code ?? incoming.templateCode ?? incoming.template ?? null),
-      message_body: coerceEmpty(incoming.message_body ?? incoming.messageBody ?? incoming.message ?? null),
+      template_code: effectiveTemplateCode,
+      message_body: coerceEmpty(toSentenceCase(incoming.message_body ?? incoming.messageBody ?? incoming.message ?? null)),
       related_entity_type: coerceEmpty(incoming.related_entity_type ?? incoming.relatedEntityType ?? incoming.entity_type ?? incoming.entityType ?? null),
       related_entity_id: incoming.related_entity_id ?? incoming.relatedEntityId ?? incoming.entity_id ?? incoming.entityId ?? null,
       scheduled_at: coerceEmpty(incoming.scheduled_at ?? incoming.scheduledAt ?? null),

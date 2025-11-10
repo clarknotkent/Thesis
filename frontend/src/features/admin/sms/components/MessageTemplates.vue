@@ -246,18 +246,9 @@
               <!-- Time Range -->
               <div class="mb-3">
                 <label class="form-label">Time of Day</label>
-                <select
-                  v-model="editingTemplate.time_range"
-                  class="form-select"
-                  required
-                >
-                  <option value="day">
-                    Day (6:00 AM - 5:59 PM)
-                  </option>
-                  <option value="evening">
-                    Evening (6:00 PM - 5:59 AM)
-                  </option>
-                </select>
+                <div class="text-muted small">
+                  Auto-determined based on send time
+                </div>
               </div>
 
               <!-- Message Template -->
@@ -369,7 +360,7 @@
                   {{ viewingTemplate.name }}
                 </div>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-6">
                 <label class="text-muted small mb-1">Trigger</label>
                 <div>
                   <span
@@ -377,10 +368,6 @@
                     :class="getTypeBadgeClass(viewingTemplate.trigger_type)"
                   >{{ formatTriggerType(viewingTemplate.trigger_type) }}</span>
                 </div>
-              </div>
-              <div class="col-md-3">
-                <label class="text-muted small mb-1">Time</label>
-                <div>{{ formatTimeRange(viewingTemplate.time_range) }}</div>
               </div>
             </div>
             <div class="mb-2">
@@ -448,7 +435,6 @@ const templates = ref([])
 const editingTemplate = ref({
   name: '',
   trigger_type: '',
-  time_range: 'day',
   template: '',
   is_active: true
 })
@@ -490,7 +476,7 @@ const previewMessage = computed(() => {
   if (!editingTemplate.value.template) return 'Preview will appear here...'
   
   // Sample data for preview
-  const greeting = editingTemplate.value.time_range === 'day' ? 'Good Day' : 'Good Evening'
+  const greeting = 'Good Day' // Default to day greeting for preview
   const greetingTime = greeting
   const title = 'Mr.'
   const guardianName = 'Dela Cruz'
@@ -538,7 +524,7 @@ const getTypeBadgeClass = (type) => {
 
 const getCardPreview = (t) => {
   if (!t?.template) return ''
-  const greeting = (t.time_range === 'day') ? 'Good Day' : 'Good Evening'
+  const greeting = 'Good Day' // Default to day greeting for preview
   const title = 'Mr.'
   const guardianName = 'Dela Cruz'
   const patientName = 'Maria'
@@ -568,7 +554,6 @@ const createNewTemplate = () => {
   editingTemplate.value = {
     name: '',
     trigger_type: '',
-    time_range: 'day',
     template: 'Good Day, {guardian_title} {guardian_last_name}! This is a reminder that your child, {patient_name} has scheduled on {scheduled_date} for the following vaccines:\n\n{vaccine_lines}\n\nSee you there! Thank you!',
     is_active: true
   }
@@ -614,15 +599,18 @@ const deleteTemplate = async (template) => {
 
 const saveTemplate = async () => {
   try {
+    const payload = {
+      name: editingTemplate.value.name,
+      template: editingTemplate.value.template,
+      trigger_type: editingTemplate.value.trigger_type,
+      is_active: editingTemplate.value.is_active,
+    }
+    
+    console.log('Saving template with payload:', payload)
+    
     if (editingTemplate.value.id) {
       // Update existing
-      const { data } = await api.put(`/sms/templates/${editingTemplate.value.id}` , {
-        name: editingTemplate.value.name,
-        template: editingTemplate.value.template,
-        trigger_type: editingTemplate.value.trigger_type,
-        time_range: editingTemplate.value.time_range,
-        is_active: editingTemplate.value.is_active,
-      })
+      const { data } = await api.put(`/sms/templates/${editingTemplate.value.id}`, payload)
       const updated = data?.data
       if (updated) {
         const idx = templates.value.findIndex(t => t.id === updated.id)
@@ -631,20 +619,16 @@ const saveTemplate = async () => {
       addToast({ message: 'Template updated successfully', type: 'success' })
     } else {
       // Create new
-      const { data } = await api.post('/sms/templates', {
-        name: editingTemplate.value.name,
-        template: editingTemplate.value.template,
-        trigger_type: editingTemplate.value.trigger_type,
-        time_range: editingTemplate.value.time_range,
-        is_active: editingTemplate.value.is_active,
-      })
+      const { data } = await api.post('/sms/templates', payload)
       const created = data?.data
       if (created) templates.value.unshift(created)
       addToast({ message: 'Template created successfully', type: 'success' })
     }
   } catch (err) {
     console.error('Failed to save template', err)
-    addToast({ message: 'Failed to save template', type: 'danger' })
+    const errorMessage = err.response?.data?.message || 'Failed to save template'
+    console.error('Server error message:', errorMessage)
+    addToast({ message: errorMessage, type: 'danger' })
   } finally {
     hideModal()
   }

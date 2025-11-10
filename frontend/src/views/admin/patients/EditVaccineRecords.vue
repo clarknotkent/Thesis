@@ -144,8 +144,13 @@
                   <DateInput
                     v-model="dose.dateAdministered"
                     :required="true"
+                    :min="dose.dateMin"
+                    :max="dose.dateMax"
                     @update:model-value="calculateAge(index)"
                   />
+                  <small class="text-muted">
+                    Min: {{ dose.dateMin || 'None' }} | Max: {{ dose.dateMax || 'Today' }}
+                  </small>
                 </div>
 
                 <!-- Age at Administration -->
@@ -314,6 +319,8 @@ import SearchableSelect from '@/components/ui/form/SearchableSelect.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import ApprovalModal from '@/components/ApprovalModal.vue'
+import { useImmunizationDateBounds } from '@/composables/useImmunizationDateBounds'
+import { getCurrentPHDate } from '@/utils/dateUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -329,6 +336,9 @@ const patientData = ref(null)
 const healthWorkers = ref([])
 const doseRecords = ref([])
 const diseasePrevented = ref('—')
+
+// Use immunization date bounds composable
+const { updateImmunizationDateConstraints } = useImmunizationDateBounds()
 
 const isFormValid = computed(() => {
   return doseRecords.value.every(dose => {
@@ -454,6 +464,28 @@ const onInventoryChange = (doseIndex, selectedInventoryId) => {
     // IMPORTANT: Do NOT overwrite dose.inventoryId here; keep original for change detection in save
     // We'll only persist the change during saveAllRecords when invChanged is true
     console.log(`Inventory changed for dose ${doseIndex}: selectedInventoryId=${selectedInventoryId}, originalInventoryId=${dose.inventoryId}`)
+  }
+}
+
+// Update date constraints for all doses
+const updateAllDateConstraints = async () => {
+  if (!patientData.value || doseRecords.value.length === 0) return
+
+  for (const dose of doseRecords.value) {
+    if (dose.vaccineId && dose.doseNumber) {
+      try {
+        console.log(`[DEBUG] Updating date constraints for dose ${dose.doseNumber}:`, { patientId: patientData.value.patient_id, vaccineId: dose.vaccineId, doseNumber: dose.doseNumber })
+        const constraints = await updateImmunizationDateConstraints(patientData.value.patient_id, dose.vaccineId, parseInt(dose.doseNumber))
+        dose.dateMin = constraints.min
+        dose.dateMax = constraints.max
+        console.log(`[DEBUG] Dose ${dose.doseNumber} constraints set:`, { min: dose.dateMin, max: dose.dateMax })
+      } catch (err) {
+        console.warn(`Failed to update constraints for dose ${dose.doseNumber}:`, err)
+        // Keep defaults
+        dose.dateMin = ''
+        dose.dateMax = getCurrentPHDate()
+      }
+    }
   }
 }
 
@@ -761,7 +793,10 @@ const fetchVaccinationRecords = async () => {
         inventoryId: record.inventory_id || record.inventoryId,
         // Inventory selection fields
         selectedInventoryId: record.inventory_id || record.inventoryId || null,
-        inventoryOptions: []
+        inventoryOptions: [],
+        // Date constraints (will be updated after loading)
+        dateMin: '',
+        dateMax: getCurrentPHDate()
       }
 
       // For outside records, prefill manufacturer/lot and administeredBy display from remarks
@@ -783,6 +818,9 @@ const fetchVaccinationRecords = async () => {
 
     // Fetch additional vaccine and inventory data for in-facility records
     await fetchVaccineAndInventoryData()
+
+    // Update date constraints for all doses
+    await updateAllDateConstraints()
 
   } catch (err) {
     console.error('Error fetching vaccination records:', err)

@@ -72,6 +72,7 @@
             :initial-data="userData"
             :is-editing="true"
             :submitting="submitting"
+            mode="edit"
             @submit="handleSubmit"
             @cancel="handleCancel"
           />
@@ -132,6 +133,7 @@ const fetchUserData = async () => {
       firstName: user.firstname || user.firstName || '',
       middleName: user.middlename || user.middleName || '',
       lastName: user.surname || user.lastName || '',
+      username: user.username || '',
       email: user.email || '',
       role: user.role || '',
       // prefer new hs_type but support older hw_type for compatibility
@@ -157,12 +159,13 @@ const handleSubmit = async (formData) => {
   submitting.value = true
   try {
     const id = route.params.id
-    
-    // Map form data to API payload
+
+    // Map form data to API payload - use separate username and email fields
     const payload = {
       firstname: formData.firstName,
       middlename: formData.middleName || null,
       surname: formData.lastName,
+      username: formData.username,
       email: formData.email,
       role: formData.role,
       hs_type: formData.hsType || formData.hwType || null,

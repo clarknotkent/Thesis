@@ -5,6 +5,18 @@ function withClient(client) {
   return client || serviceSupabase;
 }
 
+// Title Case: Capitalize each word
+function toTitleCase(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Sentence Case: First letter capital, rest lower
+function toSentenceCase(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 const patientModel = {
   // Fetch all patients with optional filters and pagination (reads from patients_view)
   getAllPatients: async (filters = {}, page = 1, limit = 5, client) => {
@@ -760,6 +772,19 @@ const patientModel = {
   createPatient: async (patientData, client) => {
     try {
       const supabase = withClient(client);
+
+      // Validate date_of_birth is not in the future
+      if (patientData.date_of_birth) {
+        const dob = new Date(patientData.date_of_birth);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+
+        if (dob > today) {
+          const err = new Error('Patient date of birth cannot be in the future.');
+          err.status = 400;
+          throw err;
+        }
+      }
       // Validate guardian identifier if provided. The frontend may send either
       // the guardians.guardian_id (primary key) or the guardians.user_id
       // (the linked users.user_id). Normalize to the guardian primary key.
@@ -793,21 +818,21 @@ const patientModel = {
       }
 
       const insertData = {
-        firstname: patientData.firstname,
-        surname: patientData.surname,
-        middlename: patientData.middlename,
+        firstname: toTitleCase(patientData.firstname),
+        surname: toTitleCase(patientData.surname),
+        middlename: toTitleCase(patientData.middlename),
         date_of_birth: patientData.date_of_birth,
         sex: patientData.sex,
-        address: patientData.address,
-        barangay: patientData.barangay,
-        health_center: patientData.health_center,
+        address: toTitleCase(patientData.address),
+        barangay: toTitleCase(patientData.barangay),
+        health_center: toTitleCase(patientData.health_center),
         guardian_id: validGuardianId, // Use validated guardian_id or null
         relationship_to_guardian: patientData.relationship_to_guardian || null,
-        mother_name: patientData.mother_name,
-        mother_occupation: patientData.mother_occupation,
+        mother_name: toTitleCase(patientData.mother_name),
+        mother_occupation: toTitleCase(patientData.mother_occupation),
         mother_contact_number: patientData.mother_contact_number,
-        father_name: patientData.father_name,
-        father_occupation: patientData.father_occupation,
+        father_name: toTitleCase(patientData.father_name),
+        father_occupation: toTitleCase(patientData.father_occupation),
         father_contact_number: patientData.father_contact_number,
         family_number: patientData.family_number || `FAM-${Date.now()}`, // Generate if null
         tags: null, // Force null for tags due to database constraint
@@ -839,6 +864,19 @@ const patientModel = {
   updatePatient: async (id, patientData, client) => {
     try {
       const supabase = withClient(client);
+
+      // Validate date_of_birth is not in the future if being updated
+      if (patientData.date_of_birth) {
+        const dob = new Date(patientData.date_of_birth);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+
+        if (dob > today) {
+          const err = new Error('Patient date of birth cannot be in the future.');
+          err.status = 400;
+          throw err;
+        }
+      }
       const updateData = { ...patientData };
       // Remove fields that don't exist in patients table
       delete updateData.birth_weight;
@@ -972,6 +1010,18 @@ const patientModel = {
       const sanitized = Object.fromEntries(
         Object.entries(updateData).filter(([_, v]) => v !== undefined && v !== null)
       );
+
+      // Apply Title Case normalization to string fields
+      if (sanitized.firstname) sanitized.firstname = toTitleCase(sanitized.firstname);
+      if (sanitized.surname) sanitized.surname = toTitleCase(sanitized.surname);
+      if (sanitized.middlename) sanitized.middlename = toTitleCase(sanitized.middlename);
+      if (sanitized.address) sanitized.address = toTitleCase(sanitized.address);
+      if (sanitized.barangay) sanitized.barangay = toTitleCase(sanitized.barangay);
+      if (sanitized.health_center) sanitized.health_center = toTitleCase(sanitized.health_center);
+      if (sanitized.mother_name) sanitized.mother_name = toTitleCase(sanitized.mother_name);
+      if (sanitized.mother_occupation) sanitized.mother_occupation = toTitleCase(sanitized.mother_occupation);
+      if (sanitized.father_name) sanitized.father_name = toTitleCase(sanitized.father_name);
+      if (sanitized.father_occupation) sanitized.father_occupation = toTitleCase(sanitized.father_occupation);
 
       // If nothing to update (e.g., only nulls were provided), return current row without writing
       if (Object.keys(sanitized).length === 0) {
@@ -1320,15 +1370,15 @@ const patientModel = {
         patient_id: patientId,
         birth_weight: birthData.birth_weight,
         birth_length: birthData.birth_length,
-        place_of_birth: birthData.place_of_birth,
-        address_at_birth: birthData.address_at_birth,
+        place_of_birth: toTitleCase(birthData.place_of_birth),
+        address_at_birth: toTitleCase(birthData.address_at_birth),
         time_of_birth: birthData.time_of_birth,
-        attendant_at_birth: birthData.attendant_at_birth,
-        type_of_delivery: birthData.type_of_delivery,
+        attendant_at_birth: toTitleCase(birthData.attendant_at_birth),
+        type_of_delivery: toTitleCase(birthData.type_of_delivery),
         ballards_score: birthData.ballards_score,
         hearing_test_date: birthData.hearing_test_date,
         newborn_screening_date: birthData.newborn_screening_date,
-        newborn_screening_result: birthData.newborn_screening_result,
+        newborn_screening_result: toSentenceCase(birthData.newborn_screening_result),
         updated_at: new Date().toISOString(),
         created_by: birthData.created_by || null,
         updated_by: birthData.updated_by || null,
@@ -1436,7 +1486,7 @@ const patientModel = {
           weight: vitalsData.weight,
           height: vitalsData.height,
           temperature: vitalsData.temperature,
-          notes: vitalsData.notes,
+          notes: toSentenceCase(vitalsData.notes),
           recorded_by: vitalsData.recorded_by,
           recorded_date: new Date().toISOString()
         })

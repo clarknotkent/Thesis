@@ -44,8 +44,8 @@
       <template v-else-if="patient">
         <PatientInfoTab
           v-if="activeTab === 'patient-info'"
-          :patient="patient"
           v-model:expanded-cards="expandedCards"
+          :patient="patient"
         />
         
         <VaccinationHistoryTab
@@ -89,12 +89,14 @@ import PatientInfoTab from './PatientInfoTab.vue'
 import VaccinationHistoryTab from '../vaccination-history/VaccinationHistoryTab.vue'
 import MedicalHistoryTab from '../medical-history/MedicalHistoryTab.vue'
 import api from '@/services/api'
+import { buildFirstDoseEligibleIndex, compareGroupsByEligible } from '@/utils/vaccineOrder'
 
 const router = useRouter()
 const route = useRoute()
 
 const patient = ref(null)
 const vaccinationHistory = ref([])
+const patientSchedule = ref([])
 const medicalHistory = ref([])
 const loading = ref(true)
 const activeTab = ref('patient-info')
@@ -111,29 +113,23 @@ const expandedCards = ref({
   birthHistory: false
 })
 
-// Group vaccinations by vaccine type
+// Group vaccinations by vaccine type ordered solely by first-dose eligible_date from patientschedule
+const eligibleIndex = computed(() => buildFirstDoseEligibleIndex(patientSchedule.value))
+
 const groupedVaccinations = computed(() => {
   const groups = {}
-  
-  vaccinationHistory.value.forEach(vaccination => {
-    const vaccineName = vaccination.vaccine_antigen_name || 
-                       vaccination.vaccineName || 
-                       vaccination.antigen_name || 
-                       vaccination.antigenName || 
-                       'Unknown Vaccine'
-    
+  for (const vaccination of vaccinationHistory.value) {
+    const vaccineName = vaccination.vaccine_antigen_name ||
+      vaccination.vaccineName ||
+      vaccination.antigen_name ||
+      vaccination.antigenName ||
+      'Unknown Vaccine'
     if (!groups[vaccineName]) {
-      groups[vaccineName] = {
-        vaccineName: vaccineName,
-        doses: []
-      }
+      groups[vaccineName] = { vaccineName, doses: [] }
     }
-    
     groups[vaccineName].doses.push(vaccination)
-  })
-  
-  // Convert to array and sort doses by dose number within each group
-  return Object.values(groups).map(group => ({
+  }
+  const arr = Object.values(groups).map(group => ({
     ...group,
     doses: group.doses.sort((a, b) => {
       const doseA = a.dose_number || a.doseNumber || a.dose || 0
@@ -141,6 +137,8 @@ const groupedVaccinations = computed(() => {
       return doseA - doseB
     })
   }))
+  // Order strictly by first-dose eligible_date from patientschedule
+  return arr.sort((a, b) => compareGroupsByEligible(a, b, eligibleIndex.value))
 })
 
 const goBack = () => {
@@ -214,6 +212,15 @@ const fetchPatientDetails = async () => {
     // Store vaccination history
     vaccinationHistory.value = data.vaccinationHistory || []
     
+    // Fetch schedule (for eligible_date ordering) and medical history
+    try {
+      const resSched = await api.get(`/patients/${patientId}/schedule`)
+      const schedArr = resSched?.data?.data || resSched?.data?.items || resSched?.data || []
+      patientSchedule.value = Array.isArray(schedArr) ? schedArr : []
+    } catch (e) {
+      patientSchedule.value = []
+    }
+
     // Fetch medical history (visits)
     await fetchMedicalHistory(patientId)
   } catch (error) {

@@ -4,6 +4,182 @@ All notable changes to the ImmunizeMe project will be documented in this file.
 
 ---
 
+## [system-prototype-v4] - 2025-11-10
+
+### ✨ Added
+
+**New Frontend Utilities and Composables:**
+- `frontend/src/composables/useImmunizationDateBounds.js` - New composable for calculating immunization date constraints based on patient DOB and vaccine schedule
+  - Calculates minimum and maximum dates for immunization administration
+  - Fetches patient date of birth and vaccine schedule data
+  - Provides reactive date bounds for form validation
+- `frontend/src/utils/stringUtils.js` - String utility functions for text processing
+  - `toTitleCase()` - Smart title casing with acronym preservation (SMS, BCG, OPV, etc.)
+  - `normalizeNotificationTitle()` - Formats notification headers properly
+  - Handles vaccine names and medical terminology correctly
+- `frontend/src/utils/vaccineOrder.js` - Vaccine ordering utilities
+  - `normalizeVaccineName()` - Standardizes vaccine name formatting
+  - `buildFirstDoseEligibleIndex()` - Creates index of first-dose eligible dates
+  - `compareGroupsByEligible()` - Compares vaccine groups by eligibility dates
+
+**Backend Testing Infrastructure:**
+- `backend/test_template.js` - SMS template rendering test script
+  - Tests variable replacement in SMS templates
+  - Validates template rendering with sample data
+  - Helps ensure SMS notifications work correctly
+
+### 🔄 Changed
+
+**Backend Controllers and Models (ES Module Refinements):**
+- **immunizationController.js** - Enhanced SMS reschedule notification handling
+  - Improved demo reschedule notification function
+  - Better error handling for schedule lookups
+  - Enhanced vaccine name retrieval for notifications
+- **authController.js** - Authentication improvements
+- **patientController.js** - Patient data handling updates
+- **receivingReportController.js** - Report processing enhancements
+- **smsController.js** - SMS functionality improvements
+- **vaccineController.js** - Vaccine data management updates
+- **All backend models** - Continued ES module optimization and bug fixes
+  - conversationModel.js, dewormingModel.js, guardianModel.js, healthWorkerModel.js
+  - immunizationModel.js, messageModel.js, notificationModel.js, patientModel.js
+  - receivingReportModel.js, userModel.js, vaccineModel.js, visitModel.js, vitalsModel.js
+
+**Frontend Components (System-wide Improvements):**
+- **Admin Portal Components:**
+  - VisitEditor.vue - Enhanced visit editing with better date constraints
+  - PatientForm.vue - Improved patient data entry
+  - ScheduledVaccinations.vue - Better vaccination scheduling
+  - VaccinationHistory.vue - Enhanced history display
+  - VaccinationRecordEditor.vue - Improved record editing
+  - **AddUser.vue - Smart user identifier handling**
+    - Single "Username or Email" field that accepts either format
+    - Automatic email generation (username@immunizeme.com) when username entered
+    - Intelligent parsing of email vs username input
+    - Enhanced payload mapping with proper field validation
+  - **UserForm.vue - Enhanced user creation form**
+    - Dynamic form layout: single identifier field in add mode, separate email/username in edit mode
+    - Philippine contact number auto-formatting (+639**-***-****)
+    - Role-based conditional fields (health staff type, license number, employee ID)
+    - Improved field validation and required indicators
+    - Better UX with proper field grouping and icons
+  - UserAccounts.vue - User management enhancements
+  - All inventory management components - Stock adjustments, vaccine additions, etc.
+  - SMS components - Message templates and auto-send settings
+
+- **Health Worker Portal Components:**
+  - **BHS Role Restrictions - Enhanced Access Control**
+    - BHS users can only access "outside" vaccination records (immunizations done outside facility)
+    - BHS users blocked from editing in-facility vaccination records with clear warning messages
+    - Dose navigator pills disabled for in-facility records when user is BHS
+    - Tooltips and toast notifications guide BHS users to contact nurses/nutritionists
+    - BHS users retain ability to add new immunization records (both outside and in-facility)
+  - PatientForm.vue - Enhanced patient registration
+  - VaccinationHistorySection.vue - Better history visualization
+  - VitalsFormSection.vue - Improved vitals recording
+  - All patient management views - Add/Edit patient, immunization records, visits
+  - Inventory components - Vaccine stock management
+  - Notification system - Enhanced notification handling
+
+- **Parent Portal Components:**
+  - DependentDetails.vue - Improved child information display
+  - Better record management and data presentation
+
+- **Shared Components:**
+  - NotificationItem.vue - Enhanced notification display
+  - DateInput.vue, SearchableSelect.vue, TimeInput.vue - Form component improvements
+  - Better user experience across all forms
+
+**Services and Utilities:**
+- `frontend/src/services/users.js` - User service enhancements
+- `frontend/src/utils/dateUtils.js` - Date utility improvements
+- Enhanced API integration and data handling
+
+### 🐛 Bug Fixes
+
+**Date and Time Handling:**
+- Fixed immunization date constraint calculations
+- Improved date validation in forms
+- Better handling of vaccine schedule dates
+
+**String Processing:**
+- Enhanced text formatting for notifications and UI
+- Proper title casing for medical terms and acronyms
+- Improved vaccine name normalization
+
+**SMS Template Rendering:**
+- Fixed variable replacement in SMS templates
+- Better handling of template data
+- Improved notification content formatting
+
+**Form Validation:**
+- Enhanced date bounds checking
+- Better input validation across components
+- Improved error handling in forms
+
+### 📚 Files Modified
+
+**Backend (25+ files):**
+- All controllers and models updated for ES module consistency
+- Enhanced SMS and notification services
+- Improved data validation and error handling
+
+**Frontend (50+ files):**
+- 20+ admin portal components enhanced
+- 15+ health worker components improved
+- 5+ parent portal components updated
+- 10+ shared utilities and services refined
+
+**New Files (4):**
+- `frontend/src/composables/useImmunizationDateBounds.js`
+- `frontend/src/utils/stringUtils.js`
+- `frontend/src/utils/vaccineOrder.js`
+- `backend/test_template.js`
+
+### ✅ Outcomes
+
+**Enhanced User Experience:**
+- Better date validation prevents invalid immunization dates
+- Improved text formatting for clearer notifications
+- More intuitive vaccine ordering and display
+- Enhanced form validation across all portals
+
+**System Reliability:**
+- More robust SMS template rendering
+- Better error handling in backend services
+- Improved data consistency across components
+- Enhanced testing capabilities
+
+**Code Quality:**
+- Continued ES module migration completion
+- Better separation of concerns with new utilities
+- Improved maintainability with composable functions
+- Enhanced testing infrastructure
+
+### 🎯 Technical Improvements
+
+**Date Constraint System:**
+- Dynamic min/max date calculation based on vaccine schedules
+- Prevents scheduling immunizations outside recommended windows
+- Improves data quality and medical compliance
+
+**String Processing Pipeline:**
+- Smart title casing preserves medical acronyms
+- Consistent formatting across all user-facing text
+- Better readability for vaccine names and notifications
+
+**Vaccine Ordering Logic:**
+- Eligibility-based sorting for better workflow
+- Normalized vaccine names for consistent processing
+- Improved data presentation in UI components
+
+**Testing Framework:**
+- SMS template testing for notification reliability
+- Better validation of system outputs
+- Improved debugging capabilities
+
+---
+
 ## [system-prototype-v4] - 2025-11-08
 
 ### ⚠️ BREAKING CHANGE: Parent Offline Functionality Removed

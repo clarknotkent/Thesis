@@ -14,9 +14,9 @@ export async function getUser(id) {
   return data
 }
 
-// Use the auth/register endpoint to create both Supabase Auth user and DB user
+// Use the users endpoint to create admin users (preserves provided email)
 export async function createUser(payload) {
-  const { data } = await api.post('/auth/register', payload)
+  const { data } = await api.post('/users', payload)
   return data
 }
 

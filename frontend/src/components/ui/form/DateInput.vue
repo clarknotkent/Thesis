@@ -27,6 +27,8 @@
         ref="nativePicker"
         type="date"
         class="native-picker-hidden"
+        :min="props.min"
+        :max="props.max"
         @change="onNativeChange"
       >
     </div>
@@ -38,6 +40,12 @@
 </template>
 
 <script setup>
+/**
+ * DateInput Component - Philippines-specific date handling
+ * 
+ * Handles date input with Philippine locale formatting (DD/MM/YYYY preference)
+ * and timezone considerations for Asia/Manila.
+ */
 import { ref, watch, onMounted } from 'vue'
 
 const props = defineProps({
@@ -52,6 +60,14 @@ const props = defineProps({
   defaultToday: { 
     type: Boolean, 
     default: false 
+  },
+  min: {
+    type: String,
+    default: ''
+  },
+  max: {
+    type: String,
+    default: ''
   },
   disabled: {
     type: Boolean,
@@ -80,34 +96,40 @@ const displayValue = ref('')
 const error = ref('')
 const lastValue = ref('')
 
-// Format date to MM/DD/YYYY for display
+// Format date to MM/DD/YYYY for display (Philippine format)
 const formatDisplay = (d) => {
   if (!d) return ''
   const date = new Date(d)
   if (isNaN(date.getTime())) return ''
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  const yyyy = date.getFullYear()
-  return `${mm}/${dd}/${yyyy}`
+  // Use Philippine locale for consistent formatting
+  return date.toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).replace(/\//g, '/')
 }
 
-// Format date to YYYY-MM-DD for ISO
+// Format date to YYYY-MM-DD for ISO (considering Philippine timezone)
 const formatISO = (d) => {
   if (!d) return ''
   const date = new Date(d)
   if (isNaN(date.getTime())) return ''
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  const yyyy = date.getFullYear()
+  // Ensure we're working with Philippine timezone context
+  const phTime = new Date(date.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+  const mm = String(phTime.getMonth() + 1).padStart(2, '0')
+  const dd = String(phTime.getDate()).padStart(2, '0')
+  const yyyy = phTime.getFullYear()
   return `${yyyy}-${mm}-${dd}`
 }
 
 // Initialize display value
 onMounted(() => {
   if (props.defaultToday && !props.modelValue) {
-    const today = new Date()
-    displayValue.value = formatDisplay(today)
-    const output = props.outputFormat === 'iso' ? formatISO(today) : formatDisplay(today)
+    // Get current date in Philippine timezone
+    const now = new Date()
+    const phTime = new Date(now.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+    displayValue.value = formatDisplay(phTime)
+    const output = props.outputFormat === 'iso' ? formatISO(phTime) : formatDisplay(phTime)
     emit('update:modelValue', output)
   } else if (props.modelValue) {
     // Handle both ISO and display formats
@@ -138,7 +160,7 @@ watch(() => props.modelValue, (nv) => {
   }
 })
 
-// Auto-format as user types (adds slashes automatically)
+// Auto-format as user types (adds slashes automatically for MM/DD/YYYY format)
 const handleInput = (e) => {
   const input = e.target
   const newValue = input.value
@@ -187,13 +209,34 @@ const handleInput = (e) => {
 const handleBlur = () => {
   const parsed = parseDisplayValue(displayValue.value)
   if (displayValue.value && parsed) {
-    // Valid date - format and emit
-    const formattedDisplay = `${String(parsed.month).padStart(2, '0')}/${String(parsed.day).padStart(2, '0')}/${parsed.year}`
-    displayValue.value = formattedDisplay
+    // Build selected Date considering Philippine timezone
+    const selectedDate = new Date(parsed.year, parsed.month - 1, parsed.day)
+    
+    // Validate against min/max if provided (expect ISO YYYY-MM-DD)
+    if (props.min) {
+      const minD = new Date(props.min + 'T00:00:00+08:00') // Philippine timezone offset
+      minD.setHours(0,0,0,0)
+      if (selectedDate < minD) {
+        error.value = `Date cannot be before ${formatDisplay(props.min)}`
+        return
+      }
+    }
+    if (props.max) {
+      const maxD = new Date(props.max + 'T00:00:00+08:00') // Philippine timezone offset
+      maxD.setHours(0,0,0,0)
+      if (selectedDate > maxD) {
+        error.value = `Date cannot be after ${formatDisplay(props.max)}`
+        return
+      }
+    }
+    
+    // Valid date - format display using Philippine locale
+    const formattedDate = new Date(parsed.year, parsed.month - 1, parsed.day)
+    displayValue.value = formatDisplay(formattedDate)
     
     const output = props.outputFormat === 'iso' 
       ? `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`
-      : formattedDisplay
+      : displayValue.value
     
     emit('update:modelValue', output)
     error.value = ''
@@ -288,7 +331,7 @@ const parseDisplayValue = (val) => {
   
   // Check if date is valid (e.g., not Feb 30)
   const date = new Date(year, month - 1, day)
-  if (date.getMonth() !== month - 1) return null
+  if (date.getMonth() !== month - 1 || date.getDate() !== day) return null
   
   return { month, day, year }
 }
@@ -296,11 +339,30 @@ const parseDisplayValue = (val) => {
 // Open native date picker
 const openPicker = () => {
   if (nativePicker.value) {
-    // Set current value to native picker
+    // Get current date in Philippine timezone
+    const now = new Date()
+    const phTime = new Date(now.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+    const currentISO = formatISO(phTime)
+    
+    let pickerValue = currentISO
+    
+    // If we have a current display value, use it
     const parsed = parseDisplayValue(displayValue.value)
     if (parsed) {
-      nativePicker.value.value = `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`
+      pickerValue = `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`
     }
+    
+    // Check if current date exceeds max constraint
+    if (props.max && pickerValue > props.max) {
+      pickerValue = props.max
+    }
+    
+    // Check if current date is below min constraint
+    if (props.min && pickerValue < props.min) {
+      pickerValue = props.min
+    }
+    
+    nativePicker.value.value = pickerValue
     nativePicker.value.showPicker?.()
   }
 }
@@ -310,9 +372,35 @@ const onNativeChange = (e) => {
   const iso = e.target.value // YYYY-MM-DD
   if (!iso) return
   
+  // Validate against min/max if provided (Philippine timezone)
+  try {
+    const picked = new Date(iso + 'T00:00:00+08:00') // Philippine timezone offset
+    picked.setHours(0,0,0,0)
+    if (props.min) {
+      const minD = new Date(props.min + 'T00:00:00+08:00')
+      minD.setHours(0,0,0,0)
+      if (picked < minD) {
+        error.value = `Date cannot be before ${formatDisplay(props.min)}`
+        return
+      }
+    }
+    if (props.max) {
+      const maxD = new Date(props.max + 'T00:00:00+08:00')
+      maxD.setHours(0,0,0,0)
+      if (picked > maxD) {
+        error.value = `Date cannot be after ${formatDisplay(props.max)}`
+        return
+      }
+    }
+  } catch {
+    // ignore and proceed with normal parsing
+  }
+
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (match) {
-    displayValue.value = `${match[2]}/${match[3]}/${match[1]}`
+    // Format display using Philippine locale
+    const date = new Date(iso)
+    displayValue.value = formatDisplay(date)
     const output = props.outputFormat === 'iso' ? iso : displayValue.value
     emit('update:modelValue', output)
     error.value = ''

@@ -98,6 +98,7 @@
                   v-model="localForm.date_of_birth"
                   type="date"
                   class="form-control date-picker-input"
+                  :max="todayISO"
                   @change="onDatePickerChange"
                   @blur="showDatePicker = false"
                 >
@@ -458,6 +459,16 @@ const selectedGuardianName = computed(() => {
     return guardian ? guardian.full_name : ''
   }
   return ''
+})
+
+// Computed property for today's date in ISO format to prevent future DOBs (Philippine timezone)
+const todayISO = computed(() => {
+  // Get current date in Philippine timezone
+  const now = new Date()
+  const phTime = new Date(now.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
+  // Add 8 hours
+  phTime.setHours(phTime.getHours() + 8)
+  return phTime.toISOString().slice(0, 10)
 })
 
 const filteredGuardians = computed(() => {

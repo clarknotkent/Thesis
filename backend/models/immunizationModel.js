@@ -8,6 +8,17 @@ function withClient(client) {
   return client || serviceSupabase;
 }
 
+// Normalization functions
+const toTitleCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
+const toSentenceCase = (str) => {
+  if (typeof str !== 'string') return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Create a new immunization record
 const createImmunization = async (immunizationData, client) => {
   const supabase = withClient(client);
@@ -26,6 +37,80 @@ const createImmunization = async (immunizationData, client) => {
       }
     }
   } catch(_) {}
+
+  // Smart date validation for administered_date
+  if (payload.administered_date && payload.patient_id && payload.vaccine_id && payload.dose_number) {
+    try {
+      // Get the patient's schedule for this vaccine/dose to determine eligible date
+      const { data: schedule, error: schedErr } = await supabase
+        .from('patientschedule')
+        .select('scheduled_date')
+        .eq('patient_id', payload.patient_id)
+        .eq('vaccine_id', payload.vaccine_id)
+        .eq('dose_number', payload.dose_number)
+        .eq('is_deleted', false)
+        .single();
+
+      // Get the vaccine schedule to determine absolute latest date
+      const { data: vaccineSchedule, error: vaccineErr } = await supabase
+        .from('schedule_master')
+        .select('schedule_doses(absolute_latest_days)')
+        .eq('vaccine_id', payload.vaccine_id)
+        .eq('is_deleted', false)
+        .single();
+
+      let maxDate = new Date();
+      maxDate.setHours(23, 59, 59, 999); // End of today as fallback
+
+      // Calculate absolute latest date if available
+      if (!vaccineErr && vaccineSchedule?.schedule_doses) {
+        const doseInfo = Array.isArray(vaccineSchedule.schedule_doses)
+          ? vaccineSchedule.schedule_doses.find(d => d.dose_number === payload.dose_number)
+          : vaccineSchedule.schedule_doses;
+        
+        if (doseInfo?.absolute_latest_days) {
+          // Get patient DOB to calculate absolute latest date
+          const { data: patient, error: patientErr } = await supabase
+            .from('patients')
+            .select('date_of_birth')
+            .eq('patient_id', payload.patient_id)
+            .eq('is_deleted', false)
+            .single();
+
+          if (!patientErr && patient?.date_of_birth) {
+            const birthDate = new Date(patient.date_of_birth);
+            const absoluteLatest = new Date(birthDate);
+            absoluteLatest.setDate(absoluteLatest.getDate() + doseInfo.absolute_latest_days);
+            maxDate = new Date(Math.min(maxDate.getTime(), absoluteLatest.getTime()));
+          }
+        }
+      }
+
+      if (!schedErr && schedule && schedule.scheduled_date) {
+        const eligibleDate = new Date(schedule.scheduled_date);
+        const administeredDate = new Date(payload.administered_date);
+
+        // Validate minimum: cannot administer before eligible date
+        if (administeredDate < eligibleDate) {
+          const err = new Error(`Cannot administer vaccine before eligible date (${eligibleDate.toISOString().split('T')[0]}). Patient is not yet eligible for this dose.`);
+          err.status = 400;
+          throw err;
+        }
+
+        // Validate maximum: cannot administer beyond absolute latest date
+        if (administeredDate > maxDate) {
+          const err = new Error(`Cannot administer vaccine beyond absolute latest date (${maxDate.toISOString().split('T')[0]}). This dose is no longer recommended.`);
+          err.status = 400;
+          throw err;
+        }
+      }
+    } catch (validationErr) {
+      // Re-throw validation errors
+      if (validationErr.status === 400) throw validationErr;
+      // Log but don't fail for other errors (schedule might not exist yet)
+      console.warn('[createImmunization] Date validation warning:', validationErr.message);
+    }
+  }
 
   // Resolve vaccine_id from inventory_id if present
   if (!payload.vaccine_id && payload.inventory_id) {
@@ -122,6 +207,9 @@ const createImmunization = async (immunizationData, client) => {
     'created_at',
     'updated_at',
   ]);
+  // Apply normalization
+  if (payload.facility_name) payload.facility_name = toTitleCase(payload.facility_name);
+  if (payload.remarks) payload.remarks = toSentenceCase(payload.remarks);
   const insertPayload = Object.fromEntries(Object.entries(payload).filter(([k]) => allowedKeys.has(k)));
   const { data, error } = await supabase
     .from('immunizations')
@@ -264,9 +352,104 @@ const getImmunizationById = async (id, client) => {
 // Update an immunization record
 const updateImmunization = async (id, immunizationData, client) => {
   const supabase = withClient(client);
+
+  // Smart date validation for administered_date if being updated
+  if (immunizationData.administered_date) {
+    // First get the existing immunization to get patient_id, vaccine_id, dose_number
+    const { data: existing, error: getErr } = await supabase
+      .from('immunizations')
+      .select('patient_id, vaccine_id, dose_number')
+      .eq('immunization_id', id)
+      .eq('is_deleted', false)
+      .single();
+
+    if (!getErr && existing && existing.patient_id && existing.vaccine_id && existing.dose_number) {
+      try {
+        // Get the patient's schedule for this vaccine/dose to determine eligible date
+        const { data: schedule, error: schedErr } = await supabase
+          .from('patientschedule')
+          .select('scheduled_date')
+          .eq('patient_id', existing.patient_id)
+          .eq('vaccine_id', existing.vaccine_id)
+          .eq('dose_number', existing.dose_number)
+          .eq('is_deleted', false)
+          .single();
+
+        // Get the vaccine schedule to determine absolute latest date
+        const { data: vaccineSchedule, error: vaccineErr } = await supabase
+          .from('schedule_master')
+          .select('schedule_doses(absolute_latest_days)')
+          .eq('vaccine_id', existing.vaccine_id)
+          .eq('is_deleted', false)
+          .single();
+
+        let maxDate = new Date();
+        maxDate.setHours(23, 59, 59, 999); // End of today as fallback
+
+        // Calculate absolute latest date if available
+        if (!vaccineErr && vaccineSchedule?.schedule_doses) {
+          const doseInfo = Array.isArray(vaccineSchedule.schedule_doses)
+            ? vaccineSchedule.schedule_doses.find(d => d.dose_number === existing.dose_number)
+            : vaccineSchedule.schedule_doses;
+
+          if (doseInfo?.absolute_latest_days) {
+            // Get patient DOB to calculate absolute latest date
+            const { data: patient, error: patientErr } = await supabase
+              .from('patients')
+              .select('date_of_birth')
+              .eq('patient_id', existing.patient_id)
+              .eq('is_deleted', false)
+              .single();
+
+            if (!patientErr && patient?.date_of_birth) {
+              const birthDate = new Date(patient.date_of_birth);
+              const absoluteLatest = new Date(birthDate);
+              absoluteLatest.setDate(absoluteLatest.getDate() + doseInfo.absolute_latest_days);
+              maxDate = new Date(Math.min(maxDate.getTime(), absoluteLatest.getTime()));
+            }
+          }
+        }
+
+        if (!schedErr && schedule && schedule.scheduled_date) {
+          const eligibleDate = new Date(schedule.scheduled_date);
+          const administeredDate = new Date(immunizationData.administered_date);
+
+          // Validate minimum: cannot administer before eligible date
+          if (administeredDate < eligibleDate) {
+            const err = new Error(`Cannot administer vaccine before eligible date (${eligibleDate.toISOString().split('T')[0]}). Patient is not yet eligible for this dose.`);
+            err.status = 400;
+            throw err;
+          }
+
+          // Validate maximum: cannot administer beyond absolute latest date
+          if (administeredDate > maxDate) {
+            const err = new Error(`Cannot administer vaccine beyond absolute latest date (${maxDate.toISOString().split('T')[0]}). This dose is no longer recommended.`);
+            err.status = 400;
+            throw err;
+          }
+        }
+      } catch (validationErr) {
+        // Re-throw validation errors
+        if (validationErr.status === 400) throw validationErr;
+        // Log but don't fail for other errors
+        console.warn('[updateImmunization] Date validation warning:', validationErr.message);
+      }
+    }
+  }
+
+  // Apply normalization
+  const sanitized = { ...immunizationData };
+  if (sanitized.facility_name) sanitized.facility_name = toTitleCase(sanitized.facility_name);
+  if (sanitized.remarks) sanitized.remarks = toSentenceCase(sanitized.remarks);
+
+  // Set administered_by to null if not provided
+  if (!sanitized.hasOwnProperty('administered_by')) {
+    sanitized.administered_by = null;
+  }
+
   const { data, error } = await supabase
     .from('immunizations')
-    .update({ ...immunizationData, updated_at: new Date().toISOString() })
+    .update({ ...sanitized, updated_at: new Date().toISOString() })
     .eq('immunization_id', id)
     .eq('is_deleted', false)
     .select()

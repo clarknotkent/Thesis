@@ -81,6 +81,7 @@ export function useNotifications() {
     id: row.notification_id,
     type: mapType(row),
     title: row.template_code ? formatTemplateTitle(row.template_code) : 'Notification',
+    header: row.header || '',
     message: row.message_body,
     time: new Date(row.created_at).toLocaleString(),
     timestamp: new Date(row.created_at).getTime(),

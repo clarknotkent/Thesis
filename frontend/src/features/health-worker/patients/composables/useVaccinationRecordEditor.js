@@ -42,12 +42,8 @@ export function useVaccinationRecordEditor(patientId, recordId) {
    * Form validation
    */
   const isFormValid = computed(() => {
-    const base = form.value.vaccineName && form.value.doseNumber && form.value.dateAdministered
-    // For outside immunizations, administeredBy can be free-text
-    if (form.value.isOutside) {
-      return base
-    }
-    return base && !!form.value.administeredBy
+    // Require core fields only; administeredBy no longer mandatory even for in-facility edits
+    return !!(form.value.vaccineName && form.value.doseNumber && form.value.dateAdministered)
   })
 
   /**
@@ -69,6 +65,18 @@ export function useVaccinationRecordEditor(patientId, recordId) {
       const da = parseInt(a.dose_number || a.dose || a.doseNumber || 0) || 0
       const db = parseInt(b.dose_number || b.dose || b.doseNumber || 0) || 0
       return da - db
+    })
+    
+    console.log('🔍 [useVaccinationRecordEditor] otherDoses computed:', {
+      vaccineName,
+      totalHistoryItems: patientData.value.vaccinationHistory.length,
+      matchedItems: all.length,
+      doses: all.map(d => ({
+        id: d.immunization_id || d.id,
+        dose_number: d.dose_number || d.dose,
+        immunization_outside: d.immunization_outside,
+        vaccine_antigen_name: d.vaccine_antigen_name
+      }))
     })
     
     return all
@@ -188,6 +196,16 @@ export function useVaccinationRecordEditor(patientId, recordId) {
    */
   const deriveFacility = (record) => {
     const isOutside = !!(record?.immunization_outside || record?.is_outside || record?.isOutside || record?.outside_immunization || record?.outside)
+    console.log('🏥 [useVaccinationRecordEditor] deriveFacility:', {
+      record_id: record?.immunization_id || record?.id,
+      immunization_outside: record?.immunization_outside,
+      is_outside: record?.is_outside,
+      isOutside: record?.isOutside,
+      outside_immunization: record?.outside_immunization,
+      outside: record?.outside,
+      derived_isOutside: isOutside,
+      facility_name: record?.immunization_facility_name || record?.facility_name || record?.facilityName || record?.health_center || record?.healthCenter || ''
+    })
     if (isOutside) return 'Outside'
     return (
       record?.immunization_facility_name ||
@@ -414,6 +432,34 @@ export function useVaccinationRecordEditor(patientId, recordId) {
   const prepareUpdateData = () => {
     const fullRemarks = buildStructuredRemarks(form.value)
 
+    // Validate administered date
+    try {
+      if (!form.value.dateAdministered) {
+        error.value = 'Date administered is required.'
+        return null
+      }
+      const sel = new Date(form.value.dateAdministered)
+      sel.setHours(0,0,0,0)
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      if (sel > today) {
+        error.value = 'Date administered cannot be in the future.'
+        return null
+      }
+      const bdRaw = patientData.value?.date_of_birth || patientData.value?.dob || patientData.value?.birth_date || null
+      if (bdRaw) {
+        const bd = new Date(bdRaw)
+        bd.setHours(0,0,0,0)
+        if (sel < bd) {
+          error.value = 'Date administered cannot be before patient date of birth.'
+          return null
+        }
+      }
+    } catch (e) {
+      error.value = 'Invalid date administered.'
+      return null
+    }
+
     const updateData = {
       administered_date: form.value.dateAdministered,
       dose_number: parseInt(form.value.doseNumber),
@@ -421,14 +467,17 @@ export function useVaccinationRecordEditor(patientId, recordId) {
       remarks: fullRemarks
     }
 
-    if (!form.value.isOutside) {
-      updateData.administered_by = form.value.administeredBy
-      updateData.outside = false
-    } else {
+    // administered_by: always null if outside; if inside but no explicit selection, keep null
+    if (form.value.isOutside) {
       updateData.administered_by = null
       updateData.outside = true
+    } else {
+      updateData.administered_by = form.value.administeredBy || null
+      updateData.outside = false
     }
 
+    // Clear any previous error
+    error.value = null
     return updateData
   }
 
