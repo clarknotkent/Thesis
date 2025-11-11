@@ -856,8 +856,28 @@ export function useVaccinationRecords(patientId, patientDataProp) {
   const isOutside = (v) => !!(v?.immunization_outside || v?.is_outside || v?.isOutside || v?.outside_immunization || v?.outside);
 
   const getMinDate = (vaccine) => {
-    const baseline = vaccine.eligible_date || vaccine.eligibleDate || vaccine.baseline_date || vaccine.baselineDate || patientData.value?.date_of_birth;
+    const baseline = vaccine.scheduled_date || vaccine.scheduledDate || vaccine.eligible_date || vaccine.eligibleDate || vaccine.baseline_date || vaccine.baselineDate || patientData.value?.date_of_birth;
     return baseline ? utcToPH(baseline).format('YYYY-MM-DD') : '';
+  };
+
+  const getMaxDate = (vaccine) => {
+    // Get absolute latest date from vaccine data or calculate from DOB + absolute_latest_days
+    let absoluteLatest = null;
+    if (vaccine.absolute_latest_date || vaccine.absoluteLatestDate) {
+      absoluteLatest = vaccine.absolute_latest_date || vaccine.absoluteLatestDate;
+    } else if (patientData.value?.date_of_birth && vaccine.absolute_latest_days) {
+      const dob = new Date(patientData.value.date_of_birth);
+      absoluteLatest = new Date(dob.getTime() + vaccine.absolute_latest_days * 24 * 60 * 60 * 1000);
+    }
+    // If absolute latest is set, use min of absolute latest and today
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    if (absoluteLatest) {
+      const absDate = new Date(absoluteLatest);
+      return absDate < today ? utcToPH(absDate).format('YYYY-MM-DD') : utcToPH(today).format('YYYY-MM-DD');
+    }
+    // Fallback to today if no absolute latest
+    return utcToPH(today).format('YYYY-MM-DD');
   };
 
   // Computed properties
@@ -950,6 +970,7 @@ export function useVaccinationRecords(patientId, patientDataProp) {
     deriveFacility,
     isOutside,
     getMinDate,
+    getMaxDate,
   debugMode,
   debugInfo,
   debugWhyVaccineNotShowing,

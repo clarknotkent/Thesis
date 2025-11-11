@@ -269,6 +269,23 @@ const guardianModel = {
         console.warn('[deleteGuardian] Failed to cascade cancel SMS:', cascadeErr?.message || cascadeErr);
       }
 
+      // Disable auto-send for the deleted guardian
+      try {
+        const { error: autoSendErr } = await supabase
+          .from('guardian_auto_send_settings')
+          .upsert(
+            { guardian_id: id, auto_send_enabled: false },
+            { onConflict: 'guardian_id', ignoreDuplicates: false }
+          );
+        if (autoSendErr) {
+          console.warn('[deleteGuardian] Failed to disable auto-send for guardian:', autoSendErr?.message || autoSendErr);
+        } else {
+          console.log(`[deleteGuardian] Disabled auto-send for deleted guardian ${id}`);
+        }
+      } catch (autoSendCascadeErr) {
+        console.warn('[deleteGuardian] Failed to disable auto-send for guardian (non-blocking):', autoSendCascadeErr?.message || autoSendCascadeErr);
+      }
+
       // Return both the guardian update result and number of cancelled SMS for visibility
       return { guardian: data, cancelledSmsCount };
     } catch (error) {

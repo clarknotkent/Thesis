@@ -18,14 +18,18 @@ export function useImmunizationDateBounds() {
     }
 
     try {
-      // Step 1: Fetch patient DOB
+      // Step 1: Fetch patient data (DOB and schedules)
       let dob = null
+      let patientSchedules = []
       try {
         const { data: patientData } = await api.get(`/patients/${patientId}`)
-        dob = patientData?.data?.date_of_birth || patientData?.date_of_birth
+        const patient = patientData?.data || patientData
+        dob = patient?.date_of_birth
+        patientSchedules = patient?.nextScheduledVaccinations || []
         console.log('[DEBUG] Fetched patient DOB:', dob)
+        console.log('[DEBUG] Fetched patient schedules:', patientSchedules.length, 'items')
       } catch (patientErr) {
-        console.warn('Failed to fetch patient DOB:', patientErr.message || patientErr)
+        console.warn('Failed to fetch patient data:', patientErr.message || patientErr)
       }
 
       if (!dob) {
@@ -36,7 +40,21 @@ export function useImmunizationDateBounds() {
         return
       }
 
-      // Step 2: Query vaccine schedule for due_after_days and absolute_latest_days
+      // Step 2: Find scheduled date for this vaccine and dose
+      let scheduledDate = null
+      const matchingSchedule = patientSchedules.find(s => {
+        const sVaccineId = s.vaccineId || s.vaccine_id
+        const sDoseNumber = s.doseNumber || s.dose_number || s.dose
+        return String(sVaccineId) === String(vaccineId) && Number(sDoseNumber) === Number(doseNumber)
+      })
+      if (matchingSchedule) {
+        scheduledDate = matchingSchedule.scheduledDate || matchingSchedule.scheduled_date || matchingSchedule.eligible_date
+        console.log('[DEBUG] Found matching schedule:', matchingSchedule, 'scheduledDate:', scheduledDate)
+      } else {
+        console.log('[DEBUG] No matching schedule found for vaccine', vaccineId, 'dose', doseNumber)
+      }
+
+      // Step 3: Query vaccine schedule for due_after_days and absolute_latest_days
       let minDate = ''
       let maxDate = getCurrentPHDate() // Default to today
       try {
@@ -46,8 +64,11 @@ export function useImmunizationDateBounds() {
           const doseInfo = vaccineSchedule.data.schedule_doses.find(d => d.dose_number === Number(doseNumber))
           console.log('[DEBUG] Found dose info:', doseInfo)
           if (doseInfo) {
-            // Calculate min date: DOB + due_after_days
-            if (doseInfo.due_after_days !== undefined && doseInfo.due_after_days !== null) {
+            // Calculate min date: scheduled_date (primary), DOB + due_after_days (fallback)
+            if (scheduledDate) {
+              minDate = new Date(scheduledDate).toISOString().split('T')[0]
+              console.log('[DEBUG] Using scheduled date as min:', minDate, 'from schedule')
+            } else if (doseInfo.due_after_days !== undefined && doseInfo.due_after_days !== null) {
               const minDateObj = new Date(dob)
               minDateObj.setDate(minDateObj.getDate() + doseInfo.due_after_days)
               minDate = minDateObj.toISOString().split('T')[0]
@@ -58,8 +79,10 @@ export function useImmunizationDateBounds() {
             if (doseInfo.absolute_latest_days !== undefined && doseInfo.absolute_latest_days !== null) {
               const absoluteDateObj = new Date(dob)
               absoluteDateObj.setDate(absoluteDateObj.getDate() + doseInfo.absolute_latest_days)
-              maxDate = absoluteDateObj.toISOString().split('T')[0]
-              console.log('[DEBUG] Calculated max date:', maxDate, 'from DOB + absolute_latest_days:', dob, '+', doseInfo.absolute_latest_days)
+              const today = new Date()
+              today.setHours(23, 59, 59, 999) // End of today
+              maxDate = absoluteDateObj < today ? absoluteDateObj.toISOString().split('T')[0] : today.toISOString().split('T')[0]
+              console.log('[DEBUG] Calculated max date:', maxDate, 'from min(DOB + absolute_latest_days, today):', dob, '+', doseInfo.absolute_latest_days, 'vs today')
             }
           }
         }
