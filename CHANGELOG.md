@@ -10,6 +10,116 @@ All notable changes to the Immunization Management System will be documented in 
 
 ---
 
+## [system-prototype-v4] - 2025-11-11
+
+### ✨ Added
+
+**Smart Date Validation System:**
+- `frontend/src/composables/useImmunizationDateBounds.js` - New composable providing intelligent date constraints for vaccination records
+  - Calculates minimum date based on vaccine schedule (earliest scheduled date for the dose)
+  - Sets maximum date to current date (prevents future-dating vaccinations)
+  - Provides reactive `immunizationDateMin` and `immunizationDateMax` refs
+  - Includes `updateImmunizationDateConstraints()` function for dynamic constraint updates
+  - Fetches patient DOB and vaccine schedule data from backend APIs
+
+### 🔄 Changed
+
+**Backend ES Module Fixes:**
+- **smsController.js** - Fixed SMS auto-send settings bulk toggle functionality
+  - Resolved 500 Internal Server Error on `POST /api/sms/guardians/bulk-toggle`
+  - Added proper conflict resolution for Supabase upsert operations
+  - Fixed duplicate key constraint violations with `{ onConflict: 'guardian_id' }`
+  - Enhanced individual guardian toggle with proper error handling
+- **visitModel.js** - Fixed visit autodetection date logic
+  - Corrected PostgreSQL date casting from `visit_date = CURRENT_DATE - INTERVAL '1 day'` to `visit_date::date = CURRENT_DATE`
+  - Fixed visit detection using yesterday's date instead of today's date
+  - Improved date comparison accuracy for same-day visit detection
+
+**Frontend Date Validation Integration:**
+- **VisitEditor.vue** (Admin UI) - Integrated smart date validation for immunization records added through visit editing
+  - Uses `useImmunizationDateBounds` composable with `immunizationDateMin` and `immunizationDateMax` props
+  - Prevents scheduling vaccinations outside recommended date ranges
+  - Applied to DateInput components in vaccination forms within visit context
+- **VaccineServiceFormModal.vue** (BHS Add UI) - Added smart date constraints for new immunization records
+  - Integrated composable for date bounds validation
+  - DateInput components now respect scheduled date minimums and current date maximums
+- **VaccinationRecordEditor.vue** (Admin Add UI) - Enhanced with smart date validation
+  - Prevents invalid date entries for new vaccination records
+  - Maintains data integrity by enforcing logical date constraints
+- **EditVaccinationRecord.vue** (BHS Edit UI) - Updated existing record editing with date bounds
+  - Smart validation prevents editing dates outside valid ranges
+  - Maintains consistency with add/edit workflows
+- **EditVaccineRecords.vue** (Admin Edit UI) - Comprehensive date validation for bulk record editing
+  - Each dose record gets individual date constraints based on vaccine schedule
+  - `updateAllDateConstraints()` function updates constraints for all doses dynamically
+
+### 🐛 Bug Fixes
+
+**SMS System Stability:**
+- Fixed bulk SMS auto-send toggle operations failing with database constraint errors
+- Resolved individual guardian SMS toggle 500 errors
+- Improved error handling and logging in SMS controller functions
+
+**Date Logic Corrections:**
+- Fixed visit autodetection incorrectly using yesterday's date instead of current date
+- Corrected PostgreSQL date casting syntax for proper date comparisons
+- Enhanced visit detection accuracy for same-day immunization tracking
+
+**ES Module Import Issues:**
+- Resolved remaining ES module import/export inconsistencies
+- Fixed syntax errors in backend controllers and models
+- Ensured proper module loading across all backend files
+
+### 📚 Files Modified
+
+**Backend (3 files):**
+- `backend/controllers/smsController.js` - Fixed bulk toggle and individual toggle operations
+- `backend/models/visitModel.js` - Corrected date casting for visit detection
+- Various ES module import fixes across controllers and models
+
+**Frontend (5 files):**
+- `frontend/src/composables/useImmunizationDateBounds.js` - NEW: Smart date validation composable
+- `frontend/src/features/admin/patients/VisitEditor.vue` - Added date bounds to visit editing
+- `frontend/src/features/health-worker/patients/components/VaccineServiceFormModal.vue` - BHS add modal date validation
+- `frontend/src/features/admin/patients/VaccinationRecordEditor.vue` - Admin add record validation
+- `frontend/src/views/healthworker/patients/EditVaccinationRecord.vue` - BHS edit record validation
+- `frontend/src/views/admin/patients/EditVaccineRecords.vue` - Admin bulk edit validation
+
+### ✅ Outcomes
+
+**Enhanced Data Integrity:**
+- Smart date validation prevents invalid vaccination dates across all UIs
+- Visit detection now works correctly with proper date logic
+- SMS system operations are stable and error-free
+
+**Improved User Experience:**
+- Date inputs now provide clear min/max constraints based on medical logic
+- Prevents scheduling errors that could affect patient care
+- Consistent validation behavior across BHS and Admin portals
+
+**System Reliability:**
+- Fixed critical SMS toggle functionality
+- Resolved date comparison bugs in visit detection
+- Enhanced ES module stability across backend
+
+### 🎯 Technical Improvements
+
+**Date Constraint Logic:**
+- Minimum date: Earliest scheduled date for the specific vaccine dose
+- Maximum date: Current date (prevents future-dating)
+- Dynamic updates based on patient age and vaccine schedule
+- Applied consistently across all immunization record forms
+
+**Database Query Optimization:**
+- Proper PostgreSQL date casting (`visit_date::date`) for accurate comparisons
+- Fixed constraint violation handling in Supabase upsert operations
+- Improved error handling for bulk operations
+
+**Composable Architecture:**
+- Reusable date validation logic across multiple components
+- Reactive constraints that update automatically
+- Clean separation of date logic from UI components
+
 ## [system-prototype-v4] - 2025-11-10
 
 ### ✨ Added

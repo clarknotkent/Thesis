@@ -61,9 +61,23 @@ const checkTodayVisitAndCorrect = async () => {
   const patientId = route.params.patientId || route.params.id
   if (!patientId) return false
   try {
-    const visitDateIso = new Date().toISOString()
-    const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
+    // Use date-only string for comparison (YYYY-MM-DD)
+    const today = new Date()
+    const visitDateStr = today.getFullYear() + '-' + 
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(today.getDate()).padStart(2, '0')
+    
+    console.log('🔍 [VisitSelector] DEBUG - Date comparison:')
+    console.log('  Current date (now):', today.toISOString())
+    console.log('  Visit date string:', visitDateStr)
+    console.log('  Today components:', { year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate() })
+    
+    const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateStr } })
+    
+    console.log('🔍 [VisitSelector] API response:', data)
+    
     if (data && typeof data.exists === 'boolean') {
+      console.log('🔍 [VisitSelector] Visit exists:', data.exists, 'Visit ID:', data.visit_id)
       if (data.exists) {
         addToast({ title: 'Visit already exists', message: 'Switched to today\'s existing visit.', type: 'info' })
         emit('update:visitMode', 'existing')
@@ -74,6 +88,7 @@ const checkTodayVisitAndCorrect = async () => {
           if (foundId) {
             const vres = await api.get(`/visits/${foundId}`)
             existingVisit.value = vres.data?.data || vres.data || null
+            console.log('🔍 [VisitSelector] Fetched visit details:', existingVisit.value)
           }
         } catch (_) { existingVisit.value = null }
         emit('ensure-visits-loaded')
@@ -83,13 +98,27 @@ const checkTodayVisitAndCorrect = async () => {
     }
     // Offline / cached fallback shape handling
     const cachedVisits = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+    console.log('🔍 [VisitSelector] Using cached visits fallback, found', cachedVisits.length, 'visits')
+    
     const sameDay = cachedVisits.find(v => {
-      if (!v || String(v.patient_id) !== String(patientId) || !v.visit_date) return false
+      if (!v || String(v.patient_id) !== String(patientId) || !v.visit_date) {
+        console.log('🔍 [VisitSelector] Skipping visit:', v?.visit_id, 'patient_id:', v?.patient_id, 'visit_date:', v?.visit_date)
+        return false
+      }
       const vd = new Date(v.visit_date)
-      const cd = new Date(visitDateIso)
-      return vd.getFullYear() === cd.getFullYear() && vd.getMonth() === cd.getMonth() && vd.getDate() === cd.getDate()
+      const cd = new Date()
+      const isSameDay = vd.getFullYear() === cd.getFullYear() && vd.getMonth() === cd.getMonth() && vd.getDate() === cd.getDate()
+      
+      console.log('🔍 [VisitSelector] Comparing dates:')
+      console.log('  Visit date:', v.visit_date, '->', vd.toISOString())
+      console.log('  Current date:', cd.toISOString())
+      console.log('  Same day?', isSameDay)
+      
+      return isSameDay
     })
+    
     if (sameDay) {
+      console.log('🔍 [VisitSelector] Found same day visit in cache:', sameDay.visit_id)
       addToast({ title: 'Visit already exists', message: 'Switched to today\'s existing visit.', type: 'info' })
       emit('update:visitMode', 'existing')
       const foundId = String(sameDay.visit_id || '')
@@ -98,7 +127,10 @@ const checkTodayVisitAndCorrect = async () => {
       emit('ensure-visits-loaded')
       return true
     }
+    
+    console.log('🔍 [VisitSelector] No existing visit found for today')
   } catch (err) {
+    console.error('🔍 [VisitSelector] Error checking today\'s visit:', err)
     addToast({ title: 'Notice', message: 'Unable to verify today\'s visit. You may proceed.', type: 'warning' })
   }
   return false

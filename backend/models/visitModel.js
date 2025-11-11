@@ -122,24 +122,24 @@ const ensureVisitForDate = async (patient_id, visit_date, recorded_by = null, cl
 const findExistingVisitForDay = async (patient_id, visit_date, exclude_visit_id = null, client) => {
   const supabase = withClient(client);
   if (!patient_id) return null;
-  const target = visit_date ? new Date(visit_date) : new Date();
-  const start = new Date(target);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(target);
-  end.setHours(23, 59, 59, 999);
+
+  // Get target date as YYYY-MM-DD string
+  const targetDate = visit_date ? new Date(visit_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
   let query = supabase
     .from('visits')
     .select('visit_id, patient_id, visit_date')
     .eq('patient_id', patient_id)
-    .gte('visit_date', start.toISOString())
-    .lte('visit_date', end.toISOString())
     .order('visit_id', { ascending: false })
     .limit(1);
 
   if (exclude_visit_id) {
     query = query.neq('visit_id', exclude_visit_id);
   }
+
+  // Use PostgreSQL's date function to compare date parts
+  // This assumes visit_date is stored as a timestamp that can be cast to date
+  query = query.eq('visit_date::date', targetDate);
 
   const { data, error } = await query.maybeSingle();
   if (error && error.code !== 'PGRST116') throw error;

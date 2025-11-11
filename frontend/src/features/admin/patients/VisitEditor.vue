@@ -1317,8 +1317,19 @@ const vitalsReadOnly = computed(() => {
 const checkTodayVisitAndAdopt = async (patientId) => {
   if (!patientId || props.existingVisitId) return
   try {
-    const visitDateIso = new Date().toISOString()
+    const visitDateIso = getCurrentPHDate()
+    console.log('🔍 [VISIT_EDITOR] Checking for existing visit:', {
+      patientId,
+      visitDateIso,
+      currentDate: new Date().toISOString(),
+      phDate: getCurrentPHDate()
+    })
     const { data } = await api.get('/visits/exists/check', { params: { patient_id: patientId, visit_date: visitDateIso } })
+    console.log('🔍 [VISIT_EDITOR] Visit check response:', {
+      visitDateIso,
+      exists: data?.exists,
+      visitId: data?.visit_id
+    })
     if (data && data.exists) {
       todayVisitId.value = String(data.visit_id || '')
       // Load existing visit details to prefill vitals
@@ -1333,6 +1344,7 @@ const checkTodayVisitAndAdopt = async (patientId) => {
       todayVisitHasVitals.value = false
     }
   } catch (e) {
+    console.log('❌ [VISIT_EDITOR] Error checking for existing visit:', e)
     // Silent fail; backend will still block duplicate via 409
     todayVisitId.value = ''
     todayVisitHasVitals.value = false

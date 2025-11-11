@@ -2,8 +2,8 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.7  
-> **Last Updated:** November 10, 2025  
+> **📌 Current Status:** Active Development - Version 4.8  
+> **Last Updated:** November 11, 2025  
 > **Branch:** system-prototype-v4  
 >
 > **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history with all dated changes and improvements.
@@ -47,7 +47,7 @@ The Immunization Management System is designed to digitize and streamline the im
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.7 (November 10, 2025)
+- Version: 4.8 (November 11, 2025)
 - Status: Active Development
 
 ---
@@ -650,8 +650,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 **Project**: Immunization Management System  
-**Version**: 4.7  
-**Last Updated**: November 10, 2025  
+**Version**: 4.8  
+**Last Updated**: November 11, 2025  
 **Maintained by**: Clark Kent (clarknotkent), JapethDee and RobertBite15  
 **License**: Academic Thesis Project
 

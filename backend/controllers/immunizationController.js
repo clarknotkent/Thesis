@@ -59,7 +59,7 @@ async function sendDemoRescheduleNotification(patientScheduleId, newScheduledDat
     const guardianTitle = relationship === 'mother' ? 'Ms.' : relationship === 'father' ? 'Mr.' : '';
 
     // Create simple demo reschedule message
-    const message = `Good Day, ${guardianTitle} ${patient.guardian_last_name || patient.full_name?.split(' ').pop() || ''}!\n\nGood Day! Your child, ${patient.full_name}, has a rescheduled appointment.\n\nNew Schedule:\n${formattedDate}:\n- ${vaccineName} (${dose})\n\nThank you!`;
+    const message = `Good Day, ${guardianTitle} ${patient.guardian_last_name || patient.full_name?.split(' ').pop() || ''}!\n\nYour child, ${patient.full_name}, has a rescheduled appointment.\n\nNew Schedule:\n${formattedDate}:\n- ${vaccineName} (${dose})\n\nThank you!`;
 
     // Send SMS directly
     const sendRes = await smsService.sendSMS(normalizedPhone, message);

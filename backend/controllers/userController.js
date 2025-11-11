@@ -4,6 +4,7 @@ import { createUserMapping } from '../models/authModel.js';
 import { logActivity } from '../models/activityLogger.js';
 import { ACTIVITY } from '../constants/activityTypes.js';
 import { createClient } from '@supabase/supabase-js';
+import supabase from '../db.js';
 
 const getAuthAdmin = () => {
   const url = process.env.SUPABASE_URL;
@@ -186,16 +187,23 @@ const deleteUser = async (req, res) => {
     try { await logActivity({ action_type: ACTIVITY.USER.SOFT_DELETE, description: `Soft deleted user ${id} by ${actorId}`, user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deleted_by: actorId } }); } catch (e) { /* activity log failed */ }
     // Cascade soft-delete to guardian if exists
     try {
-      const { data: g, error: gErr } = await require('../db')
+      const { data: g, error: gErr } = await supabase
         .from('guardians')
         .select('guardian_id')
         .eq('user_id', id)
         .maybeSingle();
       if (!gErr && g && g.guardian_id) {
-        await require('../db')
+        await supabase
           .from('guardians')
           .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
           .eq('guardian_id', g.guardian_id);
+        // Disable auto-send for the deleted guardian
+        await supabase
+          .from('guardian_auto_send_settings')
+          .upsert(
+            { guardian_id: g.guardian_id, auto_send_enabled: false },
+            { onConflict: 'guardian_id', ignoreDuplicates: false }
+          );
       }
     } catch (e) {
       console.warn('[users:deleteUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
@@ -309,16 +317,23 @@ const deactivateUser = async (req, res) => {
     try { await logActivity({ action_type: ACTIVITY.USER.DEACTIVATE, description: `Deactivated user ${id} by ${actorId}` , user_id: actorId, entity_id: id, entity_type: 'user', new_value: { deactivated_by: actorId } }); } catch (e) { /* activity log failed */ }
     // Cascade soft-delete to guardian if exists
     try {
-      const { data: g, error: gErr } = await require('../db')
+      const { data: g, error: gErr } = await supabase
         .from('guardians')
         .select('guardian_id')
         .eq('user_id', id)
         .maybeSingle();
       if (!gErr && g && g.guardian_id) {
-        await require('../db')
+        await supabase
           .from('guardians')
           .update({ is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: actorId || null })
           .eq('guardian_id', g.guardian_id);
+        // Disable auto-send for the deleted guardian
+        await supabase
+          .from('guardian_auto_send_settings')
+          .upsert(
+            { guardian_id: g.guardian_id, auto_send_enabled: false },
+            { onConflict: 'guardian_id', ignoreDuplicates: false }
+          );
       }
     } catch (e) {
       console.warn('[users:deactivateUser] guardian soft-delete cascade failed (non-fatal):', e && e.message);
@@ -352,13 +367,13 @@ const restoreUser = async (req, res) => {
     if (!restored) return res.status(404).json({ message: 'User not found' });
     // Also restore linked guardian if exists (mirror of soft-delete cascade)
     try {
-      const { data: g, error: gErr } = await require('../db')
+      const { data: g, error: gErr } = await supabase
         .from('guardians')
         .select('guardian_id, is_deleted')
         .eq('user_id', id)
         .maybeSingle();
       if (!gErr && g && g.guardian_id && g.is_deleted) {
-        await require('../db')
+        await supabase
           .from('guardians')
           .update({ is_deleted: false, deleted_at: null, deleted_by: null, updated_at: new Date().toISOString(), updated_by: req.user?.user_id || null })
           .eq('guardian_id', g.guardian_id);
