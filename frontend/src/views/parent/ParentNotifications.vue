@@ -48,7 +48,7 @@
           :title="n.title"
           :message="n.message"
           :type="n.type"
-          :time="n.created_at"
+          :created-at="n.created_at"
           :channel="n.channel"
           :read="n.read"
           @click="handleClick(n)"
