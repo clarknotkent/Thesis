@@ -15,9 +15,11 @@
 
         <!-- Notifications -->
         <router-link 
-          to="/healthworker/notifications" 
+          :to="isOnline ? '/healthworker/notifications' : '#'"
           class="nav-link position-relative me-3"
-          aria-label="Notifications"
+          :class="{ disabled: !isOnline }"
+          :title="!isOnline ? 'Notifications not available offline' : 'Notifications'"
+          @click.prevent="!isOnline"
         >
           <i class="bi bi-bell" />
           <span
@@ -28,9 +30,11 @@
 
         <!-- Messages -->
         <router-link 
-          to="/healthworker/messages" 
+          :to="isOnline ? '/healthworker/messages' : '#'"
           class="nav-link position-relative"
-          aria-label="Messages"
+          :class="{ disabled: !isOnline }"
+          :title="!isOnline ? 'Messages not available offline' : 'Messages'"
+          @click.prevent="!isOnline"
         >
           <i class="bi bi-chat-dots" />
           <span
@@ -44,9 +48,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
 defineProps({
   userRole: {
@@ -58,6 +63,9 @@ defineProps({
     default: ''
   }
 })
+
+// Online status
+const { isOnline } = useOnlineStatus()
 
 // Unread counters
 const notificationCount = ref(0)
@@ -109,9 +117,27 @@ const fetchCounts = async () => {
 }
 
 onMounted(() => {
-  fetchCounts()
-  // Poll every 15s for updates
-  pollInterval = setInterval(fetchCounts, 15000)
+  if (isOnline.value) {
+    fetchCounts()
+    // Poll every 15s for updates (only when online)
+    pollInterval = setInterval(() => {
+      if (isOnline.value) {
+        fetchCounts()
+      }
+    }, 15000)
+  }
+})
+
+// Watch online status to clear counts when going offline
+watch(isOnline, (newOnline) => {
+  if (!newOnline) {
+    // Clear counts when going offline
+    notificationCount.value = 0
+    messageCount.value = 0
+  } else {
+    // Fetch counts when coming back online
+    fetchCounts()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -166,27 +192,14 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-/* Mobile optimizations */
-@media (max-width: 576px) {
-  .navbar-brand {
-    font-size: 1rem;
-  }
-  
-  .navbar-brand i {
-    font-size: 1.1rem;
-  }
-  
-  .nav-link {
-    font-size: 1rem;
-    padding: 0.4rem 0.6rem !important;
-  }
-  
-  .nav-link i {
-    font-size: 1.1rem;
-  }
-  
-  .badge {
-    font-size: 0.55em;
-  }
+.nav-link.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.nav-link.disabled:hover {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 </style>

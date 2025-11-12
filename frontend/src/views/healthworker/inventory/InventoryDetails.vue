@@ -17,6 +17,18 @@
 
     <!-- Scrollable Content -->
     <div class="details-content-wrapper">
+      <!-- Offline Indicator -->
+      <div
+        v-if="!loading && !effectiveOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
+        <div>
+          <strong>Offline Mode</strong> - Showing cached inventory details. Some features may be limited.
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div
         v-if="loading"
@@ -222,9 +234,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import api from '@/services/api'
+import { db } from '@/services/offline/db'
+import { useOffline } from '@/composables/useOffline'
 
 const router = useRouter()
 const route = useRoute()
+
+const { effectiveOnline } = useOffline()
 
 // State
 const loading = ref(true)
@@ -233,26 +249,32 @@ const inventory = ref(null)
 
 // Computed properties
 const vaccineName = computed(() => {
-  return inventory.value?.vaccinemaster?.antigen_name || 
-         inventory.value?.vaccine_name || 
-         'Unknown Vaccine'
+  // Try vaccine master data first, then fallback to inventory data
+  return inventory.value?.vaccinemaster?.antigen_name ||
+         inventory.value?.vaccine_name ||
+         inventory.value?.antigen_name ||
+         inventory.value?.name ||
+         `Vaccine ID: ${inventory.value?.vaccine_id || 'Unknown'}`
 })
 
 const diseasePrevented = computed(() => {
-  return inventory.value?.vaccinemaster?.disease_prevented || 
-         inventory.value?.disease_prevented || 
-         'N/A'
+  // This field may not be available in offline cache
+  return inventory.value?.vaccinemaster?.disease_prevented ||
+         inventory.value?.disease_prevented ||
+         'Not available offline'
 })
 
 const brandName = computed(() => {
-  return inventory.value?.vaccinemaster?.brand_name || 
-         inventory.value?.brand_name || 
+  // This field may not be available in offline cache
+  return inventory.value?.vaccinemaster?.brand_name ||
+         inventory.value?.brand_name ||
          'Generic'
 })
 
 const manufacturer = computed(() => {
-  return inventory.value?.vaccinemaster?.manufacturer || 
-         inventory.value?.manufacturer || 
+  // This field may not be available in offline cache
+  return inventory.value?.vaccinemaster?.manufacturer ||
+         inventory.value?.manufacturer ||
          'Unknown'
 })
 
@@ -426,10 +448,63 @@ const fetchInventoryDetails = async () => {
     const inventoryId = route.params.id
     console.log('📦 [InventoryDetails] Fetching inventory ID:', inventoryId)
     
-    const response = await api.get(`/vaccines/inventory/${inventoryId}`)
-    inventory.value = response.data?.data || response.data
+    if (effectiveOnline.value) {
+      // ONLINE: Fetch from API
+      console.log('🌐 [InventoryDetails] Fetching from API...')
+      const response = await api.get(`/vaccines/inventory/${inventoryId}`)
+      inventory.value = response.data?.data || response.data
+      console.log('✅ [InventoryDetails] Loaded inventory from API:', inventory.value)
+    } else {
+      // OFFLINE: Load from cache
+      console.log('📴 [InventoryDetails] Loading from cache...')
+      
+      try {
+        // Ensure database is open
+        if (!db.isOpen()) {
+          await db.open()
+          console.log('✅ [InventoryDetails] Database opened')
+        }
+        
+        // Find inventory by inventory_id (not the primary key 'id')
+        const cachedInventory = await db.inventory.where('inventory_id').equals(parseInt(inventoryId)).first()
+        
+        console.log('📦 [InventoryDetails] Raw cached inventory:', cachedInventory)
+        console.log('🔍 [InventoryDetails] Cached inventory fields:', Object.keys(cachedInventory))
+        console.log('💉 [InventoryDetails] Has vaccinemaster in cache:', !!cachedInventory.vaccinemaster)
+        console.log('🆔 [InventoryDetails] Vaccine ID:', cachedInventory.vaccine_id, typeof cachedInventory.vaccine_id)
+        
+        if (cachedInventory) {
+          // Check if vaccine master data is already cached with inventory (from API join)
+          let vaccineMaster = cachedInventory.vaccinemaster || null
+          
+          // If not available, try to load from separate vaccines table
+          if (!vaccineMaster && cachedInventory.vaccine_id) {
+            try {
+              vaccineMaster = await db.vaccines.where('vaccine_id').equals(cachedInventory.vaccine_id).first()
+              console.log('💉 [InventoryDetails] Vaccine master data from lookup:', vaccineMaster)
+            } catch (lookupError) {
+              console.warn('⚠️ [InventoryDetails] Failed to lookup vaccine data:', lookupError)
+            }
+          }
+          
+          // Combine inventory with vaccine master data
+          inventory.value = {
+            ...cachedInventory,
+            vaccinemaster: vaccineMaster
+          }
+          
+          console.log('✅ [InventoryDetails] Final combined inventory:', inventory.value)
+        } else {
+          console.warn('⚠️ [InventoryDetails] Inventory not found in cache:', inventoryId)
+          error.value = 'Inventory details not available offline. Please connect to the internet and try again.'
+        }
+        
+      } catch (cacheError) {
+        console.error('❌ [InventoryDetails] Error loading from cache:', cacheError)
+        error.value = 'Failed to load inventory details from cache. Please connect to the internet and try again.'
+      }
+    }
     
-    console.log('✅ [InventoryDetails] Loaded inventory:', inventory.value)
   } catch (err) {
     console.error('❌ [InventoryDetails] Error fetching inventory:', err)
     error.value = 'Failed to load inventory details. Please try again.'

@@ -13,12 +13,12 @@
         <!-- Connection Status Dropdown -->
         <MobileOfflineIndicatorDropdown class="me-2" />
 
-        <!-- Notifications (disabled when offline) -->
+        <!-- Notifications (always enabled, shows cached counts when offline) -->
         <router-link 
-          v-if="isOnline"
           to="/parent/notifications" 
           class="nav-link position-relative me-3"
           aria-label="Notifications"
+          :title="effectiveOnline ? 'Notifications' : 'Notifications (cached data)'"
         >
           <i class="bi bi-bell" />
           <span
@@ -28,21 +28,13 @@
             {{ notificationCount }}
           </span>
         </router-link>
-        <span 
-          v-else
-          class="nav-link position-relative me-3 text-muted"
-          style="cursor: not-allowed; opacity: 0.5;"
-          title="Notifications not available offline"
-        >
-          <i class="bi bi-bell" />
-        </span>
 
-        <!-- Messages (disabled when offline) -->
+        <!-- Messages (always enabled, shows cached counts when offline) -->
         <router-link 
-          v-if="isOnline"
           to="/parent/messages" 
           class="nav-link position-relative"
           aria-label="Messages"
+          :title="effectiveOnline ? 'Messages' : 'Messages (cached data)'"
         >
           <i class="bi bi-chat-dots" />
           <span
@@ -52,14 +44,6 @@
             {{ messageCount }}
           </span>
         </router-link>
-        <span 
-          v-else
-          class="nav-link position-relative text-muted"
-          style="cursor: not-allowed; opacity: 0.5;"
-          title="Messaging not available offline"
-        >
-          <i class="bi bi-chat-dots" />
-        </span>
       </div>
     </div>
   </nav>
@@ -69,7 +53,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
-import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { useOffline } from '@/composables/useOffline'
+import { db } from '@/utils/db'
 
 defineProps({
   title: {
@@ -78,7 +63,7 @@ defineProps({
   }
 })
 
-const { isOnline } = useOnlineStatus()
+const { effectiveOnline } = useOffline()
 const notificationCount = ref(0)
 const messageCount = ref(0)
 
@@ -86,33 +71,74 @@ let pollInterval = null
 
 const fetchCounts = async () => {
   try {
-    // Skip API calls if offline (will use cached badge counts if available)
-    if (!navigator.onLine) {
-      console.log('📴 Offline - skipping notification/message count fetch')
-      return
-    }
-    
-    // Notifications
-    try {
-      const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
-      const nRows = nResp?.data?.data || nResp?.data || []
-      notificationCount.value = Array.isArray(nRows) ? nRows.length : (nResp?.data?.count || 0)
-    } catch (e) {
-      console.error('Failed to fetch parent notifications', e)
-      notificationCount.value = 0
-    }
+    if (effectiveOnline.value) {
+      // Online: fetch fresh counts from API
+      console.log('🌐 Online - fetching fresh notification/message counts')
+      
+      // Notifications
+      try {
+        const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
+        const nRows = nResp?.data?.data || nResp?.data || []
+        notificationCount.value = Array.isArray(nRows) ? nRows.length : (nResp?.data?.count || 0)
+      } catch (e) {
+        console.error('Failed to fetch parent notifications', e)
+        notificationCount.value = 0
+      }
 
-    // Messages
-    try {
-      const cResp = await conversationAPI.getConversations({ limit: 200 })
-      const convs = cResp?.data?.items || cResp?.data || []
-      messageCount.value = Array.isArray(convs) ? convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) : 0
-    } catch (e) {
-      console.error('Failed to fetch parent conversations', e)
-      messageCount.value = 0
+      // Messages
+      try {
+        const cResp = await conversationAPI.getConversations({ limit: 200 })
+        const convs = cResp?.data?.items || cResp?.data || []
+        messageCount.value = Array.isArray(convs) ? convs.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) : 0
+      } catch (e) {
+        console.error('Failed to fetch parent conversations', e)
+        messageCount.value = 0
+      }
+    } else {
+      // Offline: load cached counts
+      console.log('📴 Offline - loading cached notification/message counts')
+      await loadCachedCounts()
     }
   } catch (e) {
     console.error('fetchCounts parent error', e)
+  }
+}
+
+const loadCachedCounts = async () => {
+  try {
+    // Get current user info to find cached data
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+    
+    if (!guardianId) {
+      console.warn('No guardian ID found for cached counts')
+      return
+    }
+
+    // Load cached guardian data
+    const cachedData = await db.guardians.get(guardianId)
+    
+    if (cachedData) {
+      // Count unread notifications from cache
+      const notifications = cachedData.notifications || []
+      notificationCount.value = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0
+      
+      // Count unread messages from cached conversations
+      const conversations = cachedData.conversations || []
+      messageCount.value = Array.isArray(conversations) 
+        ? conversations.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) 
+        : 0
+      
+      console.log(`📱 Cached counts loaded - Notifications: ${notificationCount.value}, Messages: ${messageCount.value}`)
+    } else {
+      console.log('📱 No cached data found for counts')
+      notificationCount.value = 0
+      messageCount.value = 0
+    }
+  } catch (error) {
+    console.error('Error loading cached counts:', error)
+    notificationCount.value = 0
+    messageCount.value = 0
   }
 }
 

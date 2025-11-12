@@ -89,10 +89,15 @@ import PatientInfoTab from './PatientInfoTab.vue'
 import VaccinationHistoryTab from '../vaccination-history/VaccinationHistoryTab.vue'
 import MedicalHistoryTab from '../medical-history/MedicalHistoryTab.vue'
 import api from '@/services/api'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import { buildFirstDoseEligibleIndex, compareGroupsByEligible } from '@/utils/vaccineOrder'
+import { formatTimeToAMPM } from '@/utils/dateUtils'
 
 const router = useRouter()
 const route = useRoute()
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const patient = ref(null)
 const vaccinationHistory = ref([])
@@ -150,7 +155,74 @@ const fetchPatientDetails = async () => {
     loading.value = true
     const patientId = route.params.id
     
-    // ONLINE ONLY - No offline support
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        const cachedPatient = cached.patients.find(p => p.id === parseInt(patientId))
+        if (cachedPatient) {
+          console.log('Loading patient from cache:', cachedPatient)
+          console.log('Patient details object:', cachedPatient.details)
+          console.log('Patient birthHistory:', cachedPatient.birthHistory)
+          // Map cached data to frontend format
+          patient.value = {
+            id: cachedPatient.id,
+            patient_id: cachedPatient.id,
+            childInfo: {
+              name: cachedPatient.details?.full_name || cachedPatient.details?.name || `${cachedPatient.details?.firstname || ''} ${cachedPatient.details?.surname || ''}`.trim(),
+              firstName: cachedPatient.details?.firstname || cachedPatient.details?.firstName,
+              middleName: cachedPatient.details?.middlename || cachedPatient.details?.middleName,
+              lastName: cachedPatient.details?.surname || cachedPatient.details?.lastName,
+              birthDate: cachedPatient.details?.date_of_birth || cachedPatient.details?.dateOfBirth,
+              sex: cachedPatient.details?.sex || cachedPatient.details?.gender,
+              address: cachedPatient.details?.address || cachedPatient.details?.home_address,
+              barangay: cachedPatient.details?.barangay,
+              phoneNumber: cachedPatient.details?.guardian_contact_number || cachedPatient.details?.contact_number
+            },
+            motherInfo: {
+              name: cachedPatient.details?.mother_name || cachedPatient.details?.motherName,
+              occupation: cachedPatient.details?.mother_occupation || cachedPatient.details?.motherOccupation,
+              phone: cachedPatient.details?.mother_contact_number || cachedPatient.details?.motherContactNumber
+            },
+            fatherInfo: {
+              name: cachedPatient.details?.father_name || cachedPatient.details?.fatherName,
+              occupation: cachedPatient.details?.father_occupation || cachedPatient.details?.fatherOccupation,
+              phone: cachedPatient.details?.father_contact_number || cachedPatient.details?.fatherContactNumber
+            },
+            guardianInfo: {
+              id: cachedPatient.details?.guardian_id || cachedPatient.guardianId,
+              name: cachedPatient.details?.guardian_name || `${cachedPatient.details?.guardian_firstname || ''} ${cachedPatient.details?.guardian_surname || ''}`.trim(),
+              contact_number: cachedPatient.details?.guardian_contact_number,
+              alternative_contact_number: cachedPatient.details?.guardian_alternative_contact_number,
+              occupation: cachedPatient.details?.guardian_occupation,
+              family_number: cachedPatient.details?.guardian_family_number,
+              relationship: cachedPatient.details?.relationship_to_guardian
+            },
+            birthHistory: {
+              ...cachedPatient.birthHistory,
+              time_of_birth: cachedPatient.birthHistory?.time_of_birth ? formatTimeToAMPM(cachedPatient.birthHistory.time_of_birth) : undefined
+            },
+            health_center: cachedPatient.details?.health_center,
+            tags: cachedPatient.details?.tags,
+            dateRegistered: cachedPatient.details?.created_at || cachedPatient.details?.date_registered,
+            age_months: cachedPatient.details?.age_months,
+            age_days: cachedPatient.details?.age_days
+          }
+
+          // Use cached vaccination history and medical history
+          vaccinationHistory.value = cachedPatient.immunizations || []
+          medicalHistory.value = cachedPatient.visits || []
+          
+          console.log('✅ Patient details loaded from cache')
+          return
+        }
+      }
+    }
+
+    // Online mode - fetch fresh data
     console.log('🌐 Fetching data from API')
     const response = await api.get(`/patients/${patientId}`)
     
@@ -237,7 +309,23 @@ const fetchPatientDetails = async () => {
 
 const fetchMedicalHistory = async (patientId) => {
   try {
-    // ONLINE ONLY - No offline support
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        const cachedPatient = cached.patients.find(p => p.id === parseInt(patientId))
+        if (cachedPatient && cachedPatient.visits) {
+          medicalHistory.value = cachedPatient.visits
+          console.log('✅ Medical history loaded from cache')
+          return
+        }
+      }
+    }
+
+    // Online mode - fetch fresh data
     const response = await api.get(`/visits?patient_id=${patientId}`)
     const data = response.data
     medicalHistory.value = data.items || data.data || data || []

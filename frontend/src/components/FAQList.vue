@@ -84,11 +84,16 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { getFaqs } from '@/services/faqService'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import DOMPurify from 'dompurify'
 
 const items = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
+
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const filteredItems = computed(() => {
   if (!searchQuery.value) return items.value
@@ -102,6 +107,26 @@ const filteredItems = computed(() => {
 const load = async () => {
   try {
     loading.value = true
+    
+    // Check for cached FAQs first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.faqs) {
+        items.value = cached.faqs.map(f => ({ 
+          faq_id: f.faq_id || f.id, 
+          question: f.question || f.q || '', 
+          answer: f.answer || f.a || '',
+          created_at: f.created_at || f.createdAt
+        })).filter(f => f.question && f.answer)
+        console.log('✅ FAQs loaded from cache')
+        return
+      }
+    }
+
+    // Online mode - fetch fresh FAQs
     const res = await getFaqs()
     items.value = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.data) ? res.data : [])
   } catch (e) {

@@ -1,9 +1,12 @@
 <template>
   <HealthWorkerLayout
-    :show-controls="true"
-    :controls-props="{ icon: 'person', title: 'My Profile' }"
+    :show-controls="false"
   >
     <div class="page-content-wrapper">
+      <h5 class="mb-3 text-small align-items-center d-flex">
+        <i class="bi bi-person fs-1 text-primary me-2" />
+        My Profile
+      </h5>
       <div
         v-if="loading"
         class="text-center py-4"
@@ -77,30 +80,40 @@ import { ref, onMounted } from 'vue'
 import { getUser } from '@/services/auth'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import api from '@/services/api'
+import { useOffline } from '@/composables/useOffline'
 
 const loading = ref(true)
 const profile = ref({})
+const { effectiveOnline } = useOffline()
 
 const fetchProfile = async () => {
   try {
     loading.value = true
-    const res = await api.get('/profile')
-    const data = res.data?.data || res.data || {}
-    profile.value = {
-      fullName: data.full_name || `${data.firstname || ''} ${data.surname || ''}`.trim(),
-      firstname: data.firstname,
-      surname: data.surname,
-      email: data.email,
-      role: data.role,
-      avatar: data.avatar || null,
-      contact_number: data.contact_number || data.phone || null,
-      employee_id: data.employee_id || data.user_code || null,
-      address: data.address || null,
-      created_at: data.created_at || data.createdAt || null
+    
+    if (effectiveOnline.value) {
+      // ONLINE: Try to fetch from API first
+      try {
+        const res = await api.get('/auth/profile')
+        const data = res.data?.data || res.data || {}
+        profile.value = {
+          fullName: data.full_name || `${data.firstname || ''} ${data.surname || ''}`.trim(),
+          firstname: data.firstname,
+          surname: data.surname,
+          email: data.email,
+          role: data.role,
+          avatar: data.avatar || null,
+          contact_number: data.contact_number || data.phone || null,
+          employee_id: data.employee_id || data.user_code || null,
+          address: data.address || null,
+          created_at: data.created_at || data.createdAt || null
+        }
+        return // Successfully loaded from API
+      } catch (apiError) {
+        console.warn('Failed to load profile from API, falling back to local user:', apiError?.message || apiError)
+      }
     }
-  } catch (e) {
-    // Fallback to locally stored user (auth) if API not available
-    console.warn('Failed to load profile from API, falling back to local user:', e?.message || e)
+    
+    // OFFLINE or API failed: Load from local storage
     const local = getUser()
     if (local) {
       profile.value = {
@@ -118,6 +131,9 @@ const fetchProfile = async () => {
     } else {
       profile.value = {}
     }
+  } catch (e) {
+    console.error('Unexpected error in fetchProfile:', e)
+    profile.value = {}
   } finally {
     loading.value = false
   }

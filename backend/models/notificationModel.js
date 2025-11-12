@@ -40,7 +40,7 @@ function mapNotificationDTO(row) {
   // Derive header from template if it's a custom message (no template_code)
   let derivedHeader = header;
   if (!template_code && message_body) {
-    // For custom messages, extract header from the first line or first sentence
+    // For custom messages (empty template_code), extract header from the first line or first sentence
     const lines = message_body.split('\n').filter(line => line.trim());
     if (lines.length > 0) {
       // Take first line if it's short (likely a header), or first sentence
@@ -55,6 +55,23 @@ function mapNotificationDTO(row) {
         }
       }
     }
+  } else if (template_code && !derivedHeader) {
+    // For template-based notifications, derive header from template_code
+    const templateHeaders = {
+      welcome_guardian: 'Welcome',
+      schedule_created: 'Schedule Created',
+      vaccination_reminder_14: '14-Day Reminder',
+      vaccination_reminder_7: '7-Day Reminder',
+      vaccination_reminder_0: 'Due Today',
+      vaccination_overdue: 'Overdue Alert',
+      immunization_confirmation: 'Immunization Confirmed',
+      low_stock_alert: 'Low Stock Alert',
+      password_reset: 'Password Reset',
+      role_change: 'Role Changed',
+      new_message: 'New Message',
+      conversation_started: 'New Conversation'
+    };
+    derivedHeader = templateHeaders[template_code] || templateHeaders[template_code.toLowerCase()] || 'Notification';
   }
 
   return {

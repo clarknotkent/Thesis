@@ -41,9 +41,13 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import SummaryCards from '@/features/parent/home/components/SummaryCards.vue'
 import ChildrenList from '@/features/parent/home/components/ChildrenList.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import api from '@/services/api'
 
 const { userInfo } = useAuth()
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const loading = ref(true)
 const children = ref([])
@@ -97,7 +101,51 @@ const fetchDashboardStats = async () => {
       }
     }
 
-    // ONLINE-ONLY MODE (no offline cache)
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        children.value = cached.patients.map(p => ({
+          ...p.details,
+          vaccinationSummary: {
+            completed: 0, // Will be calculated from cached schedules
+            total: 0
+          }
+        }))
+        stats.value.totalChildren = children.value.length
+        
+        // Calculate stats from cached data
+        let dueCount = 0
+        let completedCount = 0
+        
+        children.value = children.value.map((child, index) => {
+          const patient = cached.patients[index]
+          if (patient && patient.schedules) {
+            const scheduleStats = deriveStats(patient.schedules)
+            completedCount += scheduleStats.completed || 0
+            dueCount += (scheduleStats.upcoming || 0) + (scheduleStats.overdue || 0)
+            
+            return {
+              ...child,
+              vaccinationSummary: {
+                completed: scheduleStats.completed || 0,
+                total: (scheduleStats.completed || 0) + (scheduleStats.upcoming || 0) + (scheduleStats.overdue || 0)
+              }
+            }
+          }
+          return child
+        })
+        
+        stats.value.dueVaccines = dueCount
+        stats.value.completedVaccines = completedCount
+        return
+      }
+    }
+
+    // Online mode - fetch fresh data
     const response = await api.get('/parent/children')
     const freshChildren = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
     children.value = freshChildren

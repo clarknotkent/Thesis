@@ -100,7 +100,7 @@ function getReminderOffsets() {
 
 // Parse reminder send time from env (PHT). Accepts formats like "08:00", "8:00 AM", "20:30". Defaults to 08:00.
 function getReminderTime(tz = 'Asia/Manila') {
-  const raw = (process.env.SMS_REMINDER_TIME || '10:31').trim();
+  const raw = (process.env.SMS_REMINDER_TIME || '08:00').trim();
   // Try common patterns
   let m = moment.tz(raw, ['H:mm', 'HH:mm', 'h:mm A', 'h:mmA', 'hh:mm A', 'hh:mmA'], true, tz);
   if (!m.isValid()) {
@@ -168,6 +168,22 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
   const patientRow = await getPatientSmsInfo(triggerSched.patient_id, supabase);
   const normalizedPhone = patientRow?.guardian_contact_number ? smsService.formatPhoneNumber(patientRow.guardian_contact_number) : null;
   if (!patientRow || !normalizedPhone) return { created: 0, skipped: 'no-guardian-phone' };
+
+  // 2.5) Check guardian auto-send setting - skip if disabled
+  if (patientRow.guardian_id) {
+    const { data: autoSendSetting, error: autoSendErr } = await supabase
+      .from('guardian_auto_send_settings')
+      .select('auto_send_enabled')
+      .eq('guardian_id', patientRow.guardian_id)
+      .maybeSingle();
+
+    if (autoSendErr) {
+      console.warn('[scheduleReminder] Error checking auto-send setting:', autoSendErr?.message || autoSendErr);
+    } else if (autoSendSetting && autoSendSetting.auto_send_enabled === false) {
+      console.log(`[scheduleReminder] Skipping SMS creation for patient ${triggerSched.patient_id} - guardian ${patientRow.guardian_id} has auto-send disabled`);
+      return { created: 0, skipped: 'auto-send-disabled' };
+    }
+  }
 
   // 3) Find all schedules for same patient on same date (combine same-day schedules)
   // Align day-boundaries to Asia/Manila and avoid 'Z' to match other queries

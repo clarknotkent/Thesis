@@ -135,3 +135,29 @@ export const getPHDateKey = (date) => {
 
   return moment.tz(date, PH_TIMEZONE).format('YYYY-MM-DD');
 };
+
+/**
+ * Format time string to 12-hour AM/PM format
+ * @param {string} timeString - Time in HH:mm:ss or HH:mm format
+ * @returns {string} - Time in 12-hour format (e.g., "2:30 PM")
+ */
+export const formatTimeToAMPM = (timeString) => {
+  if (!timeString) return '';
+
+  try {
+    // Parse the time string - handle both HH:mm:ss and HH:mm formats
+    const [hours, minutes] = timeString.split(':');
+    const hour24 = parseInt(hours, 10);
+    const minute = parseInt(minutes, 10);
+
+    if (isNaN(hour24) || isNaN(minute)) return timeString;
+
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+
+    return `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+  } catch (error) {
+    console.warn('Error formatting time to AM/PM:', error, timeString);
+    return timeString;
+  }
+};

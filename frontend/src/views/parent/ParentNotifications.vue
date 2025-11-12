@@ -59,25 +59,52 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import NotificationItem from '@/features/shared/notifications/NotificationItem.vue'
 import api from '@/services/api'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 
-// ONLINE-ONLY MODE: Removed offline detection
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
+
 const loading = ref(true)
 const notifications = ref([])
 
 const fetchNotifications = async () => {
   try {
     loading.value = true
-    
-    // ONLINE-ONLY MODE: Fetch from API
-    try {
-      const response = await api.get('/notifications')
-      const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+
+    if (effectiveOnline.value) {
+      // Fetch from API
+      try {
+        const response = await api.get('/notifications')
+        const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+
+        notifications.value = items.map(n => ({
+          id: n.notification_id || n.id,
+          title: n.title || n.template_code || 'Notification',
+          message: n.message || n.message_body || '',
+          type: n.type || n.related_entity_type || n.channel || 'info',
+          channel: n.channel || n.delivery_channel || n.channel_type || null,
+          created_at: n.created_at || n.sent_at || n.scheduled_at,
+          read: Boolean(n.read_at || n.is_read)
+        }))
+
+      } catch (apiError) {
+        console.error('Failed to fetch notifications from API:', apiError)
+        notifications.value = []
+      }
+    } else {
+      // Load from cache
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
       
-      notifications.value = items.map(n => ({
+      // Transform cached notifications to match the expected format
+      const cachedNotifications = cached?.notifications || []
+      notifications.value = cachedNotifications.map(n => ({
         id: n.notification_id || n.id,
         title: n.title || n.template_code || 'Notification',
         message: n.message || n.message_body || '',
@@ -86,10 +113,6 @@ const fetchNotifications = async () => {
         created_at: n.created_at || n.sent_at || n.scheduled_at,
         read: Boolean(n.read_at || n.is_read)
       }))
-      
-    } catch (apiError) {
-      console.error('Failed to fetch notifications from API:', apiError)
-      notifications.value = []
     }
   } catch (e) {
     console.error('Failed to fetch notifications:', e)
@@ -100,12 +123,16 @@ const fetchNotifications = async () => {
 }
 
 const markAsRead = async (id) => {
+  if (!effectiveOnline.value) {
+    console.log('Mark as read disabled offline.');
+    return;
+  }
   try {
     // Mark as read in UI immediately
     const target = notifications.value.find(n => n.id === id)
     if (target) target.read = true
     
-    // Optionally send to API (silent fail)
+    // Send to API
     try {
       await api.put(`/notifications/${id}/read`)
     } catch (_) {
@@ -117,13 +144,21 @@ const markAsRead = async (id) => {
 }
 
 const handleClick = (notification) => {
-  // ONLINE-ONLY MODE: Mark as read
-  if (!notification.read && notification.id) {
+  // Mark as read only if online
+  if (!notification.read && notification.id && effectiveOnline.value) {
     markAsRead(notification.id)
   }
 }
 
 onMounted(fetchNotifications)
+
+// Watch for online status changes and refresh data when coming back online
+watch(effectiveOnline, async (isOnline, wasOnline) => {
+  if (isOnline && !wasOnline) {
+    console.log('🌐 Back online - refreshing notifications with latest data')
+    await fetchNotifications()
+  }
+})
 </script>
 
 <style scoped>

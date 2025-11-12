@@ -55,17 +55,25 @@ let dropdownInstance = null
 
 const {
   isOnline,
+  manualOffline,
   connectionStatus,
+  toggleManualOffline,
 } = useOffline()
 
 const statusIcon = computed(() => {
-  if (isOnline.value) return 'bi bi-wifi'
-  return 'bi bi-wifi-off'
+  if (manualOffline.value || !isOnline.value) return 'bi bi-wifi-off'
+  return 'bi bi-wifi'
 })
 
 const statusColor = computed(() => {
-  if (isOnline.value) return '#ffffff' // White when online
-  return '#dc3545' // Red when offline
+  if (manualOffline.value || !isOnline.value) return '#dc3545' // Red when offline
+  return '#ffffff' // White when online
+})
+
+// Override the connection status to show manual offline mode
+const _effectiveConnectionStatus = computed(() => {
+  if (manualOffline.value) return 'Offline (Manual)'
+  return connectionStatus.value
 })
 
 const toggleDropdown = () => {

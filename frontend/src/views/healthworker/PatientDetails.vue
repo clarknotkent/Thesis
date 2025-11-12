@@ -15,6 +15,8 @@
         </h1>
         <button
           class="add-button"
+          :aria-disabled="!effectiveOnline"
+          :class="{ 'disabled-visual': !effectiveOnline }"
           @click="goToAddImmunization"
         >
           <i class="bi bi-plus-lg" />
@@ -191,7 +193,7 @@
             </div>
             <div class="info-item">
               <span class="info-label">Time of Birth</span>
-              <span class="info-value">{{ patient?.birthHistory?.time_of_birth || '—' }}</span>
+              <span class="info-value">{{ formattedTimeOfBirth }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Attendant at Birth</span>
@@ -249,6 +251,7 @@
             :key="group.vaccineName"
             :vaccine-name="group.vaccineName"
             :doses="group.doses"
+            :disable-edit="!effectiveOnline"
             :initial-expanded="index === 0"
             @view="viewVaccination"
             @edit="editVaccination"
@@ -302,7 +305,7 @@
             :dose="vaccine.dose_number || vaccine.dose"
             :scheduled-date="vaccine.scheduled_date"
             :status="vaccine.status"
-            :editable="isEditable(vaccine)"
+            :editable="effectiveOnline && isEditable(vaccine)"
             @select="onScheduledSelect(vaccine)"
           />
         </div>
@@ -469,6 +472,7 @@ import MedicalHistoryCard from '@/features/health-worker/patients/components/Med
 import { usePatientDetails } from '@/features/health-worker/patients/composables'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
+import { useOffline } from '@/composables/useOffline'
 
 const router = useRouter()
 const route = useRoute()
@@ -487,6 +491,7 @@ const {
   formattedRegisteredDate,
   formattedHearingTestDate,
   formattedNewbornScreeningDate,
+    formattedTimeOfBirth,
   formattedBirthWeight,
   formattedBirthLength,
   groupedVaccinations,
@@ -500,6 +505,7 @@ const {
 
 const { confirm } = useConfirm()
 const { addToast } = useToast()
+const { effectiveOnline } = useOffline()
 
 // Navigation functions
 const goBack = () => {
@@ -507,7 +513,14 @@ const goBack = () => {
 }
 
 const goToAddImmunization = async () => {
-  // Non-BHS: keep existing navigation
+  if (!effectiveOnline.value) {
+    addToast({
+      title: 'Offline',
+      message: 'Adding immunization records is unavailable offline. Please go online to continue.',
+      type: 'warning'
+    })
+    return
+  }
   router.push({
     name: 'AddPatientImmunizationRecord',
     params: {
@@ -529,6 +542,10 @@ const viewVaccination = (group) => {
 }
 
 const editVaccination = (group) => {
+  if (!effectiveOnline.value) {
+    addToast({ title: 'Offline', message: 'Editing all doses is unavailable offline. Please go online to edit.', type: 'warning' })
+    return
+  }
   if (!group.doses || group.doses.length === 0) {
     addToast({ title: 'Notice', message: 'No doses found to edit', type: 'warning' })
     return
@@ -565,6 +582,14 @@ const showCalendarModal = ref(false)
 const calendarTarget = ref(null)
 
 const onScheduledSelect = (vaccine) => {
+  if (!effectiveOnline.value) {
+    addToast({
+      title: 'Offline',
+      message: 'Rescheduling is unavailable offline. Please go online to continue.',
+      type: 'warning'
+    })
+    return
+  }
   if (isEditable(vaccine)) {
     // open edit modal
     editTarget.value = vaccine
@@ -586,6 +611,10 @@ const closeEditModal = () => {
 
 // Follow admin manual-reschedule flow (confirm + RPC that enforces rules)
 const saveScheduleEdit = async () => {
+  if (!effectiveOnline.value) {
+    addToast({ title: 'Offline', message: 'Rescheduling requires an internet connection.', type: 'warning' })
+    return
+  }
   if (!editTarget.value || !editTarget.value.patient_schedule_id) return
   if (!editScheduledDate.value) {
     addToast({ title: 'Error', message: 'Please select a valid date.', type: 'error' })
@@ -700,6 +729,11 @@ onMounted(() => {
 
 .add-button i {
   font-size: 1.25rem;
+}
+
+/* Visual disabled state for add button when offline (still clickable for toast) */
+.add-button.disabled-visual {
+  opacity: 0.5;
 }
 
 /* Tab Navigation */

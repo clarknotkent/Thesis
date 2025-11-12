@@ -173,6 +173,18 @@
 
     <!-- Page Content Wrapper -->
     <div class="page-content-wrapper">
+      <!-- Offline Indicator -->
+      <div
+        v-if="!loading && !effectiveOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
+        <div>
+          <strong>Offline Mode</strong> - Showing cached vaccine inventory. Stock levels may not be current.
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div
         v-if="loading"
@@ -235,8 +247,10 @@ import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vu
 import InventoryCard from '@/features/health-worker/inventory/InventoryCard.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import { useVaccineInventory } from '@/features/health-worker/inventory/composables'
+import { useOffline } from '@/composables/useOffline'
 
 const router = useRouter()
+const { effectiveOnline } = useOffline()
 
 // Use vaccine inventory composable
 const {

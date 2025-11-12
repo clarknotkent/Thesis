@@ -56,7 +56,7 @@
       <div class="chat-container">
         <div class="row g-0 h-100">
           <!-- Conversations Sidebar -->
-          <div class="col-lg-4 col-md-5 border-end d-flex flex-column h-100">
+          <div class="col-lg-4 col-md-5 border-end d-flex flex-column h-100" style="width: 380px;">
             <ConversationsList
               v-model:search-query="searchQuery"
               :conversations="filteredConversations"
@@ -66,7 +66,7 @@
           </div>
 
           <!-- Chat Area -->
-          <div class="col-lg-8 col-md-7 d-flex flex-column h-100">
+          <div class="col-lg-8 col-md-7 d-flex flex-column h-100" style="width: calc(100% - 380px);">
             <!-- Empty State -->
             <div
               v-if="!selectedConversation"
@@ -423,6 +423,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   background: white;
   border: 1px solid #dee2e6;
+  width: 100%;
 }
 
 .empty-chat {

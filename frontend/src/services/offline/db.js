@@ -106,7 +106,40 @@ db.version(1).stores({
    * Primary key: transaction_id (matches Supabase)
    * Indexes: inventory_id, transaction_type, created_at (for offline filtering)
    */
-  transactions: 'transaction_id, inventory_id, transaction_type, created_at'
+  transactions: 'transaction_id, inventory_id, transaction_type, created_at',
+
+  /**
+   * notifications - Caches user notifications for offline access
+   * Primary key: notification_id (matches Supabase)
+   * Indexes: user_id, created_at, is_read (for offline filtering)
+   */
+  notifications: 'notification_id, user_id, created_at, is_read',
+
+  /**
+   * conversations - Caches message conversations
+   * Primary key: conversation_id (matches Supabase)
+   * Indexes: created_at, updated_at
+   */
+  conversations: 'conversation_id, created_at, updated_at',
+
+  /**
+   * messages - Caches individual messages within conversations
+   * Primary key: message_id (matches Supabase)
+   * Indexes: conversation_id, sender_id, created_at
+   */
+  messages: 'message_id, conversation_id, sender_id, created_at',
+
+  /**
+   * healthworkers - Caches health worker directory
+   * Primary key: health_worker_id (matches Supabase)
+   * Indexes: full_name, contact_number
+   */
+  healthworkers: 'health_worker_id, full_name, contact_number'
+})
+
+// Add upgrade path for future versions if needed
+db.version(2).stores({
+  // Future schema upgrades can be added here
 })
 
 console.log('✅ StaffOfflineDB (Admin/HealthStaff) initialized')
@@ -130,6 +163,10 @@ export async function clearStaffOfflineData() {
     await db.vitamina.clear()
     await db.vaccines.clear()
     await db.transactions.clear()
+    await db.notifications.clear()
+    await db.conversations.clear()
+    await db.messages.clear()
+    await db.healthworkers.clear()
     console.log('✅ StaffOfflineDB cleared')
   } catch (error) {
     console.error('❌ Failed to clear StaffOfflineDB:', error)
@@ -145,6 +182,10 @@ export async function getStaffDatabaseInfo() {
     const guardianCount = await db.guardians.count()
     const userCount = await db.users.count()
     const inventoryCount = await db.inventory.count()
+    const notificationCount = await db.notifications.count()
+    const conversationCount = await db.conversations.count()
+    const messageCount = await db.messages.count()
+    const healthworkerCount = await db.healthworkers.count()
     
     return {
       name: db.name,
@@ -154,9 +195,14 @@ export async function getStaffDatabaseInfo() {
         patients: patientCount,
         guardians: guardianCount,
         users: userCount,
-        inventory: inventoryCount
+        inventory: inventoryCount,
+        notifications: notificationCount,
+        conversations: conversationCount,
+        messages: messageCount,
+        healthworkers: healthworkerCount
       },
-      total: patientCount + guardianCount + userCount + inventoryCount
+      total: patientCount + guardianCount + userCount + inventoryCount + 
+             notificationCount + conversationCount + messageCount + healthworkerCount
     }
   } catch (error) {
     console.error('❌ Failed to get StaffOfflineDB info:', error)

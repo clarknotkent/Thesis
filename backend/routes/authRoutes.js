@@ -7,7 +7,8 @@ import { registerUser,
   getUserMapping,
   refreshToken,
   changeCurrentPassword,
-  debugCurrentUserUUID } from '../controllers/authController.js';
+  debugCurrentUserUUID,
+  getCurrentUserProfile } from '../controllers/authController.js';
 import { validateToken, optionalAuthenticate, authenticateRequest } from '../middlewares/authMiddleware.js';
 
 // POST /api/auth/register - User registration
@@ -34,5 +35,8 @@ router.post('/change-password', authenticateRequest, changeCurrentPassword);
 
 // GET /api/auth/debug/uuid - Return current user's Supabase UUID (dev aid)
 router.get('/debug/uuid', authenticateRequest, debugCurrentUserUUID);
+
+// GET /api/auth/profile - Get current user's profile
+router.get('/profile', authenticateRequest, getCurrentUserProfile);
 
 export default router;

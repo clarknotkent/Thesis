@@ -156,6 +156,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import api from '@/services/api'
+import { db } from '@/services/offline/db'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 
 const router = useRouter()
 const route = useRoute()
@@ -163,6 +165,7 @@ const route = useRoute()
 const allDoses = ref([])
 const loading = ref(true)
 const patientName = ref('')
+const { isOnline } = useOnlineStatus()
 
 const vaccineName = computed(() => {
   return route.query.vaccine || '—'
@@ -227,37 +230,65 @@ const goBack = () => {
 }
 
 const fetchVaccineDetails = async () => {
+  const patientId = route.params.patientId
+  const vaccine = route.query.vaccine
+
   try {
     loading.value = true
-    const patientId = route.params.patientId
-    const vaccine = route.query.vaccine
-    
+
     if (!vaccine) {
       console.error('No vaccine name provided in query parameter')
       allDoses.value = []
       return
     }
-    
-    // Fetch patient data
-    const patientResponse = await api.get(`/patients/${patientId}`)
-    const patientData = patientResponse.data?.data || patientResponse.data
-    patientName.value = `${patientData.firstname || ''} ${patientData.middlename || ''} ${patientData.surname || ''}`.trim()
-    
-    // Extract vaccination history
-    const vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || []
-    
-    // Filter for the specific vaccine
-    const vaccineRecords = Array.isArray(vax) ? vax.filter(v => {
-      const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
-      return vName === vaccine
-    }) : []
-    
-    // Store all doses
-    allDoses.value = vaccineRecords
-    
-  } catch (error) {
-    console.error('Error fetching vaccine details:', error)
-    allDoses.value = []
+
+    // If online, try API first
+    if (isOnline.value) {
+      try {
+        const patientResponse = await api.get(`/patients/${patientId}`)
+        const patientData = patientResponse.data?.data || patientResponse.data
+        patientName.value = `${patientData.firstname || ''} ${patientData.middlename || ''} ${patientData.surname || ''}`.trim()
+
+        const vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || []
+        const vaccineRecords = Array.isArray(vax) ? vax.filter(v => {
+          const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
+          return vName === vaccine
+        }) : []
+        allDoses.value = vaccineRecords
+        return
+      } catch (apiErr) {
+        console.warn('API failed, falling back to offline cache:', apiErr)
+        // Fall through to offline path
+      }
+    }
+
+    // OFFLINE OR API FAILED: Use local cache
+    try {
+      if (!db.isOpen()) {
+        await db.open()
+      }
+      const cachedPatient = await db.patients.get(Number(patientId))
+      if (cachedPatient) {
+        patientName.value = cachedPatient.full_name || `${cachedPatient.firstname || ''} ${cachedPatient.middlename || ''} ${cachedPatient.surname || ''}`.trim()
+      } else {
+        patientName.value = '—'
+      }
+
+      const immunizations = await db.immunizations
+        .where('patient_id')
+        .equals(Number(patientId))
+        .toArray()
+
+      const vaccineRecords = Array.isArray(immunizations) ? immunizations.filter(v => {
+        const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || v.vaccine_name || ''
+        return vName === vaccine
+      }) : []
+
+      allDoses.value = vaccineRecords
+    } catch (cacheErr) {
+      console.error('Offline cache read failed:', cacheErr)
+      allDoses.value = []
+    }
   } finally {
     loading.value = false
   }

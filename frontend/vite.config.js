@@ -16,6 +16,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
+      // Remove custom sw.js and let Workbox handle everything
       manifest: {
         name: 'ImmunizeMe - Healthcare Management System',
         short_name: 'ImmunizeMe',
@@ -73,28 +74,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /\.(vue|ts|jsx|tsx)$/], // Don't fallback for API calls or source files
+        navigateFallbackDenylist: [/^\/api\//], // Only exclude API calls
         runtimeCaching: [
-          // REMOVED: .vue file caching - parent offline disabled
-          // Raw .vue files should NEVER be cached by service worker
-          // Vite compiles them on-demand, caching breaks hot-reload
-          
+          // Cache compiled assets (chunks, CSS) from /assets/ in dev and prod - use CacheFirst for offline
           {
-            // Cache Vite HMR client and helper modules best-effort (dev only)
-            urlPattern: ({ url }) => {
-              return url.pathname.startsWith('/@vite/') || 
-                     url.pathname.startsWith('/@fs/') ||
-                     url.pathname.startsWith('/@id/')
-            },
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'vite-internals',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            // Cache compiled assets (chunks, CSS) from /assets/ in dev and prod
             urlPattern: ({ url }) => url.pathname.startsWith('/assets/'),
             handler: 'CacheFirst',
             options: {

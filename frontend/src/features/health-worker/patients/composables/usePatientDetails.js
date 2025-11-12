@@ -7,6 +7,7 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { db } from '@/services/offline/db' // StaffOfflineDB (Admin + HealthStaff)
+import { useOffline } from '@/composables/useOffline'
 
 export function usePatientDetails(patientId) {
   // State
@@ -34,6 +35,9 @@ export function usePatientDetails(patientId) {
     guardianInfo: false,
     birthHistory: false
   })
+
+  // Online/offline status
+  const { effectiveOnline } = useOffline()
 
   /**
    * Calculate patient age from birthdate or use server-provided age
@@ -114,6 +118,49 @@ export function usePatientDetails(patientId) {
    */
   const formattedNewbornScreeningDate = computed(() => {
     return formatDate(patient.value?.birthHistory?.newborn_screening_date)
+  })
+
+  /**
+   * Format a time string to 12-hour format (e.g., 14:05 -> 2:05 PM)
+   */
+  const formatTime12h = (timeStr) => {
+    if (!timeStr) return '—'
+    try {
+      // Handle ISO or date-time strings
+      if (/[a-zA-Z]/.test(timeStr) && timeStr.includes('T')) {
+        const d = new Date(timeStr)
+        if (!isNaN(d)) {
+          let h = d.getHours()
+          const m = d.getMinutes()
+          const ampm = h >= 12 ? 'PM' : 'AM'
+          h = h % 12
+          if (h === 0) h = 12
+          const mm = String(m).padStart(2, '0')
+          return `${h}:${mm} ${ampm}`
+        }
+      }
+      // Expect HH:mm or HH:mm:ss
+      const parts = String(timeStr).split(':').map(Number)
+      if (parts.length >= 2 && !parts.some(n => isNaN(n))) {
+        let h = parts[0]
+        const m = parts[1]
+        const ampm = h >= 12 ? 'PM' : 'AM'
+        h = h % 12
+        if (h === 0) h = 12
+        const mm = String(m).padStart(2, '0')
+        return `${h}:${mm} ${ampm}`
+      }
+      return timeStr
+    } catch (_) {
+      return timeStr
+    }
+  }
+
+  /**
+   * Formatted time of birth in 12-hour format
+   */
+  const formattedTimeOfBirth = computed(() => {
+    return formatTime12h(patient.value?.birthHistory?.time_of_birth)
   })
 
   /**
@@ -232,6 +279,12 @@ export function usePatientDetails(patientId) {
   const fetchPatientDetails = async (id = patientId) => {
     try {
       loading.value = true
+
+      // OFFLINE-FIRST: if offline, load from cache immediately to avoid Axios network errors
+      if (!effectiveOnline.value) {
+        await loadFromCache(id)
+        return
+      }
       
       // ONLINE PATH: Fetch from API
       const response = await api.get(`/patients/${id}`)
@@ -290,59 +343,160 @@ export function usePatientDetails(patientId) {
       
     } catch (error) {
       console.warn('⚠️ API fetch failed. Attempting to load from local cache.', error)
-      
-      // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
-      try {
-        // Ensure database is open before using it
-        if (!db.isOpen()) {
-          await db.open()
-          console.log('✅ StaffOfflineDB opened for patient details fetch')
-        }
-        
-        const cachedPatient = await db.patients.get(Number(id))
-        
-        if (cachedPatient) {
-          patient.value = {
-            id: cachedPatient.patient_id,
-            patient_id: cachedPatient.patient_id,
-            childInfo: {
-              name: cachedPatient.full_name || `${cachedPatient.firstname} ${cachedPatient.surname}`.trim(),
-              firstName: cachedPatient.firstname,
-              middleName: cachedPatient.middlename,
-              lastName: cachedPatient.surname,
-              birthDate: cachedPatient.date_of_birth,
-              sex: cachedPatient.sex,
-              address: cachedPatient.address,
-              barangay: cachedPatient.barangay
-            },
-            motherInfo: {},
-            fatherInfo: {},
-            guardianInfo: {},
-            birthHistory: {},
-            health_center: cachedPatient.health_center,
-            tags: cachedPatient.tags,
-            dateRegistered: null,
-            age_months: null,
-            age_days: null
-          }
-          
-          // No vaccination/medical history in offline cache
-          vaccinationHistory.value = []
-          scheduledVaccinations.value = []
-          medicalHistory.value = []
-          
-          console.log(`✅ Successfully loaded patient ${id} from local cache (Offline)`)
-        } else {
-          console.log(`ℹ️ Patient ${id} not found in cache.`)
-          throw new Error('Patient not found in offline cache')
-        }
-      } catch (dbError) {
-        console.error('❌ Error reading from local cache:', dbError)
-        throw dbError
-      }
+      await loadFromCache(id)
     } finally {
       loading.value = false
     }
+  }
+
+  // Helper: load patient details and related data from Dexie cache
+  const loadFromCache = async (id) => {
+    // Ensure database is open before using it
+    if (!db.isOpen()) {
+      await db.open()
+      console.log('✅ StaffOfflineDB opened for patient details fetch')
+    }
+
+    const cachedPatient = await db.patients.get(Number(id))
+    if (!cachedPatient) {
+      console.log(`ℹ️ Patient ${id} not found in cache.`)
+      throw new Error('Patient not found in offline cache')
+    }
+
+    patient.value = {
+      id: cachedPatient.patient_id,
+      patient_id: cachedPatient.patient_id,
+      childInfo: {
+        name: cachedPatient.full_name || `${cachedPatient.firstname} ${cachedPatient.surname}`.trim(),
+        firstName: cachedPatient.firstname,
+        middleName: cachedPatient.middlename,
+        lastName: cachedPatient.surname,
+        birthDate: cachedPatient.date_of_birth,
+        sex: cachedPatient.sex,
+        address: cachedPatient.address,
+        barangay: cachedPatient.barangay,
+        phoneNumber: cachedPatient.guardian_contact_number
+      },
+      motherInfo: {
+        name: cachedPatient.mother_name,
+        occupation: cachedPatient.mother_occupation,
+        phone: cachedPatient.mother_contact_number
+      },
+      fatherInfo: {
+        name: cachedPatient.father_name,
+        occupation: cachedPatient.father_occupation,
+        phone: cachedPatient.father_contact_number
+      },
+      guardianInfo: {
+        id: cachedPatient.guardian_id,
+        name: cachedPatient.guardian_firstname ? `${cachedPatient.guardian_firstname} ${cachedPatient.guardian_surname || ''}`.trim() : '—',
+        contact_number: cachedPatient.guardian_contact_number,
+        family_number: cachedPatient.guardian_family_number,
+        relationship: cachedPatient.relationship_to_guardian
+      },
+      birthHistory: {
+        birth_weight: cachedPatient.birth_weight,
+        birth_length: cachedPatient.birth_length,
+        place_of_birth: cachedPatient.place_of_birth,
+        address_at_birth: cachedPatient.address_at_birth,
+        time_of_birth: cachedPatient.time_of_birth,
+        attendant_at_birth: cachedPatient.attendant_at_birth,
+        type_of_delivery: cachedPatient.type_of_delivery,
+        ballards_score: cachedPatient.ballards_score,
+        hearing_test_date: cachedPatient.hearing_test_date,
+        newborn_screening_date: cachedPatient.newborn_screening_date,
+        newborn_screening_result: cachedPatient.newborn_screening_result
+      },
+      health_center: cachedPatient.health_center,
+      tags: cachedPatient.tags,
+      dateRegistered: cachedPatient.date_registered,
+      age_months: cachedPatient.age_months,
+      age_days: cachedPatient.age_days
+    }
+
+    // Enrich parent details from guardians if missing
+    try {
+      const rel = (cachedPatient.relationship_to_guardian || '').toLowerCase()
+      const gid = cachedPatient.guardian_id ? Number(cachedPatient.guardian_id) : null
+      if (gid) {
+        const g = await db.guardians.get(gid)
+        if (g) {
+          if (rel === 'mother') {
+            if (!patient.value.motherInfo?.name) {
+              const gname = g.full_name || `${g.firstname || ''} ${g.middlename || ''} ${g.surname || ''}`.trim()
+              patient.value.motherInfo.name = gname || patient.value.motherInfo.name
+            }
+            if (!patient.value.motherInfo?.occupation && g.occupation) {
+              patient.value.motherInfo.occupation = g.occupation
+            }
+            if (!patient.value.motherInfo?.phone) {
+              patient.value.motherInfo.phone = cachedPatient.guardian_contact_number || g.contact_number || patient.value.motherInfo.phone
+            }
+          } else if (rel === 'father') {
+            if (!patient.value.fatherInfo?.name) {
+              const gname = g.full_name || `${g.firstname || ''} ${g.middlename || ''} ${g.surname || ''}`.trim()
+              patient.value.fatherInfo.name = gname || patient.value.fatherInfo.name
+            }
+            if (!patient.value.fatherInfo?.occupation && g.occupation) {
+              patient.value.fatherInfo.occupation = g.occupation
+            }
+            if (!patient.value.fatherInfo?.phone) {
+              patient.value.fatherInfo.phone = cachedPatient.guardian_contact_number || g.contact_number || patient.value.fatherInfo.phone
+            }
+          }
+        }
+      }
+
+      // Additional enrichment by family number for father's details
+      const needFatherOcc = !patient.value.fatherInfo?.occupation
+      const needFatherPhone = !patient.value.fatherInfo?.phone
+      const needFatherName = !patient.value.fatherInfo?.name
+      if ((needFatherOcc || needFatherPhone || needFatherName) && cachedPatient.family_number) {
+        try {
+          const allGuardians = await db.guardians.toArray()
+          const familyGuardians = allGuardians.filter(x => (x.family_number || '') === cachedPatient.family_number)
+          if (familyGuardians && familyGuardians.length > 0) {
+            const male = familyGuardians.find(x => (x.sex || '').toString().toLowerCase().startsWith('m'))
+            const cand = male || familyGuardians[0]
+            if (cand) {
+              if (needFatherName) {
+                const fn = cand.full_name || `${cand.firstname || ''} ${cand.middlename || ''} ${cand.surname || ''}`.trim()
+                if (fn) patient.value.fatherInfo.name = fn
+              }
+              if (needFatherOcc && cand.occupation) {
+                patient.value.fatherInfo.occupation = cand.occupation
+              }
+              if (needFatherPhone && cand.contact_number) {
+                patient.value.fatherInfo.phone = cand.contact_number
+              }
+            }
+          }
+        } catch (_) { /* non-blocking */ }
+      }
+    } catch (enrichErr) {
+      console.warn('⚠️ Could not enrich parent details from guardians cache:', enrichErr)
+    }
+
+    // Load related data from cache
+    try {
+      vaccinationHistory.value = await db.immunizations
+        .where('patient_id').equals(Number(id))
+        .sortBy('administered_date')
+    } catch (_) { vaccinationHistory.value = [] }
+
+    try {
+      scheduledVaccinations.value = await db.patientschedule
+        .where('patient_id').equals(Number(id))
+        .sortBy('scheduled_date')
+    } catch (_) { scheduledVaccinations.value = [] }
+
+    try {
+      medicalHistory.value = await db.visits
+        .where('patient_id').equals(Number(id))
+        .sortBy('visit_date')
+    } catch (_) { medicalHistory.value = [] }
+
+    console.log(`✅ Successfully loaded patient ${id} with related data from local cache (Offline)`) 
   }
 
   /**
@@ -422,6 +576,7 @@ export function usePatientDetails(patientId) {
     formattedRegisteredDate,
     formattedHearingTestDate,
     formattedNewbornScreeningDate,
+  formattedTimeOfBirth,
     formattedBirthWeight,
     formattedBirthLength,
     groupedVaccinations,

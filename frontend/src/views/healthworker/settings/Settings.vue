@@ -1,9 +1,14 @@
 <template>
   <HealthWorkerLayout
-    :show-controls="true"
-    :controls-props="{ icon: 'gear', title: 'Settings' }"
+    :show-controls="false"
   >
     <div class="page-content-wrapper">
+      
+      <h5 class="mb-3 text-small align-items-center d-flex">
+        <i class="bi bi-gear fs-1 text-primary me-2" />
+        Settings
+      </h5>
+
       <div class="card p-3">
         <h5 class="mb-3">
           General Settings (Dummy)

@@ -53,18 +53,8 @@ if (import.meta.env.DEV) {
 
 // Set up offline route error handler
 window.__showOfflineRouteError = () => {
-  // Dynamic import to avoid circular dependency
-  import('./composables/useToast').then(({ addToast }) => {
-    addToast({
-      title: 'Page Not Available Offline',
-      message: 'This page hasn\'t been cached yet. Please visit it while online first, then it will work offline.',
-      type: 'warning',
-      timeout: 5000
-    })
-  }).catch(() => {
-    // Fallback if toast fails
-    console.warn('⚠️ Page not available offline - visit it while online first')
-  })
+  // Pages will now gracefully handle offline state without blocking navigation
+  console.log('ℹ️ Offline navigation attempted - continuing without toast notification')
 }
 
 // One-time role cache sanitizer to recover from malformed stored values
@@ -146,6 +136,21 @@ try {
         window.__warmCache = async () => {
           const { warmParentPortalCache } = await import('@/utils/cacheWarmer')
           return warmParentPortalCache()
+        }
+        
+        // Auto-warm cache for parent routes when online
+        if (navigator.onLine) {
+          // Delay cache warming to avoid blocking initial app load
+          setTimeout(async () => {
+            try {
+              console.log('🔥 Auto-warming parent portal cache...')
+              const { warmParentPortalCache } = await import('@/utils/cacheWarmer')
+              const result = await warmParentPortalCache()
+              console.log(`✅ Cache warming complete: ${result.successful}/${result.total} components cached`)
+            } catch (error) {
+              console.warn('⚠️ Cache warming failed:', error.message)
+            }
+          }, 2000) // Wait 2 seconds after app load
         }
         
         // Expose cache status checker

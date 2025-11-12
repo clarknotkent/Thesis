@@ -103,9 +103,13 @@ import { useRouter, useRoute } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import ScheduleCard from '@/components/parent/ScheduleCard.vue'
 import api from '@/services/api'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 
 const router = useRouter()
 const route = useRoute()
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const loading = ref(true)
 const error = ref(null)
@@ -136,13 +140,93 @@ const fetchSchedule = async () => {
     
     const childId = route.params.id
     
+    console.log('fetchSchedule called with childId:', childId)
+    console.log('effectiveOnline.value:', effectiveOnline.value)
+    
     if (!childId) {
       error.value = 'Invalid child ID'
       return
     }
     
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      console.log('📴 Offline mode detected, trying to load from cache...')
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      console.log('Guardian ID from localStorage:', guardianId)
+      
+      if (!guardianId) {
+        console.log('❌ No guardian ID found in localStorage')
+        error.value = 'No guardian information found. Please log in again.'
+        return
+      }
+      
+      const cached = await getCachedData(guardianId)
+      console.log('Cached data retrieved:', cached)
+      
+      if (cached && cached.patients) {
+        console.log('Cached patients:', cached.patients.map(p => ({ id: p.id, name: p.details?.name })))
+        const cachedPatient = cached.patients.find(p => p.id === parseInt(childId) || p.id === childId)
+        console.log('Looking for patient with ID:', parseInt(childId), 'or string:', childId)
+        console.log('Found cached patient:', cachedPatient)
+        
+        if (cachedPatient) {
+          console.log('Patient schedules:', cachedPatient.schedules)
+          console.log('Patient full object:', cachedPatient)
+          
+          // Check for schedules in different possible locations
+          let patientSchedules = null
+          if (cachedPatient.schedules) {
+            // Handle nested structure: schedules.schedule or direct schedules array
+            if (Array.isArray(cachedPatient.schedules)) {
+              patientSchedules = cachedPatient.schedules
+            } else if (cachedPatient.schedules.schedule && Array.isArray(cachedPatient.schedules.schedule)) {
+              patientSchedules = cachedPatient.schedules.schedule
+            }
+          }
+          
+          if (patientSchedules && Array.isArray(patientSchedules)) {
+            console.log('Found cached schedules:', patientSchedules)
+            childName.value = cachedPatient.details?.name || cachedPatient.details?.full_name || 'Child'
+            
+            // Format cached schedule data
+            schedules.value = patientSchedules.map(item => ({
+              id: item.id || item.patient_schedule_id,
+              vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
+              dose: item.doseNumber || item.dose_number || 1,
+              scheduledDate: item.scheduledDate || item.scheduled_date,
+              status: item.status || 'upcoming',
+              recommendedAge: item.recommendedAge || ''
+            })).sort((a, b) => {
+              // Sort by date (soonest first)
+              const dateA = new Date(a.scheduledDate)
+              const dateB = new Date(b.scheduledDate)
+              return dateA - dateB
+            })
+            
+            console.log('✅ Schedule loaded from cache')
+            return
+          } else {
+            console.log('❌ Patient has no schedules array:', patientSchedules)
+            error.value = 'Schedule data not available offline. Please connect to the internet and try again.'
+            return
+          }
+        } else {
+          console.log('❌ Patient not found in cached data')
+          error.value = 'Patient data not available offline. Please connect to the internet and try again.'
+          return
+        }
+      } else {
+        console.log('❌ No cached data found or no patients array')
+        error.value = 'No offline data available. Please connect to the internet and try again.'
+        return
+      }
+    } else {
+      console.log('🌐 Online mode, will fetch from API')
+    }
+    
+    // Online mode - fetch fresh data
     try {
-      // ONLINE-ONLY MODE
       console.log('🌐 Fetching schedule from API')
       const response = await api.get(`/parent/children/${childId}/schedule`)
       const data = response.data?.data || {}
@@ -168,8 +252,55 @@ const fetchSchedule = async () => {
       
       console.log(`✅ Loaded ${schedules.value.length} schedule items`)
     } catch (apiError) {
-      console.error('Failed to load schedule:', apiError)
-      error.value = 'Failed to load vaccination schedule'
+      console.error('Failed to load schedule from API:', apiError)
+      
+      // Try to fall back to cached data if API fails
+      console.log('🔄 API failed, trying cached data as fallback...')
+      try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+        const cached = await getCachedData(guardianId)
+        
+        if (cached && cached.patients) {
+          const cachedPatient = cached.patients.find(p => p.id === parseInt(childId) || p.id === childId)
+          if (cachedPatient) {
+            // Check for schedules in different possible locations
+            let patientSchedules = null
+            if (cachedPatient.schedules) {
+              // Handle nested structure: schedules.schedule or direct schedules array
+              if (Array.isArray(cachedPatient.schedules)) {
+                patientSchedules = cachedPatient.schedules
+              } else if (cachedPatient.schedules.schedule && Array.isArray(cachedPatient.schedules.schedule)) {
+                patientSchedules = cachedPatient.schedules.schedule
+              }
+            }
+            
+            if (patientSchedules && Array.isArray(patientSchedules)) {
+              console.log('✅ Using cached schedule data as fallback')
+              childName.value = cachedPatient.details?.name || cachedPatient.details?.full_name || 'Child'
+              
+              schedules.value = patientSchedules.map(item => ({
+                id: item.id || item.patient_schedule_id,
+                vaccineName: item.name || item.vaccine_name || 'Unknown Vaccine',
+                dose: item.doseNumber || item.dose_number || 1,
+                scheduledDate: item.scheduledDate || item.scheduled_date,
+                status: item.status || 'upcoming',
+                recommendedAge: item.recommendedAge || ''
+              })).sort((a, b) => {
+                const dateA = new Date(a.scheduledDate)
+                const dateB = new Date(b.scheduledDate)
+                return dateA - dateB
+              })
+              return
+            }
+          }
+        }
+      } catch (cacheError) {
+        console.error('Cached data fallback also failed:', cacheError)
+      }
+      
+      // If both API and cache fail, show error
+      error.value = 'Failed to load vaccination schedule. Please check your connection and try again.'
     }
     
   } catch (err) {

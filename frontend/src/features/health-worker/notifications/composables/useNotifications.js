@@ -8,9 +8,12 @@
  */
 
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { notificationAPI } from '@/services/api'
+import api from '@/services/api'
+import { db } from '@/services/offline/db' // StaffOfflineDB
+import { useOffline } from '@/composables/useOffline'
 
 export function useNotifications() {
+  const { effectiveOnline } = useOffline()
   // State
   const loading = ref(false)
   const notifications = ref([])
@@ -49,24 +52,6 @@ export function useNotifications() {
     return 'system'
   }
 
-  const formatTemplateTitle = (code) => {
-    const map = {
-      welcome_guardian: 'Welcome',
-      schedule_created: 'Schedule Created',
-      vaccination_reminder_14: '14-Day Reminder',
-      vaccination_reminder_7: '7-Day Reminder',
-      vaccination_reminder_0: 'Due Today',
-      vaccination_overdue: 'Overdue Alert',
-      immunization_confirmation: 'Immunization Confirmed',
-      low_stock_alert: 'Low Stock Alert',
-      password_reset: 'Password Reset',
-      role_change: 'Role Changed',
-      new_message: 'New Message',
-      conversation_started: 'New Conversation'
-    }
-    return map[code] || map[code.toLowerCase()] || 'Notification'
-  }
-
   const getNotificationIcon = (type) => {
     const icons = {
       urgent: 'bi bi-exclamation-triangle-fill',
@@ -80,10 +65,9 @@ export function useNotifications() {
   const transformNotification = (row) => ({
     id: row.notification_id,
     type: mapType(row),
-    title: row.template_code ? formatTemplateTitle(row.template_code) : 'Notification',
-    header: row.header || '',
+    title: row.title || row.template_code || 'Notification',
     message: row.message_body,
-    time: new Date(row.created_at).toLocaleString(),
+    created_at: row.created_at || row.sent_at || row.scheduled_at,
     timestamp: new Date(row.created_at).getTime(),
     read: !!row.read_at,
     channel: row.channel || 'in-app',
@@ -95,37 +79,53 @@ export function useNotifications() {
   const loadNotifications = async () => {
     loading.value = true
     try {
-      const resp = await notificationAPI.getMyNotifications({ 
-        limit: 100, 
-        offset: 0, 
-        unreadOnly: false 
-      })
-      const rows = resp?.data?.data || []
-      notifications.value = rows.map(transformNotification)
-      
-      // Sort by timestamp descending (newest first)
-      notifications.value.sort((a, b) => b.timestamp - a.timestamp)
+    if (effectiveOnline.value) {
+      // ONLINE: Fetch from API
+      console.log('🌐 Fetching notifications from API...')
+      const response = await api.get('/notifications')
+      const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+
+      notifications.value = items.map(transformNotification)        // Sort by timestamp descending (newest first)
+        notifications.value.sort((a, b) => b.timestamp - a.timestamp)
+        console.log('✅ Notifications loaded from API')
+      } else {
+        // OFFLINE: Load from cache
+        console.log('📴 Loading notifications from cache...')
+        try {
+          // Ensure database is open
+          if (!db.isOpen()) {
+            await db.open()
+            console.log('✅ StaffOfflineDB opened for notifications fetch')
+          }
+          
+          const cachedNotifications = await db.notifications.toArray()
+          
+          // Transform cached notifications to match the expected format
+          notifications.value = cachedNotifications.map(row => transformNotification({
+            notification_id: row.id || row.notification_id,
+            channel: row.channel || 'in-app',
+            template_code: row.template_code || row.type || 'system',
+            title: row.title || row.template_code || 'Notification',
+            message_body: row.message || row.message_body || '',
+            created_at: row.created_at || row.timestamp,
+            read_at: row.read_at || (row.read ? new Date().toISOString() : null),
+            related_entity_type: row.related_entity_type || row.relatedType,
+            related_entity_id: row.related_entity_id || row.relatedId
+          }))
+          
+          // Sort by timestamp descending (newest first)
+          notifications.value.sort((a, b) => b.timestamp - a.timestamp)
+          
+          console.log(`✅ Loaded ${notifications.value.length} notifications from cache`)
+        } catch (cacheError) {
+          console.error('❌ Error loading notifications from cache:', cacheError)
+          notifications.value = []
+        }
+      }
     } catch (e) {
       console.error('Failed to load notifications', e)
     } finally {
       loading.value = false
-    }
-  }
-
-  const markAsRead = async (notification) => {
-    try {
-      if (!notification.read) {
-        await notificationAPI.markAsRead(notification.id)
-        notification.read = true
-      }
-      
-      return {
-        shouldNavigate: notification.relatedType === 'conversation' && notification.relatedId,
-        relatedId: notification.relatedId
-      }
-    } catch (e) {
-      console.error('Failed to mark as read', e)
-      return { shouldNavigate: false }
     }
   }
 
@@ -134,7 +134,7 @@ export function useNotifications() {
     
     for (const n of unread) {
       try { 
-        await notificationAPI.markAsRead(n.id)
+        await api.put(`/notifications/${n.id}/read`)
         n.read = true 
       } catch (e) {
         console.error('Failed to mark notification as read:', e)
@@ -144,7 +144,7 @@ export function useNotifications() {
 
   const deleteNotification = async (notificationId) => {
     try {
-      await notificationAPI.delete(notificationId)
+      await api.delete(`/notifications/${notificationId}`)
       notifications.value = notifications.value.filter(n => n.id !== notificationId)
       return true
     } catch (e) {
@@ -158,7 +158,7 @@ export function useNotifications() {
     
     for (const n of readNotifications) {
       try {
-        await notificationAPI.delete(n.id)
+        await api.delete(`/notifications/${n.id}`)
       } catch (e) {
         console.error('Failed to delete notification:', e)
       }
@@ -168,16 +168,19 @@ export function useNotifications() {
   }
 
   const startPolling = (intervalMs = 30000) => {
-    // Poll for new notifications
+    // Poll for new notifications (only when online)
+    if (!effectiveOnline.value) {
+      console.log('📴 Skipping notification polling - offline mode')
+      return
+    }
+    
     pollInterval = setInterval(async () => {
+      if (!effectiveOnline.value) return // Skip if went offline
+      
       try {
-        const resp = await notificationAPI.getMyNotifications({ 
-          limit: 100, 
-          offset: 0, 
-          unreadOnly: false 
-        })
-        const rows = resp?.data?.data || []
-        const newNotifications = rows.map(transformNotification)
+        const response = await api.get('/notifications')
+        const items = Array.isArray(response?.data) ? response.data : (response?.data?.data || [])
+        const newNotifications = items.map(transformNotification)
         
         newNotifications.sort((a, b) => b.timestamp - a.timestamp)
         notifications.value = newNotifications
@@ -212,7 +215,6 @@ export function useNotifications() {
     
     // Methods
     loadNotifications,
-    markAsRead,
     markAllAsRead,
     deleteNotification,
     clearAllRead,

@@ -42,7 +42,7 @@ api.interceptors.response.use(
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`)
     return response
   },
-  (error) => {
+  async (error) => {
     console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error.message)
     
     // Handle specific error cases
@@ -51,10 +51,24 @@ api.interceptors.response.use(
       const status = error.response.status
       
       if (status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('authToken')
-        localStorage.removeItem('authUser')
-        window.location.href = '/login'
+        // Don't redirect for login attempts - let the login component handle it
+        if (!error.config.url.includes('/auth/login')) {
+          // Unauthorized - perform full logout (clears offline data too)
+          console.log('🚪 Session expired - logging out user')
+          try {
+            // Import and call logout function
+            const { useAuth } = await import('@/composables/useAuth')
+            const { logout } = useAuth()
+            await logout()
+          } catch (logoutError) {
+            console.error('❌ Error during logout:', logoutError)
+            // Fallback: clear tokens manually
+            localStorage.removeItem('authToken')
+            localStorage.removeItem('authUser')
+          }
+          // Redirect to login after logout
+          window.location.href = '/auth/login'
+        }
       } else if (status === 403) {
         console.warn('Access forbidden')
       } else if (status === 404) {
