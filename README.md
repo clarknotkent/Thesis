@@ -2,8 +2,8 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.8  
-> **Last Updated:** November 11, 2025  
+> **📌 Current Status:** Active Development - Version 4.9  
+> **Last Updated:** November 13, 2025  
 > **Branch:** system-prototype-v4  
 >
 > **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history with all dated changes and improvements.
@@ -47,8 +47,29 @@ The Immunization Management System is designed to digitize and streamline the im
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.8 (November 11, 2025)
+- Version: 4.9 (November 13, 2025)
 - Status: Active Development
+
+---
+
+## What’s New (November 13, 2025)
+
+This release focuses on Health Worker offline reliability, data completeness, and clear UX when connectivity is unavailable.
+
+- Offline‑first data loading:
+  - Patient Details now loads from IndexedDB when offline; suppresses network error popups
+  - Visit Summary (HW) loads from IndexedDB when offline and caches API responses when online for future offline use
+- Offline guards with toasts and visual states:
+  - Add New Patient and Add Immunization: disabled offline with informative toast
+  - Edit Visit: disabled offline on Visit Summary; shows toast and disabled style
+  - Reschedule vaccination: disabled offline on Patient Details; toast shown and edit UI blocked
+- Data correctness & formatting:
+  - Father’s contact and occupation enriched offline via guardians cache (including same family_number fallbacks)
+  - Time of Birth shows in 12‑hour format on Patient Details
+- Prefetch robustness:
+  - Fixed visits prefetch to handle { items: [...] } and { data: [...] } shapes so visit history is properly cached
+
+See the full entry in CHANGELOG.md dated 2025‑11‑13 for details and files changed.
 
 ---
 
@@ -152,6 +173,23 @@ npm run start
 - **Frontend Application**: http://localhost:5173
 - **Backend API**: http://localhost:3001
 - **API Health Check**: http://localhost:3001/api/health
+
+### Offline Usage (Health Worker)
+
+- What works offline (read‑only):
+  - Patient details, vaccination history, scheduled vaccinations list, and visit/medical history after an online sync
+  - Visit details (Visit Summary) for visits you’ve opened online at least once or that were included in prefetch
+- Actions blocked offline (with toasts):
+  - Add New Patient, Add Immunization, Edit Visit, Reschedule vaccination
+- Seeding the offline cache:
+  1. Go online and sign in
+  2. Stay on the Health Worker portal to allow the prefetch to complete (runs automatically)
+  3. Open a patient and their Visit Summary once (optional but speeds up offline readiness for those records)
+- Refresh the cache anytime:
+  - Use the Health Worker offline menu’s “Force Sync” if available, or
+  - Clear site data in the browser, then repeat the online steps above
+- Troubleshooting:
+  - If Visit Summary is empty offline, ensure you’ve been online recently and the prefetch completed; the visits prefetch now supports paginated responses ({ items })
 
 ### Default Credentials
 

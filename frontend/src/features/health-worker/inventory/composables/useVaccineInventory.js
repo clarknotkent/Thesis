@@ -12,6 +12,7 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { db } from '@/services/offline/db' // StaffOfflineDB (Admin + HealthStaff)
+import { useOffline } from '@/composables/useOffline'
 
 export function useVaccineInventory() {
   // State
@@ -26,6 +27,9 @@ export function useVaccineInventory() {
   // Pagination
   const currentPage = ref(1)
   const itemsPerPage = ref(7)
+
+  // Offline detection
+  const { effectiveOnline } = useOffline()
 
   // Computed
   const hasActiveFilters = computed(() => {
@@ -137,37 +141,40 @@ export function useVaccineInventory() {
   const fetchInventory = async () => {
     try {
       loading.value = true
-      
-      // ONLINE PATH: Fetch from API
+
+      // Check for cached data first when offline
+      if (!effectiveOnline.value) {
+        console.log('� Loading vaccine inventory from cache...')
+
+        try {
+          // Ensure database is open
+          if (!db.isOpen()) {
+            await db.open()
+          }
+
+          const cachedInventory = await db.inventory.toArray()
+          inventory.value = cachedInventory
+          console.log(`✅ Loaded ${cachedInventory.length} vaccine inventory items from cache`)
+
+        } catch (cacheError) {
+          console.error('❌ Error loading vaccine inventory from cache:', cacheError)
+          inventory.value = []
+        }
+
+        return
+      }
+
+      // ONLINE: Fetch from API
+      console.log('🌐 Fetching vaccine inventory from API...')
+
       const response = await api.get('/vaccines/inventory')
       const data = response.data?.data || response.data || []
       inventory.value = Array.isArray(data) ? data : []
-      console.log('📦 [VaccineStock] Loaded inventory:', inventory.value.length, 'items (Online)')
-      
+      console.log(`✅ Loaded ${inventory.value.length} vaccine inventory items from API`)
+
     } catch (error) {
-      console.warn('⚠️ API fetch failed. Attempting to load from local cache.', error)
-      
-      // OFFLINE FALLBACK PATH: Load from AdminOfflineDB
-      try {
-        // Ensure database is open before using it
-        if (!db.isOpen()) {
-          await db.open()
-          console.log('✅ StaffOfflineDB opened for vaccine inventory fetch')
-        }
-        
-        const cachedInventory = await db.inventory.toArray()
-        
-        if (cachedInventory.length > 0) {
-          inventory.value = cachedInventory
-          console.log(`✅ [VaccineStock] Successfully loaded ${cachedInventory.length} inventory items from local cache (Offline)`)
-        } else {
-          console.log('ℹ️ No cached inventory found.')
-          inventory.value = []
-        }
-      } catch (dbError) {
-        console.error('❌ Error reading from local cache:', dbError)
-        inventory.value = []
-      }
+      console.error('Error fetching vaccine inventory:', error)
+      inventory.value = []
     } finally {
       loading.value = false
     }

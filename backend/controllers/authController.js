@@ -464,6 +464,25 @@ const debugCurrentUserUUID = async (req, res) => {
   }
 };
 
+// Get current user's profile
+const getCurrentUserProfile = async (req, res) => {
+  try {
+    const userId = req.user && req.user.user_id ? req.user.user_id : req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+    const profile = await userModel.getUserProfile(userId);
+
+    if (!profile) {
+      return res.status(404).json({ message: 'User profile not found' });
+    }
+
+    res.json(profile);
+  } catch (error) {
+    console.error('[auth.getCurrentUserProfile] error', error);
+    res.status(500).json({ message: 'Failed to fetch user profile', error });
+  }
+};
+
 // Change password for currently authenticated user
 const changeCurrentPassword = async (req, res) => {
   try {
@@ -589,5 +608,6 @@ export {
   getUserMapping,
   refreshToken,
   debugCurrentUserUUID,
-  changeCurrentPassword
+  changeCurrentPassword,
+  getCurrentUserProfile
 };

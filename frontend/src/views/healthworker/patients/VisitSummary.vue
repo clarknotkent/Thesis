@@ -26,6 +26,8 @@
           >
             <button
               class="menu-item"
+              :aria-disabled="!effectiveOnline"
+              :class="{ disabled: !effectiveOnline }"
               @click="goToEdit"
             >
               <i class="bi bi-pencil-square" />
@@ -248,9 +250,15 @@ import { useRouter, useRoute } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import CollapsibleServiceCard from '@/features/health-worker/patients/components/CollapsibleServiceCard.vue'
 import api from '@/services/api'
+import { useOffline } from '@/composables/useOffline'
+import { db } from '@/services/offline/db'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
+
+const { effectiveOnline } = useOffline()
+const { addToast } = useToast()
 
 const visit = ref(null)
 const patientData = ref(null)
@@ -360,6 +368,15 @@ const toggleMenu = () => {
 
 const goToEdit = () => {
   showMenu.value = false
+  if (!effectiveOnline.value) {
+    addToast({
+      title: 'Edit Unavailable Offline',
+      message: 'Editing a visit requires an internet connection. Please reconnect and try again.',
+      type: 'info',
+      timeout: 5000
+    })
+    return
+  }
   const patientId = route.params.patientId
   const visitId = route.params.visitId
   router.push({ name: 'HealthWorkerEditVisit', params: { patientId, visitId } })
@@ -368,17 +385,60 @@ const goToEdit = () => {
 const fetchVisitData = async () => {
   try {
     loading.value = true
-    const visitId = route.params.visitId
-    const patientId = route.params.patientId
+    const visitId = parseInt(route.params.visitId)
+    const patientId = parseInt(route.params.patientId)
+    
+    // Offline-first: if offline, load from IndexedDB and return
+    if (!effectiveOnline.value) {
+      try {
+        // Ensure DB is open
+        if (!db.isOpen()) {
+          await db.open()
+        }
+        // Load visit from cache
+        let cachedVisit = await db.visits.get(visitId)
+        if (!cachedVisit) {
+          cachedVisit = await db.visits.where('visit_id').equals(visitId).first()
+        }
+        // Load patient details from cache for name rendering
+        let cachedPatient = await db.patients.get(patientId)
+        if (!cachedPatient) {
+          cachedPatient = await db.patients.where('patient_id').equals(patientId).first()
+        }
+
+        if (cachedVisit) {
+          visit.value = cachedVisit
+          if (cachedPatient) {
+            patientData.value = cachedPatient
+          }
+          return
+        }
+      } catch (cacheErr) {
+        // Fall through to error state
+        console.warn('Offline cache load failed:', cacheErr)
+      }
+    }
     
     // Fetch visit details using admin-side approach
     const visitResponse = await api.get(`/visits/${visitId}`)
     const visitDataRaw = visitResponse.data?.data || visitResponse.data || {}
     visit.value = visitDataRaw
 
+    // Cache latest visit data for offline use
+    try {
+      if (!db.isOpen()) await db.open()
+      if (visit.value?.visit_id || visitId) {
+        await db.visits.put({ ...(visit.value || {}), visit_id: visit.value?.visit_id || visitId })
+      }
+    } catch (cachePutErr) {
+      console.warn('Failed to cache visit data:', cachePutErr)
+    }
+
     // If the API returned a recorded_by id but not a recorded_by_name, try to resolve
     // the id to a full name via the health-staff endpoint for better display.
     try {
+      // Only attempt network resolution when online
+      if (!effectiveOnline.value) throw new Error('offline-skip')
       if (visit.value && !visit.value.recorded_by_name && visit.value.recorded_by) {
         const hwRes = await api.get('/health-staff')
         let list = []
@@ -413,6 +473,15 @@ const fetchVisitData = async () => {
       try {
         const patientResponse = await api.get(`/patients/${patientId}`)
         patientData.value = patientResponse.data?.data || patientResponse.data || {}
+        // Cache latest patient snapshot for offline use
+        try {
+          if (!db.isOpen()) await db.open()
+          if (patientData.value?.patient_id || patientId) {
+            await db.patients.put({ ...(patientData.value || {}), patient_id: patientData.value?.patient_id || patientId })
+          }
+        } catch (patientCacheErr) {
+          console.warn('Failed to cache patient data:', patientCacheErr)
+        }
       } catch (err) {
         console.warn('Could not fetch patient details:', err)
       }
@@ -474,6 +543,10 @@ function onDocumentClick(e) {
 }
 .menu-item:hover { background: #f3f4f6; }
 .menu-item i { color: #2563eb; }
+.menu-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 /* Fixed Header Section */
 .visit-summary-header-section {
   position: sticky;

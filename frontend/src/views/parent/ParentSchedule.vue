@@ -71,7 +71,12 @@
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import api from '@/services/api'
+
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const loading = ref(true)
 const error = ref(null)
@@ -112,7 +117,31 @@ const fetchChildren = async () => {
       return years
     }
     
-    // ONLINE-ONLY MODE
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        children.value = cached.patients.map(child => {
+          const birthDate = child.details?.dateOfBirth || child.details?.date_of_birth || child.details?.birthDate
+          const calculatedAge = child.details?.age !== undefined ? child.details.age : calculateNumericAge(birthDate)
+          
+          return {
+            id: child.id || child.patient_id,
+            name: child.details?.name || child.details?.full_name,
+            age: calculatedAge,
+            status: child.details?.nextVaccine || 'No upcoming vaccines',
+            raw: child.details
+          }
+        })
+        console.log('✅ Schedule loaded from cache')
+        return
+      }
+    }
+
+    // Online mode - fetch fresh data
     console.log('🌐 Fetching children data from API')
     const response = await api.get('/parent/children')
     const freshChildren = response.data?.data || response.data || []

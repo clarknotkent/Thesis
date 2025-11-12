@@ -7,6 +7,8 @@
         </h5>
         <button 
           class="btn btn-primary btn-sm" 
+          :disabled="!effectiveOnline"
+          :title="!effectiveOnline ? 'New chat not available offline' : 'Start a new conversation'"
           @click="openNewChat"
         >
           <i class="bi bi-plus-circle me-1" />
@@ -52,7 +54,7 @@
           v-for="message in messages" 
           :key="message.id"
           class="message-item"
-          :class="{ unread: !message.read }"
+          :class="{ unread: !message.read, 'offline-disabled': !effectiveOnline }"
           @click="openConversation(message)"
         >
           <div class="message-avatar">
@@ -79,7 +81,7 @@
               {{ message.text }}
             </p>
             <small
-              v-if="!isOnline"
+              v-if="!effectiveOnline.value"
               class="text-muted"
             ><i class="bi bi-wifi-off me-1" />View online to open</small>
           </div>
@@ -115,17 +117,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import FaqPanel from '@/features/parent/messaging/components/FaqPanel.vue'
 import NewChatModal from '@/features/parent/messaging/components/NewChatModal.vue'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import api from '@/services/api'
 import { getUserId } from '@/services/auth'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { getFaqs as apiGetFaqs } from '@/services/faqService'
 
-// ONLINE-ONLY MODE: Removed offline detection
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 const loading = ref(true)
 const messages = ref([])
 const router = useRouter()
@@ -148,6 +153,24 @@ const faqs = ref([])
 
 const loadFaqs = async () => {
   try {
+    // Check for cached FAQs first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.faqs) {
+        faqs.value = cached.faqs.map(f => ({ 
+          id: f.faq_id || f.id, 
+          q: f.question || f.q || '', 
+          a: f.answer || f.a || '' 
+        })).filter(f => f.q && f.a)
+        console.log('✅ FAQs loaded from cache')
+        return
+      }
+    }
+
+    // Online mode - fetch fresh FAQs
     const res = await apiGetFaqs()
     const items = Array.isArray(res?.data?.items) ? res.data.items : (Array.isArray(res?.data) ? res.data : [])
     faqs.value = (items || [])
@@ -162,6 +185,42 @@ const loadFaqs = async () => {
 const fetchConversations = async () => {
   try {
     loading.value = true
+    
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.conversations) {
+        // Transform cached conversations to match the expected format
+        const me = String(getUserId())
+        messages.value = cached.conversations.map(it => {
+          const id = it.conversation_id || it.id
+          const when = it.latest_message_time || it.last_message_at || it.updated_at || it.created_at
+          const txt = it.latest_message || it.last_message || it.last_message_body || it.message_preview || it.message_body || ''
+          
+          // Try to get other participant's name from participants array
+          let sender = 'Conversation'
+          let senderRole = ''
+          const list = Array.isArray(it.participants) ? it.participants : []
+          const others = list.filter(p => String(p.user_id || p.id) !== me)
+          if (others.length) {
+            const p = others[0]
+            sender = p.fullname || p.full_name || p.participant_name || `${p.firstname || p.first_name || ''} ${p.surname || p.last_name || ''}`.trim() || sender
+            senderRole = p.role || p.user_role || p.userRole || ''
+          } else if (it.subject) {
+            sender = it.subject
+          }
+          
+          return { id, sender, role: senderRole, text: txt, created_at: when, read: it.unread_count !== undefined ? it.unread_count === 0 : !!it.read_at }
+        })
+        console.log('✅ Messages loaded from cache')
+        return
+      }
+    }
+
+    // Online mode - fetch fresh data
     const userId = getUserId()
     const { data } = await api.get('/conversations', {
       params: { user_id: userId, limit: 50 }
@@ -214,7 +273,25 @@ onMounted(() => {
   }
 })
 
+// Watch for online status changes and refresh data when coming back online
+watch(effectiveOnline, async (isOnline, wasOnline) => {
+  if (isOnline && !wasOnline) {
+    console.log('🌐 Back online - refreshing conversations with latest data')
+    await fetchConversations()
+    await loadFaqs() // Also refresh FAQs in case they were updated
+  }
+})
+
 const openConversation = (msg) => {
+  if (!effectiveOnline.value) {
+    addToast({
+      title: 'Offline',
+      message: 'Conversations are not available offline. Please reconnect to view messages.',
+      type: 'warning'
+    })
+    return
+  }
+
   // ONLINE-ONLY MODE: Direct navigation
   const id = msg?.id
   if (!id) return
@@ -404,8 +481,13 @@ const formatTimePH = (s) => {
   background-color: #eff6ff;
 }
 
-.message-item:hover {
-  background-color: #f8f9fa;
+.message-item.offline-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.message-item.offline-disabled:hover {
+  background-color: transparent;
 }
 
 .message-avatar {

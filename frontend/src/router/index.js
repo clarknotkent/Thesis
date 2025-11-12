@@ -40,6 +40,8 @@ import VaccineDetail from '@/views/healthworker/inventory/VaccineDetail.vue'
 import HealthWorkerMessages from '@/views/healthworker/messages/Messages.vue'
 import HealthWorkerNotifications from '@/views/healthworker/notifications/Notifications.vue'
 import HealthWorkerMenu from '@/views/healthworker/menu/Menu.vue'
+import HealthWorkerProfile from '@/views/healthworker/profile/Profile.vue'
+import HealthWorkerSettings from '@/views/healthworker/settings/Settings.vue'
 
 // Parent Views (Pages)
 import ParentHome from '@/views/parent/ParentHome.vue'
@@ -679,7 +681,7 @@ const routes = [
   {
     path: '/healthworker/profile',
     name: 'HealthWorkerProfile',
-    component: () => import('@/views/healthworker/profile/Profile.vue'),
+    component: HealthWorkerProfile,
     meta: {
       title: 'Profile - ImmunizeMe',
       requiresAuth: true,
@@ -689,7 +691,7 @@ const routes = [
   {
     path: '/healthworker/settings',
     name: 'HealthWorkerSettings',
-    component: () => import('@/views/healthworker/settings/Settings.vue'),
+    component: HealthWorkerSettings,
     meta: {
       title: 'Settings - ImmunizeMe',
       requiresAuth: true,
@@ -1082,10 +1084,8 @@ router.onError((error) => {
       console.log('💡 This route needs to be visited while online first to be cached')
     }
     
-    // Show user-friendly error message
-    if (window.__showOfflineRouteError) {
-      window.__showOfflineRouteError()
-    }
+    // Show user-friendly error message using a toast or alert
+    showOfflineRouteError()
     
     // Don't crash the app - stay on current route
     return false
@@ -1094,5 +1094,28 @@ router.onError((error) => {
   // For other errors, let Vue Router handle them
   throw error
 })
+
+// Offline route error handler
+function showOfflineRouteError() {
+  // Try to show a toast notification if available
+  try {
+    // Check if we have a toast system available
+    if (window.$toast || window.toast) {
+      const toast = window.$toast || window.toast
+      toast.add({
+        severity: 'warn',
+        summary: 'Offline Mode',
+        detail: 'This page is not available offline. Please connect to the internet and try again.',
+        life: 5000
+      })
+    } else {
+      // Fallback to alert
+      alert('This page is not available offline. Please connect to the internet and try again.')
+    }
+  } catch (e) {
+    // Last resort - console warning
+    console.warn('⚠️ Offline route error - page not available offline')
+  }
+}
 
 export default router

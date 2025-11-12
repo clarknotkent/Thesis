@@ -217,12 +217,12 @@
                 for="showDeletedSwitch"
               >Show Deleted</label>
             </div>
-            <button
+            <router-link
+              to="/admin/users/add"
               class="btn btn-primary ms-2"
-              @click="openUserModal()"
             >
               <i class="bi bi-plus-circle me-2" />Add New User
-            </button>
+            </router-link>
           </div>
         </div>
         <div class="card-body">
@@ -348,290 +348,7 @@
 
       <!-- Recent Activity table removed as requested -->
 
-      <!-- User Modal -->
-      <div
-        class="modal fade"
-        :class="{ show: showUserModal }"
-        :style="{ display: showUserModal ? 'block' : 'none' }"
-        tabindex="-1"
-      >
-        <div
-          class="modal-dialog modal-dialog-scrollable"
-          style="max-width: 75vw; width: 75vw;"
-        >
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">
-                <i class="bi bi-person-circle me-2" />
-                {{ isEditing ? 'Edit User' : 'Add New User' }}
-              </h5>
-              <button
-                type="button"
-                class="btn-close"
-                @click="closeUserModal"
-              />
-            </div>
-            <div class="modal-body px-4">
-              <form
-                id="user-form"
-                @submit.prevent="saveUser"
-              >
-                <!-- Personal Information -->
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-person-fill me-2" />Personal Information
-                    </h6>
-                    <div class="row g-4">
-                      <div class="col-xl-3 col-lg-4 col-md-6">
-                        <label class="form-label">First Name: <span class="text-danger">*</span></label>
-                        <input
-                          v-model="userForm.firstName"
-                          type="text"
-                          class="form-control"
-                          required
-                        >
-                      </div>
-                      <div class="col-xl-3 col-lg-4 col-md-6">
-                        <label class="form-label">Middle Name:</label>
-                        <input
-                          v-model="userForm.middleName"
-                          type="text"
-                          class="form-control"
-                        >
-                      </div>
-                      <div class="col-xl-3 col-lg-4 col-md-6">
-                        <label class="form-label">Last Name: <span class="text-danger">*</span></label>
-                        <input
-                          v-model="userForm.lastName"
-                          type="text"
-                          class="form-control"
-                          required
-                        >
-                      </div>
-                      <div class="col-xl-3 col-lg-4 col-md-6">
-                        <label class="form-label">Sex: <span class="text-danger">*</span></label>
-                        <select
-                          v-model="userForm.sex"
-                          class="form-select"
-                          required
-                        >
-                          <option value="">
-                            Select Sex
-                          </option>
-                          <option value="Male">
-                            Male
-                          </option>
-                          <option value="Female">
-                            Female
-                          </option>
-                          <option value="Other">
-                            Other
-                          </option>
-                        </select>
-                      </div>
-                      <div class="col-xl-3 col-lg-4 col-md-6">
-                        <label class="form-label">Birthdate:</label>
-                        <DateInput 
-                          v-model="userForm.birthdate"
-                          :max="maxBirthdate"
-                        />
-                      </div>
-                      <div class="col-xl-9 col-lg-8 col-md-6">
-                        <label class="form-label">Address:</label>
-                        <input
-                          v-model="userForm.address"
-                          type="text"
-                          class="form-control"
-                          placeholder="House/Street, Barangay, City/Municipality, Province"
-                        >
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Account Information -->
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-person-circle me-2" />Account Information
-                    </h6>
-                    <div class="row g-4">
-                      <div class="col-xl-6 col-lg-6 col-md-6">
-                        <label class="form-label">Username or Email: <span class="text-danger">*</span></label>
-                        <input
-                          v-model="userForm.userIdentifier"
-                          type="text"
-                          class="form-control"
-                          required
-                        >
-                      </div>
-                      <div
-                        v-if="!isEditing"
-                        class="col-xl-3 col-lg-3 col-md-6"
-                      >
-                        <label class="form-label">Password: <span class="text-danger">*</span></label>
-                        <input
-                          v-model="userForm.password"
-                          type="password"
-                          class="form-control"
-                          :required="!isEditing"
-                        >
-                      </div>
-                      <div class="col-xl-3 col-lg-3 col-md-6">
-                        <label class="form-label">Status:</label>
-                        <select
-                          v-model="userForm.status"
-                          class="form-select"
-                        >
-                          <option value="active">
-                            Active
-                          </option>
-                          <option value="inactive">
-                            Inactive
-                          </option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Role & Professional Information -->
-                <div class="row mb-4">
-                  <div class="col-12">
-                    <h6 class="text-primary fw-bold mb-3">
-                      <i class="bi bi-briefcase me-2" />Role & Professional Information
-                    </h6>
-                    <div class="row g-4">
-                      <div class="col-xl-4 col-lg-4 col-md-6">
-                        <label class="form-label">Role: <span class="text-danger">*</span></label>
-                        <select
-                          v-model="userForm.role"
-                          class="form-select"
-                          required
-                        >
-                          <option value="">
-                            Select Role
-                          </option>
-                          <option value="admin">
-                            Admin
-                          </option>
-                          <option value="health_worker">
-                            Health Worker
-                          </option>
-                          <option value="parent">
-                            Parent
-                          </option>
-                        </select>
-                      </div>
-                      <div
-                        v-if="userForm.role === 'health_worker'"
-                        class="col-xl-4 col-lg-4 col-md-6"
-                      >
-                        <label class="form-label">Health Worker Type: <span class="text-danger">*</span></label>
-                        <select
-                          v-model="userForm.hwType"
-                          class="form-select"
-                          required
-                        >
-                          <option value="">
-                            Select Type
-                          </option>
-                          <option value="nurse">
-                            Nurse
-                          </option>
-                          <option value="nutritionist">
-                            Nutritionist
-                          </option>
-                          <option value="bhs">
-                            Barangay Health Staff
-                          </option>
-                        </select>
-                      </div>
-                      <div
-                        v-if="(userForm.role === 'health_worker' || userForm.role === 'admin') && isEditing"
-                        class="col-xl-4 col-lg-4 col-md-6"
-                      >
-                        <label class="form-label">Employee ID:</label>
-                        <input
-                          v-model="userForm.employeeId"
-                          type="text"
-                          class="form-control"
-                          readonly
-                        >
-                      </div>
-                      <div
-                        v-if="(userForm.role === 'health_worker' && ['nurse','nutritionist'].includes(userForm.hwType)) || userForm.role === 'admin'"
-                        class="col-xl-6 col-lg-6 col-md-6"
-                      >
-                        <label class="form-label">PRC License Number:</label>
-                        <input
-                          v-model="userForm.licenseNumber"
-                          type="text"
-                          class="form-control"
-                        >
-                      </div>
-                      <div
-                        v-if="userForm.role === 'parent'"
-                        class="col-xl-6 col-lg-6 col-md-6"
-                      >
-                        <label class="form-label">Contact Number:</label>
-                        <input
-                          v-model="userForm.contactNumber"
-                          type="tel"
-                          class="form-control"
-                        >
-                      </div>
-                      <div
-                        v-if="userForm.role !== 'parent'"
-                        class="col-xl-6 col-lg-6 col-md-6"
-                      >
-                        <label class="form-label">Contact Number:</label>
-                        <input
-                          v-model="userForm.contactNumber"
-                          type="tel"
-                          class="form-control"
-                        >
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn btn-secondary"
-                @click="closeUserModal"
-              >
-                <i class="bi bi-x-circle me-2" />Cancel
-              </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="saving"
-                form="user-form"
-              >
-                <span
-                  v-if="saving"
-                  class="spinner-border spinner-border-sm me-2"
-                />
-                <i
-                  v-else
-                  class="bi bi-check-circle me-2"
-                />
-                {{ saving ? 'Saving...' : (isEditing ? 'Update User' : 'Create User') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Backdrop -->
-      <div
-        v-if="showUserModal"
-        class="modal-backdrop fade show"
-      />
+      <!-- Add/Edit user moved to its own page (AddUser.vue/EditUser.vue). Modal removed. -->
 
       <!-- Delete Confirmation Modal -->
       <AppModal
@@ -730,8 +447,7 @@ import AppSpinner from '@/components/ui/base/AppSpinner.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import AppModal from '@/components/ui/base/AppModal.vue'
 import api from '@/services/api'
-import { listUsers as apiListUsers, createUser as apiCreateUser, updateUser as apiUpdateUser, deleteUser as apiDeleteUser, getUser as apiGetUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
-import DateInput from '@/components/ui/form/DateInput.vue'
+import { listUsers as apiListUsers, deleteUser as apiDeleteUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
 import { useToast } from '@/composables/useToast'
 
@@ -741,9 +457,7 @@ import { useToast } from '@/composables/useToast'
 const users = ref([])
 const recentActivity = ref([])
 const loading = ref(false)
-const saving = ref(false)
-// Date picker ref
-const datePickerBirthdate = ref(null)
+// Removed modal-based create/edit state; add/edit now handled on dedicated pages
 const deleting = ref(false)
 const resettingPassword = ref(false)
 const restoring = ref(false)
@@ -768,44 +482,15 @@ const totalPages = ref(1)
 const totalItems = ref(0)
 const itemsPerPage = 5
 
-// Modal states
-const showUserModal = ref(false)
+// Modal states (only for delete/reset/restore)
 const showDeleteModal = ref(false)
 const showPasswordModal = ref(false)
-const isEditing = ref(false)
 const userToDelete = ref(null)
 const userToResetPassword = ref(null)
 const newPassword = ref('')
 const { addToast } = useToast()
 
-// Form data
-const userForm = ref({
-  id: '',
-  firstName: '',
-  lastName: '',
-  middleName: '',
-  userIdentifier: '',
-  role: '',
-  hwType: '',
-  status: 'active',
-  password: '',
-  licenseNumber: '',
-  employeeId: '',
-  contactNumber: '',
-  sex: '',
-  birthdate: '',
-  address: ''
-})
-
-// Max birthdate: today in ISO format (YYYY-MM-DD)
-const maxBirthdate = computed(() => {
-  const today = new Date()
-  const phTime = new Date(today.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))
-  const yyyy = phTime.getFullYear()
-  const mm = String(phTime.getMonth() + 1).padStart(2, '0')
-  const dd = String(phTime.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-})
+// Add/Edit user form moved to AddUser.vue/EditUser.vue
 
 // Computed properties
 const userStats = computed(() => ({
@@ -937,167 +622,7 @@ const goToPage = (page) => {
   }
 }
 
-const openUserModal = async (user = null) => {
-  if (user) {
-    isEditing.value = true
-    try {
-      const full = await apiGetUser(user.id)
-      userForm.value = {
-        id: full.user_id || user.id,
-        firstName: full.firstname || user.firstName || '',
-        lastName: full.surname || user.lastName || '',
-        middleName: full.middlename || user.middleName || '',
-        userIdentifier: full.username || full.email || '',
-        role: mapBackendRoleToOption(full.role || user.role || ''),
-        hwType: full.hw_type || '',
-        status: full.is_deleted ? 'archived' : (full.status || user.status || 'active'),
-        password: '',
-        licenseNumber: full.professional_license_no || user.licenseNumber || '',
-        employeeId: full.employee_id || user.employeeId || '',
-        phoneNumber: full.contact_number || user.phone || '',
-        contactNumber: full.contact_number || user.contactNumber || '',
-        sex: full.sex || user.sex || '',
-        birthdate: formatForInput(full.birthdate || user.birthdate) || '',
-        address: full.address || user.address || ''
-      }
-    } catch (e) {
-      console.error('Failed to fetch full user details', e)
-      // Fallback to provided user object
-      userForm.value = {
-        id: user.id,
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email,
-        userIdentifier: user.username || user.email || '',
-        hwType: user.hwType || '',
-        status: user.status,
-        password: '',
-        licenseNumber: user.licenseNumber || '',
-        employeeId: user.employeeId || '',
-        contactNumber: user.contactNumber || user.phone || '',
-        sex: user.sex || '',
-        birthdate: user.birthdate || '',
-        address: user.address || ''
-      }
-    }
-  } else {
-    isEditing.value = false
-    userForm.value = {
-      id: '',
-      firstName: '',
-      lastName: '',
-      middleName: '',
-      userIdentifier: '',
-      role: '',
-      hwType: '',
-      status: 'active',
-      password: '',
-      licenseNumber: '',
-      employeeId: '',
-      contactNumber: '',
-      sex: '',
-      birthdate: '',
-      address: ''
-    }
-  }
-  showUserModal.value = true
-}
-
-const closeUserModal = () => {
-  showUserModal.value = false
-  userForm.value = {
-    id: '',
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    userIdentifier: '',
-    role: '',
-    hwType: '',
-    status: 'active',
-    password: '',
-    licenseNumber: '',
-    employeeId: '',
-    contactNumber: '',
-    sex: '',
-    birthdate: '',
-    address: ''
-  }
-}
-
-const saveUser = async () => {
-  saving.value = true
-  try {
-    // Detect if userIdentifier is email or username
-    let username = ''
-    let email = ''
-    if (userForm.value.userIdentifier.includes('@')) {
-      // User entered an email - use it as-is, extract username from before @
-      email = userForm.value.userIdentifier
-      username = userForm.value.userIdentifier.split('@')[0]
-    } else {
-      // User entered a username - append @immunizeme.com to create email
-      username = userForm.value.userIdentifier
-      email = `${userForm.value.userIdentifier}@immunizeme.com`
-    }
-
-    const payload = {
-      username: username,
-      email: email,
-      role: userForm.value.role,
-      firstname: userForm.value.firstName,
-      middlename: userForm.value.middleName || null,
-      surname: userForm.value.lastName,
-      password: userForm.value.password,
-      contact_number: userForm.value.contactNumber || null,
-      status: userForm.value.status,
-      sex: userForm.value.sex || 'Other',
-      birthdate: convertToISODate(userForm.value.birthdate) || userForm.value.birthdate || null,
-      address: userForm.value.address || null,
-      professional_license_no: (userForm.value.role === 'health_worker' || userForm.value.role === 'admin') ? (userForm.value.licenseNumber || null) : null,
-      // employee_id is autogenerated for admin and health_worker roles when creating new users
-      ...(isEditing.value || userForm.value.role !== 'admin' && userForm.value.role !== 'health_worker' ? { employee_id: userForm.value.employeeId || null } : {})
-    }
-    if (userForm.value.role === 'health_worker') {
-      payload.hw_type = userForm.value.hwType || null
-      // if bhw, remove license
-      if (payload.hw_type === 'bhs') {
-        payload.professional_license_no = null
-      }
-    } else {
-      payload.hw_type = null
-    }
-    if (isEditing.value) {
-      await apiUpdateUser(userForm.value.id, payload)
-    } else {
-      await apiCreateUser(payload)
-    }
-    closeUserModal()
-    await fetchUserStats()
-    await fetchUsers()
-    await fetchRecentActivity()
-    addToast({
-      title: 'Success',
-      message: isEditing.value ? 'User updated successfully!' : 'User created successfully!',
-      type: 'success'
-    })
-  } catch (error) {
-    console.error('Error saving user:', error)
-    const data = error?.response?.data
-    let msg = 'Error saving user. Please try again.'
-    if (data) {
-      if (typeof data.error === 'string') msg = data.error
-      else if (typeof data.message === 'string') msg = data.message
-      else if (data.error?.message) msg = data.error.message
-      else if (data.message?.message) msg = data.message.message
-      else msg = JSON.stringify(data)
-    } else if (error?.message) {
-      msg = error.message
-    }
-    addToast({ title: 'Error', message: msg || 'Error saving user.', type: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
+// Add/Edit user create/update now handled in dedicated pages
 
 const confirmDeleteUser = (user) => {
   // Prevent deletes with clear feedback rather than disabling the button
@@ -1245,83 +770,7 @@ const formatDatePH = (date) => {
   return formatPHDateTime(date)
 }
 
-// Date formatting and validation methods
-const formatForInput = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${mm}/${dd}/${yyyy}`
-}
-
-const _validateAndFormatDate = (fieldName) => {
-  if (!userForm.value[fieldName]) return
-  
-  // Handle various input formats and convert to MM/DD/YYYY
-  const dateStr = userForm.value[fieldName].trim()
-  let date = null
-  
-  // Try parsing MM/DD/YYYY format
-  if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const [month, day, year] = dateStr.split('/')
-    date = new Date(year, month - 1, day)
-  }
-  // Try parsing DD/MM/YYYY format (convert to MM/DD/YYYY)
-  else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const parts = dateStr.split('/')
-    // Assume DD/MM/YYYY if day > 12 or month <= 12
-    if (parseInt(parts[0]) > 12 || parseInt(parts[1]) <= 12) {
-      const [day, month, year] = parts
-      date = new Date(year, month - 1, day)
-    }
-  }
-  // Try parsing YYYY-MM-DD format
-  else if (dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
-    date = new Date(dateStr)
-  }
-  
-  if (date && !isNaN(date.getTime())) {
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const yyyy = date.getFullYear()
-    userForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
-const _openDatePicker = (fieldName) => {
-  const datePickerEl = datePickerBirthdate.value
-  if (datePickerEl) {
-    // Set the current value in ISO format for the date picker
-    const isoDate = convertToISODate(userForm.value[fieldName])
-    if (isoDate) {
-      datePickerEl.value = isoDate
-    }
-    // Trigger the date picker
-    datePickerEl.showPicker()
-  }
-}
-
-const _onDatePickerChange = (fieldName, event) => {
-  const isoDate = event.target.value
-  if (isoDate) {
-    // Convert from ISO (YYYY-MM-DD) to MM/DD/YYYY for display
-    const phDate = utcToPH(isoDate + 'T00:00:00Z')
-    const mm = String(phDate.month() + 1).padStart(2, '0')
-    const dd = String(phDate.date()).padStart(2, '0')
-    const yyyy = phDate.year()
-    userForm.value[fieldName] = `${mm}/${dd}/${yyyy}`
-  }
-}
-
-const convertToISODate = (mmddyyyy) => {
-  if (!mmddyyyy) return null
-  const [month, day, year] = mmddyyyy.split('/')
-  if (!month || !day || !year) return null
-  const mm = String(month).padStart(2, '0')
-  const dd = String(day).padStart(2, '0')
-  return `${year}-${mm}-${dd}`
-}
+// Date input helpers removed with modal
 
 // Lifecycle
 onMounted(() => {

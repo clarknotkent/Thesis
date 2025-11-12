@@ -47,6 +47,9 @@ import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
+import { useOfflineBHS } from '@/composables/useOfflineBHS'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { onMounted } from 'vue'
 
 defineProps({
   showControls: {
@@ -62,6 +65,8 @@ defineProps({
 defineEmits(['filter', 'scan', 'add', 'update:searchQuery'])
 
 const { confirmState, handleConfirm, handleCancel } = useConfirm()
+const { isOnline } = useOnlineStatus()
+const { prefetchAndCacheData } = useOfflineBHS()
 
 const { userInfo, getRole } = useAuth()
 
@@ -87,6 +92,19 @@ const userRole = computed(() => {
   if (role === 'admin') return 'Administrator'
   if (role === 'parent') return 'Parent'
   return role
+})
+
+// Prefetch BHS data when online
+onMounted(async () => {
+  if (isOnline.value) {
+    console.log('🚀 Checking BHS data prefetch status...')
+    try {
+      await prefetchAndCacheData()
+      console.log('✅ BHS data prefetch check completed')
+    } catch (error) {
+      console.error('❌ BHS data prefetch check failed:', error)
+    }
+  }
 })
 </script>
 

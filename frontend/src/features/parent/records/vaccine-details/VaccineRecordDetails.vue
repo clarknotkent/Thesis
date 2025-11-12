@@ -84,10 +84,14 @@ import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import VaccineInfoCard from './VaccineInfoCard.vue'
 import DoseCard from '../vaccination-history/DoseCard.vue'
 import { formatDate as formatDateUtil } from '@/composables/useDateFormat'
+import { useOffline } from '@/composables/useOffline'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
 import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
+const { effectiveOnline } = useOffline()
+const { getCachedData } = useOfflineGuardian()
 
 const allDoses = ref([])
 const loading = ref(true)
@@ -166,7 +170,29 @@ const fetchVaccineDetails = async () => {
       return
     }
     
-    // ONLINE-ONLY MODE
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        const cachedPatient = cached.patients.find(p => p.id === parseInt(patientId))
+        if (cachedPatient && cachedPatient.immunizations) {
+          // Filter for the specific vaccine from cached immunizations
+          const vaccineRecords = cachedPatient.immunizations.filter(v => {
+            const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
+            return vName === vaccine
+          })
+          
+          allDoses.value = vaccineRecords
+          console.log('✅ Vaccine details loaded from cache')
+          return
+        }
+      }
+    }
+    
+    // Online mode - fetch fresh data
     console.log('🌐 Fetching vaccine details from API')
     const response = await api.get(`/parent/children/${patientId}`)
     const childData = response.data?.data || response.data

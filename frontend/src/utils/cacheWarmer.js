@@ -6,27 +6,10 @@
  * Vue Router lazy-loads route components.
  * 
  * STRATEGY:
- * 1. Try to fetch components directly (works if service worker caches them)
- * 2. If that fails, we rely on user navigation to cache on-demand
- * 3. In production, Vite pre-bundles everything so this is less critical
+ * 1. Import route components using the same lazy-loading functions as the router
+ * 2. Service worker will intercept and cache the modules
+ * 3. Components are now available offline after initial load
  */
-
-/**
- * Pre-load a route component by importing it
- * This triggers Vite to fetch and cache the module
- */
-async function preloadComponent(importPath) {
-  try {
-    // Dynamic import triggers Vite to fetch the module
-    // Service worker will intercept and cache it
-    await import(/* @vite-ignore */ importPath)
-    return { path: importPath, success: true }
-  } catch (error) {
-    // Expected to fail if module doesn't exist or isn't accessible
-    // Will work after user navigates to the route once
-    return { path: importPath, success: false, error: error.message }
-  }
-}
 
 /**
  * Pre-warm route caches for parent portal
@@ -35,32 +18,40 @@ async function preloadComponent(importPath) {
 export async function warmParentPortalCache() {
   console.log('🔥 Warming cache for parent portal routes...')
   
-  const parentComponents = [
-    // Main views
-    '@/views/parent/ParentHome.vue',
-    '@/views/parent/ParentRecords.vue',
-    '@/views/parent/ParentSchedule.vue',
-    '@/views/parent/ParentMessages.vue',
-    '@/views/parent/ParentNotifications.vue',
-    '@/views/parent/ParentProfile.vue',
+  // Import the actual lazy-loading functions used by the router
+  const routeImports = [
+    // Main views - these match the router's lazy imports
+    () => import('@/views/parent/ParentHome.vue'),
+    () => import('@/views/parent/ParentRecords.vue'),
+    () => import('@/views/parent/ParentSchedule.vue'),
+    () => import('@/views/parent/ParentMessages.vue'),
+    () => import('@/views/parent/ParentNotifications.vue'),
+    () => import('@/views/parent/ParentProfile.vue'),
+    () => import('@/views/parent/ParentFAQs.vue'),
     
     // Child record features
-    '@/features/parent/records/patient-info/DependentDetails.vue',
-    '@/features/parent/records/vaccine-details/VaccineRecordDetails.vue',
-    '@/features/parent/records/patient-info/PatientInfoTab.vue',
-    '@/features/parent/records/vaccination-history/VaccinationHistoryTab.vue',
-    '@/features/parent/records/medical-history/MedicalHistoryTab.vue',
+    () => import('@/features/parent/records/patient-info/DependentDetails.vue'),
+    () => import('@/features/parent/records/vaccine-details/VaccineRecordDetails.vue'),
+    () => import('@/features/parent/records/visit-summary/VisitSummary.vue'),
     
-    // Shared components
-    '@/components/parent/DependentCard.vue',
-    '@/components/layout/mobile/ParentLayout.vue',
-    '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
+    // Schedule features
+    () => import('@/features/parent/schedule/ScheduleDetails.vue'),
+    
+    // Messaging features
+    () => import('@/features/parent/messaging/Chat.vue')
   ]
   
-  console.log(`📦 Pre-loading ${parentComponents.length} components...`)
+  console.log(`📦 Pre-loading ${routeImports.length} route components...`)
   
   const results = await Promise.allSettled(
-    parentComponents.map(path => preloadComponent(path))
+    routeImports.map(async (importFn, index) => {
+      try {
+        await importFn()
+        return { index, success: true }
+      } catch (error) {
+        return { index, success: false, error: error.message }
+      }
+    })
   )
   
   const successful = results.filter(r => 
@@ -71,17 +62,14 @@ export async function warmParentPortalCache() {
     r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
   )
   
-  console.log(`✅ Successfully pre-loaded: ${successful}/${parentComponents.length}`)
+  console.log(`✅ Successfully pre-loaded: ${successful}/${routeImports.length} route components`)
   
-  if (failed.length > 0 && failed.length < parentComponents.length) {
-    console.log(`⚠️ Some components couldn't be pre-loaded (${failed.length})`)
-    console.log('💡 These will be cached when you first navigate to them')
-  } else if (failed.length === parentComponents.length) {
-    console.log('ℹ️ Direct pre-loading not available - components will cache on first navigation')
+  if (failed.length > 0) {
+    console.log(`⚠️ ${failed.length} components couldn't be pre-loaded - will cache on first navigation`)
   }
   
   return {
-    total: parentComponents.length,
+    total: routeImports.length,
     successful,
     failed: failed.length
   }

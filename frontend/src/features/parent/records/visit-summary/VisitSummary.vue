@@ -92,10 +92,14 @@ import VisitInfoCard from './VisitInfoCard.vue'
 import ServicesProvidedCard from './ServicesProvidedCard.vue'
 import VitalSignsCard from './VitalSignsCard.vue'
 import { formatDate } from '@/composables/useDateFormat'
+import { useOffline } from '@/composables/useOffline'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
 import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
+const { effectiveOnline } = useOffline()
+const { getCachedData } = useOfflineGuardian()
 
 const visit = ref(null)
 const patientData = ref(null)
@@ -181,7 +185,33 @@ const fetchVisitData = async () => {
     const visitId = route.params.visitId
     const patientId = route.params.patientId
     
-    // ONLINE-ONLY MODE
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached && cached.patients) {
+        const cachedPatient = cached.patients.find(p => p.id === parseInt(patientId))
+        if (cachedPatient && cachedPatient.visits) {
+          // Find the specific visit from cached visits
+          const cachedVisit = cachedPatient.visits.find(v => v.id === parseInt(visitId) || v.visit_id === parseInt(visitId))
+          if (cachedVisit) {
+            visit.value = cachedVisit
+            patientData.value = {
+              full_name: cachedPatient.details?.name || cachedPatient.details?.full_name,
+              firstname: cachedPatient.details?.firstname,
+              middlename: cachedPatient.details?.middlename,
+              surname: cachedPatient.details?.surname
+            }
+            console.log('✅ Visit data loaded from cache')
+            return
+          }
+        }
+      }
+    }
+    
+    // Online mode - fetch fresh data
     console.log('🌐 Fetching visit from API')
     const visitResponse = await api.get(`/visits/${visitId}`)
     visit.value = visitResponse.data?.data || visitResponse.data || {}

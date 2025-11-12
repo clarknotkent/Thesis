@@ -69,7 +69,12 @@
 import { ref, onMounted } from 'vue'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import DependentCard from '@/components/parent/DependentCard.vue'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import api from '@/services/api'
+
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 
 const loading = ref(true)
 const error = ref(null)
@@ -110,30 +115,75 @@ const fetchDependents = async () => {
       return years
     }
     
-    // ONLINE-ONLY MODE
-    console.log('🌐 Fetching children data from API')
-    const response = await api.get('/parent/children')
-    const freshChildren = response.data?.data || response.data || []
+    // Try to get cached data first (always attempt, regardless of network status)
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+    const cached = await getCachedData(guardianId)
     
-    // Update UI with data
-    dependents.value = freshChildren.map(child => {
-      const birthDate = child.dateOfBirth || child.date_of_birth || child.birthDate
-      const calculatedAge = child.age !== undefined ? child.age : calculateNumericAge(birthDate)
+    if (cached && cached.patients && cached.patients.length > 0) {
+      dependents.value = cached.patients.map(child => {
+        const birthDate = child.details?.dateOfBirth || child.details?.date_of_birth || child.details?.birthDate
+        const calculatedAge = child.details?.age !== undefined ? child.details.age : calculateNumericAge(birthDate)
+        
+        return {
+          id: child.id || child.patient_id,
+          name: child.details?.name || child.details?.full_name,
+          age: calculatedAge,
+          status: child.details?.nextVaccine || 'No upcoming vaccines',
+          raw: child.details
+        }
+      })
+      console.log('✅ Records loaded from cache')
       
-      return {
-        id: child.id || child.patient_id,
-        name: child.name || child.full_name,
-        age: calculatedAge,
-        status: child.nextVaccine || 'No upcoming vaccines',
-        raw: child
+      // If offline, don't try to fetch fresh data
+      if (!effectiveOnline.value) {
+        console.log('📴 Offline mode - using cached data only')
+        return
       }
-    })
-    
-    console.log('✅ Records loaded successfully')
+    }
+
+    // Try to fetch fresh data from API (only if online or no cached data)
+    try {
+      console.log('🌐 Fetching children data from API')
+      const response = await api.get('/parent/children')
+      const freshChildren = response.data?.data || response.data || []
+      
+      // Update UI with fresh data
+      dependents.value = freshChildren.map(child => {
+        const birthDate = child.dateOfBirth || child.date_of_birth || child.birthDate
+        const calculatedAge = child.age !== undefined ? child.age : calculateNumericAge(birthDate)
+        
+        return {
+          id: child.id || child.patient_id,
+          name: child.name || child.full_name,
+          age: calculatedAge,
+          status: child.nextVaccine || 'No upcoming vaccines',
+          raw: child
+        }
+      })
+      
+      console.log('✅ Records loaded successfully from API')
+    } catch (apiError) {
+      // If API call fails and we have cached data, keep using cached data
+      if (cached && cached.patients && cached.patients.length > 0) {
+        console.log('⚠️ API failed but cached data available - keeping cached data')
+        return
+      }
+      
+      // If no cached data and API fails, show error
+      console.error('API call failed and no cached data available:', apiError)
+      throw apiError
+    }
     
   } catch (err) {
     console.error('Error fetching dependents:', err)
-    error.value = 'Failed to load dependents. Please try again later.'
+    
+    // Check if it's a network error
+    if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+      error.value = 'You appear to be offline. Please check your internet connection and try again.'
+    } else {
+      error.value = 'Failed to load dependents. Please try again later.'
+    }
   } finally {
     loading.value = false
   }

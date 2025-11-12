@@ -8,6 +8,55 @@ All notable changes to the Immunization Management System will be documented in 
 >
 > For project information and getting started guides, see [README.md](README.md)
 
+## [system-prototype-v4] - 2025-11-13
+
+### ✨ Added
+
+Offline-first and UX safeguards for Health Worker portal:
+- Patient Details: Offline-first load path that reads from IndexedDB (StaffOfflineDB) to prevent Axios errors when offline
+- Visit Summary (HW): Offline-first loading from IndexedDB; caches visit and patient snapshots when online for future offline access
+- UI Guards (with toasts and visual states):
+  - Add New Patient and Add Immunization disabled when offline with informative toast
+  - Edit Visit disabled offline in Visit Summary with toast and visual disabled menu state
+  - Reschedule vaccination disabled offline in Patient Details with toast; scheduled cards reflect non-editable state offline
+
+Formatting and enrichment:
+- Time of Birth displayed in 12‑hour format (Patient Details)
+- Father information enriched offline using guardians and family_number fallbacks (ensures father contact/occupation appear even without direct guardian link)
+
+### 🔄 Changed
+
+Offline data sync robustness and caching:
+- Staff offline prefetch (useOfflineBHS): Normalize /visits response to support { items: [...] } and { data: [...] } shapes before bulkPut into db.visits
+- Patient Details composable: Skip network when offline and assemble details from cached patients, immunizations, schedules, and visits; suppresses network error spam
+- Visit Summary (HW): When online, writes the fetched visit and patient into IndexedDB to seed offline usage automatically
+
+Accessibility/UX:
+- Visual disabled states + aria-disabled attributes added to offline‑guarded actions to clearly communicate availability
+
+### 🐛 Bug Fixes
+
+- Fixed “visits not cached” issue caused by API payload shape (items vs data) leading to empty db.visits
+- Eliminated network error spam in Patient Details and Visit Summary when device is offline by routing through offline cache
+- Ensured father’s number and occupation display offline by enriching from guardians cache (including same family_number groups, preferring male guardian)
+
+### 📚 Files Modified (highlights)
+
+Frontend:
+- `frontend/src/features/health-worker/patients/composables/usePatientDetails.js` — offline‑first patient loader, father enrichment, 12‑hour time formatting
+- `frontend/src/views/healthworker/PatientDetails.vue` — guards for Add Immunization, schedule rescheduling; visual disabled states; uses formatted time of birth
+- `frontend/src/views/healthworker/patients/PatientRecords.vue` — guard for Add New Patient offline with toast
+- `frontend/src/views/healthworker/patients/VisitSummary.vue` — offline‑first load from IndexedDB; cache on online; disable Edit Visit offline with toast and visual state
+- `frontend/src/composables/useOfflineBHS.js` — visits prefetch response normalization and bulkPut
+- `frontend/src/services/offline/db.js` — verified schema supports visits and related tables (no change required)
+
+### ✅ Outcomes
+
+- Health Worker pages behave predictably offline with read‑only access: no more Axios ERR_NETWORK popups
+- Visit history and details render offline after a single online sync
+- Users see clear, consistent toasts and disabled visuals for actions that require connectivity (Add, Edit, Reschedule)
+
+
 ---
 
 ## [system-prototype-v4] - 2025-11-11

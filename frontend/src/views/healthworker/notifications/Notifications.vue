@@ -12,6 +12,18 @@
         </button>
       </div>
 
+      <!-- Offline Indicator -->
+      <div
+        v-if="!loading && !effectiveOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
+        <div>
+          <strong>Offline Mode</strong> - Showing cached notifications. You cannot mark notifications as read.
+        </div>
+      </div>
+
       <!-- Notifications Header -->
       <div class="notifications-header">
         <div class="header-top">
@@ -102,10 +114,9 @@
           :id="n.id"
           :key="n.id"
           :title="n.title"
-          :header="n.header"
           :message="n.message"
           :type="n.type"
-          :time="n.time"
+          :created-at="n.created_at"
           :channel="n.channel"
           :read="n.read"
           :show-delete="true"
@@ -138,11 +149,35 @@ import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { useNotifications } from '@/features/health-worker/notifications/composables'
 import NotificationItem from '@/features/shared/notifications/NotificationItem.vue'
+import { useOffline } from '@/composables/useOffline'
+import api from '@/services/api'
 
 const router = useRouter()
+const { effectiveOnline } = useOffline()
 
 const goBack = () => {
   router.go(-1)
+}
+
+const markAsRead = async (id) => {
+  if (!effectiveOnline.value) {
+    console.log('Mark as read disabled offline.');
+    return;
+  }
+  try {
+    // Mark as read in UI immediately
+    const target = notifications.value.find(n => n.id === id)
+    if (target) target.read = true
+    
+    // Send to API
+    try {
+      await api.put(`/notifications/${id}/read`)
+    } catch (_) {
+      // Ignore API errors for read status
+    }
+  } catch (e) {
+    console.error('Failed to mark notification as read:', e)
+  }
 }
 
 // Use notifications composable
@@ -154,7 +189,6 @@ const {
   unreadCount,
   readCount,
   loadNotifications,
-  markAsRead,
   markAllAsRead,
   clearAllRead,
   startPolling
@@ -162,11 +196,9 @@ const {
 
 // Handle notification click with navigation
 const handleNotificationClick = async (notification) => {
-  const result = await markAsRead(notification)
-  
-  // If related to conversation, navigate to messages
-  if (result.shouldNavigate) {
-    router.push('/healthworker/messages')
+  // Mark as read only if online
+  if (!notification.read && notification.id && effectiveOnline.value) {
+    markAsRead(notification.id)
   }
 }
 

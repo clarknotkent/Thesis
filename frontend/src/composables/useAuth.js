@@ -20,7 +20,7 @@ export const useAuth = () => {
     return userInfo.value
   }
 
-  const login = (token, role, info) => {
+  const login = async (token, role, info) => {
     console.log('🔐 LOGIN CALLED - Role:', role, 'Info:', info)
     
     authToken.value = token
@@ -34,12 +34,24 @@ export const useAuth = () => {
       localStorage.setItem('authUser', JSON.stringify(info)) // For compatibility
     }
 
-    // Parent/guardian users: No offline caching - online only
+    // Parent/guardian users: Prefetch all data for offline mode
     const normalizedRole = (role || '').toLowerCase()
     console.log('🎯 User role:', normalizedRole)
     
     if (normalizedRole === 'guardian' || normalizedRole === 'parent') {
-      console.log('👨‍👩‍👧‍👦 Parent login - online mode only')
+      console.log('👨‍👩‍👧‍👦 Parent login - prefetching data for offline mode')
+      try {
+        const { useOfflineGuardian } = await import('@/composables/useOfflineGuardian')
+        const { fetchAndCacheData } = useOfflineGuardian()
+        const guardianId = info.id || info.guardian_id || info.userId || info.user_id
+        if (guardianId) {
+          await fetchAndCacheData(guardianId)
+        } else {
+          console.error('❌ Guardian ID not found in user info:', info)
+        }
+      } catch (error) {
+        console.error('❌ Failed to prefetch guardian data:', error)
+      }
     } else {
       console.log('ℹ️ Admin/Staff offline uses StaffOfflineDB (on-demand caching)')
       // Data will be cached when users visit Patient Records or Vaccine Inventory pages
@@ -61,8 +73,16 @@ export const useAuth = () => {
     // Clear offline data based on role BEFORE clearing auth data
     const currentRole = (userRole.value || '').toLowerCase()
     
-    // Only clear staff offline data (parent has no offline anymore)
-    if (currentRole === 'admin' || currentRole === 'healthstaff') {
+    if (currentRole === 'guardian' || currentRole === 'parent') {
+      // Clear guardian offline data
+      try {
+        const { db } = await import('@/utils/db')
+        await db.delete()
+        console.log('✅ Guardian offline data cleared on logout')
+      } catch (error) {
+        console.error('❌ Failed to clear guardian offline data:', error)
+      }
+    } else if (currentRole === 'admin' || currentRole === 'healthstaff') {
       // Clear staff offline data
       try {
         const { clearStaffOfflineData } = await import('@/services/offline/db')

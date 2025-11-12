@@ -123,7 +123,10 @@
           </button>
           <button 
             class="action-btn-full edit-btn-full"
-            @click="$emit('edit', { vaccineName, doses })"
+            :class="{ 'is-disabled-visual': disableEdit }"
+            :aria-disabled="disableEdit ? 'true' : 'false'"
+            :title="disableEdit ? 'Editing all doses is unavailable offline' : ''"
+            @click="handleEditClick"
           >
             <i class="bi bi-pencil" />
             Edit All Doses
@@ -147,18 +150,27 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  disableEdit: {
+    type: Boolean,
+    default: false
+  },
   initialExpanded: {
     type: Boolean,
     default: false
   }
 })
 
-defineEmits(['view', 'edit'])
+const emit = defineEmits(['view', 'edit'])
 
 const isExpanded = ref(props.initialExpanded)
 
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value
+}
+
+const handleEditClick = () => {
+  // Always emit to let parent decide (e.g., show toast when offline)
+  emit('edit', { vaccineName: props.vaccineName, doses: props.doses })
 }
 
 const doseSummary = computed(() => {
@@ -558,6 +570,12 @@ const formatDate = (date) => {
 
 .edit-btn-full:active {
   transform: translateY(0);
+}
+
+/* Visual disabled state without blocking click (so parent can show toast) */
+.edit-btn-full.is-disabled-visual {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Dose Divider */

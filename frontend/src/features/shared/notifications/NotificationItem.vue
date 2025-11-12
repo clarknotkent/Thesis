@@ -79,6 +79,8 @@ const displayTime = computed(() => {
   if (props.time) return props.time
   if (!props.createdAt) return ''
   const d = new Date(props.createdAt)
+  // Add 8 hours for Philippine timezone (UTC+8)
+  d.setHours(d.getHours() + 8)
   // Relative-ish: show "Just now", "xh ago", or date
   const now = new Date()
   const diffMs = now - d

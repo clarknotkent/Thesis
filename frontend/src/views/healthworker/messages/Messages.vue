@@ -1,6 +1,18 @@
 <template>
   <HealthWorkerLayout>
     <div class="messages-container">
+      <!-- Offline Indicator -->
+      <div
+        v-if="!loading && !effectiveOnline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2" />
+        <div>
+          <strong>Offline Mode</strong> - Showing cached conversations and messages. You cannot send new messages.
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div
         v-if="loading && !selectedConversation"
@@ -75,9 +87,12 @@ import NewConversationModal from '@/features/health-worker/messages/components/N
 import { conversationAPI, messageAPI } from '@/services/api'
 import api from '@/services/api'
 import { getUserId } from '@/services/auth'
+import { db } from '@/services/offline/db'
+import { useOffline } from '@/composables/useOffline'
 import { useToast } from '@/composables/useToast'
 
 const { addToast } = useToast()
+const { effectiveOnline } = useOffline()
 
 // State
 const loading = ref(false)
@@ -194,10 +209,34 @@ const isMyMessage = (msg) => {
 const loadConversations = async () => {
   loading.value = true
   try {
-    const response = await conversationAPI.getConversations({ limit: 50 })
-    conversations.value = response.data?.items || response.data || []
+    if (effectiveOnline.value) {
+      // ONLINE: Fetch from API
+      console.log('🌐 Fetching conversations from API...')
+      const response = await conversationAPI.getConversations({ limit: 50 })
+      conversations.value = response.data?.items || response.data || []
+      console.log('✅ Conversations loaded from API')
+    } else {
+      // OFFLINE: Load from cache
+      console.log('📴 Loading conversations from cache...')
+      try {
+        // Ensure database is open
+        if (!db.isOpen()) {
+          await db.open()
+        }
+
+        const cachedConversations = await db.conversations.toArray()
+        conversations.value = cachedConversations.sort((a, b) =>
+          new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+        )
+        console.log(`✅ Loaded ${conversations.value.length} conversations from cache`)
+      } catch (cacheError) {
+        console.error('❌ Error loading conversations from cache:', cacheError)
+        conversations.value = []
+      }
+    }
   } catch (error) {
     console.error('Failed to load conversations:', error)
+    conversations.value = []
   } finally {
     loading.value = false
   }
@@ -217,12 +256,38 @@ const closeChat = () => {
 const loadMessages = async (conversationId) => {
   loadingMessages.value = true
   try {
-    const response = await messageAPI.getMessages(conversationId)
-    messages.value = response.data?.items || response.data || []
+    if (effectiveOnline.value) {
+      // ONLINE: Fetch from API
+      console.log(`🌐 Fetching messages for conversation ${conversationId} from API...`)
+      const response = await messageAPI.getMessages(conversationId)
+      messages.value = response.data?.items || response.data || []
+      console.log(`✅ Loaded ${messages.value.length} messages from API`)
+    } else {
+      // OFFLINE: Load from cache
+      console.log(`📴 Loading messages for conversation ${conversationId} from cache...`)
+      try {
+        // Ensure database is open
+        if (!db.isOpen()) {
+          await db.open()
+        }
+
+        const cachedMessages = await db.messages
+          .where('conversation_id').equals(conversationId)
+          .sortBy('created_at')
+
+        messages.value = cachedMessages
+        console.log(`✅ Loaded ${messages.value.length} messages from cache`)
+      } catch (cacheError) {
+        console.error('❌ Error loading messages from cache:', cacheError)
+        messages.value = []
+      }
+    }
+
     await nextTick()
     scrollToBottom()
   } catch (error) {
     console.error('Failed to load messages:', error)
+    messages.value = []
   } finally {
     loadingMessages.value = false
   }

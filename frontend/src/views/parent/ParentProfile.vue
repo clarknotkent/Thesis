@@ -49,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ParentLayout from '@/components/layout/mobile/ParentLayout.vue'
 import ProfileHeader from '@/features/parent/profile/components/ProfileHeader.vue'
@@ -58,11 +58,15 @@ import ProfileViewModal from '@/features/parent/profile/components/ProfileViewMo
 import EditProfileModal from '@/features/parent/profile/components/EditProfileModal.vue'
 import ChangePasswordModal from '@/features/parent/profile/components/ChangePasswordModal.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useOfflineGuardian } from '@/composables/useOfflineGuardian'
+import { useOffline } from '@/composables/useOffline'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
 const router = useRouter()
 const { userInfo, logout: authLogout, updateUserInfo } = useAuth()
+const { getCachedData } = useOfflineGuardian()
+const { effectiveOnline } = useOffline()
 const { addToast } = useToast()
 
 // Menu configuration
@@ -120,7 +124,20 @@ const guardianRole = computed(() => guardian.value?.relationship_type || 'Parent
 // Methods
 const loadGuardian = async () => {
   try {
-    // Fetch from API (online-only mode)
+    // Check for cached data first when offline
+    if (!effectiveOnline.value) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
+      const cached = await getCachedData(guardianId)
+      
+      if (cached) {
+        guardian.value = cached
+        console.log('✅ Profile loaded from cache')
+        return
+      }
+    }
+
+    // Online mode - fetch fresh data
     const guardianId = userInfo.value?.guardian_id || userInfo.value?.id
     if (guardianId) {
       const response = await api.get(`/guardians/${guardianId}`)
@@ -185,7 +202,15 @@ const confirmLogout = () => {
 }
 
 const logout = async () => {
-  // ONLINE-ONLY MODE: No offline check needed
+  if (!effectiveOnline.value) {
+    addToast({
+      title: 'Offline',
+      message: 'You are offline. Logout is disabled to preserve your offline data. Please reconnect to log out.',
+      type: 'warning'
+    })
+    return
+  }
+
   try {
     await authLogout()
     router.push('/auth/login')
@@ -270,6 +295,14 @@ const saveChangePwd = async (pwdData) => {
 // Lifecycle
 onMounted(() => {
   loadGuardian()
+})
+
+// Watch for online status changes and refresh data when coming back online
+watch(effectiveOnline, async (isOnline, wasOnline) => {
+  if (isOnline && !wasOnline) {
+    console.log('🌐 Back online - refreshing profile with latest data')
+    await loadGuardian()
+  }
 })
 </script>
 

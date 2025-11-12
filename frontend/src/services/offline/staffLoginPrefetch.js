@@ -127,8 +127,16 @@ export async function prefetchStaffData(force = false) {
           address: patient.address,
           barangay: patient.barangay,
           health_center: patient.health_center,
+          // Parent details for offline Patient Details view
+          mother_name: patient.mother_name,
+          mother_contact_number: patient.mother_contact_number,
+          mother_occupation: patient.mother_occupation,
+          father_name: patient.father_name,
+          father_contact_number: patient.father_contact_number,
+          father_occupation: patient.father_occupation,
           guardian_id: patient.guardian_id,
           family_number: patient.family_number,
+          guardian_contact_number: patient.guardian_contact_number,
           tags: patient.tags,
           status: patient.status,
           age: patient.age, // If present from view
