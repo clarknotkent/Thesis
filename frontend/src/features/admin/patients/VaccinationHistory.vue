@@ -346,36 +346,62 @@ const fetchVaccinationHistory = async () => {
   try {
     loading.value = true
     
-    // Try offline first if available
-    if (isOffline.value) {
+    // Always try offline cache first, regardless of online status
+    try {
       const patientData = await fetchPatientById(props.patientId)
-      if (patientData && patientData.vaccinationHistory) {
-        vaccinations.value = Array.isArray(patientData.vaccinationHistory) ? patientData.vaccinationHistory : []
+      if (patientData && patientData.vaccinationHistory && Array.isArray(patientData.vaccinationHistory) && patientData.vaccinationHistory.length > 0) {
+        vaccinations.value = patientData.vaccinationHistory
+        console.log('✅ Loaded vaccination history from cache:', patientData.vaccinationHistory.length, 'records')
         return
       }
+    } catch (cacheError) {
+      console.warn('⚠️ Cache lookup failed:', cacheError.message)
     }
 
-    // Fallback to API
-    const response = await api.get(`/patients/${props.patientId}`)
-    const patientData = response.data.data || response.data
-    
-    // Extract vaccination history from patient data
-    let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || patientData.immunizationHistory || []
+    // If cache is empty or failed, try API (only if we think we're online)
+    if (!isOffline.value) {
+      const response = await api.get(`/patients/${props.patientId}`)
+      const patientData = response.data.data || response.data
+      
+      // Extract vaccination history from patient data
+      let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || patientData.immunizationHistory || []
 
-    // If patient payload doesn't include history, fallback to dedicated endpoint
-    if (!Array.isArray(vax) || vax.length === 0) {
-      try {
-        const vaccRes = await api.get('/immunizations', { params: { patient_id: props.patientId, limit: 200 } })
-        vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
-      } catch (e) {
-        // ignore, keep empty
-        vax = []
+      // If patient payload doesn't include history, fallback to dedicated endpoint
+      if (!Array.isArray(vax) || vax.length === 0) {
+        try {
+          const vaccRes = await api.get('/immunizations', { params: { patient_id: props.patientId, limit: 200 } })
+          vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
+        } catch (e) {
+          // ignore, keep empty
+          vax = []
+        }
       }
-    }
 
-    vaccinations.value = Array.isArray(vax) ? vax : []
+      vaccinations.value = Array.isArray(vax) ? vax : []
+      console.log('📥 Loaded vaccination history from API:', vaccinations.value.length, 'records')
+    } else {
+      // We're offline and cache was empty
+      vaccinations.value = []
+      console.log('📴 Offline and no cached vaccination history available')
+    }
   } catch (error) {
     console.error('Error fetching vaccination history:', error)
+    
+    // If API call failed, try cache one more time as fallback
+    if (error.code === 'ERR_NETWORK' || error.code === 'ERR_INTERNET_DISCONNECTED') {
+      try {
+        console.log('🌐 Network error, trying cache as fallback...')
+        const patientData = await fetchPatientById(props.patientId)
+        if (patientData && patientData.vaccinationHistory) {
+          vaccinations.value = Array.isArray(patientData.vaccinationHistory) ? patientData.vaccinationHistory : []
+          console.log('✅ Recovered vaccination history from cache after network error')
+          return
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Cache fallback also failed:', cacheError.message)
+      }
+    }
+    
     addToast({
       title: 'Error',
       message: 'Failed to load vaccination history',

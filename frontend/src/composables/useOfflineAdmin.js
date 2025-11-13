@@ -5,23 +5,79 @@ import { useToast } from '@/composables/useToast'
 
 export function useOfflineAdmin() {
   const { addToast } = useToast()
-  const isOffline = ref(!navigator.onLine)
+  const isOffline = ref(false)
+  const isConnectivityTested = ref(false)
   const isCaching = ref(false)
 
-  // Listen for online/offline events
-  const updateOnlineStatus = () => {
-    isOffline.value = !navigator.onLine
+  // Test actual connectivity by making a lightweight request
+  const testConnectivity = async () => {
+    try {
+      // Try to fetch a small, lightweight endpoint or make a HEAD request to root
+      const response = await fetch('/', {
+        method: 'HEAD',
+        cache: 'no-cache',
+        signal: AbortSignal.timeout(3000) // 3 second timeout
+      })
+      return response.ok
+    } catch (error) {
+      console.log('Connectivity test failed:', error.message)
+      return false
+    }
+  }
+
+  // Update offline status with actual connectivity test
+  const updateOnlineStatus = async () => {
+    const wasOffline = isOffline.value
+
+    // First check navigator.onLine for quick detection
+    if (!navigator.onLine) {
+      isOffline.value = true
+      isConnectivityTested.value = true
+      if (!wasOffline) {
+        console.log('📴 Browser reports offline')
+      }
+      return
+    }
+
+    // If browser says online, test actual connectivity
+    try {
+      const isConnected = await testConnectivity()
+      isOffline.value = !isConnected
+      isConnectivityTested.value = true
+
+      if (wasOffline && isConnected) {
+        console.log('🌐 Connection restored (confirmed by connectivity test)')
+      } else if (!wasOffline && !isConnected) {
+        console.log('📴 Connection lost (detected by connectivity test)')
+      }
+    } catch (error) {
+      // If connectivity test fails, assume offline
+      isOffline.value = true
+      isConnectivityTested.value = true
+      console.log('📴 Connectivity test failed, assuming offline')
+    }
+  }
+
+  // Initial connectivity check
+  const initConnectivityCheck = async () => {
+    await updateOnlineStatus()
+
+    // Set up periodic connectivity checks (every 30 seconds)
+    setInterval(updateOnlineStatus, 30000)
   }
 
   if (typeof window !== 'undefined') {
     window.addEventListener('online', updateOnlineStatus)
     window.addEventListener('offline', updateOnlineStatus)
+
+    // Initial connectivity check
+    initConnectivityCheck()
   }
 
   /**
    * Generic fetch function that tries online first, falls back to cache
    */
-  const fetchWithOfflineFallback = async (apiCall, cacheQuery, cacheKey = null) => {
+  const fetchWithOfflineFallback = async (apiCall, cacheQuery, _cacheKey = null) => {
     try {
       // Try online first
       if (!isOffline.value) {
@@ -175,6 +231,18 @@ export function useOfflineAdmin() {
             tags: patient.tags,
             status: patient.status,
             is_deleted: Boolean(patient.is_deleted),
+            // Preserve birth history fields that might be on the patient object
+            birth_weight: patient.birth_weight || patient.birthWeight || '',
+            birth_length: patient.birth_length || patient.birthLength || '',
+            place_of_birth: patient.place_of_birth || patient.placeOfBirth || '',
+            address_at_birth: patient.address_at_birth || patient.addressAtBirth || '',
+            time_of_birth: patient.time_of_birth || patient.timeOfBirth || '',
+            attendant_at_birth: patient.attendant_at_birth || patient.attendantAtBirth || '',
+            type_of_delivery: patient.type_of_delivery || patient.typeOfDelivery || '',
+            ballards_score: patient.ballards_score || patient.ballardsScore || '',
+            hearing_test_date: patient.hearing_test_date || patient.hearingTestDate || '',
+            newborn_screening_date: patient.newborn_screening_date || patient.newbornScreeningDate || '',
+            newborn_screening_result: patient.newborn_screening_result || patient.newbornScreeningResult || '',
             created_at: patient.created_at,
             updated_at: patient.updated_at
           }
@@ -342,7 +410,7 @@ export function useOfflineAdmin() {
         }
       }
 
-      // Transform patient data to include guardian information
+      // Transform patient data to include guardian information and merge birth history
       const transformedPatient = {
         ...patient,
         // Add guardian information in the format expected by components
@@ -354,6 +422,21 @@ export function useOfflineAdmin() {
           full_name: guardian.full_name,
           contact_number: guardian.contact_number
         } : null
+      }
+
+      // Merge birth history data into patient object for components that expect it there
+      if (birthHistory) {
+        transformedPatient.birth_weight = birthHistory.birth_weight || transformedPatient.birth_weight || ''
+        transformedPatient.birth_length = birthHistory.birth_length || transformedPatient.birth_length || ''
+        transformedPatient.place_of_birth = birthHistory.place_of_birth || transformedPatient.place_of_birth || ''
+        transformedPatient.address_at_birth = birthHistory.address_at_birth || transformedPatient.address_at_birth || ''
+        transformedPatient.time_of_birth = birthHistory.time_of_birth || transformedPatient.time_of_birth || ''
+        transformedPatient.attendant_at_birth = birthHistory.attendant_at_birth || transformedPatient.attendant_at_birth || ''
+        transformedPatient.type_of_delivery = birthHistory.type_of_delivery || transformedPatient.type_of_delivery || ''
+        transformedPatient.ballards_score = birthHistory.ballards_score || transformedPatient.ballards_score || ''
+        transformedPatient.hearing_test_date = birthHistory.hearing_test_date || transformedPatient.hearing_test_date || ''
+        transformedPatient.newborn_screening_date = birthHistory.newborn_screening_date || transformedPatient.newborn_screening_date || ''
+        transformedPatient.newborn_screening_result = birthHistory.newborn_screening_result || transformedPatient.newborn_screening_result || ''
       }
 
       return {

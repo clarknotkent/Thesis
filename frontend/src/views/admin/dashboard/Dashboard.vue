@@ -1,287 +1,274 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
-      <!-- Offline Indicator Banner -->
+      <!-- Offline Disabled Banner -->
       <div
         v-if="isOffline"
-        class="alert alert-warning d-flex align-items-center mb-3"
+        class="alert alert-danger d-flex align-items-center mb-3"
         role="alert"
       >
-        <i class="bi bi-wifi-off me-2 fs-5" />
+        <i class="bi bi-dash-circle-fill me-2 fs-5" />
         <div>
-          <strong>Offline Mode</strong> - You're viewing cached dashboard data. Some features may be limited until you reconnect.
+          <strong>Dashboard Unavailable</strong> - The dashboard is disabled when offline to ensure data accuracy. Please reconnect to access dashboard metrics and statistics.
         </div>
       </div>
 
-      <!-- Caching Progress Banner -->
-      <div
-        v-if="isCaching"
-        class="alert alert-info d-flex align-items-center mb-3"
-        role="alert"
-      >
+      <!-- Dashboard Content - Show but disable interactions when offline -->
+      <div :class="{ 'dashboard-disabled': isOffline }">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h1 class="h3 mb-0 text-gray-800">
+              <i class="bi bi-speedometer2 me-2" />Admin Dashboard
+            </h1>
+            <p class="text-muted mb-0">
+              Welcome to the Immunization Management System
+            </p>
+          </div>
+          <div class="d-flex align-items-center gap-2 header-actions">
+            <small class="text-muted">Last updated: {{ lastUpdated }}</small>
+          </div>
+        </div>
+
+        <!-- Loading State -->
         <div
-          class="spinner-border spinner-border-sm me-2"
-          role="status"
+          v-if="loading"
+          class="text-center py-5"
         >
-          <span class="visually-hidden">Caching...</span>
+          <div
+            class="spinner-border text-primary"
+            role="status"
+          >
+            <span class="visually-hidden">Loading dashboard...</span>
+          </div>
         </div>
-        <div>
-          <strong>Caching dashboard data...</strong> Saving metrics and statistics for offline access.
-        </div>
-      </div>
-      <!-- Page Header -->
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-speedometer2 me-2" />Admin Dashboard
-          </h1>
-          <p class="text-muted mb-0">
-            Welcome to the Immunization Management System
-          </p>
-        </div>
-        <div class="d-flex align-items-center gap-2 header-actions">
-          <small class="text-muted">Last updated: {{ lastUpdated }}</small>
-        </div>
-      </div>
 
-      <!-- Loading State -->
-      <div
-        v-if="loading"
-        class="text-center py-5"
-      >
+        <!-- Stats Cards Row -->
         <div
-          class="spinner-border text-primary"
-          role="status"
+          v-if="!loading"
+          class="row g-3 mb-4"
         >
-          <span class="visually-hidden">Loading dashboard...</span>
-        </div>
-      </div>
-
-      <!-- Stats Cards Row -->
-      <div
-        v-if="!loading"
-        class="row g-3 mb-4"
-      >
-        <!-- Vaccinations Today Card -->
-        <div class="col-md">
-          <div class="card border border-success border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">
-                    Vaccinations Today
+          <!-- Vaccinations Today Card -->
+          <div class="col-md">
+            <div class="card border-success border-3 shadow h-100 py-2">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                      Vaccinations Today
+                    </div>
+                    <div class="h5 mb-0 fw-bold text-gray-800">
+                      {{ stats.vaccinationsToday }}
+                    </div>
                   </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ stats.vaccinationsToday }}
+                  <div class="col-auto">
+                    <i
+                      class="bi bi-shield-check text-success"
+                      style="font-size: 2rem;"
+                    />
                   </div>
                 </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-shield-check text-success"
-                    style="font-size: 2rem;"
-                  />
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Patients Card -->
+          <div class="col-md">
+            <div class="card border-primary border-3 shadow h-100 py-2">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                      Total Patients
+                    </div>
+                    <div class="h5 mb-0 fw-bold text-gray-800">
+                      {{ stats.totalPatients }}
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <i
+                      class="bi bi-people text-primary"
+                      style="font-size: 2rem;"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Health Staff Card -->
+          <div class="col-md">
+            <div class="card border-info border-3 shadow h-100 py-2">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                      Active Health Staff
+                    </div>
+                    <div class="h5 mb-0 fw-bold text-gray-800">
+                      {{ stats.activeHealthWorkers }}
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <i
+                      class="bi bi-person-badge text-info"
+                      style="font-size: 2rem;"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending Appointments Card -->
+          <div class="col-md">
+            <div class="card border-warning border-3 shadow h-100 py-2">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                      Pending Appointments
+                    </div>
+                    <div class="h5 mb-0 fw-bold text-gray-800">
+                      {{ stats.pendingAppointments }}
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <i
+                      class="bi bi-calendar-event text-warning"
+                      style="font-size: 2rem;"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Total Patients Card -->
-        <div class="col-md">
-          <div class="card border border-primary border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">
-                    Total Patients
-                  </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ stats.totalPatients }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-people text-primary"
-                    style="font-size: 2rem;"
-                  />
-                </div>
+        <!-- Chart and Recent Vaccinations -->
+        <div
+          v-if="!loading"
+          class="row"
+        >
+          <!-- Vaccine Data Chart -->
+          <div class="col-12">
+            <div class="card shadow mb-4">
+              <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 fw-bold text-primary">
+                  All 7 Vaccines Usage
+                </h6>
+                <small class="text-muted">Across all records</small>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Active Health Staff Card -->
-        <div class="col-md">
-          <div class="card border border-info border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-info text-uppercase mb-1">
-                    Active Health Staff
-                  </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ stats.activeHealthWorkers }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-person-badge text-info"
-                    style="font-size: 2rem;"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Pending Appointments Card -->
-        <div class="col-md">
-          <div class="card border border-warning border-3 shadow h-100 py-2">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="text-xs fw-bold text-warning text-uppercase mb-1">
-                    Pending Appointments
-                  </div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">
-                    {{ stats.pendingAppointments }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <i
-                    class="bi bi-calendar-event text-warning"
-                    style="font-size: 2rem;"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chart and Recent Vaccinations -->
-      <div
-        v-if="!loading"
-        class="row"
-      >
-        <!-- Vaccine Data Chart -->
-        <div class="col-12">
-          <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-              <h6 class="m-0 fw-bold text-primary">
-                All 7 Vaccines Usage
-              </h6>
-              <small class="text-muted">Across all records</small>
-            </div>
-            <div class="card-body">
-              <BarChart 
-                :data="vaccineChartData" 
-                :height="320"
-                :colors="['#0d6efd', '#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Vaccinations Table -->
-        <div class="col-12">
-          <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-              <h6 class="m-0 fw-bold text-primary">
-                Recent Vaccinations
-              </h6>
-              <div class="dropdown no-arrow">
-                <a
-                  id="dropdownMenuLink"
-                  class="dropdown-toggle"
-                  href="#"
-                  role="button"
-                  data-bs-toggle="dropdown"
-                >
-                  <i class="bi bi-three-dots-vertical" />
-                </a>
-                <div class="dropdown-menu dropdown-menu-end shadow">
-                  <div class="dropdown-header">
-                    Actions:
-                  </div>
-                  <a
-                    class="dropdown-item"
-                    href="#"
-                    @click.prevent="refreshData"
-                  >Refresh Data</a>
-                  <a
-                    class="dropdown-item"
-                    href="#"
-                  >Export Data</a>
-                </div>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Patient</th>
-                      <th>Parent</th>
-                      <th>Vaccine</th>
-                      <th>Health Worker</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="vaccination in recentVaccinations"
-                      :key="vaccination.id"
-                    >
-                      <td class="fw-semibold">
-                        {{ vaccination.patientName }}
-                      </td>
-                      <td>{{ vaccination.parentName }}</td>
-                      <td>{{ vaccination.vaccineName }}</td>
-                      <td>
-                        <span v-if="vaccination.outside"><em>(Taken Outside)</em></span>
-                        <span v-else>{{ vaccination.healthWorker || '—' }}</span>
-                      </td>
-                      <td>{{ formatDate(vaccination.dateAdministered) }}</td>
-                      <td>
-                        <span 
-                          class="badge" 
-                          :class="vaccination.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'"
-                        >
-                          {{ vaccination.status === 'completed' ? 'Completed' : 'Pending' }}
-                        </span>
-                      </td>
-                    </tr>
-                    <tr v-if="recentVaccinations.length === 0">
-                      <td
-                        colspan="6"
-                        class="text-center text-muted py-4"
-                      >
-                        No recent vaccinations found
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Pagination Footer -->
-              <div
-                v-if="totalRecentItems > 0"
-                class="pagination-footer border-top mt-3 pt-3"
-              >
-                <AppPagination
-                  :current-page="recentPage"
-                  :total-pages="totalPages"
-                  :total-items="totalRecentItems"
-                  :items-per-page="pageSize"
-                  @page-changed="fetchRecentPage"
+              <div class="card-body">
+                <BarChart 
+                  :data="vaccineChartData" 
+                  :height="320"
+                  :colors="['#0d6efd', '#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']"
                 />
               </div>
             </div>
           </div>
+
+          <!-- Recent Vaccinations Table -->
+          <div class="col-12">
+            <div class="card shadow mb-4">
+              <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 fw-bold text-primary">
+                  Recent Vaccinations
+                </h6>
+                <div class="dropdown no-arrow">
+                  <a
+                    id="dropdownMenuLink"
+                    class="dropdown-toggle"
+                    href="#"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                  >
+                    <i class="bi bi-three-dots-vertical" />
+                  </a>
+                  <div class="dropdown-menu dropdown-menu-end shadow">
+                    <div class="dropdown-header">
+                      Actions:
+                    </div>
+                    <a
+                      class="dropdown-item"
+                      href="#"
+                      @click.prevent="refreshData"
+                    >Refresh Data</a>
+                    <a
+                      class="dropdown-item"
+                      href="#"
+                    >Export Data</a>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Patient</th>
+                        <th>Parent</th>
+                        <th>Vaccine</th>
+                        <th>Health Worker</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="vaccination in recentVaccinations"
+                        :key="vaccination.id"
+                      >
+                        <td class="fw-semibold">
+                          {{ vaccination.patientName }}
+                        </td>
+                        <td>{{ vaccination.parentName }}</td>
+                        <td>{{ vaccination.vaccineName }}</td>
+                        <td>
+                          <span v-if="vaccination.outside"><em>(Taken Outside)</em></span>
+                          <span v-else>{{ vaccination.healthWorker || '—' }}</span>
+                        </td>
+                        <td>{{ formatDate(vaccination.dateAdministered) }}</td>
+                        <td>
+                          <span 
+                            class="badge" 
+                            :class="vaccination.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'"
+                          >
+                            {{ vaccination.status === 'completed' ? 'Completed' : 'Pending' }}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr v-if="recentVaccinations.length === 0">
+                        <td
+                          colspan="6"
+                          class="text-center text-muted py-4"
+                        >
+                          No recent vaccinations found
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div
+                  v-if="totalRecentItems > 0"
+                  class="pagination-footer border-top mt-3 pt-3"
+                >
+                  <AppPagination
+                    :current-page="recentPage"
+                    :total-pages="totalPages"
+                    :total-items="totalRecentItems"
+                    :items-per-page="pageSize"
+                    @page-changed="fetchRecentPage"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </div> <!-- Close dashboard content wrapper -->
     </div>
   </AdminLayout>
 </template>
@@ -520,5 +507,28 @@ onMounted(() => {
   border-top: 1px solid #dee2e6;
   display: flex;
   justify-content: center;
+}
+
+/* Dashboard Disabled State */
+.dashboard-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.dashboard-disabled * {
+  pointer-events: none !important;
+}
+
+.dashboard-disabled .card {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.dashboard-disabled .btn,
+.dashboard-disabled .dropdown-toggle,
+.dashboard-disabled a {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
 }
 </style>
