@@ -1,6 +1,34 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached dashboard data. Some features may be limited until you reconnect.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching dashboard data...</strong> Saving metrics and statistics for offline access.
+        </div>
+      </div>
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -264,9 +292,9 @@ import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import BarChart from '@/features/admin/analytics/BarChart.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
-// Reactive data
-const loading = ref(true)
+const { isOffline, isCaching, fetchDashboardMetrics } = useOfflineAdmin()
 const stats = ref({
   vaccinationsToday: 0,
   totalPatients: 0,
@@ -275,6 +303,7 @@ const stats = ref({
 })
 const recentVaccinations = ref([])
 const vaccineChartData = ref([])
+const loading = ref(false)
 
 // Pagination state for Recent Vaccinations (client-side)
 const recentPage = ref(1)
@@ -385,15 +414,43 @@ const fetchDashboardData = async () => {
   try {
     loading.value = true
 
-    // Fetch dashboard overview data (stats + chart)
-    const response = await api.get('/dashboard/overview')
-    const data = response.data.data
+    // Try online first
+    if (!isOffline.value) {
+      try {
+        // Fetch dashboard overview data (stats + chart)
+        const response = await api.get('/dashboard/overview')
+        const data = response.data.data
 
-    stats.value = data.stats
-    vaccineChartData.value = data.chartData
+        stats.value = data.stats
+        vaccineChartData.value = data.chartData
 
-    // Fetch the paginated recent vaccinations separately (first page)
-    await fetchRecentPage(1)
+        // Fetch the paginated recent vaccinations separately (first page)
+        await fetchRecentPage(1)
+        return
+      } catch (onlineError) {
+        console.warn('Online dashboard fetch failed, trying offline:', onlineError.message)
+      }
+    }
+
+    // Fallback to offline
+    console.log('📊 Fetching dashboard data from cached data')
+    const metricsResult = await fetchDashboardMetrics()
+    
+    if (metricsResult) {
+      stats.value = {
+        vaccinationsToday: metricsResult.vaccinationsToday || 0,
+        totalPatients: metricsResult.totalPatients || 0,
+        activeHealthWorkers: metricsResult.activeHealthWorkers || 0,
+        pendingAppointments: metricsResult.pendingAppointments || 0
+      }
+      
+      // For offline mode, we'll show empty chart data and recent vaccinations
+      vaccineChartData.value = []
+      recentVaccinations.value = []
+      totalRecentItems.value = 0
+    } else {
+      throw new Error('Failed to fetch dashboard metrics from cache')
+    }
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
     // Fallback to empty data

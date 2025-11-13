@@ -1,6 +1,34 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached report data. Export functionality is disabled until you reconnect.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching report data...</strong> Saving immunization records for offline access.
+        </div>
+      </div>
       <!-- Breadcrumb -->
       <nav
         aria-label="breadcrumb"
@@ -46,7 +74,7 @@
             </button>
             <button
               class="btn btn-primary"
-              :disabled="loading || !reportData"
+              :disabled="loading || !reportData || isOffline"
               @click="exportReport"
             >
               <i class="bi bi-file-earmark-excel me-2" />Export CSV
@@ -296,14 +324,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPageHeader from '@/components/ui/base/AppPageHeader.vue'
 import api from '@/services/api'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 import { useToast } from '@/composables/useToast'
 import { nowPH, formatPHDate } from '@/utils/dateUtils'
 
 const { addToast } = useToast()
+const { isOffline, isCaching, generateMonthlyReport, fetchPatients } = useOfflineAdmin()
 
 // Reactive state
 const loading = ref(false)
@@ -343,17 +374,62 @@ const selectedMonthName = computed(() => {
 const generateReport = async () => {
   try {
     loading.value = true
-    const response = await api.get('/reports/monthly-immunization', {
-      params: { month: filters.value.month, year: filters.value.year }
-    })
-  reportData.value = response.data.data
+    
+    // Try online first
+    if (!isOffline.value) {
+      try {
+        const response = await api.get('/reports/monthly-immunization', {
+          params: { month: filters.value.month, year: filters.value.year }
+        })
+        reportData.value = response.data.data
 
-  // Augment FIC/CIC from patient tags restricted to selected month/year (based on last immunization date)
-  await augmentFicCicFromPatientTags(filters.value.month, filters.value.year)
-    addToast({ title: 'Success', message: 'Report generated', type: 'success' })
+        // Augment FIC/CIC from patient tags restricted to selected month/year (based on last immunization date)
+        await augmentFicCicFromPatientTags(filters.value.month, filters.value.year)
+        addToast({ title: 'Success', message: 'Report generated from live data', type: 'success' })
+        return
+      } catch (onlineError) {
+        console.warn('Online report generation failed, trying offline:', onlineError.message)
+      }
+    }
+
+    // Fallback to offline generation
+    console.log('📊 Generating report from cached data')
+    const offlineResult = await generateMonthlyReport(filters.value.month, filters.value.year)
+    
+    if (offlineResult.success) {
+      // Transform offline data to match expected format
+      const report = offlineResult.data.report || []
+      const transformedData = {
+        vaccines: {},
+        totalVaccinated: offlineResult.data.totalVaccinated || 0
+      }
+
+      // Transform vaccine data
+      report.forEach(item => {
+        transformedData.vaccines[item.vaccine] = {
+          male: item.male || 0,
+          female: item.female || 0,
+          total: item.total || 0,
+          coverage: 0 // Coverage calculation would need population data
+        }
+      })
+
+      reportData.value = transformedData
+
+      // Try to augment FIC/CIC if we have patient data
+      try {
+        await augmentFicCicFromPatientTags(filters.value.month, filters.value.year)
+      } catch (ficError) {
+        console.warn('FIC/CIC augmentation failed in offline mode:', ficError.message)
+      }
+
+      addToast({ title: 'Success', message: 'Report generated from cached data', type: 'success' })
+    } else {
+      throw new Error(offlineResult.message || 'Failed to generate offline report')
+    }
   } catch (error) {
     console.error('Error generating report:', error)
-    addToast({ title: 'Error', message: error.response?.data?.error || 'Failed to generate report', type: 'error' })
+    addToast({ title: 'Error', message: error.response?.data?.error || error.message || 'Failed to generate report', type: 'error' })
     reportData.value = null
   } finally {
     loading.value = false
@@ -504,11 +580,29 @@ const hasCIC = (tags) => {
 }
 
 async function fetchAllPatientsForTags() {
-  // Try to get a large page to avoid paging loops; fallback shapes handled
-  const res = await api.get('/patients', { params: { page: 1, limit: 10000 } })
-  const payload = res.data?.data || res.data || {}
-  const list = payload.patients || payload.items || payload || []
-  return Array.isArray(list) ? list : []
+  try {
+    // Use offline-capable fetchPatients function
+    const result = await fetchPatients({ limit: 10000, page: 1 })
+    
+    if (result.fromCache) {
+      // Data is from cache, extract patients array
+      console.log('📊 Fetching patients from cache for FIC/CIC calculation')
+      const patients = result.data?.data?.patients || []
+      console.log(`📊 Found ${patients.length} patients in cache for FIC/CIC calculation`)
+      return Array.isArray(patients) ? patients : []
+    } else {
+      // Data is from API, extract patients array
+      console.log('📊 Fetching patients from API for FIC/CIC calculation')
+      const payload = result.data?.data || result.data || {}
+      const patients = payload.patients || payload.items || payload || []
+      console.log(`📊 Found ${patients.length} patients from API for FIC/CIC calculation`)
+      return Array.isArray(patients) ? patients : []
+    }
+  } catch (error) {
+    console.warn('Failed to fetch patients for tags (likely offline):', error.message)
+    // Return empty array if both online and cache fail
+    return []
+  }
 }
 
 function parseAdminDate(val) {
@@ -521,50 +615,100 @@ function parseAdminDate(val) {
 
 async function fetchLastImmunization(patientId) {
   try {
-    const res = await api.get('/immunizations', {
-      params: { patient_id: patientId, sort: 'administered_date:desc', limit: 1 }
-    })
-    const arr = Array.isArray(res.data) ? res.data : (res.data?.data || [])
-    const last = arr && arr.length ? arr[0] : null
-    if (!last) return null
+    // Try online first if not offline
+    if (!isOffline.value) {
+      const res = await api.get('/immunizations', {
+        params: { patient_id: patientId, sort: 'administered_date:desc', limit: 1 }
+      })
+      const arr = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+      const last = arr && arr.length ? arr[0] : null
+      if (!last) return null
+      const raw = last.administered_date || last.date_administered || last.dateAdministered
+      return parseAdminDate(raw)
+    }
+  } catch (error) {
+    console.warn('Online immunization fetch failed, trying cache:', error.message)
+  }
+
+  // Fallback to cache
+  try {
+    const allImmunizations = await adminDB.immunizations.toArray()
+    const patientImmunizations = allImmunizations
+      .filter(i => i.patient_id === patientId && i.is_deleted !== true)
+      .sort((a, b) => new Date(b.administered_date) - new Date(a.administered_date))
+
+    if (patientImmunizations.length === 0) return null
+
+    const last = patientImmunizations[0]
     const raw = last.administered_date || last.date_administered || last.dateAdministered
     return parseAdminDate(raw)
-  } catch {
+  } catch (cacheError) {
+    console.error('Cache query failed for immunizations:', cacheError)
     return null
   }
 }
 
 async function augmentFicCicFromPatientTags(selMonth, selYear) {
   try {
+    console.log('📊 Starting FIC/CIC tag augmentation for', selMonth, '/', selYear)
     const patients = await fetchAllPatientsForTags()
+    console.log('📊 Retrieved patients for FIC/CIC:', patients.length)
+    
     // Pre-filter candidates with FIC/CIC tags
     const candidates = patients.map(p => ({
       p,
       tags: p.tags || p.patient_tags || p.status_tags || null,
       sex: p.sex || p.childInfo?.sex
     })).filter(x => x.tags && (hasFIC(x.tags) || hasCIC(x.tags)))
-
+    
+    console.log('📊 Found FIC/CIC candidates:', candidates.length)
+    console.log('📊 Candidates details:', candidates.map(c => ({
+      id: c.p.patient_id || c.p.id,
+      tags: c.tags,
+      sex: c.sex,
+      hasFIC: hasFIC(c.tags),
+      hasCIC: hasCIC(c.tags)
+    })))
+    
     // Count only if last immunization falls within selected month/year
     let ficMale = 0, ficFemale = 0, cicMale = 0, cicFemale = 0
     const queue = candidates.slice()
     const workers = Array.from({ length: Math.min(8, queue.length || 0) }, async () => {
       while (queue.length) {
         const item = queue.shift()
-        const lastDate = await fetchLastImmunization(item.p.patient_id || item.p.id)
-        if (!lastDate) continue
+        const patientId = item.p.patient_id || item.p.id
+        console.log(`📊 Checking patient ${patientId} with tags:`, item.tags)
+        
+        const lastDate = await fetchLastImmunization(patientId)
+        console.log(`📊 Patient ${patientId} last immunization date:`, lastDate)
+        
+        if (!lastDate) {
+          console.log(`📊 Patient ${patientId} has no immunization date, skipping`)
+          continue
+        }
+        
         const mm = lastDate.getMonth() + 1
         const yy = lastDate.getFullYear()
-        if (mm !== Number(selMonth) || yy !== Number(selYear)) continue
+        console.log(`📊 Patient ${patientId} date check: ${mm}/${yy} vs selected ${selMonth}/${selYear}`)
+        
+        if (mm !== Number(selMonth) || yy !== Number(selYear)) {
+          console.log(`📊 Patient ${patientId} date doesn't match, skipping`)
+          continue
+        }
 
+        console.log(`📊 Patient ${patientId} matches date criteria!`)
+        
         if (hasFIC(item.tags)) {
           if (isMale(item.sex)) ficMale++
           else if (isFemale(item.sex)) ficFemale++
           else ficMale++
+          console.log(`📊 Patient ${patientId} counted as FIC ${isMale(item.sex) ? 'Male' : isFemale(item.sex) ? 'Female' : 'Unknown'}`)
         }
         if (hasCIC(item.tags)) {
           if (isMale(item.sex)) cicMale++
           else if (isFemale(item.sex)) cicFemale++
           else cicMale++
+          console.log(`📊 Patient ${patientId} counted as CIC ${isMale(item.sex) ? 'Male' : isFemale(item.sex) ? 'Female' : 'Unknown'}`)
         }
       }
     })
@@ -572,6 +716,8 @@ async function augmentFicCicFromPatientTags(selMonth, selYear) {
 
     const ficTotal = ficMale + ficFemale
     const cicTotal = cicMale + cicFemale
+
+    console.log('📊 FIC/CIC results:', { ficMale, ficFemale, ficTotal, cicMale, cicFemale, cicTotal })
 
     // Merge into reportData, keeping backend fields when present
     const base = reportData.value || {}
@@ -587,12 +733,17 @@ async function augmentFicCicFromPatientTags(selMonth, selYear) {
       completelyImmunizedCount: cicTotal,
       completelyImmunizedCoverage: eligible > 0 ? Math.round((cicTotal / eligible) * 100) : (base.completelyImmunizedCoverage || 0)
     }
+    
+    console.log('📊 FIC/CIC augmentation completed successfully')
   } catch (e) {
     // Non-blocking: if patient fetch fails, leave as-is
-     
     console.warn('FIC/CIC tag augmentation skipped:', e?.response?.data || e.message)
   }
 }
+
+// Initialize on mount
+onMounted(() => {
+})
 </script>
 
 <style scoped>

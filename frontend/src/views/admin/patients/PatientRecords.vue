@@ -22,14 +22,33 @@
         </ol>
       </nav>
 
-      <!-- Header -->
-      <div class="mb-4">
-        <h2 class="mb-1">
-          <i class="bi bi-people me-2" />Patient Records Management
-        </h2>
-        <p class="text-muted mb-0">
-          Manage patient information and vaccination history
-        </p>
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached patient data. Creating new records is disabled until you reconnect.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching patient data...</strong> Saving patient records for offline access.
+        </div>
       </div>
 
       <!-- Patient Statistics Cards -->
@@ -301,18 +320,22 @@
                     >
                       <i class="bi bi-arrow-clockwise me-1" />Reset
                     </button>
-                    <router-link
-                      to="/admin/patients/add-record"
+                    <button
                       class="btn btn-sm btn-outline-success"
+                      :disabled="isOffline"
+                      :title="isOffline ? 'Add Vaccination Record (Disabled offline)' : 'Add Vaccination Record'"
+                      @click="isOffline ? null : router.push('/admin/patients/add-record')"
                     >
                       <i class="bi bi-file-medical me-1" />Add Vaccination Record
-                    </router-link>
-                    <router-link
-                      to="/admin/patients/add"
+                    </button>
+                    <button
                       class="btn btn-sm btn-primary"
+                      :disabled="isOffline"
+                      :title="isOffline ? 'Add Patient (Disabled offline)' : 'Add Patient'"
+                      @click="isOffline ? null : router.push('/admin/patients/add')"
                     >
                       <i class="bi bi-plus-circle me-1" />Add Patient
-                    </router-link>
+                    </button>
                   </div>
                 </div>
 
@@ -415,8 +438,9 @@
                             <button
                               v-if="patient.status === 'archived'"
                               class="btn btn-sm btn-outline-success"
-                              title="Restore Patient"
-                              @click="restorePatient(patient)"
+                              :disabled="isOffline"
+                              :title="isOffline ? 'Restore Patient (Disabled offline)' : 'Restore Patient'"
+                              @click="isOffline ? null : restorePatient(patient)"
                             >
                               <i class="bi bi-arrow-counterclockwise me-1" />Restore
                             </button>
@@ -424,23 +448,26 @@
                               <button 
                                 v-if="patient.status !== 'inactive'" 
                                 class="btn btn-sm btn-outline-warning"
-                                title="Deactivate"
-                                @click="setPatientStatus(patient, 'inactive')"
+                                :disabled="isOffline"
+                                :title="isOffline ? 'Deactivate (Disabled offline)' : 'Deactivate'"
+                                @click="isOffline ? null : setPatientStatus(patient, 'inactive')"
                               >
                                 <i class="bi bi-slash-circle me-1" />Deactivate
                               </button>
                               <button 
                                 v-else 
                                 class="btn btn-sm btn-outline-success"
-                                title="Activate"
-                                @click="setPatientStatus(patient, 'active')"
+                                :disabled="isOffline"
+                                :title="isOffline ? 'Activate (Disabled offline)' : 'Activate'"
+                                @click="isOffline ? null : setPatientStatus(patient, 'active')"
                               >
                                 <i class="bi bi-check-circle me-1" />Activate
                               </button>
                               <button 
                                 class="btn btn-sm btn-outline-danger" 
-                                title="Delete Patient"
-                                @click="deletePatient(patient)"
+                                :disabled="isOffline"
+                                :title="isOffline ? 'Delete Patient (Disabled offline)' : 'Delete Patient'"
+                                @click="isOffline ? null : deletePatient(patient)"
                               >
                                 <i class="bi bi-trash me-1" />Delete
                               </button>
@@ -494,15 +521,24 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
+const router = useRouter()
 const { addToast } = useToast()
 const { confirm } = useConfirm()
+const {
+  isOffline,
+  isCaching,
+  fetchPatients: fetchPatientsOffline,
+  fetchPatientStats: fetchPatientStatsOffline
+} = useOfflineAdmin()
 
 // Reactive data
 const loading = ref(true)
@@ -526,34 +562,14 @@ const patientStats = ref({
 })
 
 // Offline caching state
-const isCaching = ref(false)
-
-// Prefetch patients and guardians for offline access
-const prefetchPatientsData = async () => {
-  if (isCaching.value) return // Already caching
-  
-  try {
-    isCaching.value = true
-    console.log('📥 [PatientRecords] Prefetching patients and guardians for offline access...')
-    
-    // Import the prefetch function
-    const { prefetchStaffData } = await import('@/services/offline/staffLoginPrefetch')
-    await prefetchStaffData()
-    
-    console.log('✅ [PatientRecords] Patient data cached successfully')
-  } catch (error) {
-    console.error('❌ [PatientRecords] Failed to prefetch data:', error)
-  } finally {
-    isCaching.value = false
-  }
-}
+// const isCaching = ref(false) // Now from useOfflineAdmin
 
 // Fetch patient statistics
 const fetchPatientStats = async () => {
   try {
-    const response = await api.get('/patients/stats')
-    if (response.data.success) {
-      patientStats.value = response.data.stats
+    const result = await fetchPatientStatsOffline()
+    if (result.success) {
+      patientStats.value = result.stats
     }
   } catch (error) {
     console.error('Error fetching patient statistics:', error)
@@ -568,7 +584,7 @@ const fetchPatients = async () => {
       page: currentPage.value,
       limit: itemsPerPage.value
     }
-    
+
     if (searchQuery.value) params.search = searchQuery.value
     // Apply status filters
     if (showDeleted.value) {
@@ -584,11 +600,14 @@ const fetchPatients = async () => {
       params.sex = selectedGender.value
     }
 
-    const response = await api.get('/patients', { params })
-    const payload = response.data?.data || {}
+    const result = await fetchPatientsOffline(params)
+    const payload = result.data?.data || {}
     const list = payload.patients || payload.items || payload || []
+    
+    // Ensure list is an array
+    const patientList = Array.isArray(list) ? list : []
 
-    patients.value = list.map(p => ({
+    patients.value = patientList.map(p => ({
       id: p.patient_id || p.id,
       childInfo: {
         name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim(),
@@ -621,7 +640,7 @@ const fetchPatients = async () => {
     }))
 
   // Prefer server-provided totalCount/totalPages. Only fallback to local count as last resort.
-  const totalCount = (payload && (payload.totalCount ?? response.data?.total)) ?? patients.value.length
+  const totalCount = (payload && (payload.totalCount ?? result.data?.total)) ?? patients.value.length
   totalItems.value = Number(totalCount)
   totalPages.value = Math.ceil((Number(totalCount) || 0) / Number(itemsPerPage.value))
 
@@ -803,9 +822,6 @@ const setPatientStatus = async (patient, newStatus) => {
 onMounted(() => {
   fetchPatients()
   fetchPatientStats()
-  
-  // Prefetch data for offline access when page loads
-  prefetchPatientsData()
 })
 
 // Active first, then inactive; archived handled via Show Deleted toggle

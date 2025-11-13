@@ -120,3 +120,59 @@ export function getHealthWorkerModules() {
     '@/views/healthworker/patients/AddPatientImmunizationRecord.vue'
   ]
 }
+
+/**
+ * Get admin module paths for prefetching
+ */
+export function getAdminModules() {
+  return [
+    // Main admin views
+    '@/views/admin/dashboard/Dashboard.vue',
+    '@/views/admin/patients/PatientRecords.vue',
+    '@/views/admin/inventory/InventoryOverview.vue',
+    '@/views/admin/inventory/ReceivingReportPage.vue',
+    '@/views/admin/sms/SMSManagement.vue',
+    '@/views/admin/reports/Reports.vue',
+    '@/views/admin/users/UserAccounts.vue',
+    '@/views/admin/users/ViewUser.vue',
+    '@/views/admin/activity/ActivityLogs.vue',
+    '@/views/admin/profile/Profile.vue',
+    '@/views/admin/settings/Settings.vue',
+    '@/views/admin/notifications/NotificationsInbox.vue',
+    '@/views/admin/notifications/AddNotifications.vue',
+    '@/views/admin/faq/FAQManager.vue',
+    '@/views/admin/chat/AdminChat.vue',
+
+    // Patient management views - critical for offline access
+    '@/views/admin/patients/AddPatient.vue',
+    '@/views/admin/patients/AddPatientRecord.vue',
+    '@/views/admin/patients/EditPatient.vue',
+    '@/views/admin/patients/ViewPatient.vue', // Essential for offline patient viewing
+    '@/views/admin/patients/MedicalHistoryPage.vue',
+    '@/views/admin/patients/VisitSummaryPage.vue',
+    '@/views/admin/patients/VisitEditorPage.vue',
+    '@/views/admin/patients/VaccinationEditorPage.vue',
+    '@/views/admin/patients/EditVaccinationRecord.vue',
+    '@/views/admin/patients/EditVaccineRecords.vue',
+    '@/views/admin/patients/VaccineDetails.vue',
+
+    // Inventory management views
+    '@/views/admin/inventory/AddStock.vue',
+    '@/views/admin/inventory/EditInventory.vue',
+    '@/views/admin/inventory/AddVaccine.vue',
+    '@/views/admin/inventory/EditVaccineType.vue',
+    '@/views/admin/inventory/ViewInventory.vue',
+    '@/views/admin/inventory/AdjustStock.vue',
+    '@/views/admin/inventory/InventoryHistory.vue',
+    '@/views/admin/inventory/ViewSchedule.vue',
+    '@/views/admin/inventory/AddSchedule.vue',
+    '@/views/admin/inventory/EditSchedule.vue',
+
+    // User management views
+    '@/views/admin/users/AddUser.vue',
+    '@/views/admin/users/EditUser.vue',
+
+    // Activity logs views
+    '@/views/admin/activity/ActivityLogDetails.vue'
+  ]
+}

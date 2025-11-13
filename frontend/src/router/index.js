@@ -15,6 +15,7 @@ import ReceivingReportPage from '@/views/admin/inventory/ReceivingReportPage.vue
 import SMSManagement from '@/views/admin/sms/SMSManagement.vue'
 import Reports from '@/views/admin/reports/Reports.vue'
 import UserAccounts from '@/views/admin/users/UserAccounts.vue'
+import ViewUser from '@/views/admin/users/ViewUser.vue'
 import ActivityLogs from '@/views/admin/activity/ActivityLogs.vue'
 import Profile from '@/views/admin/profile/Profile.vue'
 import Settings from '@/views/admin/settings/Settings.vue'
@@ -418,7 +419,7 @@ const routes = [
   {
     path: '/admin/users/view/:id',
     name: 'ViewUser',
-    component: () => import('@/views/admin/users/ViewUser.vue'),
+    component: ViewUser,
     meta: {
       title: 'View User - ImmunizeMe',
       requiresAuth: true,
@@ -894,6 +895,29 @@ router.beforeEach(async (to, from, next) => {
 
   const role = (getRole() || '').toLowerCase()
   const requiredRole = (to.meta?.role || '').toLowerCase()
+  
+  // Check for offline restrictions on admin routes
+  const offlineRestrictedRoutes = [
+    '/admin/chat',
+    '/admin/notifications-inbox', 
+    '/admin/sms-management',
+    '/admin/faqs',
+    '/admin/activity-logs',
+    '/admin/activity'
+  ]
+  
+  if (role === 'admin' && offlineRestrictedRoutes.some(route => to.path.startsWith(route))) {
+    try {
+      const online = navigator.onLine
+      if (!online) {
+        // Show offline restriction message
+        showOfflineRouteError('This feature is not available in offline mode.')
+        return next(false) // Cancel navigation
+      }
+    } catch (error) {
+      console.warn('Could not check online status:', error)
+    }
+  }
   // Accept both legacy 'healthworker' and new 'health_staff' role keys
   const normalizeRole = (r) => {
     const s = (r || '').toLowerCase()
@@ -1078,10 +1102,20 @@ router.onError((error) => {
   
   // Check if it's a failed dynamic import (common when offline)
   if (error.message.includes('Failed to fetch dynamically imported module')) {
-    // Only log in development
-    if (import.meta.env.DEV) {
-      console.warn('⚠️ Failed to load route component - likely offline')
-      console.log('💡 This route needs to be visited while online first to be cached')
+    // Check if this is specifically a ViewPatient.vue failure
+    if (error.message.includes('ViewPatient.vue')) {
+      console.warn('⚠️ ViewPatient.vue failed to load offline')
+      console.log('💡 Solutions:')
+      console.log('   1. Visit /admin/patients while online to cache the component')
+      console.log('   2. Run window.__preloadViewPatient() in console to manually preload')
+      console.log('   3. Run window.__warmAdminCache() to cache all admin components')
+      console.log('   4. Check window.__checkCacheStatus() to verify caching')
+    } else {
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Failed to load route component - likely offline')
+        console.log('💡 This route needs to be visited while online first to be cached')
+      }
     }
     
     // Show user-friendly error message using a toast or alert
@@ -1096,7 +1130,7 @@ router.onError((error) => {
 })
 
 // Offline route error handler
-function showOfflineRouteError() {
+function showOfflineRouteError(message = 'This page is not available offline. Please connect to the internet and try again.') {
   // Try to show a toast notification if available
   try {
     // Check if we have a toast system available
@@ -1104,17 +1138,17 @@ function showOfflineRouteError() {
       const toast = window.$toast || window.toast
       toast.add({
         severity: 'warn',
-        summary: 'Offline Mode',
-        detail: 'This page is not available offline. Please connect to the internet and try again.',
+        summary: 'Feature Unavailable Offline',
+        detail: message,
         life: 5000
       })
     } else {
       // Fallback to alert
-      alert('This page is not available offline. Please connect to the internet and try again.')
+      alert(message)
     }
   } catch (e) {
     // Last resort - console warning
-    console.warn('⚠️ Offline route error - page not available offline')
+    console.warn('⚠️ Offline route error:', message)
   }
 }
 

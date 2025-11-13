@@ -28,14 +28,25 @@
           </h1>
           <p class="text-muted mb-0">
             View and manage your notifications
+            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+              <i class="bi bi-wifi-off me-1" />Offline Mode
+            </span>
           </p>
         </div>
         <router-link
+          v-if="!isOffline"
           to="/admin/add-notifications"
           class="btn btn-primary"
         >
           <i class="bi bi-plus-circle me-2" />Create Notification
         </router-link>
+        <button
+          v-else
+          class="btn btn-primary disabled"
+          @click="showOfflineToast"
+        >
+          <i class="bi bi-plus-circle me-2" />Create Notification
+        </button>
       </div>
 
       <!-- Compact Toolbar -->
@@ -44,8 +55,9 @@
           <li class="nav-item">
             <button
               class="nav-link"
-              :class="{ active: !filters.channel }"
-              @click="onChannelTab('')"
+              :class="{ active: !filters.channel, disabled: isOffline }"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : onChannelTab('')"
             >
               <i class="bi bi-ui-checks-grid me-1" />All
             </button>
@@ -53,8 +65,9 @@
           <li class="nav-item">
             <button
               class="nav-link"
-              :class="{ active: filters.channel==='in-app' }"
-              @click="onChannelTab('in-app')"
+              :class="{ active: filters.channel==='in-app', disabled: isOffline }"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : onChannelTab('in-app')"
             >
               <i class="bi bi-bell-fill me-1" />In‑App
             </button>
@@ -62,8 +75,9 @@
           <li class="nav-item">
             <button
               class="nav-link"
-              :class="{ active: filters.channel==='email' }"
-              @click="onChannelTab('email')"
+              :class="{ active: filters.channel==='email', disabled: isOffline }"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : onChannelTab('email')"
             >
               <i class="bi bi-envelope-fill me-1" />Email
             </button>
@@ -71,8 +85,9 @@
           <li class="nav-item">
             <button
               class="nav-link"
-              :class="{ active: filters.channel==='sms' }"
-              @click="onChannelTab('sms')"
+              :class="{ active: filters.channel==='sms', disabled: isOffline }"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : onChannelTab('sms')"
             >
               <i class="bi bi-chat-dots-fill me-1" />SMS
             </button>
@@ -96,13 +111,14 @@
             v-model="filters.search"
             class="form-control form-control-sm"
             style="min-width: 240px;"
+            :disabled="isOffline"
             placeholder="Search notifications..."
-            @input="debouncedSearch"
+            @input="isOffline ? null : debouncedSearch"
           >
           <button
             class="btn btn-sm btn-outline-secondary"
-            :disabled="!hasUnreadVisible"
-            @click="markAllVisibleAsRead"
+            :disabled="!hasUnreadVisible || isOffline"
+            @click="isOffline ? showOfflineToast() : markAllVisibleAsRead()"
           >
             <i class="bi bi-check2-all me-1" />Mark all read
           </button>
@@ -168,13 +184,15 @@
                       <button
                         v-if="n.related_entity_type && n.related_entity_id"
                         class="btn btn-link btn-sm p-0"
-                        @click="openRelated(n)"
+                        :class="{ disabled: isOffline }"
+                        @click="isOffline ? showOfflineToast() : openRelated(n)"
                       >
                         View
                       </button>
                       <button
                         class="btn btn-link btn-sm p-0"
-                        @click="openDetails(n)"
+                        :class="{ disabled: isOffline }"
+                        @click="isOffline ? showOfflineToast() : openDetails(n)"
                       >
                         Details
                       </button>
@@ -184,13 +202,15 @@
                     <button
                       v-if="!n.read_at"
                       class="btn btn-sm btn-outline-primary"
-                      @click="markAsRead(n.notification_id)"
+                      :disabled="isOffline"
+                      @click="isOffline ? showOfflineToast() : markAsRead(n.notification_id)"
                     >
                       <i class="bi bi-check2 me-1" />Mark read
                     </button>
                     <button
                       class="btn btn-sm btn-outline-danger"
-                      @click="deleteNotification(n.notification_id)"
+                      :disabled="isOffline"
+                      @click="isOffline ? showOfflineToast() : deleteNotification(n.notification_id)"
                     >
                       <i class="bi bi-trash" />
                     </button>
@@ -230,11 +250,12 @@
           <ul class="pagination">
             <li
               class="page-item"
-              :class="{ disabled: currentPage === 1 }"
+              :class="{ disabled: currentPage === 1 || isOffline }"
             >
               <button
                 class="page-link"
-                @click="changePage(currentPage - 1)"
+                :disabled="currentPage === 1 || isOffline"
+                @click="isOffline ? showOfflineToast() : changePage(currentPage - 1)"
               >
                 Previous
               </button>
@@ -243,22 +264,24 @@
               v-for="page in visiblePages"
               :key="page"
               class="page-item"
-              :class="{ active: page === currentPage }"
+              :class="{ active: page === currentPage, disabled: isOffline }"
             >
               <button
                 class="page-link"
-                @click="changePage(page)"
+                :disabled="isOffline"
+                @click="isOffline ? showOfflineToast() : changePage(page)"
               >
                 {{ page }}
               </button>
             </li>
             <li
               class="page-item"
-              :class="{ disabled: currentPage === totalPages }"
+              :class="{ disabled: currentPage === totalPages || isOffline }"
             >
               <button
                 class="page-link"
-                @click="changePage(currentPage + 1)"
+                :disabled="currentPage === totalPages || isOffline"
+                @click="isOffline ? showOfflineToast() : changePage(currentPage + 1)"
               >
                 Next
               </button>
@@ -351,6 +374,7 @@
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import { notificationAPI } from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 export default {
   name: 'NotificationsInbox',
@@ -359,7 +383,8 @@ export default {
   },
   setup() {
     const { addToast } = useToast()
-    return { addToast }
+    const { isOffline } = useOfflineAdmin()
+    return { addToast, isOffline }
   },
   data() {
     return {
@@ -415,6 +440,13 @@ export default {
     await this.loadNotifications()
   },
   methods: {
+    showOfflineToast() {
+      this.addToast({
+        title: 'Offline Mode',
+        message: 'Notifications management is not available while offline',
+        type: 'warning'
+      })
+    },
     onChannelTab(ch) {
       this.filters.channel = ch
       this.currentPage = 1

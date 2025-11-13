@@ -29,19 +29,23 @@
           </h1>
           <p class="text-muted mb-0 small">
             Admin messaging center
+            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+              <i class="bi bi-wifi-off me-1" />Offline Mode
+            </span>
           </p>
         </div>
         <div class="d-flex gap-2">
           <button
             class="btn btn-primary"
-            @click="showModal = true"
+            :disabled="isOffline"
+            @click="isOffline ? showOfflineToast() : showModal = true"
           >
             <i class="bi bi-plus-circle me-2" />New Chat
           </button>
           <button
             class="btn btn-outline-secondary"
-            :disabled="loading"
-            @click="refreshConversations"
+            :disabled="loading || isOffline"
+            @click="isOffline ? showOfflineToast() : refreshConversations()"
           >
             <i
               class="bi bi-arrow-clockwise"
@@ -85,7 +89,8 @@
                 </p>
                 <button
                   class="btn btn-primary"
-                  @click="showModal = true"
+                  :disabled="isOffline"
+                  @click="isOffline ? showOfflineToast() : showModal = true"
                 >
                   <i class="bi bi-plus-circle me-2" />Start New Chat
                 </button>
@@ -102,7 +107,8 @@
                 :participant-list="participantList"
                 :leaving="leaving"
                 :current-user-id="currentUserId"
-                @leave="handleLeave"
+                :offline="isOffline"
+                @leave="isOffline ? showOfflineToast() : handleLeave()"
                 @close="selectedConversation = null"
               />
 
@@ -119,7 +125,8 @@
                 <MessageComposer
                   v-model="messageText"
                   :sending="sending"
-                  @send="handleSendMessage"
+                  :disabled="isOffline"
+                  @send="isOffline ? showOfflineToast() : handleSendMessage()"
                 />
               </div>
             </div>
@@ -154,6 +161,7 @@ import NewConversationModal from '@/features/shared/chat/NewConversationModal.vu
 import { listUsers as getUsers } from '@/services/users';
 import { useToast } from '@/composables/useToast';
 import { getUserId } from '@/services/auth';
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin';
 import {
   loadConversations as fetchConversations,
   loadMessages as fetchMessages,
@@ -165,6 +173,7 @@ import {
 } from '@/features/shared/chat/useChatService';
 
 const { addToast } = useToast();
+const { isOffline } = useOfflineAdmin();
 
 // State
 const conversations = ref([]);
@@ -221,6 +230,14 @@ const refreshConversations = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const showOfflineToast = () => {
+  addToast({
+    title: 'Offline Mode',
+    message: 'Chat functionality is not available while offline',
+    type: 'warning'
+  });
 };
 
 const selectConversation = async (conv) => {

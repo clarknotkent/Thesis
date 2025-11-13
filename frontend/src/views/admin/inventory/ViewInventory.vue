@@ -189,6 +189,8 @@
           <div class="card-footer bg-white d-flex justify-content-end gap-2">
             <button
               class="btn btn-primary"
+              :disabled="isOffline"
+              :title="isOffline ? 'Not available offline' : 'Edit'"
               @click="editInventory"
             >
               <i class="bi bi-pencil me-2" />Edit
@@ -483,17 +485,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
-import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 import { formatPHDate } from '@/utils/dateUtils'
 
 const route = useRoute()
 const router = useRouter()
 const { addToast } = useToast()
+const { fetchInventoryById, fetchInventoryTransactions } = useOfflineAdmin()
 
 const inventoryData = ref(null)
 const loading = ref(true)
@@ -649,14 +649,14 @@ onUnmounted(() => {
 const fetchInventoryData = async () => {
   try {
     const id = route.params.id
-    const response = await api.get(`/vaccines/inventory/${id}`)
+    const response = await fetchInventoryById(id)
     
-    const data = response.data.data || response.data
+    const data = response.data || response
     
     // Map backend field names to expected frontend field names
     // Backend returns: inventory_id, vaccine_id, lot_number, expiration_date, current_stock_level, storage_location
     // And nested vaccinemaster: { antigen_name, brand_name, manufacturer, vaccine_type, category }
-    const vaccine = data.vaccinemaster || {}
+    const vaccine = data.vaccine || {}
     
     inventoryData.value = {
       id: data.inventory_id || data.id,
@@ -682,9 +682,7 @@ const fetchHistory = async () => {
   try {
     historyLoading.value = true
     const id = route.params.id
-    const response = await api.get(`/vaccines/transactions`, {
-      params: { inventory_id: id, limit: 100 }
-    })
+    const response = await fetchInventoryTransactions({ inventory_id: id, limit: 100 })
     
     console.log('History response:', response.data)
     

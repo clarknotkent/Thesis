@@ -274,6 +274,9 @@
             <router-link 
               :to="`/admin/vaccines/schedules/edit/${scheduleId}`" 
               class="btn btn-primary btn-sm"
+              :class="{ disabled: isOffline }"
+              :aria-disabled="isOffline"
+              @click.prevent="isOffline ? null : null"
             >
               <i class="bi bi-pencil me-2" />Edit Schedule
             </router-link>
@@ -296,19 +299,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const route = useRoute()
 const router = useRouter()
 const { addToast } = useToast()
+const { fetchScheduleById } = useOfflineAdmin()
 
 const loading = ref(true)
 const scheduleData = ref(null)
 const scheduleId = computed(() => route.params.id)
+const isOffline = ref(!navigator.onLine)
 
 const goBack = () => {
   router.back()
@@ -327,8 +330,8 @@ onMounted(async () => {
 const fetchSchedule = async () => {
   try {
     const id = scheduleId.value
-    const res = await api.get(`/vaccines/schedules/${id}`)
-    scheduleData.value = res.data?.data || res.data
+    const res = await fetchScheduleById(id)
+    scheduleData.value = res.data || res
   } catch (error) {
     console.error('Error fetching schedule:', error)
     addToast({ message: 'Error loading schedule data', type: 'error' })

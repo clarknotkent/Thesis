@@ -138,6 +138,12 @@ try {
           return warmParentPortalCache()
         }
         
+        // Expose admin cache warming function for manual testing
+        window.__warmAdminCache = async () => {
+          const { warmAdminCache } = await import('@/utils/cacheWarmer')
+          return warmAdminCache()
+        }
+        
         // Auto-warm cache for parent routes when online
         if (navigator.onLine) {
           // Delay cache warming to avoid blocking initial app load
@@ -151,6 +157,24 @@ try {
               console.warn('⚠️ Cache warming failed:', error.message)
             }
           }, 2000) // Wait 2 seconds after app load
+        }
+        
+        // Auto-warm cache for admin routes when online and user is admin
+        if (navigator.onLine) {
+          // Check if user is admin and warm admin cache
+          setTimeout(async () => {
+            try {
+              const userRole = localStorage.getItem('userRole')
+              if (userRole === 'admin') {
+                console.log('🔥 Auto-warming admin portal cache...')
+                const { warmAdminCache } = await import('@/utils/cacheWarmer')
+                const result = await warmAdminCache()
+                console.log(`✅ Admin cache warming complete: ${result.successful}/${result.total} components cached`)
+              }
+            } catch (error) {
+              console.warn('⚠️ Admin cache warming failed:', error.message)
+            }
+          }, 3000) // Wait 3 seconds after app load (after parent cache)
         }
         
         // Expose cache status checker
@@ -182,6 +206,12 @@ try {
           console.log('⏱️ Idle prefetcher started')
         }
         
+        window.__startAdminIdlePrefetch = async () => {
+          const { initIdlePrefetcher, getAdminModules } = await import('@/utils/idlePrefetcher')
+          initIdlePrefetcher(getAdminModules())
+          console.log('⏱️ Admin idle prefetcher started')
+        }
+        
         window.__stopIdlePrefetch = async () => {
           const { stopIdlePrefetcher } = await import('@/utils/idlePrefetcher')
           stopIdlePrefetcher()
@@ -197,11 +227,58 @@ try {
           return { error: 'Parent offline functionality removed - online only mode' }
         }
         
+        // Manual preload functions for critical admin components
+        window.__preloadViewPatient = async () => {
+          try {
+            console.log('📦 Manually preloading ViewPatient.vue...')
+            await import('@/views/admin/patients/ViewPatient.vue')
+            console.log('✅ ViewPatient.vue preloaded successfully')
+            return { success: true }
+          } catch (error) {
+            console.error('❌ Failed to preload ViewPatient.vue:', error.message)
+            return { success: false, error: error.message }
+          }
+        }
+        
+        window.__preloadAdminComponents = async () => {
+          try {
+            console.log('📦 Preloading critical admin components...')
+            const criticalComponents = [
+              () => import('@/views/admin/patients/ViewPatient.vue'),
+              () => import('@/views/admin/patients/PatientRecords.vue'),
+              () => import('@/views/admin/dashboard/Dashboard.vue')
+            ]
+            
+            const results = await Promise.allSettled(
+              criticalComponents.map(async (importFn, index) => {
+                try {
+                  await importFn()
+                  return { index, success: true }
+                } catch (error) {
+                  return { index, success: false, error: error.message }
+                }
+              })
+            )
+            
+            const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+            console.log(`✅ Preloaded ${successful}/${criticalComponents.length} critical admin components`)
+            return { success: true, loaded: successful, total: criticalComponents.length }
+          } catch (error) {
+            console.error('❌ Failed to preload admin components:', error.message)
+            return { success: false, error: error.message }
+          }
+        }
+        
         console.log('🛠️ Debug helpers available:')
         console.log('   - window.__updateServiceWorker() - Update and reload SW')
         console.log('   - window.__checkCacheStatus() - View cached resources')
-        console.log('   - window.__startIdlePrefetch() - Start background prefetcher')
-        console.log('   - window.__stopIdlePrefetch() - Stop background prefetcher')
+        console.log('   - window.__warmCache() - Warm parent portal cache')
+        console.log('   - window.__warmAdminCache() - Warm admin portal cache')
+        console.log('   - window.__startIdlePrefetch() - Start parent idle prefetcher')
+        console.log('   - window.__startAdminIdlePrefetch() - Start admin idle prefetcher')
+        console.log('   - window.__stopIdlePrefetch() - Stop idle prefetcher')
+        console.log('   - window.__preloadViewPatient() - Manually preload ViewPatient.vue')
+        console.log('   - window.__preloadAdminComponents() - Preload critical admin components')
       },
       onRegisterError(error) {
         console.error('❌ Service Worker registration error:', error);

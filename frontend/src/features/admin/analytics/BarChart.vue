@@ -280,7 +280,7 @@ onMounted(() => {
     updateWidth()
     setTimeout(() => (entered.value = true), 90)
 
-    if ('ResizeObserver' in window) {
+    if ('ResizeObserver' in window && container.value) {
       resizeObserver.value = new ResizeObserver(() => updateWidth())
       resizeObserver.value.observe(container.value)
     } else {

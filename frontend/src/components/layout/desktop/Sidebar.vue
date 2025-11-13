@@ -18,6 +18,8 @@
             <router-link
               :to="item.path"
               class="nav-link"
+              :class="{ 'disabled': isNavItemDisabled(item) }"
+              @click="handleNavClick($event, item)"
             >
               <i :class="item.icon + ' me-2'" />
               {{ item.label }}
@@ -36,6 +38,8 @@
             <router-link
               :to="item.path"
               class="nav-link"
+              :class="{ 'disabled': isNavItemDisabled(item) }"
+              @click="handleNavClick($event, item)"
             >
               <i :class="item.icon + ' me-2'" />
               {{ item.label }}
@@ -54,6 +58,8 @@
             <router-link
               :to="item.path"
               class="nav-link"
+              :class="{ 'disabled': isNavItemDisabled(item) }"
+              @click="handleNavClick($event, item)"
             >
               <i :class="item.icon + ' me-2'" />
               {{ item.label }}
@@ -71,6 +77,8 @@
             <router-link
               :to="item.path"
               class="nav-link"
+              :class="{ 'disabled': isNavItemDisabled(item) }"
+              @click="handleNavClick($event, item)"
             >
               <i :class="item.icon + ' me-2'" />
               {{ item.label }}
@@ -126,6 +134,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useOffline } from '@/composables/useOffline'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
   isOpen: {
@@ -145,7 +154,43 @@ const {
   clearOfflineData
 } = props.userRole === 'admin' ? useOffline() : {}
 
+const { addToast } = useToast()
 const showOfflineDetails = ref(false)
+
+// Routes that are restricted in offline mode for admin
+const offlineRestrictedRoutes = [
+  '/admin/chat',
+  '/admin/notifications-inbox', 
+  '/admin/sms-management',
+  '/admin/faqs',
+  '/admin/activity-logs',
+  '/admin/activity'
+]
+
+// Check if navigation to a route is allowed in offline mode
+const handleNavClick = (event, item) => {
+  // Only restrict admin routes when offline
+  if (props.userRole === 'admin' && offlineRestrictedRoutes.includes(item.path)) {
+    if (!isOnline || !isOnline.value) {
+      event.preventDefault()
+      addToast({
+        title: 'Feature Unavailable Offline',
+        message: `${item.label} is not available in offline mode.`,
+        type: 'warning',
+        timeout: 4000
+      })
+      return false
+    }
+  }
+  return true
+}
+
+// Check if a navigation item should be disabled in offline mode
+const isNavItemDisabled = (item) => {
+  return props.userRole === 'admin' && 
+         offlineRestrictedRoutes.includes(item.path) && 
+         (!isOnline || !isOnline.value)
+}
 
 const toggleOfflineDetails = async () => {
   showOfflineDetails.value = !showOfflineDetails.value
@@ -268,6 +313,19 @@ const systemGroup = computed(() => menuItems.value.filter(item => ['users', 'sms
   background-color: #007bff;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.nav-link.disabled {
+  color: #6c757d !important;
+  background-color: #f8f9fa !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.nav-link.disabled:hover {
+  color: #6c757d !important;
+  background-color: #f8f9fa !important;
+  transform: none !important;
 }
 
 .nav-link i {

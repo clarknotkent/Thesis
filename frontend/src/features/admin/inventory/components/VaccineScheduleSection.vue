@@ -37,6 +37,9 @@
         <router-link
           to="/admin/vaccines/schedules/add"
           class="btn btn-sm btn-primary"
+          :class="{ disabled: isOffline }"
+          :aria-disabled="isOffline"
+          @click.prevent="handleNewScheduleClick"
         >
           <i class="bi bi-plus-circle me-1" />New Schedule
         </router-link>
@@ -139,43 +142,55 @@
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-if="sortedSchedules.length > 0">
           <tr
             v-for="s in sortedSchedules"
             :key="s.id || s.schedule_master_id"
           >
             <td class="text-center align-middle">
-              <strong>{{ s.name }}</strong>
+              <strong>{{ s?.name || 'Unnamed Schedule' }}</strong>
             </td>
             <td class="text-center align-middle">
-              {{ s.vaccine?.antigen_name || s.vaccine?.brand_name || s.vaccine_id || '—' }}
+              {{ s?.vaccine?.antigen_name || s?.vaccine?.brand_name || s?.vaccine_id || '—' }}
             </td>
             <td class="text-center align-middle">
-              <span class="badge bg-primary">{{ s.total_doses || 0 }}</span>
+              <span class="badge bg-primary">{{ s?.total_doses || 0 }}</span>
             </td>
             <td class="text-center align-middle">
-              <small>{{ formatDate(s.created_at) }}</small>
+              <small>{{ formatDate(s?.created_at) }}</small>
             </td>
             <td class="text-center align-middle">
-              <small>{{ formatDate(s.updated_at) }}</small>
+              <small>{{ formatDate(s?.updated_at) }}</small>
             </td>
             <td class="text-center align-middle">
               <div class="btn-group btn-group-sm">
-                <router-link 
-                  :to="`/admin/vaccines/schedules/view/${s.id || s.schedule_master_id}`"
+                <button 
                   class="btn btn-outline-primary"
                   title="View Details"
+                  @click="handleViewClick(s)"
                 >
                   <i class="bi bi-eye me-1" />View
-                </router-link>
-                <router-link 
-                  :to="`/admin/vaccines/schedules/edit/${s.id || s.schedule_master_id}`"
+                </button>
+                <button 
                   class="btn btn-outline-warning"
+                  :class="{ disabled: isOffline }"
+                  :aria-disabled="isOffline"
                   title="Edit"
+                  @click="handleEditClick(s)"
                 >
                   <i class="bi bi-pencil me-1" />Edit
-                </router-link>
+                </button>
               </div>
+            </td>
+          </tr>
+        </tbody>
+        <tbody v-else>
+          <tr>
+            <td 
+              colspan="6" 
+              class="text-center py-4"
+            >
+              <em class="text-muted">No schedules available</em>
             </td>
           </tr>
         </tbody>
@@ -185,11 +200,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import api from '@/services/api'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
+const router = useRouter()
 const { addToast } = useToast()
+const { fetchSchedules: fetchSchedulesOffline } = useOfflineAdmin()
 
 const emit = defineEmits(['refresh'])
 
@@ -199,23 +217,32 @@ const loading = ref(true)
 const sortBy = ref('name')
 const sortOrder = ref('asc')
 const sortOption = ref('alphabetical-asc')
+const isOffline = ref(!navigator.onLine)
 
 // Computed
 const sortedSchedules = computed(() => {
-  const sorted = [...schedules.value]
+  // Ensure schedules.value is always an array
+  const scheduleArray = Array.isArray(schedules.value) ? schedules.value : []
+  
+  // Filter out any undefined or invalid schedule items that don't have required properties
+  const validSchedules = scheduleArray.filter(s => {
+    return s && typeof s === 'object' && typeof s.name === 'string' && s.name.trim() !== ''
+  })
+  
+  const sorted = [...validSchedules]
 
   if (sortOption.value === 'alphabetical-asc') {
     // Sort by name ascending
     sorted.sort((a, b) => {
-      const aName = a.name || ''
-      const bName = b.name || ''
+      const aName = (a.name || '').toString()
+      const bName = (b.name || '').toString()
       return aName.localeCompare(bName)
     })
   } else if (sortOption.value === 'alphabetical-desc') {
     // Sort by name descending
     sorted.sort((a, b) => {
-      const aName = a.name || ''
-      const bName = b.name || ''
+      const aName = (a.name || '').toString()
+      const bName = (b.name || '').toString()
       return bName.localeCompare(aName)
     })
   } else if (sortOption.value === 'sequential') {
@@ -226,8 +253,8 @@ const sortedSchedules = computed(() => {
       const doseDiff = aFirstDose - bFirstDose
       if (doseDiff !== 0) return doseDiff
       // If doses are equal, sort alphabetically by name
-      const aName = a.name || ''
-      const bName = b.name || ''
+      const aName = (a.name || '').toString()
+      const bName = (b.name || '').toString()
       return aName.localeCompare(bName)
     })
   }
@@ -252,15 +279,82 @@ const applySorting = () => {
 // Lifecycle
 onMounted(async () => {
   await fetchSchedules()
+  
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
 })
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
+})
+
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+}
+
+// Handle new schedule button click
+const handleNewScheduleClick = () => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Creating new vaccine schedules requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  }
+}
+
+// Handle edit button click
+const handleEditClick = (schedule) => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Editing vaccine schedules requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    router.push(`/admin/vaccines/schedules/edit/${schedule.id || schedule.schedule_master_id}`)
+  }
+}
+
+// Handle view button click
+const handleViewClick = (schedule) => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Viewing detailed schedule information requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    router.push(`/admin/vaccines/schedules/view/${schedule.id || schedule.schedule_master_id}`)
+  }
+}
 
 // API Calls
 const fetchSchedules = async () => {
   try {
     loading.value = true
-    const res = await api.get('/vaccines/schedules')
+    const res = await fetchSchedulesOffline()
     const data = res.data?.data || res.data || []
-    schedules.value = Array.isArray(data) ? data : []
+    
+    // Ensure we have a valid array and filter out any invalid items
+    const validData = Array.isArray(data) 
+      ? data.filter(item => {
+          return item && 
+                 typeof item === 'object' && 
+                 typeof item.name === 'string' && 
+                 item.name.trim() !== ''
+        })
+      : []
+    
+    // Safely assign the data
+    schedules.value = validData
   } catch (e) {
     console.error('Error fetching schedules', e)
     schedules.value = []

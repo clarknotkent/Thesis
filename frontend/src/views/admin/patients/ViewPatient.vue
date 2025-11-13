@@ -348,6 +348,8 @@ import ScheduledVaccinations from '@/features/admin/patients/ScheduledVaccinatio
 import MedicalHistory from '@/features/admin/patients/MedicalHistory.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 import QRCode from 'qrcode'
 
 // CRITICAL: Preload lazy-loaded route components for offline use
@@ -390,6 +392,7 @@ const preloadRelatedComponents = () => {
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
+const { fetchPatientById: fetchPatientOffline, isOffline } = useOfflineAdmin()
 
 const patientData = ref({})
 const guardians = ref([])
@@ -397,7 +400,6 @@ const loading = ref(true)
 const error = ref(null)
 const lastVaccination = ref(null)
 const activeTab = ref('info')
-const isOffline = ref(!navigator.onLine)
 const isCaching = ref(false)
 const qrCanvas = ref(null)
 
@@ -491,13 +493,25 @@ const fetchPatientData = async () => {
     loading.value = true
     error.value = null
 
-    // Fetch guardians first
-    const guardianResponse = await api.get('/guardians')
-    guardians.value = guardianResponse.data.data || guardianResponse.data || []
+    // Fetch guardians - use offline cache if offline
+    if (isOffline.value) {
+      console.log('📴 [ViewPatient] Fetching guardians from offline cache')
+      guardians.value = await adminDB.guardians.toArray()
+    } else {
+      const guardianResponse = await api.get('/guardians')
+      guardians.value = guardianResponse.data.data || guardianResponse.data || []
+    }
 
-    // Fetch patient data
-    const response = await api.get(`/patients/${patientId.value}`)
-    const p = response.data.data || response.data
+    // Fetch patient data - use offline cache if offline
+    let p
+    if (isOffline.value) {
+      console.log('📴 [ViewPatient] Fetching patient data from offline cache')
+      const offlineResponse = await fetchPatientOffline(patientId.value)
+      p = offlineResponse.data || offlineResponse
+    } else {
+      const response = await api.get(`/patients/${patientId.value}`)
+      p = response.data.data || response.data
+    }
 
     // Map backend fields to form structure
     patientData.value = {
@@ -545,7 +559,7 @@ const fetchPatientData = async () => {
     // Get last vaccination: if not in patient payload, fetch by patient id
     if (p.lastVaccination || p.last_vaccination_date) {
       lastVaccination.value = p.lastVaccination || p.last_vaccination_date
-    } else {
+    } else if (!isOffline.value) {
       try {
         const vaccRes = await api.get(`/immunizations`, { params: { patient_id: patientId.value, limit: 1, sort: 'administered_date:desc' } })
         const items = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
