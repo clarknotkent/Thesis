@@ -167,8 +167,9 @@
                   </button>
                   <button 
                     class="btn btn-sm btn-outline-primary"
-                    title="Edit All Doses"
-                    @click="editVaccineRecords(group)"
+                    :disabled="isOffline"
+                    :title="isOffline ? 'Edit All Doses (Disabled offline)' : 'Edit All Doses'"
+                    @click="isOffline ? null : editVaccineRecords(group)"
                   >
                     <i class="bi bi-pencil me-1" />Edit
                   </button>
@@ -187,6 +188,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const props = defineProps({
   patientId: {
@@ -197,6 +199,7 @@ const props = defineProps({
 
 const router = useRouter()
 const { addToast } = useToast()
+const { isOffline, fetchPatientById } = useOfflineAdmin()
 
 const vaccinations = ref([])
 const loading = ref(true)
@@ -343,7 +346,16 @@ const fetchVaccinationHistory = async () => {
   try {
     loading.value = true
     
-    // Fetch from the patient detail endpoint which includes vaccination history
+    // Try offline first if available
+    if (isOffline.value) {
+      const patientData = await fetchPatientById(props.patientId)
+      if (patientData && patientData.vaccinationHistory) {
+        vaccinations.value = Array.isArray(patientData.vaccinationHistory) ? patientData.vaccinationHistory : []
+        return
+      }
+    }
+
+    // Fallback to API
     const response = await api.get(`/patients/${props.patientId}`)
     const patientData = response.data.data || response.data
     

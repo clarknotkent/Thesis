@@ -54,7 +54,30 @@ export const useAuth = () => {
       }
     } else {
       console.log('ℹ️ Admin/Staff offline uses StaffOfflineDB (on-demand caching)')
-      // Data will be cached when users visit Patient Records or Vaccine Inventory pages
+      
+      // For admin users, prefetch admin data immediately on login
+      if (normalizedRole === 'admin') {
+        console.log('👑 Admin login - prefetching admin data for offline mode')
+        try {
+          const { prefetchAdminData } = await import('@/services/offline/adminOfflinePrefetch')
+          await prefetchAdminData()
+          console.log('✅ Admin data prefetched successfully')
+        } catch (error) {
+          console.error('❌ Failed to prefetch admin data:', error)
+        }
+      }
+      
+      // For healthstaff users, prefetch staff data immediately on login
+      if (normalizedRole === 'healthstaff') {
+        console.log('🏥 Health Staff login - prefetching staff data for offline mode')
+        try {
+          const { prefetchStaffData } = await import('@/services/offline/staffLoginPrefetch')
+          await prefetchStaffData()
+          console.log('✅ Staff data prefetched successfully')
+        } catch (error) {
+          console.error('❌ Failed to prefetch staff data:', error)
+        }
+      }
     }
   }
 
@@ -83,13 +106,32 @@ export const useAuth = () => {
         console.error('❌ Failed to clear guardian offline data:', error)
       }
     } else if (currentRole === 'admin' || currentRole === 'healthstaff') {
-      // Clear staff offline data
+      // Clear staff offline data - completely delete the database like GuardianOfflineDB
       try {
-        const { clearStaffOfflineData } = await import('@/services/offline/db')
-        await clearStaffOfflineData()
-        console.log('✅ Staff offline data cleared on logout')
+        const { db } = await import('@/services/offline/db')
+        await db.delete()
+        console.log('✅ StaffOfflineDB deleted on logout')
+        
+        // Clear cache flags so database will be recreated on next login
+        const { clearStaffCacheFlags } = await import('@/services/offline/staffLoginPrefetch')
+        clearStaffCacheFlags()
+        
+        // Clear BHS prefetch session flag so it will prefetch again on next login
+        localStorage.removeItem('bhs_prefetch_completed')
+        console.log('✅ BHS prefetch session cleared on logout')
       } catch (error) {
-        console.error('❌ Failed to clear staff offline data:', error)
+        console.error('❌ Failed to delete StaffOfflineDB:', error)
+      }
+      
+      // Clear admin offline data for admin users
+      if (currentRole === 'admin') {
+        try {
+          const { clearAdminOfflineData } = await import('@/services/offline/adminOfflineDB')
+          await clearAdminOfflineData()
+          console.log('✅ Admin offline data cleared on logout')
+        } catch (error) {
+          console.error('❌ Failed to clear admin offline data:', error)
+        }
       }
     }
     

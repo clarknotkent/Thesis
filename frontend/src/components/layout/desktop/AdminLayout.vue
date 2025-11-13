@@ -41,12 +41,14 @@
 import { ref, provide, computed, onMounted } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
 import Navbar from './Navbar.vue'
 import Sidebar from './Sidebar.vue'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
 
 const { confirmState, handleConfirm, handleCancel } = useConfirm()
+const { addToast } = useToast()
 
 const sidebarOpen = ref(true)
 const { userInfo } = useAuth()
@@ -55,7 +57,7 @@ const { userInfo } = useAuth()
 provide('isAdmin', true)
 
 // Auto-collapse sidebar on smaller screens
-onMounted(() => {
+onMounted(async () => {
   const handleResize = () => {
     // On mobile/tablet, default to closed
     // On desktop, keep current state (allow user to toggle)
@@ -74,6 +76,61 @@ onMounted(() => {
   // Cleanup
   return () => window.removeEventListener('resize', handleResize)
 })
+
+// Prefetch admin data for offline access (only once per session)
+const prefetchAdminData = async () => {
+  try {
+    // Check if data is already cached and fresh
+    const { isAdminDataCached, getAdminCacheTimestamp } = await import('@/services/offline/adminOfflinePrefetch')
+    
+    const isCached = await isAdminDataCached()
+    const lastCacheTime = await getAdminCacheTimestamp()
+    
+    // If data is cached and less than 24 hours old, skip prefetching
+    if (isCached && lastCacheTime) {
+      const cacheAge = Date.now() - new Date(lastCacheTime).getTime()
+      const oneDay = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+      
+      if (cacheAge < oneDay) {
+        console.log('✅ [AdminLayout] Admin data already cached and fresh, skipping prefetch')
+        return
+      }
+    }
+    
+    // Data is not cached or stale, proceed with prefetching
+    console.log('📥 [AdminLayout] Admin data not cached or stale, starting prefetch...')
+    
+    const { prefetchAdminData: prefetch } = await import('@/services/offline/adminOfflinePrefetch')
+    await prefetch()
+    
+    console.log('✅ [AdminLayout] Admin data cached successfully')
+    
+    // Show success toast notification when offline mode is ready
+    addToast({
+      title: 'Offline Mode Ready',
+      message: 'All admin data has been cached for offline access.',
+      type: 'success',
+      timeout: 5000
+    })
+  } catch (error) {
+    console.error('❌ [AdminLayout] Failed to prefetch admin data:', error)
+    
+    // Show error toast if prefetching failed
+    addToast({
+      title: 'Offline Mode Error',
+      message: 'Failed to cache data for offline access. Some features may be limited.',
+      type: 'error',
+      timeout: 7000
+    })
+  }
+}
+
+// Initialize prefetching when admin layout is first loaded
+let prefetchInitialized = false
+if (!prefetchInitialized) {
+  prefetchInitialized = true
+  prefetchAdminData()
+}
 
 // Get user's actual name from auth
 const userName = computed(() => {

@@ -88,7 +88,9 @@
         </button>
         <button
           class="btn btn-sm btn-primary"
-          @click="createNew"
+          :disabled="isOffline"
+          :title="isOffline ? 'Not available offline' : 'New Report'"
+          @click="handleNewReportClick"
         >
           <i class="bi bi-plus-circle me-1" />New Report
         </button>
@@ -221,14 +223,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 
 const router = useRouter()
 const { addToast } = useToast()
+const { fetchReceivingReports } = useOfflineAdmin()
 
 const emit = defineEmits(['refresh'])
 
@@ -238,6 +241,7 @@ const searchTerm = ref('')
 const currentStatusFilter = ref('All Status')
 const currentPage = ref(1)
 const itemsPerPage = 7
+const isOffline = ref(!navigator.onLine)
 
 // Filtered reports based on search and status
 const filteredReports = computed(() => {
@@ -315,17 +319,46 @@ const closeDropdown = (type) => {
 
 onMounted(() => {
   loadReports()
+  
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+}
+
+// Handle new report button click
+const handleNewReportClick = () => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Creating new receiving reports requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    createNew()
+  }
+}
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
 })
 
 const loadReports = async () => {
   try {
     loading.value = true
-    const response = await api.get('/receiving-reports')
+    const response = await fetchReceivingReports()
     
     console.log('Receiving reports response:', response.data)
     
     // Handle different response structures
-    const rawData = response.data.data || response.data
+    const rawData = response.data?.data || response.data
     let items = []
     
     if (Array.isArray(rawData)) {

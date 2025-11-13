@@ -211,8 +211,8 @@
               >
                 <button 
                   class="btn btn-success"
-                  :disabled="saving"
-                  @click="saveEdit(group)"
+                  :disabled="saving || isOffline"
+                  @click="isOffline ? null : saveEdit(group)"
                 >
                   <i class="bi bi-check-lg me-1" />Save
                 </button>
@@ -227,7 +227,8 @@
               <button 
                 v-else
                 class="btn btn-sm btn-outline-primary"
-                :disabled="!!editingGroup"
+                :disabled="!!editingGroup || isOffline"
+                :title="isOffline ? 'Edit (Disabled offline)' : (!!editingGroup ? 'Another edit in progress' : 'Edit')"
                 @click="startEdit(group)"
               >
                 <i class="bi bi-pencil me-1" />Edit
@@ -246,9 +247,11 @@ import api from '@/services/api'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
+const { isOffline, fetchPatientById } = useOfflineAdmin()
 
 const props = defineProps({
   patientId: {
@@ -651,6 +654,17 @@ const formatStatus = (status) => {
 const fetchSchedules = async () => {
   try {
     loading.value = true
+
+    // Try offline first if available
+    if (isOffline.value) {
+      const patientData = await fetchPatientById(props.patientId)
+      if (patientData && patientData.nextScheduledVaccinations) {
+        schedules.value = Array.isArray(patientData.nextScheduledVaccinations) ? patientData.nextScheduledVaccinations : []
+        return
+      }
+    }
+
+    // Fallback to API
     const response = await api.get(`/patients/${props.patientId}`)
 
     const pd = response.data?.data || response.data || {}

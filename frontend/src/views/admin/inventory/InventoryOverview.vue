@@ -21,14 +21,16 @@
         </ol>
       </nav>
 
-      <!-- Header -->
-      <div class="mb-4">
-        <h2 class="mb-1">
-          <i class="bi bi-capsule me-2" />Vaccine Inventory Management
-        </h2>
-        <p class="text-muted mb-0">
-          Manage vaccine stock, receiving reports, and schedules
-        </p>
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached inventory data. Some features may be limited until you reconnect.
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -181,8 +183,10 @@
                 <li class="nav-item">
                   <button 
                     class="nav-link" 
-                    :class="{ active: activeTab === 'receiving' }"
-                    @click="activeTab = 'receiving'"
+                    :class="{ active: activeTab === 'receiving', disabled: isOffline }"
+                    :disabled="isOffline"
+                    :title="isOffline ? 'Receiving reports not available offline' : 'Receiving Reports'"
+                    @click="handleReceivingTabClick"
                   >
                     <i class="bi bi-box-seam me-2" />Receiving Reports
                   </button>
@@ -222,22 +226,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import VaccineStockSection from '@/features/admin/inventory/components/VaccineStockSection.vue'
 import ReceivingReportsSection from '@/features/admin/inventory/components/ReceivingReportsSection.vue'
 import VaccineScheduleSection from '@/features/admin/inventory/components/VaccineScheduleSection.vue'
-import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
+const { fetchVaccineInventory, fetchVaccines } = useOfflineAdmin()
 
 const activeTab = ref('stock')
 const loading = ref(true)
 const error = ref(null)
+const isOffline = ref(!navigator.onLine)
 
 const stats = ref({
   totalTypes: 0,
@@ -246,62 +252,14 @@ const stats = ref({
   expiringSoon: 0
 })
 
-// Offline caching state
-const isCaching = ref(false)
+// Offline caching state - REMOVED: No longer needed since prefetch removed
+// const isCaching = ref(false)
 
-// Preload ViewInventory component for offline access
-const preloadInventoryComponents = () => {
-  console.log('📦 [InventoryOverview] Preloading inventory components for offline use')
-  // Eagerly import ViewInventory so it's cached by the Service Worker
-  import('@/views/admin/inventory/ViewInventory.vue').catch(() => {
-    console.warn('[Offline] ViewInventory component preload failed - will load on demand')
-  })
-}
-
-// Prefetch inventory data for offline access
-const prefetchInventoryData = async () => {
-  if (isCaching.value) return // Already caching
-  
-  try {
-    isCaching.value = true
-    console.log('📥 [InventoryOverview] Prefetching inventory data for offline access...')
-    
-    // Import the prefetch function - it will cache vaccines list and inventory
-    const { prefetchStaffData } = await import('@/services/offline/staffLoginPrefetch')
-    await prefetchStaffData()
-    
-    // After caching basic inventory, fetch transaction history for all items (limited to recent 5)
-    console.log('📥 [InventoryOverview] Fetching recent transaction history for all inventory items...')
-    
-    // Get all inventory items
-    const inventoryResponse = await api.get('/vaccines/inventory')
-    const items = inventoryResponse.data?.data || inventoryResponse.data || []
-    
-    if (Array.isArray(items) && items.length > 0) {
-      // Fetch only the 5 most recent transactions for each inventory item
-      const transactionPromises = items.map(item => {
-        const inventoryId = item.inventory_id || item.id
-        if (!inventoryId) return Promise.resolve()
-        
-        return api.get('/vaccines/transactions', {
-          params: { inventory_id: inventoryId, limit: 5 }
-        }).catch(err => {
-          console.warn(`⚠️ Failed to fetch transactions for inventory ${inventoryId}:`, err.message)
-          return null
-        })
-      })
-      
-      await Promise.all(transactionPromises)
-      console.log(`✅ [InventoryOverview] Cached recent transactions (5 per item) for ${items.length} inventory items`)
-    }
-    
-    console.log('✅ [InventoryOverview] Inventory data cached successfully')
-  } catch (error) {
-    console.error('❌ [InventoryOverview] Failed to prefetch inventory:', error)
-  } finally {
-    isCaching.value = false
-  }
-}
+// Prefetch inventory data for offline access - REMOVED: AdminLayout already handles admin prefetch
+// const prefetchInventoryData = async () => {
+//   // This function was calling staff prefetch inappropriately for admin users
+//   // Admin data prefetching is handled by AdminLayout.vue
+// }
 
 // Handle hash navigation
 onMounted(() => {
@@ -310,12 +268,18 @@ onMounted(() => {
     activeTab.value = hash
   }
   
-  // Preload components and prefetch data for offline access
-  preloadInventoryComponents()
-  prefetchInventoryData()
-  
   // Load current page data
   loadInventoryData()
+  
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
 })
 
 // Update URL hash when tab changes
@@ -323,13 +287,50 @@ watch(activeTab, (newTab) => {
   router.replace({ hash: `#${newTab}` })
 })
 
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+  
+  if (navigator.onLine) {
+    console.log('🌐 Connection restored')
+    addToast({
+      title: 'Back Online',
+      message: 'You can now perform all inventory operations',
+      type: 'success',
+      timeout: 3000
+    })
+  } else {
+    console.log('📴 Connection lost')
+    addToast({
+      title: 'Offline',
+      message: 'Viewing cached inventory data',
+      type: 'warning',
+      timeout: 3000
+    })
+  }
+}
+
+// Handle receiving reports tab click
+const handleReceivingTabClick = () => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Receiving reports require an internet connection to view and manage',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    activeTab.value = 'receiving'
+  }
+}
+
 const loadInventoryData = async () => {
   try {
     loading.value = true
     error.value = null
     
-    // Use the exact same logic as VaccineInventory.vue
-    const response = await api.get('/vaccines/inventory')
+    // Use offline-first data fetching
+    const response = await fetchVaccineInventory()
     const items = response.data?.data || response.data || []
     
     // Defensive: filter out any soft-deleted items if backend ever returns them
@@ -365,8 +366,8 @@ const loadInventoryData = async () => {
       }
     })
     
-    // Get existing vaccine types
-    const vaccineTypesResponse = await api.get('/vaccines')
+    // Get existing vaccine types using offline-first approach
+    const vaccineTypesResponse = await fetchVaccines()
     let raw = vaccineTypesResponse.data?.data || vaccineTypesResponse.data || []
     if (raw && typeof raw === 'object' && Array.isArray(raw.vaccines)) {
       raw = raw.vaccines
@@ -397,6 +398,12 @@ const loadInventoryData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const loadScheduleData = async () => {
+  // Schedule data is loaded by the VaccineScheduleSection component itself
+  // This function is called when the schedule tab needs to refresh
+  console.log('[InventoryOverview] Schedule refresh requested')
 }
 </script>
 
@@ -467,6 +474,18 @@ const loadInventoryData = async () => {
   background-color: transparent;
   border-bottom: 3px solid #0d6efd;
   font-weight: 600;
+}
+
+.nav-tabs .nav-link.disabled {
+  color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.nav-tabs .nav-link.disabled:hover {
+  color: #6c757d !important;
+  border-bottom-color: transparent;
+  background-color: transparent;
 }
 
 .card-header-tabs {

@@ -1,11 +1,14 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 
 /**
  * Composable for managing medical history data and operations
  * @param {String|Number} patientId - The patient's ID
  */
 export function useMedicalHistory(patientId) {
+  const { isOffline } = useOfflineAdmin()
   const visits = ref([])
   const loading = ref(false)
   const error = ref(null)
@@ -35,6 +38,22 @@ export function useMedicalHistory(patientId) {
     try {
       loading.value = true
       error.value = null
+
+      // Try offline first if available
+      if (isOffline.value) {
+        try {
+          // Fetch visits from cache - filter in memory to avoid index issues
+          const allVisits = await adminDB.visits.toArray()
+          const patientVisits = allVisits.filter(v => v.patient_id === id)
+          visits.value = patientVisits
+          return
+        } catch (error) {
+          console.warn('Failed to fetch visits from cache:', error)
+          // Fall through to API
+        }
+      }
+
+      // Fallback to API
       const pageSize = 200
       let page = 1
       let collected = []

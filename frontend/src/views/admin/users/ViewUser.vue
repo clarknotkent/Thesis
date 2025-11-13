@@ -23,6 +23,18 @@
         </ol>
       </nav>
 
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached user data. User management actions are disabled until you reconnect.
+        </div>
+      </div>
+
       <!-- Page Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -138,11 +150,14 @@
                 <router-link 
                   :to="`/admin/users/edit/${userId}`"
                   class="btn btn-primary"
+                  :class="{ disabled: isOffline }"
+                  :aria-disabled="isOffline"
                 >
                   <i class="bi bi-pencil me-2" />Edit User
                 </router-link>
                 <button 
                   class="btn btn-warning"
+                  :disabled="isOffline"
                   @click="openPasswordModal"
                 >
                   <i class="bi bi-key me-2" />Reset Password
@@ -150,6 +165,7 @@
                 <button 
                   v-if="userData?.status !== 'archived'"
                   class="btn btn-danger"
+                  :disabled="isOffline"
                   @click="openDeleteModal"
                 >
                   <i class="bi bi-trash me-2" />Delete User
@@ -157,6 +173,7 @@
                 <button
                   v-else-if="userData?.status === 'archived'"
                   class="btn btn-success"
+                  :disabled="isOffline"
                   @click="openRestoreModal"
                 >
                   <i class="bi bi-arrow-counterclockwise me-2" />Restore User
@@ -284,10 +301,12 @@ import AppModal from '@/components/ui/base/AppModal.vue'
 import UserForm from '@/features/admin/user-management/UserForm.vue'
 import { getUser, deleteUser, resetPassword, restoreUser } from '@/services/users'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const router = useRouter()
 const route = useRoute()
 const { addToast } = useToast()
+const { isOffline, fetchUserById } = useOfflineAdmin()
 
 const userData = ref(null)
 const loading = ref(true)
@@ -311,30 +330,68 @@ const goBack = () => {
 const fetchUserData = async () => {
   try {
     const id = userId.value
-    const response = await getUser(id)
-    const user = response.user || response
     
-    // Map backend fields to display structure
-  userData.value = {
-      id: user.id || user.user_id,
-      firstName: user.firstname || user.firstName || '',
-      middleName: user.middlename || user.middleName || '',
-      lastName: user.surname || user.lastName || '',
-      username: user.username || '',
-      email: user.email || '',
-      role: user.role || '',
-    // prefer new hs_type field, but fall back to older names for compatibility
-      hsType: user.hs_type || user.hsType || user.hw_type || user.hwType || '',
-    status: user.is_deleted ? 'archived' : (user.status || 'active'),
-      licenseNumber: user.professional_license_no || user.license_number || user.licenseNumber || '',
-      employeeId: user.employee_id || user.employeeId || '',
-      phoneNumber: user.phone_number || user.phoneNumber || '',
-      contactNumber: user.contact_number || user.contactNumber || '',
-      sex: user.sex || '',
-      birthdate: user.birthdate || '',
-      address: user.address || '',
-      lastLogin: user.last_login || user.lastLogin || null,
-      createdAt: user.created_at || user.createdAt || null
+    // Try online first
+    if (!isOffline.value) {
+      try {
+        const response = await getUser(id)
+        const user = response.user || response
+        
+        // Map backend fields to display structure
+        userData.value = {
+          id: user.id || user.user_id,
+          firstName: user.firstname || user.firstName || '',
+          middleName: user.middlename || user.middleName || '',
+          lastName: user.surname || user.lastName || '',
+          username: user.username || '',
+          email: user.email || '',
+          role: user.role || '',
+          // prefer new hs_type field, but fall back to older names for compatibility
+          hsType: user.hs_type || user.hsType || user.hw_type || user.hwType || '',
+          status: user.is_deleted ? 'archived' : (user.status || 'active'),
+          licenseNumber: user.professional_license_no || user.license_number || user.licenseNumber || '',
+          employeeId: user.employee_id || user.employeeId || '',
+          phoneNumber: user.phone_number || user.phoneNumber || '',
+          contactNumber: user.contact_number || user.contactNumber || '',
+          sex: user.sex || '',
+          birthdate: user.birthdate || '',
+          address: user.address || '',
+          lastLogin: user.last_login || user.lastLogin || null,
+          createdAt: user.created_at || user.createdAt || null
+        }
+        return
+      } catch (onlineError) {
+        console.warn('Online user fetch failed, trying offline:', onlineError.message)
+      }
+    }
+
+    // Fallback to offline
+    console.log('👤 Fetching user from cached data')
+    const cachedUser = await fetchUserById(id)
+    
+    if (cachedUser) {
+      userData.value = {
+        id: cachedUser.user_id || cachedUser.id,
+        firstName: cachedUser.firstname || cachedUser.firstName || '',
+        middleName: cachedUser.middlename || cachedUser.middleName || '',
+        lastName: cachedUser.surname || cachedUser.lastName || '',
+        username: cachedUser.username || '',
+        email: cachedUser.email || '',
+        role: cachedUser.role || '',
+        hsType: cachedUser.hs_type || cachedUser.hsType || cachedUser.hw_type || cachedUser.hwType || '',
+        status: cachedUser.is_deleted ? 'archived' : (cachedUser.status || 'active'),
+        licenseNumber: cachedUser.professional_license_no || cachedUser.license_number || cachedUser.licenseNumber || '',
+        employeeId: cachedUser.employee_id || cachedUser.employeeId || '',
+        phoneNumber: cachedUser.phone_number || cachedUser.phoneNumber || '',
+        contactNumber: cachedUser.contact_number || cachedUser.contactNumber || '',
+        sex: cachedUser.sex || '',
+        birthdate: cachedUser.birthdate || '',
+        address: cachedUser.address || '',
+        lastLogin: cachedUser.last_login || cachedUser.lastLogin || null,
+        createdAt: cachedUser.created_at || cachedUser.createdAt || null
+      }
+    } else {
+      throw new Error('User not found in cache')
     }
   } catch (error) {
     console.error('Error fetching user data:', error)

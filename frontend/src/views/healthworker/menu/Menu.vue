@@ -97,9 +97,13 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from '@/composables/useToast'
+import { useOffline } from '@/composables/useOffline'
 
 const router = useRouter()
 const { userInfo, getRole, logout: authLogout } = useAuth()
+const { addToast } = useToast()
+const { effectiveOnline } = useOffline()
 
 const userName = computed(() => {
   if (userInfo.value) {
@@ -133,8 +137,18 @@ const userId = computed(() => {
 })
 
 const logout = async () => {
-  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
-    alert('You are offline. Logout is disabled to preserve your offline data. Please reconnect to log out.')
+  // Use effectiveOnline so manual offline mode is respected
+  if (!effectiveOnline.value) {
+    try {
+      addToast({
+        title: 'Offline',
+        message: 'Logout is disabled while offline to preserve your local data. Reconnect to the internet to log out.',
+        type: 'warning'
+      })
+    } catch (e) {
+      // Fallback, but avoid blocking UX
+      console.warn('Toast module unavailable, skipping toast:', e)
+    }
     return
   }
   await authLogout()

@@ -28,6 +28,9 @@
           </h1>
           <p class="text-muted mb-0">
             Create, edit and manage frequently asked questions
+            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+              <i class="bi bi-wifi-off me-1" />Offline Mode
+            </span>
           </p>
         </div>
       </div>
@@ -51,6 +54,7 @@
                     <input
                       v-model.trim="newQuestion"
                       class="form-control"
+                      :disabled="isOffline"
                       placeholder="Enter the question..."
                     >
                   </div>
@@ -62,6 +66,7 @@
                       v-model.trim="newAnswer"
                       class="form-control"
                       rows="8"
+                      :disabled="isOffline"
                       placeholder="Provide a detailed answer..."
                     />
                   </div>
@@ -73,14 +78,15 @@
                     <button
                       v-if="editing"
                       class="btn btn-secondary"
-                      @click="cancelEdit"
+                      :disabled="isOffline"
+                      @click="isOffline ? showOfflineToast() : cancelEdit()"
                     >
                       <i class="bi bi-x-circle me-1" />Cancel
                     </button>
                     <button
                       class="btn btn-success"
-                      :disabled="!newQuestion || !newAnswer || saving"
-                      @click="create"
+                      :disabled="!newQuestion || !newAnswer || saving || isOffline"
+                      @click="isOffline ? showOfflineToast() : create()"
                     >
                       <span
                         v-if="saving"
@@ -106,7 +112,8 @@
                     <select
                       v-model="sortOption"
                       class="form-select form-select-sm w-auto"
-                      @change="applySort"
+                      :disabled="isOffline"
+                      @change="isOffline ? null : applySort()"
                     >
                       <option value="newest">
                         Newest first
@@ -124,6 +131,7 @@
                     <select
                       v-model.number="pageSize"
                       class="form-select form-select-sm w-auto"
+                      :disabled="isOffline"
                     >
                       <option :value="5">
                         5 / page
@@ -137,8 +145,8 @@
                     </select>
                     <button
                       class="btn btn-sm btn-light"
-                      :disabled="loading"
-                      @click="load"
+                      :disabled="loading || isOffline"
+                      @click="isOffline ? showOfflineToast() : load()"
                     >
                       <span
                         v-if="loading"
@@ -160,14 +168,15 @@
                       <input
                         v-model="searchQuery"
                         class="form-control"
+                        :disabled="isOffline"
                         placeholder="Search FAQs..."
-                        @input="debouncedSearch"
+                        @input="isOffline ? null : debouncedSearch()"
                       >
                       <button
                         class="btn btn-outline-secondary"
                         type="button"
-                        :disabled="!searchQuery"
-                        @click="clearSearch"
+                        :disabled="!searchQuery || isOffline"
+                        @click="isOffline ? showOfflineToast() : clearSearch()"
                       >
                         <i class="bi bi-x-circle" />
                       </button>
@@ -231,14 +240,16 @@
                           <button
                             class="btn btn-sm btn-outline-primary"
                             title="Edit"
-                            @click="edit(f)"
+                            :disabled="isOffline"
+                            @click="isOffline ? showOfflineToast() : edit(f)"
                           >
                             <i class="bi bi-pencil" />
                           </button>
                           <button
                             class="btn btn-sm btn-outline-danger"
                             title="Delete"
-                            @click="remove(f.faq_id)"
+                            :disabled="isOffline"
+                            @click="isOffline ? showOfflineToast() : remove(f.faq_id)"
                           >
                             <i class="bi bi-trash" />
                           </button>
@@ -271,12 +282,12 @@
                     <ul class="pagination mb-0 pagination-sm">
                       <li
                         class="page-item"
-                        :class="{ disabled: currentPage === 1 }"
+                        :class="{ disabled: currentPage === 1 || isOffline }"
                       >
                         <button
                           class="page-link"
-                          :disabled="currentPage === 1"
-                          @click="prevPage"
+                          :disabled="currentPage === 1 || isOffline"
+                          @click="isOffline ? showOfflineToast() : prevPage()"
                         >
                           Prev
                         </button>
@@ -285,23 +296,24 @@
                         v-for="n in totalPages"
                         :key="'p'+n"
                         class="page-item"
-                        :class="{ active: n === currentPage }"
+                        :class="{ active: n === currentPage, disabled: isOffline }"
                       >
                         <button
                           class="page-link"
-                          @click="goToPage(n)"
+                          :disabled="isOffline"
+                          @click="isOffline ? showOfflineToast() : goToPage(n)"
                         >
                           {{ n }}
                         </button>
                       </li>
                       <li
                         class="page-item"
-                        :class="{ disabled: currentPage === totalPages }"
+                        :class="{ disabled: currentPage === totalPages || isOffline }"
                       >
                         <button
                           class="page-link"
-                          :disabled="currentPage === totalPages"
-                          @click="nextPage"
+                          :disabled="currentPage === totalPages || isOffline"
+                          @click="isOffline ? showOfflineToast() : nextPage()"
                         >
                           Next
                         </button>
@@ -323,6 +335,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import { getFaqs, createFaq, updateFaq, deleteFaq } from '@/services/faqService'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 const faqs = ref([])
 const filteredFAQs = ref([])
@@ -331,6 +344,7 @@ const newAnswer = ref('')
 const editing = ref(null)
 const searchQuery = ref('')
 const { addToast } = useToast()
+const { isOffline } = useOfflineAdmin()
 const loading = ref(false)
 const saving = ref(false)
 const sortOption = ref('newest')
@@ -468,6 +482,14 @@ watch(filteredFAQs, () => {
     currentPage.value = 1
   }
 })
+
+const showOfflineToast = () => {
+  addToast({
+    title: 'Offline Mode',
+    message: 'FAQ management is not available while offline',
+    type: 'warning'
+  })
+}
 </script>
 
 <style scoped>

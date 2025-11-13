@@ -210,7 +210,9 @@
         </button>
         <button
           class="btn btn-sm btn-outline-warning"
-          @click="editVaccineType"
+          :disabled="isOffline"
+          :title="isOffline ? 'Not available offline' : 'Edit Vaccine Type'"
+          @click="handleEditVaccineTypeClick"
         >
           <i class="bi bi-pencil-square me-1" />Edit Vaccine Type
         </button>
@@ -341,14 +343,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 import { useToast } from '@/composables/useToast'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 
 const router = useRouter()
 const { addToast } = useToast()
+const { fetchVaccineInventory } = useOfflineAdmin()
 
 const emit = defineEmits(['refresh'])
 
@@ -361,6 +364,7 @@ const currentSort = ref('Name A-Z')
 const currentPage = ref(1)
 const itemsPerPage = 7
 const showRemovedFromView = ref(false)
+const isOffline = ref(!navigator.onLine)
 
 // Label to display for current category filter
 const currentCategoryLabel = computed(() => {
@@ -445,8 +449,37 @@ const paginatedInventory = computed(() => {
   return filteredInventory.value.slice(start, end)
 })
 
+// Online/Offline event listeners
+const updateOnlineStatus = () => {
+  isOffline.value = !navigator.onLine
+}
+
+// Handle edit vaccine type button click
+const handleEditVaccineTypeClick = () => {
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Editing vaccine types requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    editVaccineType()
+  }
+}
+
 onMounted(() => {
   loadInventory()
+  
+  // Add online/offline event listeners
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+
+// Cleanup event listeners on unmount
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
 })
 
 // Set category filter
@@ -516,8 +549,8 @@ const goToPage = (page) => {
 const loadInventory = async () => {
   try {
     loading.value = true
-    // Use the exact same API call and data mapping as VaccineInventory.vue
-    const response = await api.get('/vaccines/inventory')
+    // Use offline-first data fetching
+    const response = await fetchVaccineInventory()
     const items = response.data?.data || response.data || []
     
     // Defensive: filter out any soft-deleted items if backend ever returns them
@@ -625,7 +658,16 @@ const isRemovedFromView = (item) => {
 }
 
 const viewDetails = (item) => {
-  router.push(`/admin/vaccines/view/${item.id}`)
+  if (isOffline.value) {
+    addToast({
+      title: 'Feature Unavailable Offline',
+      message: 'Viewing detailed inventory information requires an internet connection',
+      type: 'warning',
+      timeout: 4000
+    })
+  } else {
+    router.push(`/admin/vaccines/view/${item.id}`)
+  }
 }
 </script>
 

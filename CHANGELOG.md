@@ -36,6 +36,52 @@ Accessibility/UX:
 
 ### 🐛 Bug Fixes
 
+- Fixed "visits not cached" issue caused by API payload shape (items vs data) leading to empty db.visits
+- Eliminated network error spam in Patient Details and Visit Summary when device is offline by routing through offline cache
+- Ensured father's number and occupation display offline by enriching from guardians cache (including same family_number groups, preferring male guardian)
+
+### 📚 Files Modified (highlights)
+
+Frontend:
+- `frontend/src/features/health-worker/patients/composables/usePatientDetails.js` — offline‑first patient loader, father enrichment, 12‑hour time formatting
+- `frontend/src/views/healthworker/PatientDetails.vue` — guards for Add Immunization, schedule rescheduling; visual disabled states; uses formatted time of birth
+- `frontend/src/views/healthworker/patients/PatientRecords.vue` — guard for Add New Patient offline with toast
+- `frontend/src/views/healthworker/patients/VisitSummary.vue` — offline‑first load from IndexedDB; cache on online; disable Edit Visit offline with toast and visual state
+- `frontend/src/composables/useOfflineBHS.js` — visits prefetch response normalization and bulkPut
+- `frontend/src/services/offline/db.js` — verified schema supports visits and related tables (no change required)
+
+### ✅ Outcomes
+
+- Health Worker pages behave predictably offline with read‑only access: no more Axios ERR_NETWORK popups
+- Visit history and details render offline after a single online sync
+- Users see clear, consistent toasts and disabled visuals for actions that require connectivity (Add, Edit, Reschedule)
+
+### ✨ Added
+
+Offline-first and UX safeguards for Health Worker portal:
+- Patient Details: Offline-first load path that reads from IndexedDB (StaffOfflineDB) to prevent Axios errors when offline
+- Visit Summary (HW): Offline-first loading from IndexedDB; caches visit and patient snapshots when online for future offline access
+- UI Guards (with toasts and visual states):
+  - Add New Patient and Add Immunization disabled when offline with informative toast
+  - Edit Visit disabled offline in Visit Summary with toast and visual disabled menu state
+  - Reschedule vaccination disabled offline in Patient Details with toast; scheduled cards reflect non-editable state offline
+
+Formatting and enrichment:
+- Time of Birth displayed in 12‑hour format (Patient Details)
+- Father information enriched offline using guardians and family_number fallbacks (ensures father contact/occupation appear even without direct guardian link)
+
+### 🔄 Changed
+
+Offline data sync robustness and caching:
+- Staff offline prefetch (useOfflineBHS): Normalize /visits response to support { items: [...] } and { data: [...] } shapes before bulkPut into db.visits
+- Patient Details composable: Skip network when offline and assemble details from cached patients, immunizations, schedules, and visits; suppresses network error spam
+- Visit Summary (HW): When online, writes the fetched visit and patient into IndexedDB to seed offline usage automatically
+
+Accessibility/UX:
+- Visual disabled states + aria-disabled attributes added to offline‑guarded actions to clearly communicate availability
+
+### 🐛 Bug Fixes
+
 - Fixed “visits not cached” issue caused by API payload shape (items vs data) leading to empty db.visits
 - Eliminated network error spam in Patient Details and Visit Summary when device is offline by routing through offline cache
 - Ensured father’s number and occupation display offline by enriching from guardians cache (including same family_number groups, preferring male guardian)
@@ -57,7 +103,71 @@ Frontend:
 - Users see clear, consistent toasts and disabled visuals for actions that require connectivity (Add, Edit, Reschedule)
 
 
----
+## [system-prototype-v4] - 2025-11-13 (Vaccine Inventory Offline Implementation)
+
+### ✨ Added
+
+**Complete Vaccine Inventory Offline Functionality:**
+- **Offline Tab Management**: Receiving Reports tab disabled offline with informative toast notifications
+- **Vaccine Schedule Offline Support**: Full vaccine schedule viewing works offline after online sync
+- **Toast Notification System**: Comprehensive offline feedback for all disabled features
+- **Offline Data Prefetching**: Enhanced schedule data caching with additional fields (vaccine_name, antigen_name, health_worker_name, etc.)
+
+### 🔄 Changed
+
+**Vue Component Modernization:**
+- **Fixed Missing Vue Imports**: Added all missing Vue Composition API imports (ref, computed, onMounted, onUnmounted) across inventory components
+- **Router Error Resolution**: Fixed ViewInventory.vue and ViewSchedule.vue offline loading issues by implementing toast notifications instead of navigation attempts
+- **Vue Reactivity Fixes**: Resolved "_withMods" error by replacing problematic router-link event modifiers with button elements and proper event handling
+
+**Enhanced Offline Data Handling:**
+- **Schedule Data Schema**: Updated schedules table schema with version 4 upgrade for better offline compatibility
+- **Defensive Data Filtering**: Added conditional rendering and empty state handling for offline data display
+- **Safe Template Rendering**: Implemented null-safe property access and conditional checks to prevent Vue reactivity errors
+
+### 🐛 Bug Fixes
+
+**Critical Vue Issues Resolved:**
+- **Vue Import Errors**: Fixed ReferenceError exceptions caused by missing Vue Composition API imports in VaccineScheduleSection.vue, VaccineStockSection.vue, and ReceivingReportsSection.vue
+- **Router-Link Reactivity Error**: Fixed "_withMods" error by replacing router-link with button element in VaccineScheduleSection.vue edit functionality
+- **Offline Navigation Errors**: Resolved router errors for ViewInventory.vue and ViewSchedule.vue by showing toast messages instead of attempting navigation offline
+- **Data Display Issues**: Fixed undefined object access errors with defensive programming and conditional rendering
+
+**Offline Functionality Improvements:**
+- **Receiving Reports Tab**: Properly disabled offline with clear user feedback via toast notifications
+- **Vaccine Schedule Viewing**: Full offline support for viewing schedules after initial online sync
+- **User Experience**: Consistent toast messages and visual states for all offline restrictions
+
+### 📚 Files Modified
+
+**Frontend Components (4 files):**
+- `frontend/src/features/admin/inventory/InventoryOverview.vue` - Added offline tab management and toast notifications
+- `frontend/src/features/admin/inventory/VaccineScheduleSection.vue` - Fixed Vue imports, resolved reactivity errors, added offline toast handlers, enhanced data filtering
+- `frontend/src/features/admin/inventory/VaccineStockSection.vue` - Fixed Vue imports, added offline toast handlers for view details
+- `frontend/src/features/admin/inventory/ReceivingReportsSection.vue` - Fixed Vue imports, added offline toast handler for new reports
+
+**Database and Services (2 files):**
+- `frontend/src/services/offline/adminOfflineDB.js` - Updated schedules table schema (version 4) for enhanced offline compatibility
+- `frontend/src/services/offline/adminOfflinePrefetch.js` - Enhanced prefetchSchedules() with additional denormalized fields
+
+### ✅ Outcomes
+
+**Complete Offline Vaccine Inventory System:**
+- ✅ Vaccine schedule viewing works fully offline after online sync
+- ✅ Receiving reports tab properly disabled offline with informative feedback
+- ✅ All Vue import errors resolved across inventory components
+- ✅ Vue reactivity errors eliminated (no more "_withMods" errors)
+- ✅ Router navigation errors fixed for offline viewing
+- ✅ Consistent user experience with toast notifications for offline restrictions
+- ✅ Enhanced data prefetching ensures complete offline functionality
+- ✅ No compilation errors or runtime crashes in offline mode
+
+**Technical Achievements:**
+- Zero Vue reactivity errors in vaccine inventory components
+- Complete offline viewing capability for vaccine schedules
+- Proper offline user feedback system with toast notifications
+- Enhanced database schema for better offline data handling
+- Defensive programming prevents undefined object access errors
 
 ## [system-prototype-v4] - 2025-11-11
 

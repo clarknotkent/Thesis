@@ -1,6 +1,34 @@
 <template>
   <AdminLayout>
     <div class="container-fluid">
+      <!-- Offline Indicator Banner -->
+      <div
+        v-if="isOffline"
+        class="alert alert-warning d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <i class="bi bi-wifi-off me-2 fs-5" />
+        <div>
+          <strong>Offline Mode</strong> - You're viewing cached user data. User management actions are disabled until you reconnect.
+        </div>
+      </div>
+
+      <!-- Caching Progress Banner -->
+      <div
+        v-if="isCaching"
+        class="alert alert-info d-flex align-items-center mb-3"
+        role="alert"
+      >
+        <div
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        >
+          <span class="visually-hidden">Caching...</span>
+        </div>
+        <div>
+          <strong>Caching user data...</strong> Saving user accounts for offline access.
+        </div>
+      </div>
       <!-- Breadcrumb -->
       <nav
         aria-label="breadcrumb"
@@ -210,19 +238,21 @@
                 v-model="showDeleted"
                 class="form-check-input"
                 type="checkbox"
-                @change="fetchUsers"
+                :disabled="isOffline"
+                @change="handleShowDeletedChange"
               >
               <label
                 class="form-check-label small"
                 for="showDeletedSwitch"
               >Show Deleted</label>
             </div>
-            <router-link
-              to="/admin/users/add"
+            <button
               class="btn btn-primary ms-2"
+              :disabled="isOffline"
+              @click="handleAddUserClick"
             >
               <i class="bi bi-plus-circle me-2" />Add New User
-            </router-link>
+            </button>
           </div>
         </div>
         <div class="card-body">
@@ -303,7 +333,8 @@
                       <button 
                         v-if="user.status !== 'archived'"
                         class="btn btn-sm btn-outline-danger" 
-                        :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : ''"
+                        :disabled="isOffline"
+                        :title="isAdminRole(user.role) ? 'Admin accounts cannot be deleted' : isOffline ? 'Cannot delete users while offline' : ''"
                         @click="confirmDeleteUser(user)"
                       >
                         <i class="bi bi-trash me-1" />Delete
@@ -311,7 +342,8 @@
                       <button
                         v-else-if="user.status === 'archived'"
                         class="btn btn-sm btn-outline-success"
-                        title="Restore User"
+                        :disabled="isOffline"
+                        :title="isOffline ? 'Cannot restore users while offline' : 'Restore User'"
                         @click="openRestoreModal(user)"
                       >
                         <i class="bi bi-arrow-counterclockwise me-1" />Restore
@@ -442,6 +474,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppSpinner from '@/components/ui/base/AppSpinner.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
@@ -450,6 +483,7 @@ import api from '@/services/api'
 import { listUsers as apiListUsers, deleteUser as apiDeleteUser, restoreUser as apiRestoreUser, resetPassword as apiResetPassword } from '@/services/users'
 import { formatPHDateTime, utcToPH } from '@/utils/dateUtils'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 // Backend-driven; remove mock data
 
@@ -489,6 +523,8 @@ const userToDelete = ref(null)
 const userToResetPassword = ref(null)
 const newPassword = ref('')
 const { addToast } = useToast()
+const { isOffline, isCaching, fetchUsers: fetchUsersOffline } = useOfflineAdmin()
+const router = useRouter()
 
 // Add/Edit user form moved to AddUser.vue/EditUser.vue
 
@@ -503,7 +539,27 @@ const userStats = computed(() => ({
 // Fetch user statistics for all users (not paginated)
 const fetchUserStats = async () => {
   try {
-    // Fetch all active users to count by role
+    if (isOffline.value) {
+      // Use cached data when offline
+      console.log('📊 Fetching user statistics from cached data')
+      const result = await fetchUsersOffline({ role: '', search: '' })
+      
+      if (result.fromCache && result.data?.users) {
+        const cachedUsers = result.data.users.filter(u => !u.is_deleted && u.status !== 'archived')
+        allUserStats.value = {
+          total: cachedUsers.length,
+          admins: cachedUsers.filter(u => u.role === 'Admin').length,
+          healthWorkers: cachedUsers.filter(u => u.role === 'HealthStaff').length,
+          parents: cachedUsers.filter(u => u.role === 'Guardian').length
+        }
+      } else {
+        console.warn('Failed to fetch user statistics from cache')
+        allUserStats.value = { total: 0, admins: 0, healthWorkers: 0, parents: 0 }
+      }
+      return
+    }
+
+    // Online mode - fetch from API
     const { users: allUsers } = await apiListUsers({
       page: 1,
       limit: 10000, // Large number to get all users
@@ -520,6 +576,7 @@ const fetchUserStats = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch user statistics:', error)
+    allUserStats.value = { total: 0, admins: 0, healthWorkers: 0, parents: 0 }
   }
 }
 
@@ -541,41 +598,108 @@ const fetchUsers = async () => {
   loading.value = true
   try {
     const role = activeFilter.value !== 'all' ? activeFilter.value : ''
-    // When "Show Archived" is ON, request only archived users.
-    // Otherwise, request all non-archived (active + inactive).
     const status = showDeleted.value ? 'archived' : 'not_archived'
-    const { users: rows, pagination } = await apiListUsers({
-      page: currentPage.value,
-      limit: itemsPerPage,
-      search: searchQuery.value,
-      role,
-      status
-    })
-    const mapped = rows.map(u => {
-      const rawLast = u.lastLogin || u.last_login || null
-      return {
-        id: u.id,
+    
+    // Try online first
+    if (!isOffline.value) {
+      try {
+        const { users: rows, pagination } = await apiListUsers({
+          page: currentPage.value,
+          limit: itemsPerPage,
+          search: searchQuery.value,
+          role,
+          status
+        })
+        
+        const mapped = rows.map(u => {
+          const rawLast = u.lastLogin || u.last_login || null
+          return {
+            id: u.id,
+            name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
+            username: u.username,
+            role: mapBackendRoleToOption(u.role),
+            hwType: u.hw_type || '',
+            status: u.status || 'active',
+            lastLogin: rawLast,
+            lastLoginDisplay: rawLast ? formatDatePH(rawLast) : 'Never'
+          }
+        })
+        
+        // Sort so inactive users appear at the end
+        const weight = (s) => (String(s).toLowerCase() === 'inactive' ? 1 : 0)
+        users.value = mapped.sort((a, b) => {
+          const wa = weight(a.status), wb = weight(b.status)
+          if (wa !== wb) return wa - wb
+          const ia = Number(a.id) || 0
+          const ib = Number(b.id) || 0
+          return ia - ib
+        })
+        
+        totalItems.value = pagination?.totalItems || rows.length
+        totalPages.value = pagination?.totalPages || Math.ceil(totalItems.value / itemsPerPage)
+        return
+      } catch (onlineError) {
+        console.warn('Online user fetch failed, trying offline:', onlineError.message)
+      }
+    }
+
+    // Fallback to offline
+    console.log('👥 Fetching users from cached data')
+    let mappedRole = role
+    if (role === 'admin') mappedRole = 'Admin'
+    else if (role === 'health_worker') mappedRole = 'Health Staff'
+    else if (role === 'parent') mappedRole = 'Parent'
+    
+    const params = {
+      role: mappedRole || undefined,
+      search: searchQuery.value || undefined
+    }
+    
+    const result = await fetchUsersOffline(params)
+    
+    if (result.fromCache && result.data?.users) {
+      const cachedUsers = result.data.users
+      
+      // Additional safety filter for deleted users (should not be needed if prefetch works correctly)
+      const safeFilteredUsers = cachedUsers.filter(u => !u.is_deleted)
+      
+      // Apply status filter to cached data
+      let filteredUsers = safeFilteredUsers
+      if (status === 'archived') {
+        filteredUsers = safeFilteredUsers.filter(u => u.status === 'archived' || u.is_deleted)
+      } else {
+        filteredUsers = safeFilteredUsers.filter(u => !u.is_deleted && u.status !== 'archived')
+      }
+      
+      // Apply search filter
+      if (params.search) {
+        filteredUsers = filteredUsers.filter(u =>
+          u.name?.toLowerCase().includes(params.search.toLowerCase()) ||
+          u.username?.toLowerCase().includes(params.search.toLowerCase())
+        )
+      }
+      
+      // Apply pagination
+      const startIndex = (currentPage.value - 1) * itemsPerPage
+      const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
+      
+      const mapped = paginatedUsers.map(u => ({
+        id: u.user_id || u.id,
         name: u.name || [u.firstname, u.surname].filter(Boolean).join(' '),
         username: u.username,
         role: mapBackendRoleToOption(u.role),
         hwType: u.hw_type || '',
         status: u.status || 'active',
-        lastLogin: rawLast,
-        // Frontend-controlled PH timezone display for last login
-        lastLoginDisplay: rawLast ? formatDatePH(rawLast) : 'Never'
-      }
-    })
-    // Sort so inactive users appear at the end (but remain visible), preserving numeric id order otherwise
-    const weight = (s) => (String(s).toLowerCase() === 'inactive' ? 1 : 0)
-    users.value = mapped.sort((a, b) => {
-      const wa = weight(a.status), wb = weight(b.status)
-      if (wa !== wb) return wa - wb
-      const ia = Number(a.id) || 0
-      const ib = Number(b.id) || 0
-      return ia - ib
-    })
-    totalItems.value = pagination?.totalItems || rows.length
-    totalPages.value = pagination?.totalPages || Math.ceil(totalItems.value / itemsPerPage)
+        lastLogin: u.last_login || null,
+        lastLoginDisplay: u.last_login ? formatDatePH(u.last_login) : 'Never'
+      }))
+      
+      users.value = mapped
+      totalItems.value = filteredUsers.length
+      totalPages.value = Math.ceil(filteredUsers.length / itemsPerPage)
+    } else {
+      throw new Error('Failed to fetch users from cache')
+    }
   } catch (error) {
     console.error('Error fetching users:', error)
     users.value = []
@@ -588,6 +712,14 @@ const fetchUsers = async () => {
 
 const fetchRecentActivity = async () => {
   try {
+    if (isOffline.value) {
+      // Activity logs are not cached offline
+      console.log('📋 Activity logs not available in offline mode')
+      recentActivity.value = []
+      return
+    }
+
+    // Online mode - fetch from API
     const { data } = await api.get('/activity-logs', { params: { page: 1, limit: 7 } })
     recentActivity.value = (data.items || []).map(r => ({
       id: r.log_id || r.id,
@@ -615,6 +747,33 @@ const handleSearch = () => {
   fetchUsers()
 }
 
+const handleShowDeletedChange = () => {
+  if (isOffline.value) {
+    addToast({ 
+      title: 'Offline Mode', 
+      message: 'Cannot toggle deleted users view while offline.', 
+      type: 'warning' 
+    })
+    // Reset the checkbox
+    showDeleted.value = false
+    return
+  }
+  fetchUsers()
+}
+
+const handleAddUserClick = () => {
+  if (isOffline.value) {
+    addToast({ 
+      title: 'Offline Mode', 
+      message: 'Cannot add new users while offline. Please reconnect to continue.', 
+      type: 'warning' 
+    })
+    return
+  }
+  // Navigate to add user page
+  router.push('/admin/users/add')
+}
+
 const goToPage = (page) => {
   if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page
@@ -626,6 +785,10 @@ const goToPage = (page) => {
 
 const confirmDeleteUser = (user) => {
   // Prevent deletes with clear feedback rather than disabling the button
+  if (isOffline.value) {
+    addToast({ title: 'Offline Mode', message: 'Cannot delete users while offline.', type: 'warning' })
+    return
+  }
   if (isAdminRole(user.role)) {
     addToast({ title: 'Not allowed', message: 'Admin accounts cannot be deleted.', type: 'error' })
     return
@@ -693,6 +856,10 @@ const updatePassword = async () => {
 }
 
 const openRestoreModal = (user) => {
+  if (isOffline.value) {
+    addToast({ title: 'Offline Mode', message: 'Cannot restore users while offline.', type: 'warning' })
+    return
+  }
   userToRestore.value = user
   showRestoreModal.value = true
 }

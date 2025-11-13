@@ -28,11 +28,15 @@
           </h1>
           <p class="text-muted mb-0">
             Monitor system activity and user actions
+            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+              <i class="bi bi-wifi-off me-1" />Offline Mode
+            </span>
           </p>
         </div>
         <button
           class="btn btn-outline-danger"
-          @click="showClearModal = true"
+          :disabled="isOffline"
+          @click="isOffline ? showOfflineToast() : showClearModal = true"
         >
           <i class="bi bi-trash me-2" />Clear Old Logs
         </button>
@@ -142,7 +146,8 @@
               <select
                 v-model="filters.dateRange"
                 class="form-select"
-                @change="applyFilters"
+                :disabled="isOffline"
+                @change="isOffline ? null : applyFilters()"
               >
                 <option value="today">
                   Today
@@ -166,14 +171,14 @@
               class="col-md-3"
             >
               <label class="form-label">From Date:</label>
-              <DateInput v-model="filters.fromDate" />
+              <DateInput v-model="filters.fromDate" :disabled="isOffline" />
             </div>
             <div
               v-if="filters.dateRange === 'custom'"
               class="col-md-3"
             >
               <label class="form-label">To Date:</label>
-              <DateInput v-model="filters.toDate" />
+              <DateInput v-model="filters.toDate" :disabled="isOffline" />
             </div>
           </div>
         </div>
@@ -194,12 +199,14 @@
                 v-model="searchQuery" 
                 type="text" 
                 class="form-control"
+                :disabled="isOffline"
                 placeholder="Search by user, action, or IP address..."
-                @input="debouncedSearch"
+                @input="isOffline ? null : debouncedSearch()"
               >
               <button
                 class="btn btn-outline-primary"
                 type="button"
+                :disabled="isOffline"
               >
                 <i class="bi bi-search" />
               </button>
@@ -208,7 +215,8 @@
               v-model="filters.actionType"
               class="form-select"
               style="width: 150px;"
-              @change="applyFilters"
+              :disabled="isOffline"
+              @change="isOffline ? null : applyFilters()"
             >
               <option value="">
                 All Actions
@@ -236,7 +244,8 @@
               v-model="filters.userRole"
               class="form-select"
               style="width: 150px;"
-              @change="applyFilters"
+              :disabled="isOffline"
+              @change="isOffline ? null : applyFilters()"
             >
               <option value="">
                 All Roles
@@ -257,13 +266,15 @@
             <button
               class="btn btn-outline-primary"
               title="Refresh"
-              @click="refreshLogs"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : refreshLogs()"
             >
               <i class="bi bi-arrow-clockwise" />
             </button>
             <button
               class="btn btn-outline-secondary"
-              @click="exportLogs"
+              :disabled="isOffline"
+              @click="isOffline ? showOfflineToast() : exportLogs()"
             >
               <i class="bi bi-download me-1" />Export
             </button>
@@ -415,6 +426,7 @@
                 <select
                   v-model="clearLogsAge"
                   class="form-select"
+                  :disabled="isOffline"
                 >
                   <option value="30">
                     30 days
@@ -448,8 +460,8 @@
               <button
                 type="button"
                 class="btn btn-danger"
-                :disabled="clearing"
-                @click="clearOldLogs"
+                :disabled="isOffline || clearing"
+                @click="isOffline ? showOfflineToast() : clearOldLogs()"
               >
                 <span
                   v-if="clearing"
@@ -484,6 +496,7 @@ import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import { formatPHDate, formatPHDateTime, nowPH, getPHDateKey } from '@/utils/dateUtils'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 // Reactive data
 const loading = ref(true)
@@ -509,6 +522,17 @@ const filters = ref({
   actionType: '',
   userRole: ''
 })
+
+const { isOffline } = useOfflineAdmin()
+
+// Show offline toast message
+const showOfflineToast = () => {
+  addToast({
+    title: 'Offline Mode',
+    message: 'This feature is not available while offline. Please check your internet connection.',
+    type: 'warning'
+  })
+}
 
 // Computed properties
 

@@ -101,6 +101,7 @@
               <button
                 v-if="form.status === 'DRAFT'"
                 class="btn btn-sm btn-outline-primary"
+                :disabled="isOffline"
                 @click="addItemRow"
               >
                 <i class="bi bi-plus" /> Add Item
@@ -271,6 +272,7 @@
                       <button
                         v-if="form.status === 'DRAFT'"
                         class="btn btn-sm btn-outline-danger"
+                        :disabled="isOffline"
                         @click="it.is_deleted = true"
                       >
                         <i class="bi bi-trash" />
@@ -309,6 +311,7 @@
             <button
               v-if="form.status === 'DRAFT' && !isNew"
               class="btn btn-danger"
+              :disabled="isOffline"
               @click="openCancelConfirm"
             >
               Cancel
@@ -316,6 +319,7 @@
             <button
               v-if="form.status === 'DRAFT' && !isNew"
               class="btn btn-primary"
+              :disabled="isOffline"
               @click="openCompleteConfirm"
             >
               Complete
@@ -323,7 +327,7 @@
             <button
               v-if="isNew || form.status === 'DRAFT'"
               class="btn btn-success"
-              :disabled="saving"
+              :disabled="saving || isOffline"
               @click="save"
             >
               <span
@@ -577,6 +581,7 @@ import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
 // Helper function to get today's date in Philippine timezone
 const getTodayInPH = () => {
@@ -621,6 +626,7 @@ const tomorrowPH = computed(() => getTomorrowInPH());
 const route = useRoute()
 const router = useRouter()
 const { addToast } = useToast()
+const { isOffline, fetchReceivingReportById } = useOfflineAdmin()
 
 const id = computed(() => route.params.id)
 const isNew = computed(() => !id.value)
@@ -833,26 +839,28 @@ function selectVaccine(it, vaccine) {
 async function fetchReport() {
   if (!id.value) return
   try {
-    const { data } = await api.get(`/receiving-reports/${id.value}`)
-    form.value = data.data.header
-    const arr = data.data.items || []
-    reportItemsCache.value = arr
-    items.value = arr.map(x => ({
-      item_id: x.item_id,
-      vaccine_id: x.vaccine_id,
-      vaccine_search: x.vaccine_id ? `${x.antigen_name || x.vaccinemaster?.antigen_name || ''} (${x.brand_name || x.vaccinemaster?.brand_name || ''})` : '',
-      dropdownOpen: false,
-      inputRef: null,
-      dropdownPosition: {},
-      antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
-      brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
-      manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
-      lot_number: x.lot_number,
-      expiration_date: x.expiration_date,
-      quantity_received: Number(x.quantity_received) || 0,
-      storage_location: x.storage_location,
-      is_deleted: false
-    }))
+    const result = await fetchReceivingReportById(id.value)
+    if (result) {
+      form.value = result.header
+      const arr = result.items || []
+      reportItemsCache.value = arr
+      items.value = arr.map(x => ({
+        item_id: x.item_id,
+        vaccine_id: x.vaccine_id,
+        vaccine_search: x.vaccine_id ? `${x.antigen_name || x.vaccinemaster?.antigen_name || ''} (${x.brand_name || x.vaccinemaster?.brand_name || ''})` : '',
+        dropdownOpen: false,
+        inputRef: null,
+        dropdownPosition: {},
+        antigen_name: x.antigen_name || x.vaccinemaster?.antigen_name || '',
+        brand_name: x.brand_name || x.vaccinemaster?.brand_name || '',
+        manufacturer: x.manufacturer || x.vaccinemaster?.manufacturer || '',
+        lot_number: x.lot_number,
+        expiration_date: x.expiration_date,
+        quantity_received: Number(x.quantity_received) || 0,
+        storage_location: x.storage_location,
+        is_deleted: false
+      }))
+    }
   } catch (e) {
     console.error('Failed to load report', e)
     addToast({ title: 'Error', message: 'Failed to load report', type: 'error' })

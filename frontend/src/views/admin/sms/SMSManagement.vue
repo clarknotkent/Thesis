@@ -21,13 +21,15 @@
         </ol>
       </nav>
 
-      <!-- Header -->
       <div class="mb-3">
         <h2 class="mb-1">
           <i class="bi bi-chat-dots me-2" />SMS Management
         </h2>
         <p class="text-muted mb-0">
           Manage vaccination reminder messages and auto-send settings
+          <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+            <i class="bi bi-wifi-off me-1" />Offline Mode
+          </span>
         </p>
       </div>
 
@@ -144,8 +146,9 @@
                 <li class="nav-item">
                   <button 
                     class="nav-link" 
-                    :class="{ active: activeTab === 'logs' }"
-                    @click="activeTab = 'logs'"
+                    :class="{ active: activeTab === 'logs', disabled: isOffline }"
+                    :disabled="isOffline"
+                    @click="isOffline ? showOfflineToast() : activeTab = 'logs'"
                   >
                     <i class="bi bi-list-ul me-2" />Message Logs
                   </button>
@@ -153,8 +156,9 @@
                 <li class="nav-item">
                   <button 
                     class="nav-link" 
-                    :class="{ active: activeTab === 'templates' }"
-                    @click="activeTab = 'templates'"
+                    :class="{ active: activeTab === 'templates', disabled: isOffline }"
+                    :disabled="isOffline"
+                    @click="isOffline ? showOfflineToast() : activeTab = 'templates'"
                   >
                     <i class="bi bi-file-text me-2" />Message Templates
                   </button>
@@ -162,8 +166,9 @@
                 <li class="nav-item">
                   <button 
                     class="nav-link" 
-                    :class="{ active: activeTab === 'settings' }"
-                    @click="activeTab = 'settings'"
+                    :class="{ active: activeTab === 'settings', disabled: isOffline }"
+                    :disabled="isOffline"
+                    @click="isOffline ? showOfflineToast() : activeTab = 'settings'"
                   >
                     <i class="bi bi-gear me-2" />Auto-Send Settings
                   </button>
@@ -208,15 +213,27 @@ import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import MessageLogs from '@/features/admin/sms/components/MessageLogs.vue'
 import MessageTemplates from '@/features/admin/sms/components/MessageTemplates.vue'
 import AutoSendSettings from '@/features/admin/sms/components/AutoSendSettings.vue'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { useToast } from '@/composables/useToast'
 
 // State
 const activeTab = ref('logs')
 const autoSendEnabled = ref(false)
+const { isOffline } = useOfflineAdmin()
+const { addToast } = useToast()
 
 // NOTE: SMS management data is managed through child components
 // - SMSLogs component handles log fetching and display
 // - AutoSendSettings component handles guardian auto-send preferences
 // This parent component serves as a tab container and state coordinator
+
+const showOfflineToast = () => {
+  addToast({
+    title: 'Offline Mode',
+    message: 'SMS management is not available while offline',
+    type: 'warning'
+  })
+}
 </script>
 
 <style scoped>
