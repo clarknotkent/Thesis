@@ -655,39 +655,60 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
 
-    // Try offline first if available
-    if (isOffline.value) {
+    // Always try offline cache first, regardless of online status
+    try {
       const patientData = await fetchPatientById(props.patientId)
-      if (patientData && patientData.nextScheduledVaccinations) {
-        schedules.value = Array.isArray(patientData.nextScheduledVaccinations) ? patientData.nextScheduledVaccinations : []
+      if (patientData && patientData.nextScheduledVaccinations && Array.isArray(patientData.nextScheduledVaccinations) && patientData.nextScheduledVaccinations.length > 0) {
+        schedules.value = patientData.nextScheduledVaccinations
+        console.log('✅ Loaded scheduled vaccinations from cache:', patientData.nextScheduledVaccinations.length, 'schedules')
         return
       }
+    } catch (cacheError) {
+      console.warn('⚠️ Cache lookup failed:', cacheError.message)
     }
 
-    // Fallback to API
-    const response = await api.get(`/patients/${props.patientId}`)
+    // If cache is empty or failed, try API (only if we think we're online)
+    if (!isOffline.value) {
+      const response = await api.get(`/patients/${props.patientId}`)
 
-    const pd = response.data?.data || response.data || {}
-    // Try different possible field names for scheduled vaccinations
-    let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
+      const pd = response.data?.data || response.data || {}
+      // Try different possible field names for scheduled vaccinations
+      let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
 
-    // Some APIs wrap in an object
-    if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) {
-      // Common wrappers: { items: [...] } or { data: [...] }
-      sched = sched.items || sched.data || []
-    }
+      // Some APIs wrap in an object
+      if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) {
+        // Common wrappers: { items: [...] } or { data: [...] }
+        sched = sched.items || sched.data || []
+      }
 
-    // Fallback: query a dedicated endpoint if exists (optional)
-    if (!Array.isArray(sched)) sched = []
-    schedules.value = sched
-    
-    console.log('📅 [ScheduledVaccinations] Raw schedule data:', schedules.value)
-    if (schedules.value.length > 0) {
-      console.log('📅 [ScheduledVaccinations] First schedule item fields:', Object.keys(schedules.value[0]))
-      console.log('📅 [ScheduledVaccinations] First schedule item:', schedules.value[0])
+      // Fallback: query a dedicated endpoint if exists (optional)
+      if (!Array.isArray(sched)) sched = []
+      schedules.value = sched
+      
+      console.log('📅 [ScheduledVaccinations] Loaded from API:', schedules.value.length, 'schedules')
+    } else {
+      // We're offline and cache was empty
+      schedules.value = []
+      console.log('📴 Offline and no cached scheduled vaccinations available')
     }
   } catch (err) {
     console.error('Error fetching scheduled vaccinations:', err)
+    
+    // If API call failed, try cache one more time as fallback
+    if (err.code === 'ERR_NETWORK' || err.code === 'ERR_INTERNET_DISCONNECTED') {
+      try {
+        console.log('🌐 Network error, trying cache as fallback...')
+        const patientData = await fetchPatientById(props.patientId)
+        if (patientData && patientData.nextScheduledVaccinations) {
+          schedules.value = Array.isArray(patientData.nextScheduledVaccinations) ? patientData.nextScheduledVaccinations : []
+          console.log('✅ Recovered scheduled vaccinations from cache after network error')
+          return
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Cache fallback also failed:', cacheError.message)
+      }
+    }
+    
     schedules.value = []
   } finally {
     loading.value = false
