@@ -8,7 +8,10 @@ import { registerUser,
   refreshToken,
   changeCurrentPassword,
   debugCurrentUserUUID,
-  getCurrentUserProfile } from '../controllers/authController.js';
+  getCurrentUserProfile,
+  requestPasswordReset,
+  verifyResetCode,
+  resetPasswordWithCode } from '../controllers/authController.js';
 import { validateToken, optionalAuthenticate, authenticateRequest } from '../middlewares/authMiddleware.js';
 
 // POST /api/auth/register - User registration
@@ -38,5 +41,14 @@ router.get('/debug/uuid', authenticateRequest, debugCurrentUserUUID);
 
 // GET /api/auth/profile - Get current user's profile
 router.get('/profile', authenticateRequest, getCurrentUserProfile);
+
+// POST /api/auth/forgot-password - Request password reset code via SMS
+router.post('/forgot-password', requestPasswordReset);
+
+// POST /api/auth/verify-reset-code - Verify the reset code
+router.post('/verify-reset-code', verifyResetCode);
+
+// POST /api/auth/reset-password - Reset password with verified code
+router.post('/reset-password', resetPasswordWithCode);
 
 export default router;

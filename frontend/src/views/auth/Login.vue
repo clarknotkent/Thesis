@@ -32,19 +32,38 @@
                     >
                   </div>
 
-                  <div class="mb-4">
+                  <div class="mb-3">
                     <label
                       for="password"
                       class="form-label"
                     >Password</label>
-                    <input
-                      id="password"
-                      v-model="form.password"
-                      type="password"
-                      class="form-control form-control-lg"
-                      placeholder="Enter your password"
-                      required
+                    <div class="position-relative">
+                      <input
+                        id="password"
+                        v-model="form.password"
+                        :type="showPassword ? 'text' : 'password'"
+                        class="form-control form-control-lg pe-5"
+                        placeholder="Enter your password"
+                        required
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+                        style="border: none; background: transparent; padding-right: 10px;"
+                        @click="showPassword = !showPassword"
+                      >
+                        <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="text-end mb-4">
+                    <router-link
+                      to="/forgot-password"
+                      class="text-primary text-decoration-none small"
                     >
+                      <i class="bi bi-key me-1" />Forgot Password?
+                    </router-link>
                   </div>
 
                   <button
@@ -117,6 +136,7 @@ const form = reactive({
 // Component state
 const loading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
 
 // Handle form submission
 const handleLogin = async () => {

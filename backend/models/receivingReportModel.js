@@ -65,8 +65,7 @@ receivingReportModel.createReport = async (payload, userId) => {
   // Validate delivery date - should not be in the future
   if (payload.delivery_date) {
     const deliveryDate = new Date(payload.delivery_date);
-    deliveryDate.setHours(0, 0, 0, 0); // Normalize to start of day
-    const today = getTodayPH();
+    const today = new Date(); // Current date/time
     if (deliveryDate > today) {
       throw new Error('Delivery date cannot be in the future');
     }
@@ -214,7 +213,8 @@ receivingReportModel.addItem = async (reportId, item, _userId) => {
   // Validate expiration date - should not be in the past (can be today or future)
   if (item.expiration_date) {
     const expirationDate = new Date(item.expiration_date);
-    const today = getTodayPH();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today for comparison
     if (expirationDate <= today) {
       throw new Error('Expiration date must be in the future');
     }

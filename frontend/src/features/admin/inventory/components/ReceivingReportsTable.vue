@@ -61,6 +61,7 @@
             <tr>
               <th>Report #</th>
               <th>Delivery Date</th>
+              <th>Time</th>
               <th>Delivered By</th>
               <th>Received By</th>
               <th>Total Items</th>
@@ -80,6 +81,7 @@
                 {{ r.report_number }}
               </td>
               <td>{{ formatDate(r.delivery_date) }}</td>
+              <td>{{ formatTime(r.delivery_date) }}</td>
               <td>{{ r.delivered_by }}</td>
               <td>{{ r.received_by_name || '-' }}</td>
               <td>{{ r.total_items || 0 }}</td>
@@ -117,7 +119,7 @@
             </tr>
             <tr v-if="(receivingList.items || []).length === 0">
               <td
-                colspan="8"
+                colspan="9"
                 class="text-center text-muted py-4"
               >
                 No receiving reports found
@@ -149,6 +151,10 @@ defineProps({
     default: ''
   },
   formatDate: {
+    type: Function,
+    required: true
+  },
+  formatTime: {
     type: Function,
     required: true
   },

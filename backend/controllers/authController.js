@@ -12,6 +12,7 @@ import guardianModel from '../models/guardianModel.js';
 import { logActivity } from '../models/activityLogger.js';
 import { normalizeToPlus63Mobile } from '../utils/contact.js';
 import sb from '../db.js';
+import smsService from '../services/smsService.js';
 const getAuthClient = () => {
   const url = process.env.SUPABASE_URL;
   // Prefer service role for server-side operations; fallback to generic key, then anon last
@@ -600,6 +601,222 @@ const changeCurrentPassword = async (req, res) => {
   }
 };
 
+// Store for password reset codes (in production, use Redis or database)
+const resetCodes = new Map(); // Map<identifier, { code, expiresAt, userId }>
+
+// Request password reset - send 6-digit code via SMS
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier) {
+      return res.status(400).json({ success: false, message: 'Email, username, or phone number is required' });
+    }
+
+    console.log('[requestPasswordReset] Looking up user:', identifier);
+
+    // Normalize phone number if it looks like a phone number
+    let normalizedPhone = null;
+    if (/^[0-9+\s()-]+$/.test(identifier)) {
+      normalizedPhone = smsService.formatPhoneNumber(identifier);
+      console.log('[requestPasswordReset] Normalized phone:', normalizedPhone);
+    }
+
+    // Look up user by email, username, or contact_number
+    // Also try normalized phone format if applicable
+    let query = supabase
+      .from('users')
+      .select('user_id, username, email, contact_number, firstname, surname');
+
+    if (normalizedPhone) {
+      // Search by email, username, contact_number, or normalized phone
+      query = query.or(`email.eq.${identifier},username.eq.${identifier},contact_number.eq.${identifier},contact_number.eq.${normalizedPhone}`);
+    } else {
+      query = query.or(`email.eq.${identifier},username.eq.${identifier},contact_number.eq.${identifier}`);
+    }
+
+    const { data: users, error } = await query.limit(1);
+
+    if (error) {
+      console.error('[requestPasswordReset] Database error:', error);
+      return res.status(500).json({ success: false, message: 'Error looking up user' });
+    }
+
+    console.log('[requestPasswordReset] Query result - users found:', users?.length || 0);
+
+    if (!users || users.length === 0) {
+      console.log('[requestPasswordReset] No user found with identifier:', identifier);
+      // Don't reveal whether user exists for security
+      return res.status(200).json({ 
+        success: true, 
+        message: 'If an account exists with that information, a reset code has been sent.' 
+      });
+    }
+
+    const user = users[0];
+    console.log('[requestPasswordReset] User found:', { userId: user.user_id, username: user.username, hasContact: !!user.contact_number });
+
+    // Check if user has a valid contact number
+    if (!user.contact_number) {
+      console.log('[requestPasswordReset] User has no contact number:', user.username);
+      // Don't reveal this for security, but log it
+      return res.status(200).json({ 
+        success: true, 
+        message: 'If an account exists with that information, a reset code has been sent.' 
+      });
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    // Store the code
+    resetCodes.set(identifier.toLowerCase(), {
+      code,
+      expiresAt,
+      userId: user.user_id
+    });
+
+    // Format phone number and send SMS
+    const phoneNumber = smsService.formatPhoneNumber(user.contact_number);
+    const message = `This is your code for resetting your password: ${code}\n\nThis code will expire in 15 minutes.\n\n- Barangay Health Center`;
+
+    console.log('[requestPasswordReset] Sending SMS to:', phoneNumber);
+
+    const smsResult = await smsService.sendSMS(phoneNumber, message);
+
+    if (!smsResult.success) {
+      console.error('[requestPasswordReset] SMS sending failed:', smsResult.error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to send reset code. Please check your phone number.' 
+      });
+    }
+
+    console.log('[requestPasswordReset] Reset code sent successfully to:', phoneNumber);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Reset code sent to your registered phone number.',
+      phoneHint: phoneNumber.slice(0, 6) + '****' + phoneNumber.slice(-2) // Show partial number
+    });
+
+  } catch (error) {
+    console.error('[requestPasswordReset] Error:', error);
+    res.status(500).json({ success: false, message: 'Error processing password reset request' });
+  }
+};
+
+// Verify reset code
+const verifyResetCode = async (req, res) => {
+  try {
+    const { identifier, code } = req.body;
+
+    if (!identifier || !code) {
+      return res.status(400).json({ success: false, message: 'Identifier and code are required' });
+    }
+
+    const resetData = resetCodes.get(identifier.toLowerCase());
+
+    if (!resetData) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset code' });
+    }
+
+    if (Date.now() > resetData.expiresAt) {
+      resetCodes.delete(identifier.toLowerCase());
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    if (resetData.code !== code) {
+      return res.status(400).json({ success: false, message: 'Invalid reset code' });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Code verified successfully' 
+    });
+
+  } catch (error) {
+    console.error('[verifyResetCode] Error:', error);
+    res.status(500).json({ success: false, message: 'Error verifying reset code' });
+  }
+};
+
+// Reset password with verified code
+const resetPasswordWithCode = async (req, res) => {
+  try {
+    const { identifier, code, newPassword } = req.body;
+
+    if (!identifier || !code || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Identifier, code, and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+    }
+
+    const resetData = resetCodes.get(identifier.toLowerCase());
+
+    if (!resetData) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset code' });
+    }
+
+    if (Date.now() > resetData.expiresAt) {
+      resetCodes.delete(identifier.toLowerCase());
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    if (resetData.code !== code) {
+      return res.status(400).json({ success: false, message: 'Invalid reset code' });
+    }
+
+    // Get user's Supabase auth ID
+    const { data: mapping, error: mappingError } = await supabase
+      .from('user_mapping')
+      .select('uuid')
+      .eq('user_id', resetData.userId)
+      .single();
+
+    if (mappingError || !mapping) {
+      console.error('[resetPasswordWithCode] Mapping error:', mappingError);
+      return res.status(500).json({ success: false, message: 'Error finding user mapping' });
+    }
+
+    // Update password in Supabase Auth
+    const authClient = getAuthClient();
+    const { error: updateError } = await authClient.auth.admin.updateUserById(
+      mapping.uuid,
+      { password: newPassword }
+    );
+
+    if (updateError) {
+      console.error('[resetPasswordWithCode] Password update error:', updateError);
+      return res.status(500).json({ success: false, message: 'Error updating password' });
+    }
+
+    // Delete the used code
+    resetCodes.delete(identifier.toLowerCase());
+
+    // Log activity
+    await logActivity({
+      action_type: ACTIVITY.USER.PASSWORD_RESET,
+      description: 'Password reset via SMS verification code',
+      user_id: resetData.userId
+    });
+
+    console.log('[resetPasswordWithCode] Password reset successfully for user:', resetData.userId);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Password reset successfully. You can now login with your new password.' 
+    });
+
+  } catch (error) {
+    console.error('[resetPasswordWithCode] Error:', error);
+    res.status(500).json({ success: false, message: 'Error resetting password' });
+  }
+};
+
 export {
   registerUser,
   loginUser,
@@ -609,5 +826,8 @@ export {
   refreshToken,
   debugCurrentUserUUID,
   changeCurrentPassword,
-  getCurrentUserProfile
+  getCurrentUserProfile,
+  requestPasswordReset,
+  verifyResetCode,
+  resetPasswordWithCode
 };

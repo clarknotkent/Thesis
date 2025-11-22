@@ -145,6 +145,9 @@
               Delivery Date
             </th>
             <th class="text-center">
+              Time
+            </th>
+            <th class="text-center">
               Delivered By
             </th>
             <th class="text-center">
@@ -174,6 +177,9 @@
             </td>
             <td class="text-center align-middle">
               {{ formatDate(report.delivery_date) }}
+            </td>
+            <td class="text-center align-middle">
+              {{ formatTime(report.delivery_date) }}
             </td>
             <td class="text-center align-middle">
               {{ report.delivered_by || '—' }}
@@ -404,6 +410,22 @@ const formatDate = (dateString) => {
   if (!dateString) return '—'
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
+}
+
+const formatTime = (dateString) => {
+  if (!dateString) return '—'
+  const dateStr = String(dateString)
+  // Extract time directly from ISO string to avoid timezone conversion
+  if (dateStr.includes('T')) {
+    const timePart = dateStr.split('T')[1]
+    const [hours, minutes] = timePart.split(':')
+    // Convert to 12-hour format
+    const hour = parseInt(hours, 10)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${hour12}:${minutes} ${ampm}`
+  }
+  return '—'
 }
 
 const getStatusBadgeClass = (status) => {
