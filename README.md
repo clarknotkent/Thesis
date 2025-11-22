@@ -2,8 +2,8 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.13  
-> **Last Updated:** November 22, 2025  
+> **📌 Current Status:** Active Development - Version 4.14  
+> **Last Updated:** November 23, 2025  
 > **Branch:** system-prototype-v4  
 >
 > **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history with all dated changes and improvements.
@@ -13,6 +13,7 @@ A comprehensive web-based system for managing immunization records, vaccine inve
 ## Table of Contents
 
 - [Overview](#overview)
+- [What's New](#whats-new)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
@@ -39,6 +40,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - **Vaccination Tracking**: Complete immunization history with scheduled and completed vaccines
 - **Inventory Management**: Real-time vaccine stock levels, receiving reports, and expiry tracking
 - **SMS Notifications**: Automated reminders and updates via PhilSMS integration
+- **Web Push Notifications**: Real-time browser notifications even when app is closed
 - **Password Recovery**: SMS-based password reset with secure code verification
 - **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs
 - **Multi-User Access**: Role-based portals for administrators, health workers, and parents
@@ -48,7 +50,68 @@ The Immunization Management System is designed to digitize and streamline the im
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.13 (November 22, 2025)
+- Version: 4.14 (November 23, 2025)
+
+---
+
+## What's New
+
+### 🔔 Web Push Notifications (November 23, 2025)
+
+Complete browser push notification system that delivers real-time updates to users even when they're not actively using the app.
+
+**Key Features:**
+- **Browser Push API Integration**: Custom service worker with Workbox for notification delivery
+- **User-Specific Permission Tracking**: Per-user localStorage keys prevent permission modal spam
+- **Automatic Subscription Management**: Re-subscribes users on login to maintain proper user association
+- **VAPID Authentication**: Secure push notifications from verified source
+- **Expired Subscription Cleanup**: Automatically removes invalid subscriptions (410/404 errors)
+- **Permission Request Modal**: User-friendly UI with enable/dismiss actions
+- **Multi-User Support**: User switching updates subscription with correct user_id
+
+**How It Works:**
+1. Service worker registered on page load
+2. Permission modal appears after 3 seconds (once per user)
+3. User enables → Browser shows native permission prompt
+4. Subscription saved to database with user_id
+5. Notifications delivered even when app closed
+6. User switching automatically updates subscription
+
+**Technical Details:**
+- VitePWA with `injectManifest` strategy for custom service worker
+- Push subscriptions stored in PostgreSQL database
+- VAPID keys configured via environment variables
+- Chrome/Edge: ~60-90 day expiration, Firefox: ~30-60 days
+- Automatic cleanup logs: "Removed X expired subscriptions"
+
+### 🔐 Password Recovery System (November 22, 2025)
+
+SMS-based password reset allowing users to recover accounts without admin intervention.
+
+**Key Features:**
+- **6-Digit Recovery Codes**: Secure random codes sent via PhilSMS
+- **15-Minute Expiration**: Time-limited codes prevent replay attacks
+- **Argon2 Hash Protection**: Recovery codes hashed before database storage
+- **Single-Use Codes**: Codes deleted immediately after successful reset
+- **Email Validation**: Prevents typos with client-side format checking
+- **SMS Delivery**: Codes sent to user's registered mobile number
+
+**Security Measures:**
+- Rate limiting prevents brute force attempts
+- Hashed codes can't be read even with database access
+- Expired codes automatically rejected
+- Used codes immediately deleted from database
+
+### ⏰ Receiving Report Time Tracking (November 22, 2025)
+
+Enhanced receiving reports with comprehensive time tracking for vaccine deliveries.
+
+**Key Improvements:**
+- **TIMESTAMPTZ Support**: Database stores timezone-aware timestamps
+- **Philippine Timezone**: Automatic normalization to Asia/Manila (UTC+8)
+- **Time Display**: Shows formatted time alongside date (e.g., "2:30 PM")
+- **Receiving Time Tracking**: Records exact delivery acceptance time
+- **Report Generation**: Updated SQL queries with TIMESTAMPTZ columns
 - Status: Active Development
 
 ---

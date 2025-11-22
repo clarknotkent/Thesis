@@ -17,6 +17,9 @@ onMounted(async () => {
   const id = route.params.id
   // If not authenticated, send to login with redirect back
   if (!isAuthenticated()) {
+    console.log('🔒 [PatientRoute] Not authenticated, storing redirect and sending to login')
+    // Store the intended destination in sessionStorage for better persistence
+    sessionStorage.setItem('postLoginRedirect', route.fullPath)
     return router.replace({ path: '/auth/login', query: { redirect: route.fullPath } })
   }
 
@@ -70,6 +73,8 @@ onMounted(async () => {
   // If still unknown, force login (lets guard rebuild session)
   if (!normalized || !knownRoles.includes(normalized)) {
     try { console.warn('[PatientRoute] Unknown or missing role after recovery; redirecting to login') } catch {}
+    // Store the intended destination in sessionStorage for better persistence
+    sessionStorage.setItem('postLoginRedirect', route.fullPath)
     return router.replace({ path: '/auth/login', query: { redirect: route.fullPath } })
   }
 

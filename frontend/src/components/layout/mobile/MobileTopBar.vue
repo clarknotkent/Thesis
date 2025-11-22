@@ -52,6 +52,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 defineProps({
   userRole: {
@@ -67,6 +68,9 @@ defineProps({
 // Online status
 const { isOnline } = useOnlineStatus()
 
+// Notification store
+const notificationStore = useNotificationStore()
+
 // Unread counters
 const notificationCount = ref(0)
 const messageCount = ref(0)
@@ -75,25 +79,9 @@ let pollInterval = null
 
 const fetchCounts = async () => {
   try {
-    // Notifications: ask for unread only if backend supports it
-    try {
-      const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
-      const nRows = nResp?.data?.data || nResp?.data || []
-      // If backend returns array
-      if (Array.isArray(nRows)) {
-        notificationCount.value = nRows.length
-      } else if (typeof nResp?.data?.count === 'number') {
-        notificationCount.value = nResp.data.count
-      } else {
-        // Fallback: request all and count unread
-        const all = await notificationAPI.getMyNotifications({ limit: 100 })
-        const rows = all?.data?.data || all?.data || []
-        notificationCount.value = Array.isArray(rows) ? rows.filter(r => !r.read_at).length : 0
-      }
-    } catch (e) {
-      console.error('Failed to fetch notifications count', e)
-      notificationCount.value = 0
-    }
+    // Fetch notification count from store
+    await notificationStore.fetchUnreadCount()
+    notificationCount.value = notificationStore.unreadCount
 
     // Messages: prefer fast unread count endpoint; fallback to summing conversations
     try {
@@ -119,7 +107,10 @@ const fetchCounts = async () => {
 onMounted(() => {
   if (isOnline.value) {
     fetchCounts()
-    // Poll every 15s for updates (only when online)
+    // Start polling from notification store
+    notificationStore.startPolling(30000)
+    
+    // Poll for messages every 15s
     pollInterval = setInterval(() => {
       if (isOnline.value) {
         fetchCounts()
@@ -128,20 +119,28 @@ onMounted(() => {
   }
 })
 
+// Watch notification store unread count
+watch(() => notificationStore.unreadCount, (newCount) => {
+  notificationCount.value = newCount
+})
+
 // Watch online status to clear counts when going offline
 watch(isOnline, (newOnline) => {
   if (!newOnline) {
     // Clear counts when going offline
     notificationCount.value = 0
     messageCount.value = 0
+    notificationStore.stopPolling()
   } else {
     // Fetch counts when coming back online
     fetchCounts()
+    notificationStore.startPolling(30000)
   }
 })
 
 onBeforeUnmount(() => {
   if (pollInterval) clearInterval(pollInterval)
+  notificationStore.stopPolling()
 })
 </script>
 

@@ -8,9 +8,218 @@ All notable changes to the Immunization Management System will be documented in 
 >
 > For project information and getting started guides, see [README.md](README.md)
 
+## [system-prototype-v4] - 2025-11-23
+
+### 🔔 Web Push Notifications System (November 23, 2025 - Latest Update)
+
+**Complete browser push notification system for real-time user updates.**
+
+Added a comprehensive web push notification infrastructure that delivers real-time notifications to users even when they're not actively using the app.
+
+### ✨ Added
+
+**Push Notification Infrastructure:**
+- **Service Worker Configuration** (`frontend/public/sw.js`):
+  - Custom service worker using Workbox for precaching
+  - Push event handler with detailed logging (🔔, 📦, 📢 emojis)
+  - Message event handler for manual testing
+  - Notification click handler for navigation
+  - Enhanced error logging for debugging
+
+- **VitePWA Integration** (`frontend/vite.config.js`):
+  - Configured `injectManifest` strategy for custom service worker
+  - 3MB file size limit for precaching
+  - PWA manifest with app icons and theme colors
+  - Dev mode support with warnings suppressed
+
+- **Push Notification Composable** (`frontend/src/composables/usePushNotifications.js`):
+  - Browser push API support detection
+  - Permission state management (default/granted/denied)
+  - Subscription creation and management
+  - VAPID public key retrieval from backend
+  - Automatic subscription to backend on permission grant
+
+- **Push Permission Modal** (`frontend/src/components/ui/modals/PushPermissionModal.vue`):
+  - User-friendly permission request UI
+  - Shows 3 seconds after page load (if not asked before)
+  - Enable and Dismiss actions
+  - User-specific localStorage tracking (`push_permission_asked_${userId}`)
+
+- **Backend Push Infrastructure**:
+  - **VAPID Configuration** (`backend/utils/webPush.js`):
+    - VAPID key management from environment variables
+    - `sendPushNotification()` - Send to single subscriber
+    - `sendPushToMultiple()` - Batch send to multiple subscribers
+    - Automatic expired subscription detection (410/404 errors)
+  
+  - **Push Subscription Endpoints** (`backend/controllers/notificationController.js`):
+    - `POST /api/notifications/push/subscribe` - Save push subscription
+    - `POST /api/notifications/push/unsubscribe` - Remove subscription
+    - Automatic push delivery when notifications created
+    - Expired subscription cleanup on failed delivery
+
+- **Database Schema** (`push_subscriptions` table):
+  - Stores browser push subscriptions per user
+  - Fields: user_id, endpoint, p256dh, auth, subscription_data
+  - Automatic cleanup of expired subscriptions
+
+### 🔄 Changed
+
+**Layout Integration:**
+- **ParentLayout.vue** - Added push permission modal and auto re-subscription on login
+  - User-specific permission tracking with `push_permission_asked_${userId}` localStorage key
+  - Auto re-subscribe when permission granted but not subscribed (handles user switching)
+  - Shows modal only for users who haven't been asked before
+
+- **HealthWorkerLayout.vue** - Same push notification integration as ParentLayout
+  - Per-user permission tracking
+  - Automatic subscription updates on login
+  - Permission modal after 3-second delay
+
+**Notification System:**
+- `notificationController.js` - Integrated push notification delivery
+  - Automatically sends push when creating notifications
+  - Uses `sendPushToUser()` helper function
+  - Removes expired subscriptions from database
+  - Logs: "Removed X expired subscriptions"
+
+### 🐛 Fixed
+
+**Service Worker Issues:**
+- Fixed VitePWA generating own SW instead of using custom `sw.js`
+  - Changed from `generateSW` to `injectManifest` strategy
+  - Specified custom service worker location: `srcDir: 'public', filename: 'sw.js'`
+  
+- Fixed build errors with service worker:
+  - Removed IndexedDB imports from `sw.js` (can't use relative imports in SW)
+  - Increased `maximumFileSizeToCacheInBytes` to 3MB
+  - Fixed "Could not resolve ./utils/db.js" error
+
+**User Switching Issues:**
+- Fixed push subscriptions tied to browser session instead of user account
+  - Added auto re-subscription logic in layout `onMounted` hooks
+  - When user logs in with `permission === 'granted' && !isSubscribed`, automatically re-subscribe
+  - Updates database with current user's user_id
+
+- Fixed push permission modal not showing for different users
+  - Changed from global `push_permission_asked` to `push_permission_asked_${userId}`
+  - Each user now tracks permission separately in localStorage
+  - Parent user enabling → doesn't affect BHS user's modal
+
+**Import Errors:**
+- Fixed missing `useAuth` import in ParentLayout.vue
+  - Added `import { useAuth } from '@/composables/useAuth'`
+  - Resolved "ReferenceError: useAuth is not defined" errors
+
+### 📚 Files Modified
+
+**Backend (3 files):**
+- `backend/utils/webPush.js` - NEW: Web push utilities with VAPID configuration
+- `backend/controllers/notificationController.js` - Added push subscription endpoints and auto-delivery
+- `backend/.env` - Added VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+
+**Frontend (7 files):**
+- `frontend/public/sw.js` - NEW: Custom service worker with push event handlers
+- `frontend/vite.config.js` - Configured VitePWA with injectManifest strategy
+- `frontend/src/composables/usePushNotifications.js` - NEW: Push notification composable
+- `frontend/src/components/ui/modals/PushPermissionModal.vue` - NEW: Permission request modal
+- `frontend/src/components/layout/mobile/ParentLayout.vue` - Integrated push notifications with user-specific tracking
+- `frontend/src/components/layout/mobile/HealthWorkerLayout.vue` - Integrated push notifications with user-specific tracking
+- `frontend/package.json` - Added `web-push` dependency
+
+**Database:**
+- `push_subscriptions` table - Stores user push subscriptions with endpoint, keys, and subscription data
+
+### ✅ Outcomes
+
+**User Experience:**
+- ✅ Users receive browser notifications even when app not open
+- ✅ Permission modal appears once per user (not repeatedly)
+- ✅ Clear permission request UI with enable/dismiss options
+- ✅ Automatic re-subscription when switching between user accounts
+
+**Security:**
+- ✅ VAPID authentication ensures notifications from verified source
+- ✅ Per-user subscription tracking prevents cross-user notification delivery
+- ✅ Expired subscriptions automatically cleaned up from database
+- ✅ User-specific permission tracking in localStorage
+
+**System Reliability:**
+- ✅ Service worker properly bundled and active
+- ✅ Push subscriptions saved to database with proper error handling
+- ✅ Backend logs show successful delivery: "Push sent to user X: Y/Z successful"
+- ✅ Automatic cleanup of expired/invalid subscriptions (410/404 errors)
+
+**Multi-User Support:**
+- ✅ User switching updates subscription with correct user_id
+- ✅ Permission modal shows independently for each user
+- ✅ Parent and BHS users have separate permission states
+- ✅ Re-subscription on login maintains proper user association
+
+### 🎯 Technical Implementation
+
+**Push Subscription Flow:**
+1. User visits app → Service worker registered
+2. After 3 seconds → Permission modal appears (if not asked before)
+3. User clicks "Enable" → Browser shows native permission prompt
+4. Permission granted → Subscribe to push notifications
+5. Subscription saved to backend database with user_id
+6. Backend sends push → Notification appears even if app closed
+
+**User Switching Handling:**
+1. Parent user enables notifications → Subscription saved with `user_id: 12`
+2. Parent logs out → Subscription remains in browser
+3. BHS user logs in (same browser) → `onMounted` detects granted permission
+4. Auto re-subscribe → Updates database with `user_id: 5` (BHS user)
+5. Push notifications now routed to BHS user correctly
+
+**Expired Subscription Cleanup:**
+1. Backend attempts to send push notification
+2. Push service returns 410 Gone or 404 Not Found
+3. `sendPushNotification()` returns `{ expired: true }`
+4. `notificationController.js` filters expired results
+5. Deletes expired subscriptions from database
+6. Logs: "Removed X expired subscriptions"
+
+**LocalStorage Keys (User-Specific):**
+- `push_permission_asked_12` - For user with user_id 12 (Parent)
+- `push_permission_asked_5` - For user with user_id 5 (BHS)
+- Each user tracks permission separately, no interference
+
+### 🔧 Configuration
+
+**VAPID Keys (Environment Variables):**
+```env
+VAPID_PUBLIC_KEY=BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDSKidBgAXI62NU1T0Y9eQCaWkGp3ZYFGBkJJbC5FO-o
+VAPID_PRIVATE_KEY=UUxEUExDSDlCNXM1c2FsWnBYZjVnaXhzZXVKVlhkRzM
+VAPID_SUBJECT=mailto:admin@immunizeme.com
+```
+
+**Service Worker Strategy:**
+```javascript
+// vite.config.js
+VitePWA({
+  strategies: 'injectManifest',
+  srcDir: 'public',
+  filename: 'sw.js',
+  injectManifest: {
+    maximumFileSizeToCacheInBytes: 3 * 1024 * 1024
+  }
+})
+```
+
+**Push Subscription Expiration:**
+- Chrome/Edge (FCM): ~60-90 days of inactivity → 410 Gone
+- Firefox: ~30-60 days of inactivity → 410 Gone
+- User revokes permission: Immediate → 410 Gone
+- Browser clears data: Immediate → 410 Gone / 404 Not Found
+- Subscription endpoint changes: On browser update → 404 Not Found
+
+---
+
 ## [system-prototype-v4] - 2025-11-22
 
-### 🔐 Password Recovery System (November 22, 2025 - Latest Update)
+### 🔐 Password Recovery System (November 22, 2025)
 
 **Complete SMS-based password reset workflow for secure account recovery.**
 

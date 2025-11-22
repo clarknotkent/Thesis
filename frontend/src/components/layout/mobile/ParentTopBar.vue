@@ -50,11 +50,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { notificationAPI, conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 import { useOffline } from '@/composables/useOffline'
 import { db } from '@/utils/db'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 defineProps({
   title: {
@@ -64,6 +65,7 @@ defineProps({
 })
 
 const { effectiveOnline } = useOffline()
+const notificationStore = useNotificationStore()
 const notificationCount = ref(0)
 const messageCount = ref(0)
 
@@ -74,16 +76,10 @@ const fetchCounts = async () => {
     if (effectiveOnline.value) {
       // Online: fetch fresh counts from API
       console.log('🌐 Online - fetching fresh notification/message counts')
-      
-      // Notifications
-      try {
-        const nResp = await notificationAPI.getMyNotifications({ unreadOnly: true, limit: 1 })
-        const nRows = nResp?.data?.data || nResp?.data || []
-        notificationCount.value = Array.isArray(nRows) ? nRows.length : (nResp?.data?.count || 0)
-      } catch (e) {
-        console.error('Failed to fetch parent notifications', e)
-        notificationCount.value = 0
-      }
+
+      // Fetch from notification store
+      await notificationStore.fetchUnreadCount()
+      notificationCount.value = notificationStore.unreadCount
 
       // Messages
       try {
@@ -109,7 +105,7 @@ const loadCachedCounts = async () => {
     // Get current user info to find cached data
     const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
     const guardianId = userInfo.id || userInfo.guardian_id || userInfo.userId || userInfo.user_id
-    
+
     if (!guardianId) {
       console.warn('No guardian ID found for cached counts')
       return
@@ -117,18 +113,18 @@ const loadCachedCounts = async () => {
 
     // Load cached guardian data
     const cachedData = await db.guardians.get(guardianId)
-    
+
     if (cachedData) {
       // Count unread notifications from cache
       const notifications = cachedData.notifications || []
       notificationCount.value = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0
-      
+
       // Count unread messages from cached conversations
       const conversations = cachedData.conversations || []
-      messageCount.value = Array.isArray(conversations) 
-        ? conversations.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0) 
+      messageCount.value = Array.isArray(conversations)
+        ? conversations.reduce((acc, c) => acc + (Number(c.unread_count) || 0), 0)
         : 0
-      
+
       console.log(`📱 Cached counts loaded - Notifications: ${notificationCount.value}, Messages: ${messageCount.value}`)
     } else {
       console.log('📱 No cached data found for counts')
@@ -144,11 +140,24 @@ const loadCachedCounts = async () => {
 
 onMounted(() => {
   fetchCounts()
+  
+  if (effectiveOnline.value) {
+    notificationStore.startPolling(30000)
+  }
+  
   pollInterval = setInterval(fetchCounts, 15000)
+})
+
+// Watch notification store unread count
+watch(() => notificationStore.unreadCount, (newCount) => {
+  if (effectiveOnline.value) {
+    notificationCount.value = newCount
+  }
 })
 
 onBeforeUnmount(() => {
   if (pollInterval) clearInterval(pollInterval)
+  notificationStore.stopPolling()
 })
 </script>
 

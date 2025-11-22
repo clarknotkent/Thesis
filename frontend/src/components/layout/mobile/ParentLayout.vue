@@ -15,13 +15,25 @@
 
     <!-- Toast Notifications -->
     <ToastContainer />
+
+    <!-- Push Permission Modal -->
+    <PushPermissionModal
+      :show="showPushPermissionModal"
+      @close="handlePushModalClose"
+      @enabled="handlePushEnabled"
+      @dismissed="handlePushDismissed"
+    />
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import ParentTopBar from './ParentTopBar.vue'
 import ParentBottomNavbar from './ParentBottomNavbar.vue'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
+import PushPermissionModal from '@/components/ui/modals/PushPermissionModal.vue'
+import { usePushNotifications } from '@/composables/usePushNotifications'
+import { useAuth } from '@/composables/useAuth'
 
 defineProps({
   title: {
@@ -29,6 +41,57 @@ defineProps({
     default: null
   }
 })
+
+const showPushPermissionModal = ref(false)
+const { isSupported, permission, isSubscribed, subscribe } = usePushNotifications()
+
+// Check if we should show push permission modal
+onMounted(async () => {
+  // Re-subscribe to push if permission already granted but not subscribed
+  // This handles user switching - update subscription with current user ID
+  if (isSupported.value && permission.value === 'granted' && !isSubscribed.value) {
+    console.log('🔄 Re-subscribing push notifications for current user...')
+    try {
+      await subscribe()
+      console.log('✅ Push subscription updated for current user')
+    } catch (error) {
+      console.error('❌ Failed to update push subscription:', error)
+    }
+  }
+
+  // Only show modal if:
+  // 1. Push is supported
+  // 2. Permission not yet decided
+  // 3. User hasn't been asked before (check localStorage with user-specific key)
+  const { userInfo } = useAuth()
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  const hasAskedBefore = localStorage.getItem(`push_permission_asked_${userId}`)
+
+  if (isSupported.value && permission.value === 'default' && !hasAskedBefore && !isSubscribed.value) {
+    // Show modal after a short delay for better UX
+    setTimeout(() => {
+      showPushPermissionModal.value = true
+    }, 3000)
+  }
+})
+
+const handlePushModalClose = () => {
+  showPushPermissionModal.value = false
+}
+
+const handlePushEnabled = () => {
+  const { userInfo } = useAuth()
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  localStorage.setItem(`push_permission_asked_${userId}`, 'true')
+  console.log('✅ Push notifications enabled')
+}
+
+const handlePushDismissed = () => {
+  const { userInfo } = useAuth()
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  localStorage.setItem(`push_permission_asked_${userId}`, 'true')
+  console.log('ℹ️ Push permission dismissed')
+}
 </script>
 
 <style scoped>

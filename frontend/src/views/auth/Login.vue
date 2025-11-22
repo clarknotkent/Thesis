@@ -85,6 +85,16 @@
                   </button>
                 </form>
 
+                <!-- Redirect Info Alert -->
+                <div
+                  v-if="redirectPath && !error"
+                  class="alert alert-info mt-3"
+                  role="alert"
+                >
+                  <i class="bi bi-info-circle me-2" />
+                  You will be redirected to the requested page after login.
+                </div>
+
                 <!-- Error Alert -->
                 <div
                   v-if="error"
@@ -120,12 +130,13 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { login as loginApi } from '@/services/auth'
 
 const router = useRouter()
+const route = useRoute()
 
 // Form data
 const form = reactive({
@@ -137,6 +148,36 @@ const form = reactive({
 const loading = ref(false)
 const error = ref('')
 const showPassword = ref(false)
+const redirectPath = ref('')
+
+// Check for redirect parameter or sessionStorage on mount
+onMounted(() => {
+  // Priority: URL query param > sessionStorage
+  const queryRedirect = route.query.redirect
+  const storedRedirect = sessionStorage.getItem('postLoginRedirect')
+  
+  console.log('🔍 [Login] Checking for redirect on mount:', {
+    queryRedirect,
+    storedRedirect,
+    currentRoute: route.fullPath
+  })
+  
+  if (queryRedirect) {
+    redirectPath.value = queryRedirect
+    // Store in sessionStorage for persistence during login
+    sessionStorage.setItem('postLoginRedirect', queryRedirect)
+    console.log('📍 [Login] Using query redirect, stored in sessionStorage:', queryRedirect)
+  } else if (storedRedirect) {
+    redirectPath.value = storedRedirect
+    console.log('📍 [Login] Using sessionStorage redirect:', storedRedirect)
+  }
+  
+  if (redirectPath.value) {
+    console.log('✅ [Login] Will redirect to after login:', redirectPath.value)
+  } else {
+    console.log('ℹ️ [Login] No redirect path found, will use default role-based routing')
+  }
+})
 
 // Handle form submission
 const handleLogin = async () => {
@@ -155,7 +196,26 @@ const handleLogin = async () => {
     const { login } = useAuth()
     login(token, user.role, user)
 
-    // Navigate based on user role from backend
+    // Check if there's a redirect path (from QR scan or other source)
+    const targetPath = redirectPath.value || sessionStorage.getItem('postLoginRedirect')
+    
+    console.log('🎯 [Login] Login successful, checking redirect:', {
+      redirectPathValue: redirectPath.value,
+      sessionStorageValue: sessionStorage.getItem('postLoginRedirect'),
+      targetPath,
+      userRole: user.role
+    })
+    
+    if (targetPath) {
+      console.log('✅ [Login] Redirecting to intended destination:', targetPath)
+      // Clear the stored redirect
+      sessionStorage.removeItem('postLoginRedirect')
+      router.push(targetPath)
+      return
+    }
+
+    console.log('ℹ️ [Login] No redirect found, using role-based routing for:', user.role)
+    // Navigate based on user role from backend (default behavior)
     const role = (user.role || '').toLowerCase()
     if (role === 'admin') {
       router.push('/admin/dashboard')
