@@ -11,9 +11,110 @@
  */
 import Dexie from 'dexie'
 
-// Export the Admin database
-export const adminDB = new Dexie('AdminOfflineDB')
+// We keep a mutable reference so we can recreate after delete (logout)
+let adminDB = null
 
+export function initAdminOfflineDB() {
+  // If already initialized and open, reuse
+  if (adminDB && adminDB.isOpen()) {
+    return adminDB
+  }
+  adminDB = new Dexie('AdminOfflineDB')
+
+  // Define base schema versions
+  adminDB.version(1).stores({
+    patients: 'patient_id, full_name, surname, firstname, date_of_birth, is_deleted',
+    guardians: 'guardian_id, full_name, contact_number',
+    users: 'user_id, role, username, contact_number, is_deleted',
+    healthworkers: 'health_worker_id, full_name, contact_number',
+    inventory: 'id, inventory_id, vaccine_id, lot_number, expiration_date, is_deleted',
+    vaccines: 'vaccine_id, antigen_name, brand_name, manufacturer, category, vaccine_type, is_deleted',
+    schedules: 'schedule_id, schedule_master_id, name, vaccine_id, total_doses, dose_number, is_deleted',
+    transactions: 'transaction_id, inventory_id, transaction_type, created_at',
+    birthhistory: 'birthhistory_id, patient_id',
+    immunizations: 'immunization_id, patient_id, visit_id, vaccine_id, administered_date, is_deleted',
+    visits: 'visit_id, patient_id, visit_date',
+    vitalsigns: 'vital_id, visit_id, patient_id',
+    patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status, is_deleted',
+    deworming: 'deworming_id, patient_id, visit_id, administered_date',
+    vitamina: 'vitamina_id, patient_id, visit_id, administered_date',
+    receiving_reports: 'report_id, delivery_date, status',
+    receiving_report_items: 'item_id, report_id, vaccine_id',
+    metadata: 'key'
+  })
+
+  // Version 2 upgrades
+  adminDB.version(2).stores({
+    patients: 'patient_id, full_name, surname, firstname, date_of_birth, is_deleted',
+    users: 'user_id, role, username, contact_number, is_deleted',
+    inventory: 'id, inventory_id, vaccine_id, lot_number, expiration_date, is_deleted',
+    vaccines: 'vaccine_id, antigen_name, brand_name, manufacturer, category, vaccine_type, is_deleted',
+    schedules: 'schedule_id, schedule_master_id, name, vaccine_id, total_doses, dose_number, is_deleted',
+    immunizations: 'immunization_id, patient_id, visit_id, vaccine_id, administered_date, is_deleted',
+    patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status, is_deleted'
+  })
+  adminDB.version(2).upgrade(async () => {
+    console.log('🔄 Upgrading AdminOfflineDB to version 2 - adding is_deleted indexes')
+    try {
+      await clearAdminOfflineData()
+      console.log('✅ AdminOfflineDB upgraded successfully')
+    } catch (error) {
+      console.error('❌ Failed to upgrade AdminOfflineDB:', error)
+    }
+  })
+
+  // Version 3 upgrades
+  adminDB.version(3).stores({
+    vaccines: 'vaccine_id, antigen_name, brand_name, manufacturer, category, vaccine_type, is_deleted'
+  })
+  adminDB.version(3).upgrade(async () => {
+    console.log('🔄 Upgrading AdminOfflineDB to version 3 - adding brand_name and manufacturer indexes')
+    try {
+      await adminDB.vaccines.clear()
+      console.log('✅ AdminOfflineDB vaccines table upgraded successfully')
+    } catch (error) {
+      console.error('❌ Failed to upgrade AdminOfflineDB vaccines table:', error)
+    }
+  })
+
+  // Version 4 upgrades
+  adminDB.version(4).stores({
+    schedules: 'schedule_id, schedule_master_id, name, vaccine_id, total_doses, dose_number, is_deleted'
+  })
+  adminDB.version(4).upgrade(async () => {
+    console.log('🔄 Upgrading AdminOfflineDB to version 4 - adding schedule fields')
+    try {
+      await adminDB.schedules.clear()
+      console.log('✅ AdminOfflineDB schedules table upgraded successfully')
+    } catch (error) {
+      console.error('❌ Failed to upgrade AdminOfflineDB schedules table:', error)
+    }
+  })
+
+  // Version 5: add schedule_doses table for dose entries
+  adminDB.version(5).stores({
+    schedule_doses: 'id, schedule_master_id, dose_number'
+  })
+  adminDB.version(5).upgrade(async () => {
+    console.log('🔄 Upgrading AdminOfflineDB to version 5 - adding schedule_doses table')
+    try {
+      // Nothing to clear (new table). Future migrations could normalize existing dose rows.
+      console.log('✅ AdminOfflineDB schedule_doses table added')
+    } catch (error) {
+      console.error('❌ Failed to add schedule_doses table:', error)
+    }
+  })
+
+  console.log('✅ AdminOfflineDB initialized / re-initialized')
+  return adminDB
+}
+
+// Initialize immediately on first import
+if (!adminDB) {
+  initAdminOfflineDB()
+}
+
+// The version schema below is redundant but kept for reference - actual schema is defined above in initAdminOfflineDB()
 // Define the schema - caching admin data
 adminDB.version(1).stores({
   /**
@@ -200,8 +301,21 @@ adminDB.version(4).upgrade(async () => {
     console.error('❌ Failed to upgrade AdminOfflineDB schedules table:', error)
   }
 })
+// Version 5: add schedule_doses table for dose entries
+adminDB.version(5).stores({
+  schedule_doses: 'id, schedule_master_id, dose_number'
+})
+adminDB.version(5).upgrade(async () => {
+  console.log('🔄 Upgrading AdminOfflineDB to version 5 - adding schedule_doses table')
+  try {
+    // Nothing to clear (new table). Future migrations could normalize existing dose rows.
+    console.log('✅ AdminOfflineDB schedule_doses table added')
+  } catch (error) {
+    console.error('❌ Failed to add schedule_doses table:', error)
+  }
+})
 
-console.log('✅ AdminOfflineDB initialized')
+// console.log handled inside init
 
 /**
  * Clear all admin offline data (for logout/security)
@@ -216,6 +330,7 @@ export async function clearAdminOfflineData() {
     await adminDB.inventory.clear()
     await adminDB.vaccines.clear()
     await adminDB.schedules.clear()
+    if (adminDB.schedule_doses) await adminDB.schedule_doses.clear()
     await adminDB.transactions.clear()
     await adminDB.birthhistory.clear()
     await adminDB.immunizations.clear()
@@ -278,4 +393,5 @@ export async function getAdminDatabaseInfo() {
 }
 
 // Re-export for backward compatibility
+export { adminDB }
 export default adminDB

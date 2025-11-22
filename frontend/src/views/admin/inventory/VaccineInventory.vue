@@ -372,6 +372,10 @@ const preloadInventoryComponents = () => {
   import('@/views/admin/inventory/ViewInventory.vue').catch(() => {
     console.warn('[Offline] ViewInventory preload failed - may not be available offline')
   })
+  // Preload InventoryHistory component for transaction history view offline support
+  import('@/views/admin/inventory/InventoryHistory.vue').catch(() => {
+    console.warn('[Offline] InventoryHistory preload failed - may not be available offline')
+  })
   
   console.log('📦 [VaccineInventory] Preloading inventory components for offline use')
 }

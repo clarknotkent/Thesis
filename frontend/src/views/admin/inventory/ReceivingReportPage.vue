@@ -59,10 +59,10 @@
                   v-model="form.delivery_date"
                   :disabled="isReadOnly"
                   :max="todayPH"
-                  :class="{ 'is-invalid': formErrors.delivery_date }"
+                  :class="{ 'is-invalid': formErrors?.delivery_date }"
                 />
                 <div
-                  v-if="formErrors.delivery_date"
+                  v-if="formErrors?.delivery_date"
                   class="invalid-feedback d-block"
                 >
                   {{ formErrors.delivery_date }}
@@ -145,7 +145,6 @@
                   >
                     <td>
                       <div
-                        v-click-outside="() => it.dropdownOpen = false"
                         class="vaccine-dropdown-wrapper"
                         :class="{ 'is-open': it.dropdownOpen }"
                       >
@@ -219,10 +218,10 @@
                         small
                         :disabled="isReadOnly"
                         :min="form.delivery_date ? getNextDay(form.delivery_date) : tomorrowPH"
-                        :class="{ 'is-invalid': formErrors.items && formErrors.items[idx] && formErrors.items[idx].expiration_date }"
+                        :class="{ 'is-invalid': formErrors?.items?.[idx]?.expiration_date }"
                       />
                       <div
-                        v-if="formErrors.items && formErrors.items[idx] && formErrors.items[idx].expiration_date"
+                        v-if="formErrors?.items?.[idx]?.expiration_date"
                         class="invalid-feedback d-block"
                       >
                         {{ formErrors.items[idx].expiration_date }}
@@ -634,7 +633,6 @@ const isNew = computed(() => !id.value)
 const saving = ref(false)
 const form = ref({ report_id: null, report_number: '', status: 'DRAFT', delivery_date: '', delivered_by: '', supplier_notes: '' })
 const items = ref([])
-const formErrors = ref({})
 
 // Date validation functions
 const validateDeliveryDate = (dateStr) => {
@@ -699,8 +697,9 @@ const validateForm = () => {
 }
 
 // Watchers to clear validation errors
+const formErrors = ref({})
 watch(() => form.value.delivery_date, () => {
-  if (formErrors.value.delivery_date) {
+  if (formErrors.value?.delivery_date) {
     formErrors.value.delivery_date = null
   }
 })
@@ -709,7 +708,7 @@ watch(() => form.value.delivery_date, () => {
 watch(() => items.value, (newItems) => {
   newItems.forEach((item, index) => {
     watch(() => item.expiration_date, () => {
-      if (formErrors.value.items && formErrors.value.items[index]) {
+      if (formErrors.value?.items?.[index]?.expiration_date) {
         formErrors.value.items[index].expiration_date = null
       }
     })
@@ -841,8 +840,9 @@ async function fetchReport() {
   try {
     const result = await fetchReceivingReportById(id.value)
     if (result) {
-      form.value = result.header
-      const arr = result.items || []
+      const data = result.data?.data || result.data || {}
+      form.value = data.header || {}
+      const arr = data.items || []
       reportItemsCache.value = arr
       items.value = arr.map(x => ({
         item_id: x.item_id,

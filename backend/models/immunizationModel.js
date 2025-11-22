@@ -447,6 +447,11 @@ const updateImmunization = async (id, immunizationData, client) => {
     sanitized.administered_by = null;
   }
 
+  // Auto-stamp approved_at if approved_by present and approved_at missing
+  if (sanitized.approved_by && !sanitized.approved_at) {
+    sanitized.approved_at = new Date().toISOString();
+  }
+
   const { data, error } = await supabase
     .from('immunizations')
     .update({ ...sanitized, updated_at: new Date().toISOString() })

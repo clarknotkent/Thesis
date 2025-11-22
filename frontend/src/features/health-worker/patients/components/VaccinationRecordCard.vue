@@ -68,7 +68,7 @@
               
               <div class="detail-row">
                 <span class="detail-label">Administered By</span>
-                <span class="detail-value">{{ getAdministeredBy(dose) }}</span>
+                <span class="detail-value">{{ dose.administered_by_name || dose.administeredByName || dose.health_worker_name || getAdministeredBy(dose) }}</span>
               </div>
               
               <div
@@ -80,11 +80,11 @@
               </div>
               
               <div
-                v-if="dose.facility || dose.health_center"
+                v-if="dose.facility_name || dose.facilityName || dose.facility || dose.health_center"
                 class="detail-row"
               >
                 <span class="detail-label">Facility</span>
-                <span class="detail-value">{{ dose.facility || dose.health_center || '—' }}</span>
+                <span class="detail-value">{{ dose.facility_name || dose.facilityName || dose.facility || dose.health_center || '—' }}</span>
               </div>
               
               <div

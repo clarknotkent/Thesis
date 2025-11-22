@@ -78,9 +78,64 @@
           </div>
         </div>
 
+        <!-- Services Rendered Section -->
+        <div
+          v-if="serviceRendered && serviceRendered !== 'General Checkup'"
+          class="info-section"
+        >
+          <div class="section-label">
+            <i class="bi bi-clipboard-check" />
+            Service Rendered
+          </div>
+          <div class="section-value">
+            {{ serviceRendered }}
+          </div>
+        </div>
+
+        <!-- Vitals Preview (if available) -->
+        <div
+          v-if="hasVitals"
+          class="info-section"
+        >
+          <div class="section-label">
+            <i class="bi bi-heart-pulse" />
+            Vitals Recorded
+          </div>
+          <div class="vitals-preview">
+            <span v-if="vitals.weight" class="vital-chip">Weight: {{ vitals.weight }} kg</span>
+            <span v-if="vitals.height || vitals.height_length" class="vital-chip">Height: {{ vitals.height || vitals.height_length }} cm</span>
+            <span v-if="vitals.temperature" class="vital-chip">Temp: {{ vitals.temperature }}°C</span>
+            <span v-if="vitals.muac" class="vital-chip">MUAC: {{ vitals.muac }} cm</span>
+          </div>
+        </div>
+
+        <!-- Immunizations Preview (if available) -->
+        <div
+          v-if="hasImmunizations"
+          class="info-section"
+        >
+          <div class="section-label">
+            <i class="bi bi-shield-check" />
+            Vaccines Administered
+          </div>
+          <div class="immunizations-preview">
+            <div
+              v-for="(imm, idx) in immunizations.slice(0, 3)"
+              :key="idx"
+              class="imm-chip"
+            >
+              {{ imm.vaccineName || imm.antigen_name || 'Unknown' }}
+              <span v-if="imm.dose_number" class="dose-num">Dose {{ imm.dose_number }}</span>
+            </div>
+            <div v-if="immunizations.length > 3" class="more-chip">
+              +{{ immunizations.length - 3 }} more
+            </div>
+          </div>
+        </div>
+
         <!-- Empty State -->
         <div
-          v-if="!findings && !hasVitals && !hasImmunizations"
+          v-if="!findings && !hasVitals && !hasImmunizations && (!serviceRendered || serviceRendered === 'General Checkup')"
           class="empty-details"
         >
           <i class="bi bi-info-circle" />
@@ -143,7 +198,9 @@ const formattedDate = computed(() => {
 })
 
 const hasVitals = computed(() => {
-  return Object.keys(props.vitals).some(key => props.vitals[key])
+  if (!props.vitals || typeof props.vitals !== 'object') return false
+  const vitalKeys = ['weight', 'height', 'height_length', 'temperature', 'muac', 'respiration_rate', 'respiratory_rate']
+  return vitalKeys.some(key => props.vitals[key])
 })
 
 const hasImmunizations = computed(() => {
@@ -151,7 +208,9 @@ const hasImmunizations = computed(() => {
 })
 
 const vitalsSummary = computed(() => {
-  const vitalsCount = Object.keys(props.vitals).filter(key => props.vitals[key]).length
+  if (!props.vitals || typeof props.vitals !== 'object') return '0 vitals recorded'
+  const vitalKeys = ['weight', 'height', 'height_length', 'temperature', 'muac', 'respiration_rate', 'respiratory_rate']
+  const vitalsCount = vitalKeys.filter(key => props.vitals[key]).length
   return `${vitalsCount} vital${vitalsCount !== 1 ? 's' : ''} recorded`
 })
 
@@ -422,6 +481,67 @@ const handleNavigate = () => {
   color: #6b7280;
   line-height: 1.6;
   padding-left: 1.5rem;
+}
+
+/* Vitals Preview */
+.vitals-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.vital-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+/* Immunizations Preview */
+.immunizations-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.imm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.dose-num {
+  padding: 0.125rem 0.375rem;
+  background: #dcfce7;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.more-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 /* Empty State */

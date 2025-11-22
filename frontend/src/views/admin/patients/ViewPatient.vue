@@ -356,37 +356,21 @@ import QRCode from 'qrcode'
 // This ensures that when user views a patient, all related components are cached
 // and can be accessed offline (vaccine details, visit summary, etc.)
 const preloadRelatedComponents = () => {
-  // Preload VaccineDetails component (lazy-loaded in router)
-  // Used when clicking on a specific vaccine in Vaccination History
-  import('@/views/admin/patients/VaccineDetails.vue').catch(() => {
-    console.warn('[Offline] VaccineDetails preload failed - may not be available offline')
+  if (!navigator.onLine) {
+    console.log('[ViewPatient] Skipping component preloads (offline)')
+    return
+  }
+  Promise.all([
+    import('@/views/admin/patients/VaccineDetails.vue'),
+    import('@/views/admin/patients/VisitSummaryPage.vue'),
+    import('@/views/admin/patients/MedicalHistoryPage.vue'),
+    import('@/views/admin/patients/VaccinationEditorPage.vue'),
+    import('@/views/admin/patients/EditPatient.vue')
+  ]).then(() => {
+    console.log('📦 [ViewPatient] Related components preloaded for offline use')
+  }).catch(() => {
+    console.warn('[ViewPatient] Some related components failed to preload')
   })
-  
-  // Preload VisitSummary component (lazy-loaded in router)
-  // Used when clicking on a specific visit in Medical History
-  import('@/views/admin/patients/VisitSummaryPage.vue').catch(() => {
-    console.warn('[Offline] VisitSummaryPage preload failed - may not be available offline')
-  })
-  
-  // Preload MedicalHistoryPage component (lazy-loaded in router)
-  // Used when navigating to full medical history view
-  import('@/views/admin/patients/MedicalHistoryPage.vue').catch(() => {
-    console.warn('[Offline] MedicalHistoryPage preload failed - may not be available offline')
-  })
-  
-  // Preload VaccinationEditorPage component (lazy-loaded in router)
-  // Used when navigating to full vaccinations view
-  import('@/views/admin/patients/VaccinationEditorPage.vue').catch(() => {
-    console.warn('[Offline] VaccinationEditorPage preload failed - may not be available offline')
-  })
-  
-  // Preload EditPatient component (lazy-loaded in router)
-  // Used when clicking edit button
-  import('@/views/admin/patients/EditPatient.vue').catch(() => {
-    console.warn('[Offline] EditPatient preload failed - may not be available offline')
-  })
-  
-  console.log('📦 [ViewPatient] Preloading 5 related components for offline use')
 }
 
 const router = useRouter()

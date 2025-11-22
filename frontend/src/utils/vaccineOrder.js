@@ -48,7 +48,25 @@ export function compareGroupsByEligible(a, b, eligibleIndex) {
   }
   if (aDateStr && !bDateStr) return -1
   if (!aDateStr && bDateStr) return 1
-  // If both missing or invalid, leave order unchanged
+  // If both missing or invalid, fall back to earliest administered date from doses
+  const getEarliestAdministeredDate = (doses) => {
+    if (!Array.isArray(doses) || doses.length === 0) return null
+    const dates = doses
+      .map(d => d?.administered_date || d?.date_administered || d?.dateAdministered)
+      .filter(date => date)
+      .map(date => new Date(date))
+      .filter(d => !isNaN(d))
+    if (dates.length === 0) return null
+    return new Date(Math.min(...dates))
+  }
+  const aEarliest = getEarliestAdministeredDate(a?.doses)
+  const bEarliest = getEarliestAdministeredDate(b?.doses)
+  if (aEarliest && bEarliest) {
+    return aEarliest - bEarliest
+  }
+  if (aEarliest && !bEarliest) return -1
+  if (!aEarliest && bEarliest) return 1
+  // If both missing, leave order unchanged
   return 0
 }
 

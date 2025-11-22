@@ -2,8 +2,8 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.10  
-> **Last Updated:** November 13, 2025  
+> **📌 Current Status:** Active Development - Version 4.11  
+> **Last Updated:** November 22, 2025  
 > **Branch:** system-prototype-v4  
 >
 > **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history with all dated changes and improvements.
@@ -47,44 +47,46 @@ The Immunization Management System is designed to digitize and streamline the im
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.9 (November 13, 2025)
+- Version: 4.12 (November 22, 2025)
 - Status: Active Development
 
 ---
 
-## What’s New (November 13, 2025)
+## What's New (November 22, 2025)
 
-This release completes the vaccine inventory offline functionality with comprehensive offline support, Vue component fixes, and enhanced user experience.
+This release focuses on Admin portal offline stability, critical bug fixes for data accuracy, and improved user experience across all portals.
 
-- Offline‑first data loading:
-  - Patient Details now loads from IndexedDB when offline; suppresses network error popups
-  - Visit Summary (HW) loads from IndexedDB when offline and caches API responses when online for future offline use
-- Offline guards with toasts and visual states:
-  - Add New Patient and Add Immunization: disabled offline with informative toast
-  - Edit Visit: disabled offline on Visit Summary; shows toast and disabled style
-  - Reschedule vaccination: disabled offline on Patient Details; toast shown and edit UI blocked
-- Data correctness & formatting:
-  - Father's contact and occupation enriched offline via guardians cache (including same family_number fallbacks)
-  - Time of Birth shows in 12‑hour format on Patient Details
-- Prefetch robustness:
-  - Fixed visits prefetch to handle paginated responses ({ items })
+### Admin Portal Offline Enhancements
+- **Critical Patient Routes**: Added `/patients/:id/immunizations` and `/patients/:id/visits` endpoints for efficient offline data loading
+- **Dashboard Restriction**: Dashboard disabled offline (too complex for current offline cache) with informative sidebar icon
+- **Improved Data Accuracy**: Medical history and vaccination history now load from dedicated endpoints
+- **Enhanced Offline Prefetching**: Patient schedules, immunizations, visits now cached per-patient for faster offline access
+- **Batch Number Enrichment**: Immunizations enriched with batch/lot numbers from inventory cache
+- **Smart Refreshing**: Added refresh buttons to vaccination history and scheduled vaccinations sections
 
-### Vaccine Inventory Offline System
-- **Complete Offline Viewing**: Vaccine schedule viewing works fully offline after online sync
-- **Offline Tab Management**: Receiving Reports tab disabled offline with informative toast notifications
-- **Vue Component Fixes**: Resolved all missing Vue Composition API imports across inventory components
-- **Reactivity Error Fixes**: Eliminated "_withMods" Vue reactivity errors by replacing problematic router-link elements
-- **Router Error Resolution**: Fixed ViewInventory.vue and ViewSchedule.vue offline loading issues
-- **Enhanced Data Prefetching**: Improved schedule data caching with additional denormalized fields
-- **Defensive Programming**: Added conditional rendering and null-safe property access throughout
+### Critical Bug Fixes
+- **Admin Logout Database Cleanup**: Fixed incomplete IndexedDB deletion causing sensitive data to persist after logout
+- **Guardian/Parent Offline DB Recreation**: Logout now properly deletes and recreates offline databases on next login
+- **Immunization Updates**: Fixed missing `approved_by` field sanitization and auto-timestamp for approvals
+- **Receiving Reports Date Validation**: Fixed timezone issues causing false "future date" errors using Philippine timezone normalization
+- **Offline Data Type Consistency**: Fixed string/number mismatches in IndexedDB queries (patient_id, inventory_id)
+- **Inventory History**: Added balance tracking (before/after) and fixed offline transaction retrieval
+
+### User Experience Improvements  
+- **Medical History Cards**: Enhanced with service rendered, vitals preview, and immunizations preview
+- **Vaccination History Cards**: Shows facility name and batch numbers correctly from cached data
+- **Visit Summary**: Enhanced offline capability with proper vitals mapping from cached visits
+- **Vaccine Details**: Complete offline support with batch numbers from inventory enrichment
+- **Inventory Pages**: Offline viewing for inventory details, schedules, and transaction history
 
 ### Technical Improvements
-- **Database Schema Updates**: Enhanced schedules table (version 4) for better offline compatibility
-- **Toast Notification System**: Comprehensive offline feedback for all disabled features
-- **Zero Compilation Errors**: All Vue components now compile without errors
-- **Offline User Experience**: Consistent toast messages and visual states for offline restrictions
+- **Database Schema Version 5**: Added `schedule_doses` table for normalized dose entries  
+- **Improved Cache Warmers**: Health worker route preloading now uses router imports for reliability
+- **Main.js Cache Helper**: Added `__warmHealthWorkerCache()` function for manual testing
+- **Router Error Logging**: Enhanced offline navigation error messages with helpful solutions
+- **Composable Enhancements**: Better offline data loading in `usePatientDetails`, `useMedicalHistory`, `useOfflineAdmin`
 
-See the full entry in CHANGELOG.md dated 2025‑11‑13 for details and files changed.
+See the full entry in CHANGELOG.md dated 2025-11-22 for complete details and all files changed.
 
 ---
 
@@ -703,8 +705,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 **Project**: Immunization Management System  
-**Version**: 4.10  
-**Last Updated**: November 13, 2025  
+**Version**: 4.12  
+**Last Updated**: November 22, 2025  
 **Maintained by**: Clark Kent (clarknotkent), JapethDee and RobertBite15  
 **License**: Academic Thesis Project
 

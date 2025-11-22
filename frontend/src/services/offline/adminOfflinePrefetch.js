@@ -82,9 +82,21 @@ export async function prefetchAdminData() {
     console.log('📥 Fetching birth history...')
     await prefetchBirthHistory()
 
-    // 15. Fetch and cache receiving reports
-    console.log('📥 Fetching receiving reports...')
-    await prefetchReceivingReports()
+    // 15. Fetch and cache patient schedules (per-patient, no bulk endpoint)
+    console.log('📥 Fetching patient schedules (per patient)...')
+    await prefetchPatientSchedules()
+
+    // 16. Fetch and cache immunizations (per patient) for vaccination history offline
+    console.log('📥 Fetching immunizations (per patient)...')
+    await prefetchPatientImmunizations()
+
+    // 17. Enrich immunizations with batch numbers from inventory
+    console.log('🔗 Enriching immunizations with batch numbers from inventory...')
+    await enrichImmunizationsWithInventory()
+
+    // 18. Fetch and cache visits (per patient) for medical history offline
+    console.log('📥 Fetching visits (per patient)...')
+    await prefetchPatientVisits()
 
     console.log('✅ [Admin] All admin data cached successfully for offline access')
 
@@ -127,6 +139,7 @@ async function prefetchPatients() {
       full_name: [patient.firstname, patient.middlename, patient.surname].filter(Boolean).join(' ').trim(),
       surname: patient.surname || '',
       firstname: patient.firstname || '',
+      middlename: patient.middlename || '',
       date_of_birth: patient.date_of_birth,
       sex: patient.sex,
       address: patient.address,
@@ -177,6 +190,7 @@ async function prefetchGuardians() {
       contact_number: guardian.contact_number || '',
       address: guardian.address || '',
       occupation: guardian.occupation || '',
+      family_number: guardian.family_number || guardian.familyNumber || '',
       is_deleted: Boolean(guardian.is_deleted), // Ensure boolean value
       created_at: guardian.created_at,
       updated_at: guardian.updated_at
@@ -373,31 +387,64 @@ async function prefetchSchedules() {
     const response = await api.get('/vaccines/schedules')
     const schedules = response.data?.data || response.data || []
     console.log(`📥 Caching ${schedules.length} vaccine schedules...`)
+    const scheduleRows = []
+    const doseRows = []
 
-    const transformedSchedules = schedules.map(schedule => ({
-      schedule_id: schedule.schedule_id || schedule.id,
-      schedule_master_id: schedule.schedule_master_id || schedule.id,
-      name: schedule.name,
-      vaccine_id: schedule.vaccine_id,
-      total_doses: schedule.total_doses,
-      schedule_doses: schedule.schedule_doses,
-      dose_number: schedule.dose_number,
-      recommended_age_months: schedule.recommended_age_months,
-      recommended_age_weeks: schedule.recommended_age_weeks,
-      minimum_age_months: schedule.minimum_age_months,
-      minimum_age_weeks: schedule.minimum_age_weeks,
-      maximum_age_months: schedule.maximum_age_months,
-      maximum_age_weeks: schedule.maximum_age_weeks,
-      is_deleted: Boolean(schedule.is_deleted), // Ensure boolean value
-      created_at: schedule.created_at,
-      updated_at: schedule.updated_at
-    })).filter(schedule => schedule.schedule_id) // Only cache schedules with valid schedule_id
+    for (const schedule of schedules) {
+      const masterId = schedule.schedule_master_id || schedule.schedule_id || schedule.id
+      const scheduleId = schedule.schedule_id || schedule.id || masterId
+      if (!masterId) continue
 
-    if (transformedSchedules.length > 0) {
-      await adminDB.schedules.bulkPut(transformedSchedules)
-      console.log(`✅ Cached ${transformedSchedules.length} vaccine schedules`)
+      // Store master schedule row (without embedded doses)
+      scheduleRows.push({
+        schedule_id: scheduleId,
+        schedule_master_id: masterId,
+        name: schedule.name,
+        vaccine_id: schedule.vaccine_id,
+        total_doses: schedule.total_doses,
+        code: schedule.code || schedule.schedule_code,
+        concurrent_allowed: schedule.concurrent_allowed ?? false,
+        min_age_days: schedule.min_age_days || schedule.minimum_age_days,
+        max_age_days: schedule.max_age_days || schedule.maximum_age_days,
+        catchup_strategy: schedule.catchup_strategy,
+        notes: schedule.notes,
+        is_deleted: Boolean(schedule.is_deleted),
+        created_at: schedule.created_at,
+        updated_at: schedule.updated_at
+      })
+
+      // Store dose rows if present
+      const doses = schedule.schedule_doses || schedule.doses || []
+      for (const dose of doses) {
+        doseRows.push({
+          id: `${masterId}-${dose.dose_number}`,
+          schedule_master_id: masterId,
+            dose_number: dose.dose_number,
+            due_after_days: dose.due_after_days,
+            min_interval_days: dose.min_interval_days,
+            max_interval_days: dose.max_interval_days,
+            min_interval_other_vax: dose.min_interval_other_vax,
+            requires_previous: dose.requires_previous ?? false,
+            skippable: dose.skippable ?? false,
+            grace_period_days: dose.grace_period_days,
+            absolute_latest_days: dose.absolute_latest_days,
+            notes: dose.notes
+        })
+      }
+    }
+
+    if (scheduleRows.length > 0) {
+      await adminDB.schedules.bulkPut(scheduleRows)
+      console.log(`✅ Cached ${scheduleRows.length} master schedules`)
     } else {
-      console.log('⚠️ No valid vaccine schedules to cache')
+      console.log('⚠️ No master schedules to cache')
+    }
+
+    if (doseRows.length > 0) {
+      await adminDB.schedule_doses.bulkPut(doseRows)
+      console.log(`✅ Cached ${doseRows.length} schedule dose entries`)
+    } else {
+      console.log('⚠️ No schedule dose entries to cache')
     }
   } catch (error) {
     console.warn('⚠️ Failed to prefetch vaccine schedules:', error.message)
@@ -415,19 +462,60 @@ async function prefetchTransactions() {
     const transactions = response.data?.transactions || []
     console.log(`📥 Caching ${transactions.length} transactions...`)
 
-    const transformedTransactions = transactions.map(transaction => ({
-      transaction_id: transaction.transaction_id,
-      inventory_id: transaction.inventory_id,
-      transaction_type: transaction.transaction_type,
-      quantity: transaction.quantity_delta || transaction.quantity,
-      note: transaction.remarks || transaction.note,
-      created_by: transaction.created_by,
-      created_at: transaction.created_at || transaction.date
-    })).filter(transaction => transaction.transaction_id) // Only cache transactions with valid transaction_id
+    // Group transactions by inventory to compute before/after balances when API omits them
+    const inventoryMap = new Map()
+    for (const tx of transactions) {
+      const invId = tx.inventory_id
+      if (!inventoryMap.has(invId)) inventoryMap.set(invId, [])
+      inventoryMap.get(invId).push(tx)
+    }
+
+    // Load current stock levels for inventories (final state)
+    const cachedInventory = await adminDB.inventory.toArray()
+    const finalStockMap = new Map(cachedInventory.map(i => [i.inventory_id, i.current_stock_level || i.quantity || i.stock_level || 0]))
+
+    const negativeTypes = ['RETURN', 'EXPIRED', 'ISSUE', 'OUTBOUND', 'USE', 'DISPENSE', 'STOCK_OUT']
+    const enriched = []
+
+    for (const [invId, list] of inventoryMap.entries()) {
+      // Sort oldest -> newest
+      list.sort((a, b) => new Date(a.created_at || a.date || 0) - new Date(b.created_at || b.date || 0))
+      // Compute signed changes & total
+      const signedChanges = list.map(tx => {
+        const raw = Number(tx.quantity_delta ?? tx.quantity ?? 0)
+        const type = (tx.transaction_type || '').toUpperCase()
+        return negativeTypes.includes(type) ? -Math.abs(raw) : Math.abs(raw)
+      })
+      const sumChanges = signedChanges.reduce((acc, v) => acc + v, 0)
+      const finalStock = finalStockMap.get(invId)
+      // Derive starting stock: final = start + sumChanges => start = final - sumChanges
+      let runningStock = (typeof finalStock === 'number' ? finalStock : 0) - sumChanges
+      list.forEach((tx, idx) => {
+        const signedQty = signedChanges[idx]
+        const before = runningStock
+        const after = before + signedQty
+        runningStock = after
+        enriched.push({
+          transaction_id: tx.transaction_id,
+          inventory_id: invId,
+            transaction_type: tx.transaction_type,
+          quantity: tx.quantity_delta ?? tx.quantity ?? Math.abs(signedQty),
+          quantity_delta: signedQty, // signed change
+          quantity_before: before,
+          quantity_after: after,
+          balance_after: after,
+          note: tx.remarks || tx.note,
+          created_by: tx.created_by,
+          created_at: tx.created_at || tx.date
+        })
+      })
+    }
+
+    const transformedTransactions = enriched.filter(t => t.transaction_id)
 
     if (transformedTransactions.length > 0) {
       await adminDB.transactions.bulkPut(transformedTransactions)
-      console.log(`✅ Cached ${transformedTransactions.length} transactions`)
+      console.log(`✅ Cached ${transformedTransactions.length} transactions (with before/after balances)`) 
     } else {
       console.log('⚠️ No valid transactions to cache')
     }
@@ -445,25 +533,57 @@ async function prefetchImmunizations() {
     const response = await api.get('/immunizations', {
       params: { page: 1, limit: 10000 }
     })
-    const immunizations = response.data?.data || []
+    const immunizations = response.data?.data || response.data || []
     console.log(`📥 Caching ${immunizations.length} immunizations...`)
+    
+    // Debug: Log first immunization to see what fields API returns
+    if (immunizations.length > 0) {
+      console.log('🔍 Sample immunization from API:', immunizations[0])
+    }
 
     const transformedImmunizations = immunizations.map(immunization => ({
-      immunization_id: immunization.immunization_id,
-      patient_id: immunization.patient_id,
+      immunization_id: immunization.immunization_id || immunization.id,
+      patient_id: String(immunization.patient_id), // Ensure string for consistency
       visit_id: immunization.visit_id,
       vaccine_id: immunization.vaccine_id,
-      dose_number: immunization.dose_number,
-      administered_date: immunization.administered_date,
+      inventory_id: immunization.inventory_id, // IMPORTANT: Store this for batch number lookup
+      // Vaccine/antigen names
+      antigen_name: immunization.antigen_name || immunization.vaccine_antigen_name || immunization.disease_prevented,
+      vaccine_antigen_name: immunization.vaccine_antigen_name || immunization.antigen_name,
+      disease_prevented: immunization.disease_prevented || immunization.diseasePrevented,
+      // Dose and date info
+      dose_number: immunization.dose_number || immunization.doseNumber,
+      administered_date: immunization.administered_date || immunization.administeredDate,
+      age_at_administration: immunization.age_at_administration || immunization.ageAtAdministration,
+      // Worker info - immunizationhistory_view has administered_by_name from users join
       administered_by: immunization.administered_by,
+      administered_by_name: immunization.administered_by_name || immunization.administeredByName,
+      // Vaccine details
+      lot_number: immunization.lot_number || immunization.lotNumber,
+      batch_number: immunization.batch_number || immunization.batchNumber || immunization.lot_number,
+      site: immunization.site,
+      route: immunization.route,
+      // Facility info
+      facility_name: immunization.facility_name || immunization.facilityName || immunization.immunization_facility_name,
+      outside: immunization.outside || immunization.immunization_outside,
+      // Other
       remarks: immunization.remarks,
-      is_deleted: Boolean(immunization.is_deleted), // Ensure boolean value
+      is_deleted: Boolean(immunization.is_deleted),
       created_at: immunization.created_at,
       updated_at: immunization.updated_at
-    }))
+    })).filter(i => i.immunization_id) // Only cache valid records
+    
+    // Debug: Log first transformed to see what we're caching
+    if (transformedImmunizations.length > 0) {
+      console.log('🔍 Sample cached immunization:', transformedImmunizations[0])
+    }
 
-    await adminDB.immunizations.bulkPut(transformedImmunizations)
-    console.log(`✅ Cached ${transformedImmunizations.length} immunizations`)
+    if (transformedImmunizations.length > 0) {
+      await adminDB.immunizations.bulkPut(transformedImmunizations)
+      console.log(`✅ Cached ${transformedImmunizations.length} immunizations`)
+    } else {
+      console.log('⚠️ No immunizations to cache')
+    }
   } catch (error) {
     console.warn('⚠️ Failed to prefetch immunizations:', error.message)
   }
@@ -477,23 +597,49 @@ async function prefetchVisits() {
     const response = await api.get('/visits', {
       params: { page: 1, limit: 10000 }
     })
-    const visits = response.data?.data || []
+    const visits = response.data?.items || response.data?.data || response.data || []
     console.log(`📥 Caching ${visits.length} visits...`)
+    
+    // Debug: Log first visit to see what fields API returns
+    if (visits.length > 0) {
+      console.log('🔍 Sample visit from API:', visits[0])
+    }
 
     const transformedVisits = visits.map(visit => ({
-      visit_id: visit.visit_id,
-      patient_id: visit.patient_id,
-      visit_date: visit.visit_date,
-      visit_type: visit.visit_type,
+      visit_id: visit.visit_id || visit.id,
+      patient_id: String(visit.patient_id), // Ensure string for consistency
+      visit_date: visit.visit_date || visit.visitDate,
+      visit_type: visit.visit_type || visit.visitType,
+      service_rendered: visit.service_rendered || visit.visit_type, // IMPORTANT: Cache service_rendered
       notes: visit.notes,
-      conducted_by: visit.conducted_by,
-      is_deleted: visit.is_deleted,
+      findings: visit.findings,
+      recorded_by: visit.recorded_by || visit.recordedBy,
+      health_worker_name: visit.health_worker_name || visit.healthWorkerName || visit.recorded_by,
+      // Vitals from visits_view (top-level columns)
+      weight: visit.weight,
+      height: visit.height,
+      height_length: visit.height_length || visit.height,
+      temperature: visit.temperature,
+      muac: visit.muac,
+      respiration_rate: visit.respiration_rate || visit.respiratoryRate,
+      respiratory_rate: visit.respiration_rate || visit.respiratoryRate,
+      pulse: visit.pulse,
+      is_deleted: Boolean(visit.is_deleted),
       created_at: visit.created_at,
       updated_at: visit.updated_at
-    }))
+    })).filter(v => v.visit_id) // Only cache valid records
+    
+    // Debug: Log first transformed to see what we're caching
+    if (transformedVisits.length > 0) {
+      console.log('🔍 Sample cached visit:', transformedVisits[0])
+    }
 
-    await adminDB.visits.bulkPut(transformedVisits)
-    console.log(`✅ Cached ${transformedVisits.length} visits`)
+    if (transformedVisits.length > 0) {
+      await adminDB.visits.bulkPut(transformedVisits)
+      console.log(`✅ Cached ${transformedVisits.length} visits`)
+    } else {
+      console.log('⚠️ No visits to cache')
+    }
   } catch (error) {
     console.warn('⚠️ Failed to prefetch visits:', error.message)
   }
@@ -609,7 +755,9 @@ async function prefetchBirthHistory() {
 
 /**
  * Prefetch receiving reports
+ * DISABLED: Receiving reports are no longer needed for offline access
  */
+/*
 async function prefetchReceivingReports() {
   try {
     const response = await api.get('/receiving-reports', {
@@ -674,6 +822,7 @@ async function prefetchReceivingReports() {
     console.warn('⚠️ Failed to prefetch receiving reports:', error.message)
   }
 }
+*/
 
 /**
  * Check if admin data is cached and ready for offline use
@@ -696,5 +845,274 @@ export async function getAdminCacheTimestamp() {
     return metadata?.value
   } catch (error) {
     return null
+  }
+}
+
+/**
+ * Prefetch patient schedules for each patient (patientschedule table)
+ * This makes Scheduled Vaccinations available offline without opening each patient online.
+ */
+async function prefetchPatientSchedules() {
+  try {
+    const patients = await adminDB.patients.toArray()
+    console.log(`📥 Prefetching schedules for ${patients.length} patients...`)
+    let totalSchedules = 0
+
+    // Limit concurrent requests to avoid flooding backend
+    const concurrency = 5
+    const queue = [...patients]
+    const workers = Array.from({ length: concurrency }).map(async () => {
+      while (queue.length) {
+        const p = queue.shift()
+        if (!p || !p.patient_id) continue
+        try {
+          const resp = await api.get(`/patients/${p.patient_id}/schedule`)
+          const rows = resp.data?.data || resp.data || []
+          if (Array.isArray(rows) && rows.length) {
+            const transformed = rows.map(s => ({
+              patient_schedule_id: s.patient_schedule_id || s.id,
+              patient_id: String(p.patient_id), // Ensure string for consistency
+              vaccine_id: s.vaccine_id,
+              antigen_name: s.antigen_name || s.vaccine?.antigen_name || s.vaccine_name,
+              dose_number: s.dose_number || s.doseNumber,
+              scheduled_date: s.scheduled_date || s.scheduledDate,
+              status: s.status,
+              days_overdue: s.days_overdue || s.daysOverdue || 0,
+              notes: s.notes,
+              is_deleted: Boolean(s.is_deleted),
+              created_at: s.created_at,
+              updated_at: s.updated_at
+            })).filter(r => r.patient_schedule_id)
+            if (transformed.length) {
+              await adminDB.patientschedule.bulkPut(transformed)
+              totalSchedules += transformed.length
+            }
+          }
+        } catch (err) {
+          // Non-fatal; some patients may have no schedule
+        }
+      }
+    })
+    await Promise.all(workers)
+    console.log(`✅ Cached ${totalSchedules} patient schedule rows`)
+  } catch (error) {
+    console.warn('⚠️ Failed to prefetch patient schedules:', error.message)
+  }
+}
+
+/**
+ * Prefetch immunizations for each patient (immunizations table)
+ * Enables Vaccination History offline access.
+ */
+async function prefetchPatientImmunizations() {
+  try {
+    const patients = await adminDB.patients.toArray()
+    console.log(`📥 Prefetching immunizations for ${patients.length} patients...`)
+    let totalImmunizations = 0
+    let sampleLogged = false
+    const concurrency = 5
+    const queue = [...patients]
+    const workers = Array.from({ length: concurrency }).map(async () => {
+      while (queue.length) {
+        const p = queue.shift()
+        if (!p || !p.patient_id) continue
+        try {
+          const resp = await api.get(`/patients/${p.patient_id}/immunizations`)
+          const rows = resp.data?.data || resp.data || []
+          
+          // Debug: Log first immunization from API to see structure
+          if (!sampleLogged && Array.isArray(rows) && rows.length > 0) {
+            console.log('🔍 Sample immunization from /patients/:id/immunizations API:', rows[0])
+            sampleLogged = true
+          }
+          
+          if (Array.isArray(rows) && rows.length) {
+            const transformed = rows.map(i => ({
+              immunization_id: i.immunization_id || i.id,
+              patient_id: String(p.patient_id), // Ensure string for consistency
+              visit_id: i.visit_id,
+              vaccine_id: i.vaccine_id,
+              inventory_id: i.inventory_id, // For batch lookup
+              // Vaccine/antigen names
+              antigen_name: i.antigen_name || i.vaccine_antigen_name || i.vaccine?.antigen_name || i.disease_prevented,
+              vaccine_antigen_name: i.vaccine_antigen_name || i.antigen_name,
+              disease_prevented: i.disease_prevented || i.diseasePrevented,
+              // Dose and date info
+              dose_number: i.dose_number || i.doseNumber,
+              administered_date: i.administered_date || i.administeredDate,
+              age_at_administration: i.age_at_administration || i.ageAtAdministration,
+              // Worker info
+              administered_by: i.administered_by || i.administeredBy,
+              administered_by_name: i.administered_by_name || i.administeredByName,
+              healthworker_id: i.healthworker_id || i.healthWorkerId,
+              // Vaccine details
+              lot_number: i.lot_number || i.lotNumber,
+              batch_number: i.batch_number || i.batchNumber || i.lot_number,
+              site: i.site,
+              route: i.route,
+              // Facility info - check multiple possible field names
+              facility_name: i.facility_name || i.facilityName || i.immunization_facility_name || i.health_center,
+              outside: i.outside || i.immunization_outside,
+              // Other
+              remarks: i.remarks,
+              is_deleted: Boolean(i.is_deleted),
+              created_at: i.created_at,
+              updated_at: i.updated_at
+            })).filter(r => r.immunization_id)
+            if (transformed.length) {
+              await adminDB.immunizations.bulkPut(transformed)
+              totalImmunizations += transformed.length
+            }
+          }
+        } catch (err) {
+          // Non-fatal
+        }
+      }
+    })
+    await Promise.all(workers)
+    console.log(`✅ Cached ${totalImmunizations} immunization rows`)
+  } catch (error) {
+    console.warn('⚠️ Failed to prefetch immunizations:', error.message)
+  }
+}
+
+/**
+ * Prefetch visits for each patient (visits table)
+ * Enables Medical History offline access.
+ */
+async function prefetchPatientVisits() {
+  try {
+    const patients = await adminDB.patients.toArray()
+    console.log(`📥 Prefetching visits for ${patients.length} patients...`)
+    let totalVisits = 0
+    let sampleLogged = false
+    const concurrency = 5
+    const queue = [...patients]
+    const workers = Array.from({ length: concurrency }).map(async () => {
+      while (queue.length) {
+        const p = queue.shift()
+        if (!p || !p.patient_id) continue
+        try {
+          const resp = await api.get(`/patients/${p.patient_id}/visits`)
+          const rows = resp.data?.data || resp.data || []
+          
+          // Debug: Log first visit from API to see structure
+          if (!sampleLogged && Array.isArray(rows) && rows.length > 0) {
+            console.log('🔍 Sample visit from /patients/:id/visits API:', rows[0])
+            sampleLogged = true
+          }
+          
+          if (Array.isArray(rows) && rows.length) {
+            const transformed = rows.map(v => ({
+              visit_id: v.visit_id || v.id,
+              patient_id: String(p.patient_id), // Ensure string for consistency
+              visit_date: v.visit_date || v.visitDate,
+              visit_type: v.visit_type || v.visitType,
+              service_rendered: v.service_rendered || v.serviceRendered || v.visit_type, // IMPORTANT: service rendered
+              reason: v.reason,
+              notes: v.notes,
+              findings: v.findings,
+              recorded_by: v.recorded_by || v.recordedBy,
+              health_worker_name: v.health_worker_name || v.healthWorkerName || v.recorded_by,
+              // Vitals - check both nested and top-level
+              height: v.height || v.vitals?.height || v.vital_signs?.height_length,
+              height_length: v.height_length || v.height || v.vitals?.height_length || v.vital_signs?.height_length,
+              weight: v.weight || v.vitals?.weight || v.vital_signs?.weight,
+              muac: v.muac || v.vitals?.muac || v.vital_signs?.muac,
+              temperature: v.temperature || v.vitals?.temperature || v.vital_signs?.temperature,
+              pulse: v.pulse || v.vitals?.pulse || v.vital_signs?.pulse,
+              respiratory_rate: v.respiratory_rate || v.respiration_rate || v.respiratoryRate || v.vitals?.respiration_rate || v.vital_signs?.respiration_rate,
+              respiration_rate: v.respiration_rate || v.respiratory_rate || v.respiratoryRate || v.vitals?.respiration_rate || v.vital_signs?.respiration_rate,
+              // Immunizations given (array) - important for visit summary
+              immunizations_given: v.immunizations_given || v.immunizationsGiven || v.immunizations || [],
+              healthworker_id: v.healthworker_id || v.healthWorkerId,
+              is_deleted: Boolean(v.is_deleted),
+              created_at: v.created_at,
+              updated_at: v.updated_at
+            })).filter(r => r.visit_id)
+            if (transformed.length) {
+              await adminDB.visits.bulkPut(transformed)
+              totalVisits += transformed.length
+            }
+          }
+        } catch (err) {
+          // Non-fatal
+        }
+      }
+    })
+    await Promise.all(workers)
+    console.log(`✅ Cached ${totalVisits} visit rows`)
+  } catch (error) {
+    console.warn('⚠️ Failed to prefetch visits:', error.message)
+  }
+}
+
+/**
+ * Enrich immunizations with batch/lot numbers from inventory
+ * This adds facility_name, batch_number, and lot_number to cached immunizations
+ */
+async function enrichImmunizationsWithInventory() {
+  try {
+    // Get all cached immunizations and inventory
+    const immunizations = await adminDB.immunizations.toArray()
+    const inventory = await adminDB.inventory.toArray()
+    
+    if (!immunizations.length) {
+      console.log('⚠️ No immunizations to enrich')
+      return
+    }
+    
+    if (!inventory.length) {
+      console.log('⚠️ No inventory data for enrichment')
+      return
+    }
+    
+    // Build inventory map: inventory_id -> { batch_number, lot_number }
+    const inventoryMap = {}
+    inventory.forEach(item => {
+      const id = item.inventory_id || item.id
+      if (id) {
+        inventoryMap[id] = {
+          batch_number: item.batch_number || item.lot_number,
+          lot_number: item.lot_number || item.batch_number
+        }
+      }
+    })
+    
+    console.log(`🔗 Built inventory map with ${Object.keys(inventoryMap).length} entries`)
+    
+    // Enrich immunizations that have inventory_id but missing batch/lot info
+    let enrichedCount = 0
+    const enriched = immunizations.map(imm => {
+      const inventoryId = imm.inventory_id
+      
+      // Skip if no inventory_id or already has batch/lot info
+      if (!inventoryId || (imm.batch_number && imm.lot_number)) {
+        return imm
+      }
+      
+      // Look up in inventory map
+      const invData = inventoryMap[inventoryId]
+      if (invData) {
+        enrichedCount++
+        return {
+          ...imm,
+          batch_number: imm.batch_number || invData.batch_number,
+          lot_number: imm.lot_number || invData.lot_number
+        }
+      }
+      
+      return imm
+    })
+    
+    // Update cache with enriched data
+    if (enrichedCount > 0) {
+      await adminDB.immunizations.bulkPut(enriched)
+      console.log(`✅ Enriched ${enrichedCount} immunizations with batch/lot numbers`)
+    } else {
+      console.log('ℹ️ No immunizations needed enrichment')
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to enrich immunizations:', error.message)
   }
 }

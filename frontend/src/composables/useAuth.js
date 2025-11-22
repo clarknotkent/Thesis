@@ -41,6 +41,9 @@ export const useAuth = () => {
     if (normalizedRole === 'guardian' || normalizedRole === 'parent') {
       console.log('👨‍👩‍👧‍👦 Parent login - prefetching data for offline mode')
       try {
+        // Ensure GuardianOfflineDB exists (recreate if deleted during previous logout)
+        const { initGuardianOfflineDB } = await import('@/utils/db')
+        initGuardianOfflineDB()
         const { useOfflineGuardian } = await import('@/composables/useOfflineGuardian')
         const { fetchAndCacheData } = useOfflineGuardian()
         const guardianId = info.id || info.guardian_id || info.userId || info.user_id
@@ -59,6 +62,9 @@ export const useAuth = () => {
       if (normalizedRole === 'admin') {
         console.log('👑 Admin login - prefetching admin data for offline mode')
         try {
+          // Ensure AdminOfflineDB exists (recreate if deleted during previous logout)
+          const { initAdminOfflineDB } = await import('@/services/offline/adminOfflineDB')
+          initAdminOfflineDB()
           const { prefetchAdminData } = await import('@/services/offline/adminOfflinePrefetch')
           await prefetchAdminData()
           console.log('✅ Admin data prefetched successfully')
@@ -126,9 +132,11 @@ export const useAuth = () => {
       // Clear admin offline data for admin users
       if (currentRole === 'admin') {
         try {
-          const { clearAdminOfflineData } = await import('@/services/offline/adminOfflineDB')
+          const { clearAdminOfflineData, adminDB } = await import('@/services/offline/adminOfflineDB')
+          // First clear all tables (defensive) then delete the entire IndexedDB database like guardian & staff flows
           await clearAdminOfflineData()
-          console.log('✅ Admin offline data cleared on logout')
+          await adminDB.delete()
+          console.log('✅ AdminOfflineDB deleted on logout')
         } catch (error) {
           console.error('❌ Failed to clear admin offline data:', error)
         }

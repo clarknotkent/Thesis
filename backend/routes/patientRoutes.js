@@ -22,6 +22,8 @@ import { createPatient,
   getCoParentSuggestion,
   getSmartDoseOptions,
   getPatientStats } from '../controllers/patientController.js';
+import { listImmunizations } from '../controllers/immunizationController.js';
+import { getSupabaseForRequest } from '../utils/supabaseClient.js';
 
 // NOTE: Define non-parameterized helper routes BEFORE any '/:id' routes to avoid shadowing
 // Optional: compute age detail (months, days) from DOB
@@ -94,6 +96,32 @@ router.get('/:id/vitals', authenticateRequest, authorizePatientReadAccess, getVi
 
 // PUT /api/patients/:id/vitals - Update patient vitals
 router.put('/:id/vitals', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updateVitals);
+
+// GET /api/patients/:id/immunizations - List immunizations for a patient (vaccination history)
+router.get('/:id/immunizations', authenticateRequest, authorizePatientReadAccess, async (req, res) => {
+  try {
+    req.query.patient_id = req.params.id; // Inject patient_id for controller filter
+    return listImmunizations(req, res);
+  } catch (err) {
+    console.error('patient immunizations route error', err);
+    return res.status(500).json({ success:false, message:'Failed to fetch patient immunizations' });
+  }
+});
+
+// GET /api/patients/:id/visits - List visits for a patient (medical history)
+router.get('/:id/visits', authenticateRequest, authorizePatientReadAccess, async (req, res) => {
+  try {
+    const { listVisits } = await import('../models/visitModel.js');
+    const supabase = getSupabaseForRequest(req);
+    const patientId = Number(req.params.id);
+    if (!patientId) return res.status(400).json({ success:false, message:'Invalid patient id' });
+    const result = await listVisits({ patient_id: patientId }, 1, 10000, supabase);
+    return res.json({ success: true, data: result.items });
+  } catch (err) {
+    console.error('patient visits route error', err);
+    return res.status(500).json({ success:false, message:'Failed to fetch patient visits' });
+  }
+});
 
 // Optional: dedicated onboarding endpoint (same handler as create with immunizations plan support)
 router.post('/onboard', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), createPatient);

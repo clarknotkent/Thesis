@@ -1,5 +1,7 @@
 import api from './api'
 import { db } from './offline/db' // StaffOfflineDB (Admin + HealthStaff)
+// Admin has a separate offline DB for read-only cached data
+import { adminDB, clearAdminOfflineData } from './offline/adminOfflineDB'
 // ParentPortalOfflineDB lazy-loaded only when needed
 
 const TOKEN_KEY = 'authToken'
@@ -59,12 +61,22 @@ export async function logout() {
   
   // CRITICAL SECURITY: Wipe local IndexedDB database
   // This prevents sensitive patient data from persisting after logout
+  const role = normalizeRole(getRole())
   try {
-    // Only staff offline DB remains (parent offline removed)
+    // Wipe staff offline DB (shared by admin & health staff)
     await db.delete().then(() => console.log('✅ Successfully wiped StaffOfflineDB'))
   } catch (error) {
-    console.error('❌ Error during database wipe:', error)
-    // Continue with logout even if database wipe fails
+    console.error('❌ Error deleting StaffOfflineDB:', error)
+  }
+  if (role === 'admin') {
+    try {
+      // Clear tables defensively then delete the entire AdminOfflineDB
+      await clearAdminOfflineData()
+      await adminDB.delete()
+      console.log('✅ AdminOfflineDB deleted on logout')
+    } catch (e) {
+      console.error('❌ Error deleting AdminOfflineDB:', e)
+    }
   }
   
   // Perform API logout (fire-and-forget)

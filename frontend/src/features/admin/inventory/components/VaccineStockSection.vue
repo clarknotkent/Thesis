@@ -658,16 +658,16 @@ const isRemovedFromView = (item) => {
 }
 
 const viewDetails = (item) => {
+  // Allow navigation offline; page has offline fallback logic
   if (isOffline.value) {
     addToast({
-      title: 'Feature Unavailable Offline',
-      message: 'Viewing detailed inventory information requires an internet connection',
-      type: 'warning',
-      timeout: 4000
+      title: 'Offline Mode',
+      message: 'Showing cached inventory details',
+      type: 'info',
+      timeout: 3000
     })
-  } else {
-    router.push(`/admin/vaccines/view/${item.id}`)
   }
+  router.push(`/admin/vaccines/view/${item.id}`)
 }
 </script>
 

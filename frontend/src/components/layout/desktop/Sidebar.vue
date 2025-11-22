@@ -159,6 +159,7 @@ const showOfflineDetails = ref(false)
 
 // Routes that are restricted in offline mode for admin
 const offlineRestrictedRoutes = [
+  '/admin/dashboard',
   '/admin/chat',
   '/admin/notifications-inbox', 
   '/admin/sms-management',

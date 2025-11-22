@@ -80,10 +80,6 @@
             <p class="message-text">
               {{ message.text }}
             </p>
-            <small
-              v-if="!effectiveOnline.value"
-              class="text-muted"
-            ><i class="bi bi-wifi-off me-1" />View online to open</small>
           </div>
         </div>
       </div>
