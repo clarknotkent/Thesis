@@ -10,6 +10,180 @@ All notable changes to the Immunization Management System will be documented in 
 
 ## [system-prototype-v4] - 2025-11-22
 
+### 🔐 Password Recovery System (November 22, 2025 - Latest Update)
+
+**Complete SMS-based password reset workflow for secure account recovery.**
+
+Added a comprehensive password recovery system that allows users to reset forgotten passwords via SMS verification codes.
+
+### ✨ Added
+
+**Password Recovery Flow:**
+- **Forgot Password Page** (`/auth/forgot-password`):
+  - Single input field accepts email, username, or phone number
+  - Validates user existence and sends 6-digit SMS code
+  - Shows masked phone number hint (e.g., +639**-***-1234)
+  - 15-minute code expiration with secure token storage
+  - Professional UI with branding section and responsive design
+
+- **Reset Password Page** (`/reset-password`):
+  - 6-digit code input with auto-focus and validation
+  - New password and confirmation fields with show/hide toggle
+  - Real-time validation: code verification, password strength, password match
+  - Success/error feedback with automatic redirect to login
+  - Session storage for identifier security
+
+**Backend Endpoints:**
+- `POST /api/auth/forgot-password`:
+  - Accepts identifier (email/username/phone)
+  - Generates secure 6-digit code
+  - Sends SMS via PhilSMS API
+  - Returns masked phone hint
+  - Stores reset token with 15-minute expiry
+
+- `POST /api/auth/reset-password`:
+  - Validates reset code and expiration
+  - Updates password in database
+  - Clears used reset tokens
+  - Returns success confirmation
+
+**Security Features:**
+- Argon2 password hashing
+- Token-based verification with expiry
+- Rate limiting protection
+- Secure session storage
+- Automatic token cleanup after use
+
+### 🔄 Changed
+
+**Authentication System:**
+- Enhanced `authModel.js` with password reset methods:
+  - `generatePasswordResetCode()` - Creates secure 6-digit codes
+  - `findUserByIdentifier()` - Multi-field user lookup
+  - `verifyResetCode()` - Code validation with expiry check
+  - `resetPassword()` - Secure password update
+  - `clearResetToken()` - Token cleanup
+
+**SMS Integration:**
+- Password reset template in SMS system
+- Automatic code delivery to registered phone
+- Template variables: {code}, {expiry_minutes}
+
+**Router Configuration:**
+- Added `/auth/forgot-password` route
+- Added `/reset-password` route
+- Public routes (no authentication required)
+
+### 🐛 Fixed
+
+**Password Recovery Issues:**
+- Proper error handling for invalid identifiers
+- Expired code detection and user-friendly messages
+- Code reuse prevention
+- Session security with identifier validation
+
+### 📚 Files Modified
+
+**Backend (3 files):**
+- `backend/models/authModel.js` - Added password reset methods and database queries
+- `backend/controllers/authController.js` - Added forgot-password and reset-password endpoints
+- `backend/routes/authRoutes.js` - Added password recovery routes
+
+**Frontend (3 files):**
+- `frontend/src/views/auth/ForgotPassword.vue` - NEW: Forgot password page with identifier input
+- `frontend/src/views/auth/ResetPassword.vue` - NEW: Reset password page with code verification
+- `frontend/src/router/index.js` - Added password recovery routes
+
+### ✅ Outcomes
+
+**User Experience:**
+- ✅ Users can recover account access via registered phone number
+- ✅ Clear step-by-step process with helpful guidance
+- ✅ Professional UI matching login page design
+- ✅ Real-time validation prevents user errors
+
+**Security:**
+- ✅ Secure 6-digit codes with 15-minute expiration
+- ✅ Argon2 password hashing for strong protection
+- ✅ Token-based verification prevents unauthorized resets
+- ✅ Automatic cleanup of used/expired tokens
+
+**System Reliability:**
+- ✅ SMS delivery confirmation before allowing password reset
+- ✅ Comprehensive error handling and user feedback
+- ✅ Database integrity with proper token management
+- ✅ Session security with identifier validation
+
+---
+
+### 🕐 Receiving Report Time Tracking Enhancement (November 22, 2025 - Evening Update)
+
+**Enhanced Receiving Reports with Time Tracking**
+
+This update adds precise time tracking to Receiving Reports, allowing multiple deliveries to be recorded on the same day with accurate timestamps.
+
+### ✨ Added
+
+**Time Tracking for Receiving Reports:**
+- Time input field in Receiving Report form (next to Delivery Date)
+- Time column in Receiving Reports table (displays time in 12-hour format)
+- Automatic time extraction from delivery_date timestamp
+- Default time set to current time when creating new reports
+- Support for multiple deliveries on the same day with different times
+
+**New Helper Functions:**
+- `formatTime()` - Displays time in 12-hour format (e.g., "2:30 PM") without timezone conversion
+- `parseDeliveryDateTime()` - Extracts both date and time from timestamptz field and formats date for display
+
+### 🔄 Changed
+
+**Receiving Report Form:**
+- Delivery Date field now accepts both date and time (combined into timestamptz)
+- Time is preserved when saving and loading reports
+- Date validation updated to preserve time information
+- Form layout adjusted: Date (col-md-4), Time (col-md-2), Delivered By (col-md-6)
+
+**Receiving Reports Display:**
+- Added Time column in both ReceivingReportsSection and ReceivingReportsTable
+- Time extracted directly from ISO string to avoid timezone conversion issues
+- Consistent time display across all receiving report views
+- Updated colspan in empty state from 8 to 9
+
+**Backend Model:**
+- Updated `createReport()` validation to compare against current datetime instead of normalized date
+- Updated `addItem()` expiration validation to use `new Date()` instead of `getTodayPH()`
+- Removed date normalization to preserve time information
+
+### 🐛 Fixed
+
+**Backend Issues:**
+- Fixed `getTodayPH is not defined` error in `receivingReportModel.createReport()`
+- Fixed `getTodayPH is not defined` error in `receivingReportModel.addItem()`
+- Fixed double-timestamp formatting causing database error: `invalid input syntax for type timestamp with time zone`
+- Updated date validation to use `new Date()` instead of deprecated `getTodayPH()`
+
+**Timezone Issues:**
+- Fixed 8-hour offset when displaying time in Receiving Reports list
+- Fixed 8-hour offset when displaying time after creating/editing reports
+- Fixed delivery_date showing raw ISO timestamp (e.g., "2025-11-22T13:50:00+00:00") instead of formatted date (e.g., "11/22/2025")
+- Prevented timezone conversion when parsing timestamps
+- Time now extracted directly from ISO string without Date object conversion
+
+**Form Issues:**
+- Fixed `toISO()` function appending time to already-formatted timestamps
+- Added check for existing 'T' in date string to prevent double-formatting
+- Improved date format detection (YYYY-MM-DD vs MM/DD/YYYY)
+
+**Components Updated:**
+- `ReceivingReportPage.vue` - Added time input, parsing, and formatting logic
+- `ReceivingReportsSection.vue` - Added time column and formatTime function
+- `ReceivingReportsTable.vue` - Added time column and formatTime prop
+- `useVaccineInventory.js` - Added formatTime composable function
+- `VaccineInventory.vue` - Passes formatTime to ReceivingReportsTable component
+- `receivingReportModel.js` - Fixed validation and removed getTodayPH() calls
+
+---
+
 ### 🚀 Admin Portal Offline Stability & Critical Bug Fixes (November 22, 2025)
 
 **Major Focus: Data Accuracy, Security, and User Experience**

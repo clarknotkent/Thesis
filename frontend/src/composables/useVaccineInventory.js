@@ -527,6 +527,22 @@ export function useVaccineInventory() {
     return `${mm}/${dd}/${yyyy}`
   }
 
+  const formatTime = (date) => {
+    if (!date) return 'N/A'
+    const dateStr = String(date)
+    // Extract time directly from ISO string to avoid timezone conversion
+    if (dateStr.includes('T')) {
+      const timePart = dateStr.split('T')[1]
+      const [hours, minutes] = timePart.split(':')
+      // Convert to 12-hour format
+      const hour = parseInt(hours, 10)
+      const ampm = hour >= 12 ? 'PM' : 'AM'
+      const hour12 = hour % 12 || 12
+      return `${hour12}:${minutes} ${ampm}`
+    }
+    return 'N/A'
+  }
+
   const convertToISODate = (mmddyyyy) => {
     if (!mmddyyyy) return null
     const [month, day, year] = mmddyyyy.split('/')
@@ -711,6 +727,7 @@ export function useVaccineInventory() {
     viewInventoryHistory,
     closeHistoryModal,
     formatDate,
+    formatTime,
     convertToISODate,
   setFilter,
   setSort,

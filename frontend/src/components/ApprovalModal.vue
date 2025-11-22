@@ -15,11 +15,20 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input
-          v-model="password"
-          type="password"
-          class="form-input"
-        >
+        <div class="position-relative">
+          <input
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            class="form-input pe-5"
+          >
+          <button
+            type="button"
+            class="password-toggle-btn"
+            @click="showPassword = !showPassword"
+          >
+            <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+          </button>
+        </div>
       </div>
       <div
         v-if="error"
@@ -58,6 +67,7 @@ const identifier = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
 
 const onCancel = () => {
   error.value = ''
@@ -142,6 +152,22 @@ const onConfirm = async () => {
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 .form-input { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ddd; border-radius: 4px }
+.position-relative { position: relative; }
+.pe-5 { padding-right: 2.5rem; }
+.password-toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  padding: 0 10px;
+  cursor: pointer;
+  color: #6c757d;
+}
+.password-toggle-btn:hover {
+  color: #495057;
+}
 .actions { display:flex; gap: 0.5rem; justify-content:flex-end; margin-top:1rem }
 .btn { padding: 0.5rem 0.75rem; border-radius:6px; border:none; background:#eee }
 .btn-primary { background: linear-gradient(135deg,#667eea,#764ba2); color: white }

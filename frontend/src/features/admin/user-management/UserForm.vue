@@ -129,12 +129,53 @@
           class="col-md-3"
         >
           <label class="form-label">Password <span class="text-danger">*</span></label>
-          <input 
-            v-model="localForm.password" 
-            type="password" 
-            class="form-control"
-            required
+          <div class="position-relative">
+            <input 
+              v-model="localForm.password" 
+              :type="showPassword ? 'text' : 'password'" 
+              class="form-control pe-5"
+              required
+              minlength="8"
+            >
+            <button
+              type="button"
+              class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+              style="border: none; background: transparent; padding: 0 10px; z-index: 10;"
+              @click="showPassword = !showPassword"
+            >
+              <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+            </button>
+          </div>
+        </div>
+        <div
+          v-if="!isEditing && !readOnly"
+          class="col-md-3"
+        >
+          <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input 
+              v-model="localForm.confirmPassword" 
+              :type="showConfirmPassword ? 'text' : 'password'" 
+              class="form-control pe-5"
+              :class="{ 'is-invalid': localForm.password && localForm.confirmPassword && localForm.password !== localForm.confirmPassword }"
+              required
+              minlength="8"
+            >
+            <button
+              type="button"
+              class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+              style="border: none; background: transparent; padding: 0 10px; z-index: 10;"
+              @click="showConfirmPassword = !showConfirmPassword"
+            >
+              <i :class="showConfirmPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+            </button>
+          </div>
+          <div 
+            v-if="localForm.password && localForm.confirmPassword && localForm.password !== localForm.confirmPassword" 
+            class="invalid-feedback d-block"
           >
+            Passwords do not match
+          </div>
         </div>
         <div class="col-md-3">
           <label class="form-label">Status</label>
@@ -315,6 +356,10 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel'])
 
+// Password visibility states
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+
 const localForm = ref({
   id: '',
   firstName: '',
@@ -327,6 +372,7 @@ const localForm = ref({
   hsType: '',
   status: 'active',
   password: '',
+  confirmPassword: '',
   licenseNumber: '',
   employeeId: '',
   contactNumber: '',
@@ -381,6 +427,13 @@ watch(() => props.initialData, (newData) => {
 }, { immediate: true, deep: true })
 
 const handleSubmit = () => {
+  // Validate password confirmation for new users
+  if (!props.isEditing && !props.readOnly) {
+    if (localForm.value.password !== localForm.value.confirmPassword) {
+      // The validation is already shown in the UI, prevent submission
+      return
+    }
+  }
   emit('submit', localForm.value)
 }
 

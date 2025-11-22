@@ -2,7 +2,7 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.11  
+> **📌 Current Status:** Active Development - Version 4.13  
 > **Last Updated:** November 22, 2025  
 > **Branch:** system-prototype-v4  
 >
@@ -39,6 +39,7 @@ The Immunization Management System is designed to digitize and streamline the im
 - **Vaccination Tracking**: Complete immunization history with scheduled and completed vaccines
 - **Inventory Management**: Real-time vaccine stock levels, receiving reports, and expiry tracking
 - **SMS Notifications**: Automated reminders and updates via PhilSMS integration
+- **Password Recovery**: SMS-based password reset with secure code verification
 - **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs
 - **Multi-User Access**: Role-based portals for administrators, health workers, and parents
 - **Progressive Web App**: Service worker enabled for enhanced user experience
@@ -47,16 +48,53 @@ The Immunization Management System is designed to digitize and streamline the im
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.12 (November 22, 2025)
+- Version: 4.13 (November 22, 2025)
 - Status: Active Development
 
 ---
 
 ## What's New (November 22, 2025)
 
-This release focuses on Admin portal offline stability, critical bug fixes for data accuracy, and improved user experience across all portals.
+### Password Recovery System
 
-### Admin Portal Offline Enhancements
+**Complete SMS-based password reset workflow for secure account recovery.**
+
+- **Forgot Password Flow**: Users can initiate password reset using email, username, or phone number
+- **SMS Verification**: Secure 6-digit codes sent via SMS with 15-minute expiration
+- **Reset Password Page**: Code verification and new password setup with real-time validation
+- **Security Features**: Argon2 password hashing, token-based verification, automatic cleanup
+- **User Experience**: Professional UI, masked phone hints, clear error messages, step-by-step guidance
+
+**New Routes:**
+- `/auth/forgot-password` - Initiate password reset with identifier input
+- `/reset-password` - Verify code and set new password
+
+**Backend Endpoints:**
+- `POST /api/auth/forgot-password` - Generate and send reset code
+- `POST /api/auth/reset-password` - Verify code and update password
+
+### Receiving Report Time Tracking Enhancement
+
+**Enhanced Receiving Reports with precise time tracking for multiple daily deliveries.**
+
+- **Time Input Field**: Added time selection (HH:MM format) next to delivery date in receiving report form
+- **Time Column**: Receiving reports table now displays both date and time (12-hour format with AM/PM)
+- **Accurate Timestamps**: `delivery_date` field now stores complete timestamptz including time
+- **Timezone Fix**: Resolved 8-hour offset issue - time extracted directly from ISO string without conversion
+- **Default Time**: New reports automatically set to current time when created
+- **Multiple Daily Deliveries**: System now supports tracking multiple deliveries on the same day with different times
+- **Backend Validation**: Updated to preserve time information and use current datetime for validation
+- **Component Updates**: Enhanced ReceivingReportPage, ReceivingReportsSection, ReceivingReportsTable, and composables
+
+**Bug Fixes:**
+- Fixed `getTodayPH is not defined` errors in receivingReportModel
+- Fixed double-timestamp formatting causing database validation errors
+- Fixed delivery date showing raw ISO format instead of formatted date (MM/DD/YYYY)
+- Fixed time display adding 8 hours due to timezone conversion
+- Fixed `toISO()` function appending time to already-formatted timestamps
+
+### Admin Portal Offline Enhancements (Morning Release)
+
 - **Critical Patient Routes**: Added `/patients/:id/immunizations` and `/patients/:id/visits` endpoints for efficient offline data loading
 - **Dashboard Restriction**: Dashboard disabled offline (too complex for current offline cache) with informative sidebar icon
 - **Improved Data Accuracy**: Medical history and vaccination history now load from dedicated endpoints

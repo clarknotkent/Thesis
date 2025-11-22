@@ -101,6 +101,24 @@ const routes = [
     }
   },
   {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/auth/ForgotPassword.vue'),
+    meta: {
+      title: 'Forgot Password - ImmunizeMe',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('@/views/auth/ResetPassword.vue'),
+    meta: {
+      title: 'Reset Password - ImmunizeMe',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: AdminDashboard,

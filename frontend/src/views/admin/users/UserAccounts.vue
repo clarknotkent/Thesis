@@ -418,13 +418,51 @@
       >
         <p>Reset password for user "{{ userToResetPassword?.name }}"?</p>
         <div class="mb-3">
-          <label class="form-label">New Password</label>
-          <input
-            v-model="newPassword"
-            type="password"
-            class="form-control"
-            placeholder="Enter new password"
+          <label class="form-label">New Password <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input
+              v-model="newPassword"
+              :type="showResetPassword ? 'text' : 'password'"
+              class="form-control pe-5"
+              placeholder="Enter new password"
+              minlength="8"
+            >
+            <button
+              type="button"
+              class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+              style="border: none; background: transparent; padding: 0 10px; z-index: 10;"
+              @click="showResetPassword = !showResetPassword"
+            >
+              <i :class="showResetPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+            </button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+          <div class="position-relative">
+            <input
+              v-model="confirmPassword"
+              :type="showConfirmResetPassword ? 'text' : 'password'"
+              class="form-control pe-5"
+              :class="{ 'is-invalid': newPassword && confirmPassword && newPassword !== confirmPassword }"
+              placeholder="Confirm new password"
+              minlength="8"
+            >
+            <button
+              type="button"
+              class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted"
+              style="border: none; background: transparent; padding: 0 10px; z-index: 10;"
+              @click="showConfirmResetPassword = !showConfirmResetPassword"
+            >
+              <i :class="showConfirmResetPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+            </button>
+          </div>
+          <div
+            v-if="newPassword && confirmPassword && newPassword !== confirmPassword"
+            class="invalid-feedback d-block"
           >
+            Passwords do not match
+          </div>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button
@@ -435,7 +473,7 @@
           </button>
           <button
             class="btn btn-primary"
-            :disabled="resettingPassword"
+            :disabled="resettingPassword || (newPassword && confirmPassword && newPassword !== confirmPassword)"
             @click="updatePassword"
           >
             <i class="bi bi-key me-1" />
@@ -522,6 +560,9 @@ const showPasswordModal = ref(false)
 const userToDelete = ref(null)
 const userToResetPassword = ref(null)
 const newPassword = ref('')
+const confirmPassword = ref('')
+const showResetPassword = ref(false)
+const showConfirmResetPassword = ref(false)
 const { addToast } = useToast()
 const { isOffline, isCaching, fetchUsers: fetchUsersOffline } = useOfflineAdmin()
 const router = useRouter()
@@ -835,10 +876,17 @@ const closePasswordModal = () => {
   showPasswordModal.value = false
   userToResetPassword.value = null
   newPassword.value = ''
+  confirmPassword.value = ''
+  showResetPassword.value = false
+  showConfirmResetPassword.value = false
 }
 
 const updatePassword = async () => {
   if (!userToResetPassword.value || !newPassword.value) return
+  if (newPassword.value !== confirmPassword.value) {
+    addToast({ title: 'Error', message: 'Passwords do not match', type: 'error' })
+    return
+  }
   resettingPassword.value = true
   try {
     const res = await apiResetPassword(userToResetPassword.value.id, newPassword.value)

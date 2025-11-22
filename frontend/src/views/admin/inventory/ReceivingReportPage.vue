@@ -53,7 +53,7 @@
         <div class="card-body">
           <form @submit.prevent>
             <div class="row g-3">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <label class="form-label">Delivery Date *</label>
                 <DateInput
                   v-model="form.delivery_date"
@@ -67,6 +67,16 @@
                 >
                   {{ formErrors.delivery_date }}
                 </div>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Time *</label>
+                <input
+                  v-model="form.delivery_time"
+                  type="time"
+                  class="form-control"
+                  :disabled="isReadOnly"
+                  required
+                />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Delivered By *</label>
@@ -631,7 +641,7 @@ const id = computed(() => route.params.id)
 const isNew = computed(() => !id.value)
 
 const saving = ref(false)
-const form = ref({ report_id: null, report_number: '', status: 'DRAFT', delivery_date: '', delivered_by: '', supplier_notes: '' })
+const form = ref({ report_id: null, report_number: '', status: 'DRAFT', delivery_date: '', delivery_time: '08:00', delivered_by: '', supplier_notes: '' })
 const items = ref([])
 
 // Date validation functions
@@ -743,12 +753,47 @@ const vaccineTypeOptions = ['inactivated','live-attenuated','toxoid','mrna','vir
 
 const goBack = () => router.back()
 
-const toISO = (dateStr) => {
+const toISO = (dateStr, timeStr = '00:00') => {
   if (!dateStr) return null
-  if (String(dateStr).includes('-')) return dateStr
-  const [m, d, y] = String(dateStr).split('/')
-  if (!m || !d || !y) return null
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+  
+  // If it's already a full ISO timestamp, return as is (don't append time again)
+  if (String(dateStr).includes('T')) {
+    return dateStr
+  }
+  
+  let isoDate
+  if (String(dateStr).includes('-') && String(dateStr).length === 10) {
+    // Already in YYYY-MM-DD format
+    isoDate = dateStr
+  } else {
+    // Convert from MM/DD/YYYY format
+    const [m, d, y] = String(dateStr).split('/')
+    if (!m || !d || !y) return null
+    isoDate = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+  }
+  // Combine date and time
+  return `${isoDate}T${timeStr}:00`
+}
+
+const parseDeliveryDateTime = (header) => {
+  // Parse delivery_date to separate date and time, and format date for display
+  if (header.delivery_date) {
+    const dateStr = String(header.delivery_date)
+    
+    // Extract time from ISO string directly (format: YYYY-MM-DDTHH:MM:SS)
+    if (dateStr.includes('T')) {
+      const [datePart, timePart] = dateStr.split('T')
+      const [hours, minutes] = timePart.split(':')
+      header.delivery_time = `${hours}:${minutes}`
+      
+      // Convert date from YYYY-MM-DD to MM/DD/YYYY for DateInput
+      const [year, month, day] = datePart.split('-')
+      header.delivery_date = `${month}/${day}/${year}`
+    } else {
+      header.delivery_time = '08:00' // Default if no time in string
+    }
+  }
+  return header
 }
 
 async function loadVaccineTypes() {
@@ -841,7 +886,7 @@ async function fetchReport() {
     const result = await fetchReceivingReportById(id.value)
     if (result) {
       const data = result.data?.data || result.data || {}
-      form.value = data.header || {}
+      form.value = parseDeliveryDateTime(data.header || {})
       const arr = data.items || []
       reportItemsCache.value = arr
       items.value = arr.map(x => ({
@@ -877,7 +922,7 @@ async function save() {
   try {
     saving.value = true
     const payload = {
-      delivery_date: toISO(form.value.delivery_date),
+      delivery_date: toISO(form.value.delivery_date, form.value.delivery_time),
       delivered_by: form.value.delivered_by,
       supplier_notes: form.value.supplier_notes,
       items: visibleItems.value.map(it => ({ 
@@ -889,7 +934,7 @@ async function save() {
     
     if (isNew.value) {
       const { data } = await api.post('/receiving-reports', payload)
-      form.value = data.data.header || data.data
+      form.value = parseDeliveryDateTime(data.data.header || data.data)
       const arr = data.data.items || []
       items.value = arr.map(x => ({
         item_id: x.item_id,
@@ -920,7 +965,7 @@ async function save() {
       } else {
         // Regular update for draft reports
         const { data } = await api.put(`/receiving-reports/${form.value.report_id}`, payload)
-        form.value = data.data.header || data.data
+        form.value = parseDeliveryDateTime(data.data.header || data.data)
         const arr = data.data.items || []
         items.value = arr.map(x => ({
           item_id: x.item_id,
@@ -1069,6 +1114,10 @@ onMounted(async () => {
     // default date to today (MM/DD/YYYY for DateInput that outputs normalized string)
     const today = new Date()
     form.value.delivery_date = today.toLocaleDateString('en-US')
+    // Set default time to current time
+    const hours = String(today.getHours()).padStart(2, '0')
+    const minutes = String(today.getMinutes()).padStart(2, '0')
+    form.value.delivery_time = `${hours}:${minutes}`
   } else {
     await fetchReport()
   }

@@ -123,6 +123,7 @@
           :search-term="receivingSearch"
           :status="receivingStatus"
           :format-date="formatDate"
+          :format-time="formatTime"
           :get-receiving-badge-class="getReceivingBadgeClass"
           @update:search-term="receivingSearch = $event; fetchReceivingList()"
           @update:status="receivingStatus = $event; fetchReceivingList()"
@@ -337,6 +338,7 @@ const {
   fetchDiseaseOptions,
   deleteVaccine,
   formatDate,
+  formatTime,
   watchSearchTerm,
   goToViewReceiving,
   goToCompleteReceiving,
