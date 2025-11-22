@@ -1,5 +1,6 @@
 import serviceSupabase from '../db.js';
 import { scheduleReminderLogsForPatientSchedule, handleScheduleReschedule } from '../services/smsReminderService.js';
+import capacityModel from './capacityModel.js';
 
 // Helper to use provided client or default service client
 import { logActivity } from './activityLogger.js';
@@ -290,6 +291,16 @@ const createImmunization = async (immunizationData, client) => {
         }
       } else {
         console.log('[createImmunization] Post-insert RPC recalc_patient_schedule_enhanced succeeded');
+        
+        // After recalc, assign time slots to any new schedules (non-blocking)
+        setImmediate(async () => {
+          try {
+            const patientModel = await import('./patientModel.js');
+            await patientModel.default.assignTimeSlotsToSchedules(data.patient_id, supabase);
+          } catch (slotErr) {
+            console.warn('[createImmunization] Failed to assign time slots (non-blocking):', slotErr?.message);
+          }
+        });
       }
     }
   } catch (rpcErr) {
@@ -539,6 +550,28 @@ const getAllImmunizations = async (filters = {}, client) => {
 // Schedule immunization (insert into patientschedule)
 const scheduleImmunization = async (scheduleData, client) => {
   const supabase = withClient(client);
+  
+  // Auto-assign time slot if scheduled_date provided but no time_slot
+  if (scheduleData.scheduled_date && !scheduleData.time_slot) {
+    try {
+      const availableSlot = await capacityModel.getAvailableSlot(scheduleData.scheduled_date, supabase);
+      if (availableSlot) {
+        scheduleData.time_slot = availableSlot;
+        console.log(`[scheduleImmunization] Auto-assigned ${availableSlot} slot for date ${scheduleData.scheduled_date}`);
+      } else {
+        // Both slots full - find next available
+        console.warn(`[scheduleImmunization] Date ${scheduleData.scheduled_date} is full, finding next available slot`);
+        const nextAvailable = await capacityModel.findNextAvailableSlot(scheduleData.scheduled_date, 90, supabase);
+        scheduleData.scheduled_date = nextAvailable.date;
+        scheduleData.time_slot = nextAvailable.slot;
+        console.log(`[scheduleImmunization] Rescheduled to ${nextAvailable.date} ${nextAvailable.slot} due to capacity`);
+      }
+    } catch (slotErr) {
+      console.warn('[scheduleImmunization] Failed to auto-assign slot (non-blocking):', slotErr?.message);
+      // Continue without slot assignment
+    }
+  }
+  
   const { data, error } = await supabase
     .from('patientschedule')
     .insert([scheduleData])
@@ -612,9 +645,31 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
   // Never allow status override at the model level
   if (Object.prototype.hasOwnProperty.call(patch, 'status')) delete patch.status;
 
+  // Auto-assign time slot if date changed but no slot specified
+  if (patch.scheduled_date && !patch.time_slot &&
+      (!current.scheduled_date || new Date(patch.scheduled_date).toDateString() !== new Date(current.scheduled_date).toDateString())) {
+    try {
+      const availableSlot = await capacityModel.getAvailableSlot(patch.scheduled_date, supabase);
+      if (availableSlot) {
+        patch.time_slot = availableSlot;
+        console.log(`[updatePatientSchedule] Auto-assigned ${availableSlot} slot for new date ${patch.scheduled_date}`);
+      } else {
+        // Both slots full - find next available
+        console.warn(`[updatePatientSchedule] Date ${patch.scheduled_date} is full, finding next available`);
+        const nextAvailable = await capacityModel.findNextAvailableSlot(patch.scheduled_date, 90, supabase);
+        patch.scheduled_date = nextAvailable.date;
+        patch.time_slot = nextAvailable.slot;
+        console.log(`[updatePatientSchedule] Moved to ${nextAvailable.date} ${nextAvailable.slot} due to capacity`);
+      }
+    } catch (slotErr) {
+      console.warn('[updatePatientSchedule] Failed to auto-assign slot (non-blocking):', slotErr?.message);
+    }
+  }
+
   // If date change requested, use SMART RPC that validates min/max age and cascades
   if (patch.scheduled_date && current.scheduled_date && new Date(patch.scheduled_date).toDateString() !== new Date(current.scheduled_date).toDateString()) {
     const oldDate = current.scheduled_date; // ← Capture old date before update
+    const _oldSlot = current.time_slot; // ← Capture old slot (unused for now)
     const userId = updateData.updated_by || null;
     const { data: res, error: rpcErr } = await supabase.rpc('smart_reschedule_patientschedule', {
       p_patient_schedule_id: patientScheduleId,
@@ -624,6 +679,57 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
       p_cascade: !!updateData.cascade,
     });
     if (rpcErr) throw rpcErr;
+    
+    // After RPC cascade, update time slots for all affected schedules
+    try {
+      if (Array.isArray(res) && res.length > 0) {
+        console.log(`[updatePatientSchedule] Processing ${res.length} schedules for time slot assignment`);
+        
+        for (const schedule of res) {
+          const schedId = schedule.out_patient_schedule_id ?? schedule.patient_schedule_id;
+          const schedDate = schedule.out_scheduled_date ?? schedule.scheduled_date;
+          
+          if (!schedId) {
+            console.warn('[updatePatientSchedule] Skipping schedule with no ID:', schedule);
+            continue;
+          }
+          
+          let slotToAssign = null;
+          
+          // If user specified a time_slot, use it for ALL schedules (main + cascaded)
+          if (patch.time_slot !== undefined) {
+            slotToAssign = patch.time_slot;
+            console.log(`[updatePatientSchedule] User-specified slot ${slotToAssign || 'NULL'} will be applied to schedule ${schedId}`);
+          } else {
+            // Auto-assign based on availability only if user didn't specify
+            if (schedDate) {
+              slotToAssign = await capacityModel.getAvailableSlot(schedDate, supabase);
+              console.log(`[updatePatientSchedule] Auto-assigned slot ${slotToAssign || 'NULL'} for schedule ${schedId} on ${schedDate}`);
+            }
+          }
+          
+          // Apply the slot to all affected schedules
+          if (slotToAssign !== null || patch.time_slot !== undefined) {
+            const { error: updateErr } = await supabase
+              .from('patientschedule')
+              .update({ 
+                time_slot: slotToAssign,
+                updated_at: new Date().toISOString() 
+              })
+              .eq('patient_schedule_id', schedId);
+            
+            if (updateErr) {
+              console.error(`[updatePatientSchedule] Failed to update slot for schedule ${schedId}:`, updateErr);
+            } else {
+              console.log(`[updatePatientSchedule] ✓ Assigned ${slotToAssign || 'NULL'} slot to ${schedId === patientScheduleId ? 'main' : 'cascaded'} schedule ${schedId}`);
+            }
+          }
+        }
+      }
+    } catch (cascadeSlotErr) {
+      console.warn('[updatePatientSchedule] Failed to assign slots to cascaded schedules:', cascadeSlotErr?.message);
+    }
+    
     // Return the main row (current id) if found, else first; include warning if present
     const normalizeId = (r) => (r?.out_patient_schedule_id ?? r?.patient_schedule_id);
     const main = Array.isArray(res) ? (res.find(r => normalizeId(r) === patientScheduleId) || res[0]) : res;
@@ -648,7 +754,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
     return main;
   }
 
-  // Otherwise, do a simple patch (non-date fields)
+  // Otherwise, do a simple patch (non-date fields or time_slot only)
   const { data, error } = await supabase
     .from('patientschedule')
     .update(patch)

@@ -212,6 +212,12 @@
             <option value="">
               Select Role
             </option>
+            <option 
+              v-if="isSuperAdmin"
+              value="super_admin"
+            >
+              Super Admin
+            </option>
             <option value="admin">
               Admin
             </option>
@@ -325,6 +331,14 @@
 import { ref, watch, computed } from 'vue'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import QueuedHint from '@/components/ui/feedback/QueuedHint.vue'
+import { useAuth } from '@/composables/useAuth'
+
+const { getRole } = useAuth()
+const currentUserRole = computed(() => {
+  const role = getRole() || ''
+  return role.toLowerCase().replace(/[^a-z0-9]/g, '')
+})
+const isSuperAdmin = computed(() => currentUserRole.value === 'superadmin')
 
 const props = defineProps({
   initialData: {

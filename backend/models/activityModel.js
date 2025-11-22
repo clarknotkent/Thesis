@@ -11,6 +11,9 @@ const listActivityLogs = async (page = 1, limit = 10, filters = {}) => {
     .from('activitylogs_view')
     .select('*', { count: 'exact' });
 
+  // Exclude SuperAdmin activities from logs (hide from everyone)
+  query = query.not('user_role', 'eq', 'SuperAdmin');
+
   // Apply filters
   if (filters.user_id) query = query.eq('user_id', filters.user_id);
 

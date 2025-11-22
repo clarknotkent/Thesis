@@ -76,9 +76,9 @@ db.version(1).stores({
   /**
    * patientschedule - Caches vaccination schedule
    * Primary key: patient_schedule_id (matches Supabase)
-   * Indexes: patient_id, vaccine_id, scheduled_date, status
+   * Indexes: patient_id, vaccine_id, scheduled_date, status, time_slot
    */
-  patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status',
+  patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status, time_slot',
 
   /**
    * deworming - Caches deworming records
@@ -137,9 +137,22 @@ db.version(1).stores({
   healthworkers: 'health_worker_id, full_name, contact_number'
 })
 
-// Add upgrade path for future versions if needed
+// Add upgrade path for schema changes
 db.version(2).stores({
-  // Future schema upgrades can be added here
+  // Version 2: Add time_slot index to patientschedule
+  patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status, time_slot'
+})
+
+// Upgrade migration for version 2
+db.version(2).upgrade(async () => {
+  console.log('🔄 Upgrading StaffOfflineDB to version 2 - adding time_slot support')
+  try {
+    // Clear and refetch patient schedules to include time_slot field
+    await db.patientschedule.clear()
+    console.log('✅ StaffOfflineDB patientschedule upgraded with time_slot support')
+  } catch (error) {
+    console.error('❌ Failed to upgrade patientschedule with time_slot:', error)
+  }
 })
 
 console.log('✅ StaffOfflineDB (Admin/HealthStaff) initialized')

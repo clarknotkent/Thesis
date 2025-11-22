@@ -57,6 +57,45 @@ The Immunization Management System is designed to digitize and streamline the im
 
 ## What's New
 
+### 🔐 SuperAdmin Role & Calendar Enhancements (November 23, 2025)
+
+**SuperAdmin Role (Hidden Developer Account):**
+Complete implementation of a hidden SuperAdmin role for system developers with full administrative privileges while remaining completely invisible to regular users.
+
+**Key Features:**
+- **Hidden from Users**: SuperAdmin accounts not visible in user lists for non-SuperAdmin users
+- **Full Admin Access**: SuperAdmin has all admin UI permissions and route access
+- **Activity Log Exclusion**: All SuperAdmin activities hidden from activity logs
+- **Protected Management**: Only SuperAdmin can create/edit/delete other SuperAdmin accounts
+- **Offline Support**: SuperAdmin can use offline mode with admin data prefetch
+- **Visual Indicator**: Black badge (visible only to other SuperAdmins)
+
+**Vaccination Reschedule AM/PM Selection:**
+Enhanced rescheduling workflow with time slot selection for better capacity management.
+
+**Key Features:**
+- **Time Slot Selection**: AM/PM radio buttons in reschedule modal (BHS portal)
+- **Pre-fill Support**: Existing time slot auto-selected when editing
+- **Validation**: Ensures time slot selected before submission
+- **Confirmation Display**: Shows "Morning" or "Afternoon" in confirmation message
+- **API Integration**: Passes `p_time_slot` parameter to backend
+
+**BHS Scheduling Calendar - Full Offline Support:**
+Enhanced health worker scheduling calendar with complete offline functionality.
+
+**Key Features:**
+- **Offline Detection**: Checks network status before API calls
+- **Local Data Loading**: Loads schedules from StaffOfflineDB when offline
+- **Automatic Fallback**: Gracefully uses local data if API fails
+- **Network Listeners**: Auto-syncs when connection returns
+- **Day Details Offline**: Patient list modal works offline with local data
+- **Visual Indicator**: Offline mode badge shows current status
+
+**Security & Access Control:**
+- Backend: Authorization middleware, user filtering, activity log exclusion
+- Frontend: Role-based UI visibility, login routing, offline prefetch
+- Protection: Non-SuperAdmins blocked from SuperAdmin account operations
+
 ### 📊 Monthly Immunization Reports - Data Accuracy & Coverage (November 23, 2025)
 
 Complete offline/online report parity with accurate patient filtering and coverage calculations.
@@ -406,7 +445,8 @@ backend/
 ### Admin Portal
 
 - **Dashboard**: Overview of vaccinations, patients, inventory levels, and system activity
-- **User Management**: Create and manage health worker and parent accounts
+- **Scheduling Calendar**: Monthly view with AM/PM capacity management and patient scheduling
+- **User Management**: Create and manage health worker, parent, and SuperAdmin accounts
 - **Patient Management**: View and manage all patient records across the system
 - **Vaccine Inventory**: 
   - Stock management with real-time levels
@@ -419,21 +459,24 @@ backend/
   - View SMS logs and delivery status
   - Configure automated reminders
 - **Analytics and Reporting**: Coverage statistics, trends, custom reports
-- **Activity Logs**: System-wide activity tracking and audit trails
+- **Activity Logs**: System-wide activity tracking and audit trails (excludes SuperAdmin activities)
+- **Offline Mode**: Full offline support with local database caching
 
 ### Health Worker Portal
 
 - **Dashboard**: Daily tasks, upcoming vaccinations, recent activities
+- **Scheduling Calendar**: Monthly vaccination calendar with AM/PM time slots (works offline)
 - **Patient Management**:
   - Add and edit patient records
   - Record immunization visits with vitals
-  - Manage vaccination records
+  - Manage vaccination records with AM/PM time slot selection
   - Track complete patient history
-  - Schedule upcoming vaccinations
+  - Schedule and reschedule vaccinations with time slot preference
 - **Inventory**: View vaccine stock levels and expiry dates
 - **Messaging System**: Communicate with parents and guardians
 - **Notifications**: Real-time updates and alerts
 - **Tools**: QR code scanner, print vaccination cards, generate reports
+- **Offline Mode**: Complete offline functionality with local data caching
 
 ### Parent Portal
 
@@ -451,24 +494,44 @@ backend/
 ### 1. Administrator
 
 Full system access with the following capabilities:
-- Complete user management across all roles
+- Complete user management across all roles (except SuperAdmin management)
+- Scheduling calendar with AM/PM capacity management
 - System configuration and settings
 - SMS and notification control
 - Inventory oversight and management
 - Analytics and comprehensive reporting
 - Activity monitoring and audit logs
 
-### 2. Health Worker
+### 2. SuperAdmin (Hidden Developer Role)
+
+Special system-level access for developers and maintainers:
+- All administrator capabilities
+- SuperAdmin account management (create, edit, delete SuperAdmin users)
+- Completely hidden from regular administrators and other users
+- Activities excluded from activity logs visible to administrators
+- Offline mode support with admin data prefetch
+- Visual indicator: Black badge (visible only to other SuperAdmins)
+
+**Security Features:**
+- Only SuperAdmin can view other SuperAdmin accounts
+- Only SuperAdmin can create/modify/delete SuperAdmin accounts
+- Regular admins cannot elevate themselves to SuperAdmin
+- All SuperAdmin activities hidden from activity monitoring
+
+### 3. Health Worker
 
 Patient care and operational management:
 - Patient registration and record management
-- Immunization record keeping
+- Scheduling calendar with AM/PM time slot management (offline support)
+- Immunization record keeping with time slot selection
 - Vaccination administration and documentation
+- Vaccination rescheduling with AM/PM preference
 - Inventory viewing (read-only)
 - Parent communication
 - Basic reporting capabilities
+- Full offline mode with local data caching
 
-### 3. Parent/Guardian
+### 4. Parent/Guardian
 
 Limited access focused on their dependents:
 - View dependent immunization records

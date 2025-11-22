@@ -159,13 +159,31 @@
                   >Dose {{ dose.doseNumber }}</span>
                   <div
                     v-if="!editForm.doses[index]?.readonly"
-                    class="grow"
+                    class="d-flex gap-2"
                   >
-                    <DateInput
-                      v-model="editForm.doses[index].scheduledDate"
-                      :required="true"
-                      placeholder="MM/DD/YYYY"
-                    />
+                    <div style="flex: 2;">
+                      <DateInput
+                        v-model="editForm.doses[index].scheduledDate"
+                        :required="true"
+                        placeholder="MM/DD/YYYY"
+                      />
+                    </div>
+                    <div style="flex: 1;">
+                      <select
+                        v-model="editForm.doses[index].timeSlot"
+                        class="form-select form-select-sm"
+                      >
+                        <option value="">
+                          Any Time
+                        </option>
+                        <option value="AM">
+                          Morning (AM)
+                        </option>
+                        <option value="PM">
+                          Afternoon (PM)
+                        </option>
+                      </select>
+                    </div>
                   </div>
                   <div
                     v-else
@@ -191,6 +209,13 @@
                   </div>
                   <div class="dose-date-small">
                     {{ formatShortDate(dose.scheduledDate) }}
+                    <span
+                      v-if="dose.timeSlot"
+                      class="badge bg-secondary ms-1"
+                      style="font-size: 0.65rem;"
+                    >
+                      {{ dose.timeSlot }}
+                    </span>
                   </div>
                   <div
                     v-if="dose.daysOverdue > 0"
@@ -314,6 +339,7 @@ const groupedVaccines = computed(() => {
       scheduleId: schedule.patient_schedule_id || schedule.patientScheduleId || schedule.schedule_id || schedule.id,
       doseNumber: schedule.dose_number || schedule.doseNumber || '—',
       scheduledDate: schedule.scheduled_date || schedule.scheduledDate,
+      timeSlot: schedule.time_slot || schedule.timeSlot || '',
       status: schedule.status,
       daysOverdue: schedule.days_overdue || schedule.daysOverdue || 0,
       notes: schedule.notes || schedule.remarks || schedule.note || schedule.remark || schedule.comment || schedule.description || ''
@@ -345,6 +371,7 @@ const startEdit = (group) => {
   editForm.value.doses = group.doses.map(dose => ({
     scheduleId: dose.scheduleId,
     scheduledDate: formatShortDate(dose.scheduledDate),
+    timeSlot: dose.timeSlot || '',
     doseNumber: dose.doseNumber,
     readonly: isDoseCompleted(dose.status)
   }))
@@ -387,10 +414,8 @@ const saveEdit = async (group) => {
       await saveEditNormalMode(group)
     }
 
-    // Refresh schedules to get updated status (only for normal mode)
-    if (!demoMode.value) {
-      await fetchSchedules()
-    }
+    // Always refresh schedules to get updated status from database
+    await fetchSchedules()
     
     // Clear editing state
     cancelEdit()
@@ -429,13 +454,15 @@ const saveEditNormalMode = async (group) => {
     .map((d, idx) => ({
       ...d,
       _originalDate: group.doses[idx]?.scheduledDate || null,
+      _originalSlot: group.doses[idx]?.timeSlot || null,
       _index: idx
     }))
     .filter(d => !d.readonly)
     .filter(d => {
       const newISO = formatDateForAPI(d.scheduledDate)
       const origISO = formatDateForAPI(d._originalDate)
-      return !!newISO && newISO !== origISO
+      const slotChanged = d.timeSlot !== d._originalSlot
+      return (!!newISO && newISO !== origISO) || slotChanged
     })
 
   // Process sequentially (dose 1 then 2 then 3), to respect server rule checks order
@@ -446,6 +473,7 @@ const saveEditNormalMode = async (group) => {
     const payload = {
       p_patient_schedule_id: dose.scheduleId,
       p_new_scheduled_date: newISO,
+      p_time_slot: dose.timeSlot === '' ? null : dose.timeSlot,
       p_user_id,
       cascade: false,
       debug: false
@@ -507,13 +535,15 @@ const saveEditDemoMode = async (group) => {
     .map((d, idx) => ({
       ...d,
       _originalDate: group.doses[idx]?.scheduledDate || null,
+      _originalSlot: group.doses[idx]?.timeSlot || null,
       _index: idx
     }))
     .filter(d => !d.readonly)
     .filter(d => {
       const newISO = formatDateForAPI(d.scheduledDate)
       const origISO = formatDateForAPI(d._originalDate)
-      return !!newISO && newISO !== origISO
+      const slotChanged = d.timeSlot !== d._originalSlot
+      return (!!newISO && newISO !== origISO) || slotChanged
     })
 
   let successCount = 0
@@ -524,6 +554,7 @@ const saveEditDemoMode = async (group) => {
     const payload = {
       p_patient_schedule_id: dose.scheduleId,
       p_new_scheduled_date: newISO,
+      p_time_slot: dose.timeSlot || null,
       demo: true, // Add demo flag to prevent database changes but still send SMS
       cascade: false,
       debug: false
@@ -548,8 +579,10 @@ const saveEditDemoMode = async (group) => {
     if (scheduleIndex !== -1) {
       schedules.value[scheduleIndex].scheduled_date = newISO
       schedules.value[scheduleIndex].scheduledDate = newISO
+      schedules.value[scheduleIndex].time_slot = dose.timeSlot
+      schedules.value[scheduleIndex].timeSlot = dose.timeSlot
       schedules.value[scheduleIndex].status = 'rescheduled' // Mark as rescheduled for demo
-      console.log('[Demo Mode] Locally updated schedule:', dose.scheduleId, 'to', newISO)
+      console.log('[Demo Mode] Locally updated schedule:', dose.scheduleId, 'to', newISO, dose.timeSlot)
     }
   }
 
@@ -668,7 +701,24 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
 
-    // Offline-first: dedicated patientschedule table (prefetched at login)
+    // Online path - ALWAYS fetch from API when online for live data
+    if (!isOffline.value) {
+      try {
+        const response = await api.get(`/patients/${props.patientId}`)
+        const pd = response.data?.data || response.data || {}
+        let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
+        if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) sched = sched.items || sched.data || []
+        if (!Array.isArray(sched)) sched = []
+        schedules.value = sched
+        console.log('📅 [ScheduledVaccinations] Loaded from API:', schedules.value.length, 'schedules')
+        return
+      } catch (apiErr) {
+        console.error('Error fetching from API, falling back to offline cache:', apiErr)
+        // Fall through to offline cache on API error
+      }
+    }
+
+    // Offline fallback: dedicated patientschedule table (prefetched at login)
     try {
       const offlineRows = await adminDB.patientschedule
         .where('patient_id')
@@ -696,19 +746,9 @@ const fetchSchedules = async () => {
       console.warn('⚠️ Embedded cache lookup failed:', cacheError.message)
     }
 
-    // Online path
-    if (!isOffline.value) {
-      const response = await api.get(`/patients/${props.patientId}`)
-      const pd = response.data?.data || response.data || {}
-      let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
-      if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) sched = sched.items || sched.data || []
-      if (!Array.isArray(sched)) sched = []
-      schedules.value = sched
-      console.log('📅 [ScheduledVaccinations] Loaded from API:', schedules.value.length, 'schedules')
-    } else {
-      schedules.value = []
-      console.log('📴 Offline; no scheduled vaccinations cached for patient')
-    }
+    // No data found
+    schedules.value = []
+    console.log('📴 No scheduled vaccinations found for patient')
   } catch (err) {
     console.error('Error fetching scheduled vaccinations:', err)
     if (err.code === 'ERR_NETWORK' || err.code === 'ERR_INTERNET_DISCONNECTED') {

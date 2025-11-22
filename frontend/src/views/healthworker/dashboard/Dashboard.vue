@@ -71,6 +71,13 @@
           />
         </div>
       </div>
+
+      <!-- Calendar Widget -->
+      <div class="row g-3 mt-2">
+        <div class="col-12">
+          <SchedulingCalendarWidget />
+        </div>
+      </div>
     </div>
   </HealthWorkerLayout>
 </template>
@@ -79,6 +86,7 @@
 import { ref, onMounted } from 'vue'
 import HealthWorkerLayout from '@/components/layout/mobile/HealthWorkerLayout.vue'
 import { StatsCard } from '@/features/health-worker/dashboard'
+import SchedulingCalendarWidget from './components/SchedulingCalendarWidget.vue'
 import api from '@/services/api'
 import { db } from '@/services/offline/db'
 import { useOffline } from '@/composables/useOffline'

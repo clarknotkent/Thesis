@@ -10,6 +10,235 @@ All notable changes to the Immunization Management System will be documented in 
 
 ## [system-prototype-v4] - 2025-11-23
 
+### 🔐 SuperAdmin Role & Calendar Enhancements (November 23, 2025)
+
+**Implemented SuperAdmin role as hidden developer account with AM/PM time slot selection in reschedule modals and full offline calendar support.**
+
+Added SuperAdmin role for system developers with complete invisibility from regular users, enhanced vaccination rescheduling with AM/PM time slot selection, and enabled full offline functionality for BHS scheduling calendar.
+
+### ✨ Added
+
+**SuperAdmin Role (Hidden Developer Account):**
+- **Backend Authorization** - SuperAdmin has all admin privileges across all routes
+- **User Filtering** - SuperAdmin users hidden from user listings for all non-SuperAdmin users
+- **Activity Log Filtering** - SuperAdmin activities completely excluded from activity logs
+- **Creation Protection** - Only SuperAdmin can create other SuperAdmin accounts
+- **Modification Protection** - Only SuperAdmin can edit/delete SuperAdmin accounts
+- **UI Access** - SuperAdmin uses same admin UI with full permissions
+- **Badge Styling** - Black badge indicator (only visible to other SuperAdmins)
+
+**Vaccination Reschedule AM/PM Selection:**
+- **BHS PatientDetails Modal** - Added AM/PM radio buttons to reschedule modal
+- **Time Slot Validation** - Ensures time slot is selected before rescheduling
+- **Confirmation Message** - Shows selected time slot (Morning/Afternoon) in confirmation
+- **Pre-fill Support** - Loads existing time slot when editing scheduled vaccination
+- **API Integration** - Passes `p_time_slot` parameter to backend reschedule endpoint
+
+**Admin Scheduling Calendar (SchedulingCalendar.vue):**
+- **Monthly Calendar View** - Full month calendar showing daily patient capacity management
+- **AM/PM Time Slots** - Separate booking capacity for morning (AM) and afternoon (PM) sessions
+- **Visual Capacity Indicators** - Color-coded badges showing booked/total capacity for each time slot
+- **Calendar Navigation** - Previous Month, Today, Next Month buttons with smooth animations
+- **Day Details Modal** - Click any day to view full patient list with AM/PM filtering
+- **Offline Support** - Loads capacity and patient schedules from AdminOfflineDB when offline
+- **Green Theme Styling** - Primary green (#22c55e), dark green (#16a34a), emerald (#10b981), light green (#dcfce7)
+- **Responsive Design** - Adapts to different screen sizes with hover effects and transitions
+- **Patient Counts** - Shows number of patients scheduled per time slot with capacity limits
+- **Auto-Refresh** - Refreshes data when modal closes to reflect schedule changes
+
+**BHS Scheduling Calendar (SchedulingCalendarWidget.vue):**
+- **Monthly Calendar Widget** - Same calendar functionality as admin view for health workers
+- **AM/PM Capacity Display** - Shows morning and afternoon booking counts for each day
+- **Offline Detection** - Checks `navigator.onLine` before attempting API calls
+- **Local Data Loading** - Loads patient schedules from StaffOfflineDB when offline
+- **Automatic Fallback** - Gracefully falls back to offline data if API fails
+- **Network Listeners** - Auto-syncs when connection returns
+- **Day Details Offline** - Patient list modal works offline with local data
+- **Offline Badge** - Visual indicator shows when calendar is in offline mode
+- **Matching Green Theme** - Consistent styling with admin calendar
+- **Navigation Buttons** - Previous/Today/Next month navigation with pulse effects
+
+### 🔄 Changed
+
+**Backend - SuperAdmin Implementation:**
+
+1. **Authorization Middleware** (`authMiddleware.js`):
+   - Updated `authorizeRole()` to grant SuperAdmin all admin privileges
+   - Added SuperAdmin to staff roles list for patient access
+   - SuperAdmin transparently inherits admin permissions
+
+2. **User Model** (`userModel.js`):
+   - Added `SuperAdmin` role mapping (`super_admin`, `superadmin`, `super admin` → `SuperAdmin`)
+   - Updated `toDisplayRole()` to return `super_admin` for frontend
+   - Added requesting user role filter to hide SuperAdmin from non-SuperAdmin users
+   - Filter: `.neq('role', 'SuperAdmin')` when requester is not SuperAdmin
+
+3. **User Controller** (`userController.js`):
+   - Added SuperAdmin creation validation in `createUser()`
+   - Added SuperAdmin modification protection in `updateUser()`
+   - Added SuperAdmin deletion protection in `deleteUser()`
+   - Passes requesting user's role to `getAllUsers()` for proper filtering
+
+4. **Activity Model** (`activityModel.js`):
+   - Added `.not('user_role', 'eq', 'SuperAdmin')` filter to hide SuperAdmin activities
+   - Excludes all SuperAdmin actions from activity logs for everyone
+
+**Frontend - SuperAdmin UI:**
+
+1. **UserForm Component** (`UserForm.vue`):
+   - Added `useAuth()` composable to check current user role
+   - Computed `isSuperAdmin` to conditionally show SuperAdmin option
+   - SuperAdmin role option only visible when logged in as SuperAdmin
+
+2. **UserAccounts Page** (`UserAccounts.vue`):
+   - Added SuperAdmin to `getRoleDisplayName()` mapping
+   - Added `.role-superadmin` CSS class with black background
+   - Updated `isAdminRole()` to include SuperAdmin (prevents deletion)
+   - Updated `getRoleBadgeClass()` for SuperAdmin badge styling
+
+3. **Login View** (`Login.vue`):
+   - Added SuperAdmin role to login redirect logic
+   - Routes SuperAdmin to `/admin/dashboard` like regular admin
+
+4. **Router Guards** (`router/index.js`):
+   - Updated `normalizeRole()` to map SuperAdmin variants to `admin`
+   - SuperAdmin included in offline route restrictions
+   - SuperAdmin included in role-based dashboard redirects
+   - SuperAdmin treated as staff role for patient access
+   - SuperAdmin included in EditStock and ReceivingReportView checks
+
+**Frontend - Vaccination Reschedule:**
+
+1. **PatientDetails Component** (`healthworker/PatientDetails.vue`):
+   - Added `editTimeSlot` ref (default: 'AM')
+   - Added AM/PM radio buttons to reschedule modal
+   - Pre-fills time slot from `vaccine.time_slot` when editing
+   - Validates time slot selection before submission
+   - Passes `timeSlot` to `rescheduleVaccination()` composable
+   - Updated confirmation message to show time slot text
+
+2. **usePatientDetails Composable** (`usePatientDetails.js`):
+   - Updated `rescheduleVaccination()` to accept `timeSlot` parameter
+   - Conditionally adds `p_time_slot` to API payload when provided
+   - Backend already supported time slot parameter
+
+**Frontend - BHS Calendar Offline:**
+
+1. **SchedulingCalendarWidget** (`healthworker/dashboard/components/SchedulingCalendarWidget.vue`):
+   - Enhanced `loadCapacityData()` to check online status first
+   - Uses `loadCapacityFromOffline()` when offline or API fails
+   - Added network event listeners in `onMounted()`
+   - Added initial offline state detection
+   - Comprehensive console logging for debugging
+
+2. **DayDetailsModal** (`healthworker/dashboard/components/DayDetailsModal.vue`):
+   - Updated `loadPatients()` to check `navigator.onLine` first
+   - Uses local `props.day.patients` data when offline
+   - Filters by time slot (AM/PM) from local data
+   - Graceful fallback if API fails while online
+
+**Frontend - Offline Support:**
+
+1. **useAuth Composable** (`useAuth.js`):
+   - Updated admin data prefetch to include SuperAdmin
+   - Condition: `normalizedRole === 'admin' || role === 'superadmin'`
+   - SuperAdmin gets offline data prefetched on login
+
+### 🐛 Fixed
+
+**SuperAdmin Access Issues:**
+1. **Login Redirect Error**:
+   - **Issue**: SuperAdmin login showed "Unknown user role" error
+   - **Fix**: Added SuperAdmin to role-based routing in Login.vue
+   - **Impact**: SuperAdmin now successfully logs in and redirects to admin dashboard
+
+2. **Route Access Denial**:
+   - **Issue**: SuperAdmin couldn't access admin routes
+   - **Fix**: Normalized SuperAdmin to 'admin' in router guards
+   - **Impact**: SuperAdmin has full access to all admin routes
+
+3. **Offline Mode Not Working**:
+   - **Issue**: SuperAdmin didn't trigger offline data prefetch
+   - **Fix**: Added SuperAdmin check to offline prefetch condition
+   - **Impact**: SuperAdmin can now use offline mode like regular admins
+
+**Calendar Offline Issues:**
+1. **Calendar Loading Failure Offline**:
+   - **Issue**: Calendar showed errors when offline instead of using local data
+   - **Fix**: Added `navigator.onLine` check before API calls
+   - **Impact**: Calendar now works seamlessly offline
+
+2. **Patient List Modal Empty Offline**:
+   - **Issue**: Day details modal showed no patients when offline
+   - **Fix**: Added offline data fallback to `loadPatients()`
+   - **Impact**: Patient lists display correctly from local data when offline
+
+### 📚 Files Modified
+
+**Backend (5 files):**
+- `backend/middlewares/authMiddleware.js` - SuperAdmin authorization
+- `backend/models/userModel.js` - SuperAdmin role mapping and filtering
+- `backend/controllers/userController.js` - SuperAdmin protection in create/update/delete
+- `backend/models/activityModel.js` - Hide SuperAdmin from activity logs
+- (Backend already supported `p_time_slot` in reschedule API)
+
+**Frontend (10 files):**
+- `frontend/src/features/admin/user-management/UserForm.vue` - SuperAdmin role option
+- `frontend/src/views/admin/users/UserAccounts.vue` - SuperAdmin badge and display
+- `frontend/src/views/auth/Login.vue` - SuperAdmin login routing
+- `frontend/src/router/index.js` - SuperAdmin route guards
+- `frontend/src/composables/useAuth.js` - SuperAdmin offline prefetch
+- `frontend/src/views/healthworker/PatientDetails.vue` - AM/PM reschedule modal
+- `frontend/src/features/health-worker/patients/composables/usePatientDetails.js` - Time slot parameter
+- `frontend/src/views/admin/SchedulingCalendar.vue` - Admin scheduling calendar with offline support
+- `frontend/src/views/healthworker/dashboard/components/SchedulingCalendarWidget.vue` - BHS calendar widget with offline support
+- `frontend/src/views/healthworker/dashboard/components/DayDetailsModal.vue` - Day details modal with offline patient list
+
+### ✅ Outcomes
+
+**Admin Scheduling Calendar:**
+- ✅ Full-featured calendar for managing daily patient capacity
+- ✅ AM/PM time slot separation for better scheduling control
+- ✅ Visual capacity indicators with color-coded badges
+- ✅ Smooth navigation with Previous/Today/Next month buttons
+- ✅ Day details modal for viewing scheduled patients per time slot
+- ✅ Offline mode with AdminOfflineDB integration
+- ✅ Consistent green theme matching system design
+- ✅ Auto-refresh after schedule changes
+
+**BHS Scheduling Calendar:**
+- ✅ Same calendar functionality as admin view for health workers
+- ✅ AM/PM booking counts visible for each day
+- ✅ Offline-first architecture with navigator.onLine detection
+- ✅ Automatic fallback to StaffOfflineDB when offline
+- ✅ Patient list modal works seamlessly offline
+- ✅ Visual offline mode indicator
+- ✅ Network sync listeners for automatic updates
+- ✅ Matching green theme and navigation buttons
+
+**SuperAdmin Role:**
+- ✅ Completely hidden from all users except other SuperAdmins
+- ✅ Full admin UI access with all permissions
+- ✅ Protected from modification by regular admins
+- ✅ Activity logs exclude SuperAdmin actions
+- ✅ Offline mode fully functional
+- ✅ Black badge indicator for easy identification
+
+**Vaccination Reschedule:**
+- ✅ AM/PM time slot selection in reschedule modal
+- ✅ Pre-fills existing time slot when editing
+- ✅ Validates time slot before submission
+- ✅ Confirmation shows selected time slot (Morning/Afternoon)
+- ✅ Backend API integration with time_slot parameter
+
+**BHS Calendar Offline:**
+- ✅ Calendar loads patient schedules from local database when offline
+- ✅ Shows AM/PM booking counts from offline data
+- ✅ Day details modal displays patient lists offline
+- ✅ Auto-syncs when connection returns
+- ✅ Visual offline mode indicator
+- ✅ Graceful fallback from API errors to local data
+
 ### 📊 Monthly Immunization Reports - Data Accuracy & Coverage Fixes (November 23, 2025)
 
 **Complete offline/online report parity with accurate patient filtering and coverage calculations.**

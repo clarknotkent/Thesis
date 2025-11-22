@@ -449,7 +449,7 @@ const enforceVaccineInterval = async (req, res) => {
 const manualReschedulePatientSchedule = async (req, res) => {
   try {
     const supabase = getSupabaseForRequest(req);
-    const { p_patient_schedule_id, p_new_scheduled_date, p_user_id, force_override, cascade, demo } = req.body;
+    const { p_patient_schedule_id, p_new_scheduled_date, p_time_slot, p_user_id, force_override, cascade, demo } = req.body;
 
     if (!p_patient_schedule_id || !p_new_scheduled_date) {
       return res.status(400).json({ message: 'patient_schedule_id and new_scheduled_date are required' });
@@ -460,13 +460,14 @@ const manualReschedulePatientSchedule = async (req, res) => {
     try {
       const { data: meta } = await supabase
         .from('patientschedule')
-        .select('patient_id, vaccine_id, dose_number, scheduled_date')
+        .select('patient_id, vaccine_id, dose_number, scheduled_date, time_slot')
         .eq('patient_schedule_id', p_patient_schedule_id)
         .maybeSingle();
       beforeRow = meta || null;
       console.info('[manualReschedule] Request:', {
         patient_schedule_id: p_patient_schedule_id,
         requested_date: p_new_scheduled_date,
+        time_slot: p_time_slot,
         user_id: p_user_id || req.user?.user_id || null,
         demo: !!demo
       });
@@ -504,9 +505,21 @@ const manualReschedulePatientSchedule = async (req, res) => {
 
     if (!demo) {
       // Normal mode: actually update the database
+      const updatePayload = { 
+        scheduled_date: p_new_scheduled_date, 
+        updated_by: p_user_id || req.user?.user_id || null, 
+        force_override: !!force_override, 
+        cascade: !!cascade 
+      };
+      
+      // Add time_slot to payload if provided
+      if (p_time_slot !== undefined) {
+        updatePayload.time_slot = p_time_slot || null;
+      }
+      
       result = await immunizationModel.updatePatientSchedule(
         p_patient_schedule_id,
-        { scheduled_date: p_new_scheduled_date, updated_by: p_user_id || req.user?.user_id || null, force_override: !!force_override, cascade: !!cascade },
+        updatePayload,
         supabase
       );
 
@@ -524,7 +537,12 @@ const manualReschedulePatientSchedule = async (req, res) => {
       console.info('[manualReschedule][DEMO] Simulating reschedule without database changes');
       result = { warning: 'Demo mode - no database changes made' };
       // Create a simulated updated row
-      updatedRow = { ...beforeRow, scheduled_date: p_new_scheduled_date, status: 'rescheduled' };
+      updatedRow = { 
+        ...beforeRow, 
+        scheduled_date: p_new_scheduled_date, 
+        time_slot: p_time_slot || null,
+        status: 'rescheduled' 
+      };
     }
 
     // CASCADE UPDATE: Recreate SMS reminders for rescheduled date (ALWAYS trigger in demo mode for SMS)

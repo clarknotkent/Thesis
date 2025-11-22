@@ -45,10 +45,16 @@ const normalizeRole = (r) => {
 };
 
 // Authorize user by role
+// Note: super_admin has all admin privileges
 const authorizeRole = (roles) => (req, res, next) => {
   const allowed = (roles || []).map(r => normalizeRole(r));
   const current = normalizeRole((req.user && req.user.role) || '');
-  const ok = allowed.includes(current);
+  
+  // Super admins have all admin permissions
+  const isSuperAdmin = current === 'superadmin';
+  const hasAdminPrivilege = allowed.includes('admin') && isSuperAdmin;
+  
+  const ok = allowed.includes(current) || hasAdminPrivilege;
   if (!ok) {
     console.warn('[auth] forbidden role', { required: allowed, got: current, userId: req.user && (req.user.user_id || req.user.id) });
     return res.status(403).json({ error: 'Forbidden: insufficient role' });
@@ -201,8 +207,8 @@ const optionalAuthenticate = async (req, res, next) => {
 const authorizePatientReadAccess = async (req, res, next) => {
   try {
     const role = normalizeRole(req.user && req.user.role);
-    // System/staff roles: allow
-    const staffRoles = ['admin', 'healthworker', 'healthstaff', 'health_worker', 'health_staff'].map(normalizeRole);
+    // System/staff roles: allow (includes super_admin)
+    const staffRoles = ['admin', 'superadmin', 'super_admin', 'healthworker', 'healthstaff', 'health_worker', 'health_staff'].map(normalizeRole);
     if (staffRoles.includes(role)) return next();
 
     // Only guardians/parents can proceed with ownership checks

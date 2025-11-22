@@ -578,14 +578,21 @@ export function usePatientDetails(patientId) {
   /**
    * Reschedule a vaccination
    */
-  const rescheduleVaccination = async (scheduleId, newDate) => {
+  const rescheduleVaccination = async (scheduleId, newDate, timeSlot = null) => {
     try {
-      await api.post('/immunizations/manual-reschedule', {
+      const payload = {
         p_patient_schedule_id: scheduleId,
         p_new_scheduled_date: newDate,
         cascade: true,
         force_override: true
-      })
+      }
+      
+      // Add time_slot if provided
+      if (timeSlot) {
+        payload.p_time_slot = timeSlot
+      }
+      
+      await api.post('/immunizations/manual-reschedule', payload)
       
       // Refresh patient details after rescheduling
       await fetchPatientDetails(patientId)

@@ -217,7 +217,7 @@ const handleLogin = async () => {
     console.log('ℹ️ [Login] No redirect found, using role-based routing for:', user.role)
     // Navigate based on user role from backend (default behavior)
     const role = (user.role || '').toLowerCase()
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'superadmin' || role === 'super_admin') {
       router.push('/admin/dashboard')
     } else if (role === 'healthworker' || role === 'health-worker' || role === 'healthstaff') {
       router.push('/healthworker/dashboard')

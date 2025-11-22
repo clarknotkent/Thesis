@@ -131,7 +131,7 @@ function computeRunAtISO(scheduledDateISO, offsetDays, tz = 'Asia/Manila') {
 }
 
 // Build a simple message if no template system is used for SMS logs
-function buildReminderMessage({ antigenName, patientName, scheduledDateISO }) {
+function buildReminderMessage({ antigenName, patientName, scheduledDateISO, timeSlot }) {
   const d = new Date(scheduledDateISO);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -139,7 +139,8 @@ function buildReminderMessage({ antigenName, patientName, scheduledDateISO }) {
   // Show time in Philippine Time so recipients know when reminders are sent
   const timeCfg = getReminderTime('Asia/Manila');
   const timePHT = moment.tz('Asia/Manila').hour(timeCfg.hour).minute(timeCfg.minute).second(0).format('hh:mm A [PHT]');
-  return `Reminder: ${antigenName || 'vaccine'} vaccination for ${patientName || 'patient'} on ${yyyy}-${mm}-${dd} at ${timePHT}`;
+  const timeSlotInfo = timeSlot ? ` (${timeSlot === 'AM' ? 'Morning' : 'Afternoon'})` : '';
+  return `Reminder: ${antigenName || 'vaccine'} vaccination for ${patientName || 'patient'} on ${yyyy}-${mm}-${dd}${timeSlotInfo} at ${timePHT}`;
 }
 
 /**
@@ -192,7 +193,7 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
   const dayEnd = `${schedDateLocal}T23:59:59`;
   const { data: allSchedsOnDay, error: allErr } = await supabase
     .from('patientschedule')
-    .select('patient_schedule_id, vaccine_id, dose_number')
+    .select('patient_schedule_id, vaccine_id, dose_number, time_slot')
     .eq('patient_id', triggerSched.patient_id)
     .gte('scheduled_date', dayStart)
     .lte('scheduled_date', dayEnd)
@@ -330,6 +331,10 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
       const timeCfg = getReminderTime('Asia/Manila');
       const greetingTime = (timeCfg.hour >= 6 && timeCfg.hour < 18) ? 'Good Day' : 'Good Evening';
       const scheduledDateLong = moment.tz(triggerSched.scheduled_date, 'Asia/Manila').format('MMMM DD, YYYY');
+      
+      // Get time slot from any schedule on this day (they should all have the same slot)
+      const timeSlot = allSchedsOnDay.find(s => s.time_slot)?.time_slot || '';
+      const timeSlotDisplay = timeSlot ? ` (${timeSlot === 'AM' ? 'Morning' : 'Afternoon'})` : '';
 
       const message = templateText
         ? renderTemplate(templateText, {
@@ -341,6 +346,8 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
           vaccineLines,
           scheduledDate: scheduledDateLong,
           appointmentTime: timeCfg.display,
+          timeSlot: timeSlot,
+          timeSlotDisplay: timeSlotDisplay,
           daysUntil: String(days),
           greetingTime,
         })
@@ -348,6 +355,7 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
           antigenName: combinedVaccineName,
           patientName: patientRow.full_name,
           scheduledDateISO: triggerSched.scheduled_date,
+          timeSlot: timeSlot,
         });
 
       // Insert sms_logs row
@@ -421,6 +429,8 @@ function renderTemplate(template, vars) {
     .replace(/{\s*appointment_date\s*}/gi, vars.scheduledDate || '')
     // Prefer provided appointmentTime; default to 08:00 AM PHT for clarity
     .replace(/{\s*appointment_time\s*}/gi, vars.appointmentTime || getReminderTime('Asia/Manila').display)
+    .replace(/{\s*time_slot\s*}/gi, vars.timeSlot || '')
+    .replace(/{\s*time_slot_display\s*}/gi, vars.timeSlotDisplay || '')
     .replace(/{\s*days_until\s*}/gi, vars.daysUntil || '')
     .replace(/{\s*schedule_summary\s*}/gi, vars.scheduleSummary || '')
     .replace(/{\s*guardian_name\s*}/gi, '')

@@ -105,6 +105,21 @@ export function initAdminOfflineDB() {
     }
   })
 
+  // Version 6: add time_slot support to patientschedule
+  adminDB.version(6).stores({
+    patientschedule: 'patient_schedule_id, patient_id, vaccine_id, scheduled_date, status, time_slot, is_deleted'
+  })
+  adminDB.version(6).upgrade(async () => {
+    console.log('🔄 Upgrading AdminOfflineDB to version 6 - adding time_slot to patientschedule')
+    try {
+      // Clear and refetch to get new time_slot field
+      await adminDB.patientschedule.clear()
+      console.log('✅ AdminOfflineDB patientschedule upgraded with time_slot support')
+    } catch (error) {
+      console.error('❌ Failed to upgrade patientschedule with time_slot:', error)
+    }
+  })
+
   console.log('✅ AdminOfflineDB initialized / re-initialized')
   return adminDB
 }

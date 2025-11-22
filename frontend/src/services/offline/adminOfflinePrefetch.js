@@ -876,6 +876,7 @@ async function prefetchPatientSchedules() {
               antigen_name: s.antigen_name || s.vaccine?.antigen_name || s.vaccine_name,
               dose_number: s.dose_number || s.doseNumber,
               scheduled_date: s.scheduled_date || s.scheduledDate,
+              time_slot: s.time_slot || s.timeSlot || null, // IMPORTANT: Cache time_slot for calendar
               status: s.status,
               days_overdue: s.days_overdue || s.daysOverdue || 0,
               notes: s.notes,
