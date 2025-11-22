@@ -16,7 +16,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
-      // Remove custom sw.js and let Workbox handle everything
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB limit
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}']
+      },
       manifest: {
         name: 'ImmunizeMe - Healthcare Management System',
         short_name: 'ImmunizeMe',
@@ -72,6 +78,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB limit for large bundles
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//], // Only exclude API calls

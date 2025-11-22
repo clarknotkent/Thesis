@@ -631,11 +631,12 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Facility Name</label>
+              <label class="form-label">Facility Name <span class="text-danger">*</span></label>
               <input
                 v-model="vaccinationForm.facilityName"
                 type="text"
                 class="form-control"
+                required
               >
             </div>
             <div class="col-md-6">

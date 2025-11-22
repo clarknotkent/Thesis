@@ -24,4 +24,8 @@ router.get('/pending', authenticateRequest, notificationController.getPendingNot
 // Update notification status (for sending service)
 router.put('/:id/status', authenticateRequest, notificationController.updateNotificationStatus);
 
+// Push notification subscription endpoints
+router.post('/subscribe-push', authenticateRequest, notificationController.subscribeToPush);
+router.post('/unsubscribe-push', authenticateRequest, notificationController.unsubscribeFromPush);
+
 export default router;

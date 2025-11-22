@@ -206,11 +206,12 @@
 
                 <!-- Facility Name -->
                 <div class="col-md-6">
-                  <label class="form-label">Facility Name:</label>
+                  <label class="form-label">Facility Name: <span class="text-danger">*</span></label>
                   <input 
                     v-model="dose.facilityName" 
                     type="text" 
                     class="form-control"
+                    required
                   >
                 </div>
 

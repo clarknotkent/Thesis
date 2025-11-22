@@ -304,6 +304,9 @@ const handleResult = (text) => {
       if (isQrPath) {
         const pid = parts[2]
         try { console.debug('[QRScanner] detected backend QR; extracted patientId:', pid) } catch {}
+        // Store the intended destination before navigation
+        const targetPath = `/patient/${pid}`
+        sessionStorage.setItem('postLoginRedirect', targetPath)
         addToast({ title: 'QR scanned', message: 'Redirecting to patient…', type: 'success' })
         setTimeout(() => {
           router.replace({ name: 'PatientRoute', params: { id: pid } })
@@ -311,6 +314,8 @@ const handleResult = (text) => {
         return
       }
     } catch {}
+    // Store the intended destination for external URLs
+    sessionStorage.setItem('postLoginRedirect', text)
     try { addToast({ title: 'QR scanned', message: 'Opening patient record…', type: 'success' }) } catch {}
     setTimeout(() => {
       window.location.assign(text)
@@ -321,6 +326,9 @@ const handleResult = (text) => {
   const pid = extractPatientId(text)
   if (pid) {
     try { console.debug('[QRScanner] extracted patientId from text:', pid) } catch {}
+    // Store the intended destination before navigation
+    const targetPath = `/patient/${pid}`
+    sessionStorage.setItem('postLoginRedirect', targetPath)
     try { addToast({ title: 'QR scanned', message: 'Redirecting to patient…', type: 'success' }) } catch {}
     setTimeout(() => {
       router.replace({ name: 'PatientRoute', params: { id: pid } })

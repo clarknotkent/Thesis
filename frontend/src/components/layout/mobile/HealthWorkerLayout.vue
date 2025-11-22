@@ -36,19 +36,29 @@
       @confirm="handleConfirm"
       @cancel="handleCancel"
     />
+
+    <!-- Push Permission Modal -->
+    <PushPermissionModal
+      :show="showPushPermissionModal"
+      @close="handlePushModalClose"
+      @enabled="handlePushEnabled"
+      @dismissed="handlePushDismissed"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import MobileHeader from './MobileHeader.vue'
 import MobileBottomNavbar from './MobileBottomNavbar.vue'
 import ToastContainer from '@/components/ui/feedback/ToastContainer.vue'
 import ConfirmDialog from '@/components/ui/feedback/ConfirmDialog.vue'
+import PushPermissionModal from '@/components/ui/modals/PushPermissionModal.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useConfirm } from '@/composables/useConfirm'
 import { useOfflineBHS } from '@/composables/useOfflineBHS'
 import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { usePushNotifications } from '@/composables/usePushNotifications'
 import { onMounted } from 'vue'
 
 defineProps({
@@ -67,6 +77,7 @@ defineEmits(['filter', 'scan', 'add', 'update:searchQuery'])
 const { confirmState, handleConfirm, handleCancel } = useConfirm()
 const { isOnline } = useOnlineStatus()
 const { prefetchAndCacheData } = useOfflineBHS()
+const { isSupported, permission, isSubscribed, subscribe } = usePushNotifications()
 
 const { userInfo, getRole } = useAuth()
 
@@ -94,6 +105,8 @@ const userRole = computed(() => {
   return role
 })
 
+const showPushPermissionModal = ref(false)
+
 // Prefetch BHS data when online
 onMounted(async () => {
   if (isOnline.value) {
@@ -105,7 +118,46 @@ onMounted(async () => {
       console.error('❌ BHS data prefetch check failed:', error)
     }
   }
+
+  // Re-subscribe to push if permission already granted but not subscribed
+  // This handles user switching - update subscription with current user ID
+  if (isSupported.value && permission.value === 'granted' && !isSubscribed.value) {
+    console.log('🔄 Re-subscribing push notifications for current user...')
+    try {
+      await subscribe()
+      console.log('✅ Push subscription updated for current user')
+    } catch (error) {
+      console.error('❌ Failed to update push subscription:', error)
+    }
+  }
+
+  // Check if we should show push permission modal
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  const hasAskedBefore = localStorage.getItem(`push_permission_asked_${userId}`)
+
+  if (isSupported.value && permission.value === 'default' && !hasAskedBefore && !isSubscribed.value) {
+    // Show modal after a short delay for better UX
+    setTimeout(() => {
+      showPushPermissionModal.value = true
+    }, 3000)
+  }
 })
+
+const handlePushModalClose = () => {
+  showPushPermissionModal.value = false
+}
+
+const handlePushEnabled = () => {
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  localStorage.setItem(`push_permission_asked_${userId}`, 'true')
+  console.log('✅ Push notifications enabled')
+}
+
+const handlePushDismissed = () => {
+  const userId = userInfo.value?.user_id || userInfo.value?.id
+  localStorage.setItem(`push_permission_asked_${userId}`, 'true')
+  console.log('ℹ️ Push permission dismissed')
+}
 </script>
 
 <style scoped>

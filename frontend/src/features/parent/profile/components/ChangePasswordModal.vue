@@ -20,31 +20,58 @@
           <div class="modal-body">
             <div class="mb-2">
               <label class="form-label">Current Password</label>
-              <input 
-                v-model="localPwd.current" 
-                type="password" 
-                class="form-control"
-                placeholder="Enter current password" 
-              >
+              <div class="input-group">
+                <input 
+                  v-model="localPwd.current" 
+                  :type="showCurrentPwd ? 'text' : 'password'" 
+                  class="form-control"
+                  placeholder="Enter current password" 
+                >
+                <button 
+                  class="btn btn-outline-secondary" 
+                  type="button"
+                  @click="showCurrentPwd = !showCurrentPwd"
+                >
+                  <i :class="showCurrentPwd ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+                </button>
+              </div>
             </div>
             <div class="mb-2">
               <label class="form-label">New Password</label>
-              <input 
-                v-model="localPwd.next" 
-                type="password" 
-                class="form-control"
-                placeholder="Enter new password"
-              >
+              <div class="input-group">
+                <input 
+                  v-model="localPwd.next" 
+                  :type="showNewPwd ? 'text' : 'password'" 
+                  class="form-control"
+                  placeholder="Enter new password"
+                >
+                <button 
+                  class="btn btn-outline-secondary" 
+                  type="button"
+                  @click="showNewPwd = !showNewPwd"
+                >
+                  <i :class="showNewPwd ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+                </button>
+              </div>
               <small class="text-muted">Minimum 8 characters</small>
             </div>
             <div class="mb-2">
               <label class="form-label">Confirm New Password</label>
-              <input 
-                v-model="localPwd.confirm" 
-                type="password" 
-                class="form-control"
-                placeholder="Re-enter new password"
-              >
+              <div class="input-group">
+                <input 
+                  v-model="localPwd.confirm" 
+                  :type="showConfirmPwd ? 'text' : 'password'" 
+                  class="form-control"
+                  placeholder="Re-enter new password"
+                >
+                <button 
+                  class="btn btn-outline-secondary" 
+                  type="button"
+                  @click="showConfirmPwd = !showConfirmPwd"
+                >
+                  <i :class="showConfirmPwd ? 'bi bi-eye-slash' : 'bi bi-eye'" />
+                </button>
+              </div>
             </div>
             
             <!-- Password strength indicator -->
@@ -102,6 +129,10 @@ defineProps({
 })
 
 const emit = defineEmits(['close', 'save'])
+
+const showCurrentPwd = ref(false)
+const showNewPwd = ref(false)
+const showConfirmPwd = ref(false)
 
 const localPwd = ref({
   current: '',

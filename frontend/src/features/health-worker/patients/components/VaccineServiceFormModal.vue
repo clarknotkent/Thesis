@@ -247,12 +247,13 @@
 
           <!-- Facility Name -->
           <div class="form-group">
-            <label class="form-label">Facility Name</label>
+            <label class="form-label">Facility Name *</label>
             <input 
               v-model="serviceForm.facilityName"
               type="text"
               class="form-input"
               placeholder="Enter facility name"
+              required
             >
           </div>
 
