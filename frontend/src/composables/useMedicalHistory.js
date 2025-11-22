@@ -42,18 +42,37 @@ export function useMedicalHistory(patientId) {
       // Try offline first if available
       if (isOffline.value) {
         try {
-          // Fetch visits from cache - filter in memory to avoid index issues
-          const allVisits = await adminDB.visits.toArray()
-          const patientVisits = allVisits.filter(v => v.patient_id === id)
-          visits.value = patientVisits
-          return
+          // Fetch visits from cache - use string type for consistency
+          const patientVisits = await adminDB.visits
+            .where('patient_id')
+            .equals(String(id))
+            .toArray()
+          
+          if (patientVisits && patientVisits.length > 0) {
+            visits.value = patientVisits
+            console.log('✅ Loaded medical history from offline DB:', patientVisits.length)
+            return
+          }
         } catch (error) {
           console.warn('Failed to fetch visits from cache:', error)
           // Fall through to API
         }
       }
 
-      // Fallback to API
+      // Try patient-specific endpoint first (more efficient)
+      try {
+        const resp = await api.get(`/patients/${id}/visits`)
+        const data = resp.data?.data || resp.data || []
+        if (Array.isArray(data) && data.length >= 0) {
+          visits.value = data.filter(v => v && (v.visit_date || v.visitDate))
+          console.log('✅ Loaded medical history from /patients/:id/visits:', visits.value.length)
+          return
+        }
+      } catch (patientEndpointErr) {
+        console.warn('Patient visits endpoint failed, falling back to general visits endpoint:', patientEndpointErr)
+      }
+
+      // Fallback to general API with pagination
       const pageSize = 200
       let page = 1
       let collected = []
@@ -80,6 +99,7 @@ export function useMedicalHistory(patientId) {
       } while (page <= totalPages)
 
       visits.value = collected
+      console.log('✅ Loaded medical history from paginated /visits endpoint:', collected.length)
     } catch (err) {
       console.error('Error fetching medical history:', err)
       error.value = err.message || 'Failed to load medical history'

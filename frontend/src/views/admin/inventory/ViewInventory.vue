@@ -485,6 +485,9 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import AppPagination from '@/components/ui/base/AppPagination.vue'
 import { useToast } from '@/composables/useToast'
 import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
@@ -656,7 +659,7 @@ const fetchInventoryData = async () => {
     // Map backend field names to expected frontend field names
     // Backend returns: inventory_id, vaccine_id, lot_number, expiration_date, current_stock_level, storage_location
     // And nested vaccinemaster: { antigen_name, brand_name, manufacturer, vaccine_type, category }
-    const vaccine = data.vaccine || {}
+    const vaccine = data.vaccinemaster || data.vaccine || {}
     
     inventoryData.value = {
       id: data.inventory_id || data.id,

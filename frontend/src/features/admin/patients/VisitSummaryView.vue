@@ -14,6 +14,7 @@
         <button
           type="button"
           class="btn btn-outline-primary"
+          :disabled="!isOnline"
           @click="enableEditMode"
         >
           <i class="bi bi-pencil-square me-2" />
@@ -256,9 +257,13 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { utcToPH } from '@/utils/dateUtils'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
+import { adminDB } from '@/services/offline/adminOfflineDB'
+import { addToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const { isOnline } = useOnlineStatus()
 
 const props = defineProps({
   existingVisitId: { type: [String, Number], required: false, default: null }
@@ -319,11 +324,21 @@ const healthStaffName = computed(() => {
 
 const fetchPatients = async () => {
   try {
-    const params = { limit: 100 }
-    const res = await api.get('/patients', { params })
-    const payload = res.data?.data || {}
-    const list = payload.patients || payload.items || payload || []
-    patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
+    if (isOnline.value) {
+      const params = { limit: 100 }
+      const res = await api.get('/patients', { params })
+      const payload = res.data?.data || {}
+      const list = payload.patients || payload.items || payload || []
+      patients.value = list.map(p => ({ id: p.patient_id || p.id, childInfo: { name: [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } }))
+    } else {
+      // Offline: use cached patients
+      if (!adminDB.isOpen()) await adminDB.open()
+      const cachedPatients = await adminDB.patients.toArray()
+      patients.value = cachedPatients.map(p => ({ 
+        id: p.patient_id || p.id, 
+        childInfo: { name: p.full_name || [p.firstname, p.middlename, p.surname].filter(Boolean).join(' ').trim() } 
+      }))
+    }
   } catch (err) {
     console.error('Failed to load patients', err)
     patients.value = []
@@ -334,19 +349,51 @@ const fetchSelectedPatientData = async (patientId) => {
   if (!patientId) return
 
   try {
-    const response = await api.get(`/patients/${patientId}`)
-    selectedPatientData.value = response.data?.data || null
+    if (isOnline.value) {
+      const response = await api.get(`/patients/${patientId}`)
+      selectedPatientData.value = response.data?.data || null
+    } else {
+      // Offline: use cached patient
+      if (!adminDB.isOpen()) await adminDB.open()
+      const cachedPatient = await adminDB.patients.get(Number(patientId))
+      selectedPatientData.value = cachedPatient || null
+    }
   } catch (error) {
     console.error('Error fetching patient details', error)
-    selectedPatientData.value = null
+    // Try offline fallback if online fails
+    if (isOnline.value) {
+      try {
+        if (!adminDB.isOpen()) await adminDB.open()
+        const cachedPatient = await adminDB.patients.get(Number(patientId))
+        selectedPatientData.value = cachedPatient || null
+      } catch {
+        selectedPatientData.value = null
+      }
+    } else {
+      selectedPatientData.value = null
+    }
   }
 }
 
 const fetchExistingVisit = async (visitId) => {
   try {
     loading.value = true
-    const res = await api.get(`/visits/${visitId}`)
-    const data = res.data?.data || res.data || {}
+    let data = {}
+
+    if (isOnline.value) {
+      const res = await api.get(`/visits/${visitId}`)
+      data = res.data?.data || res.data || {}
+    } else {
+      // Offline: use cached visit
+      if (!adminDB.isOpen()) await adminDB.open()
+      const cachedVisit = await adminDB.visits.get(Number(visitId))
+      if (!cachedVisit) {
+        console.warn(`Visit ${visitId} not found in offline cache`)
+        loading.value = false
+        return
+      }
+      data = cachedVisit
+    }
 
     form.value.patient_id = String(data.patient_id || '')
     form.value.recorded_by = String(data.recorded_by || '')
@@ -362,44 +409,69 @@ const fetchExistingVisit = async (visitId) => {
       hasOutsideInVisit.value = false
     }
 
-    // Vitals mapping
-    if (data.vitals) {
+    // Vitals mapping - check multiple possible structures
+    // 1. Nested vitals object
+    if (data.vitals && typeof data.vitals === 'object') {
       form.value.vitals = {
         temperature: data.vitals.temperature ?? '',
         muac: data.vitals.muac ?? '',
-        respiration: data.vitals.respiration ?? '',
+        respiration: data.vitals.respiration ?? data.vitals.respiration_rate ?? '',
         weight: data.vitals.weight ?? '',
-        height: data.vitals.height ?? ''
+        height: data.vitals.height ?? data.vitals.height_length ?? ''
       }
-    } else if (data.vital_signs) {
+    } 
+    // 2. Nested vital_signs object
+    else if (data.vital_signs && typeof data.vital_signs === 'object') {
       const vs = data.vital_signs
       form.value.vitals = {
         temperature: vs.temperature ?? '',
         muac: vs.muac ?? '',
-        respiration: vs.respiration_rate ?? '',
+        respiration: vs.respiration_rate ?? vs.respiration ?? '',
         weight: vs.weight ?? '',
-        height: vs.height_length ?? ''
+        height: vs.height_length ?? vs.height ?? ''
       }
-    } else if (data.temperature !== undefined || data.muac !== undefined || data.respiration_rate !== undefined || data.weight !== undefined || data.height_length !== undefined) {
+    } 
+    // 3. Top-level fields (from visits_view or cached visits - this is the offline case!)
+    else if (data.temperature !== undefined || data.muac !== undefined || data.respiration_rate !== undefined || data.weight !== undefined || data.height_length !== undefined || data.height !== undefined) {
       form.value.vitals = {
         temperature: data.temperature ?? '',
         muac: data.muac ?? '',
-        respiration: (data.respiration_rate ?? data.respiration) ?? '',
+        respiration: data.respiration_rate ?? data.respiratory_rate ?? data.respiration ?? '',
         weight: data.weight ?? '',
-        height: (data.height_length ?? data.height) ?? ''
+        height: data.height_length ?? data.height ?? ''
       }
-    } else {
+    } 
+    // 4. Last resort: fetch from vitals endpoint (only when online)
+    else {
       try {
-        const vitalsRes = await api.get(`/vitals/${visitId}`)
-        const v = vitalsRes.data?.data || vitalsRes.data || {}
-        form.value.vitals = {
-          temperature: v.temperature ?? '',
-          muac: v.muac ?? '',
-          respiration: v.respiration ?? '',
-          weight: v.weight ?? '',
-          height: v.height ?? ''
+        if (isOnline.value) {
+          const vitalsRes = await api.get(`/vitals/${visitId}`)
+          const v = vitalsRes.data?.data || vitalsRes.data || {}
+          form.value.vitals = {
+            temperature: v.temperature ?? '',
+            muac: v.muac ?? '',
+            respiration: v.respiration_rate ?? v.respiration ?? '',
+            weight: v.weight ?? '',
+            height: v.height_length ?? v.height ?? ''
+          }
+        } else {
+          // Offline: try cached vitals
+          if (!adminDB.isOpen()) await adminDB.open()
+          const cachedVitals = await adminDB.vitalsigns.where('visit_id').equals(Number(visitId)).first()
+          if (cachedVitals) {
+            form.value.vitals = {
+              temperature: cachedVitals.temperature ?? '',
+              muac: cachedVitals.muac ?? '',
+              respiration: cachedVitals.respiration_rate ?? cachedVitals.respiration ?? '',
+              weight: cachedVitals.weight ?? '',
+              height: cachedVitals.height_length ?? cachedVitals.height ?? ''
+            }
+          } else {
+            form.value.vitals = { temperature: '', muac: '', respiration: '', weight: '', height: '' }
+          }
         }
       } catch (e) {
+        console.warn('Failed to fetch vitals:', e)
         form.value.vitals = { temperature: '', muac: '', respiration: '', weight: '', height: '' }
       }
     }
@@ -451,6 +523,15 @@ const formatDate = (dateString) => {
 }
 
 const enableEditMode = () => {
+  if (!isOnline.value) {
+    addToast({
+      title: 'Offline Mode',
+      message: 'Cannot edit visit while offline. Please connect to the internet to edit visit records.',
+      type: 'warning',
+      timeout: 5000
+    })
+    return
+  }
   const patientId = route.params.patientId
   const visitId = route.params.visitId || props.existingVisitId
   router.push(`/admin/patients/${patientId}/visits/${visitId}/edit`)

@@ -171,15 +171,12 @@
                   class="col-md-6"
                 >
                   <label class="form-label">Administered By: <span class="text-danger">*</span></label>
-                  <SearchableSelect
-                    v-model="dose.administeredBy"
-                    :options="healthWorkers"
-                    placeholder="Select health worker"
-                    label-key="name"
-                    value-key="user_id"
-                    :required="true"
-                    :disabled="true"
-                  />
+                  <input 
+                    v-model="dose.administeredByDisplay" 
+                    type="text" 
+                    class="form-control"
+                    readonly
+                  >
                   <small class="text-muted">Cannot be edited for existing records</small>
                 </div>
                 <div
@@ -350,6 +347,18 @@ const isFormValid = computed(() => {
     return hasRequiredFields && hasAdministeredBy && hasInventorySelected
   })
 })
+
+const getUniqueAdministrators = () => {
+  const administrators = new Set()
+  
+  doseRecords.value.forEach(dose => {
+    if (dose.administeredByDisplay) {
+      administrators.add(dose.administeredByDisplay)
+    }
+  })
+  
+  return administrators.size > 0 ? Array.from(administrators).join(', ') : 'Not specified'
+}
 
 const goBack = () => {
   router.push({ 
@@ -775,7 +784,10 @@ const fetchVaccinationRecords = async () => {
         doseNumber: record.dose_number || record.doseNumber || record.dose || '',
         dateAdministered: formatDateForInput(record.administered_date || record.date_administered || record.dateAdministered),
         ageAtAdministration: record.age_at_administration || record.ageAtAdministration || '',
-        administeredBy: record.administered_by_name || record.administered_by_id || record.healthWorkerId || '',
+        // IMPORTANT: administeredBy must be numeric ID; do NOT take display name here
+        administeredBy: record.administered_by_id || record.healthWorkerId || null,
+        // Keep a separate display value for UI; fallback to parsed outside remarks
+        administeredByDisplay: record.administered_by_name || record.administered_by || record.administered_by_display || '',
         siteOfAdministration: parsedRemarks.site || record.site_of_administration || record.siteOfAdministration || '',
         facilityName: parsedRemarks.facility || (record.immunization_facility_name || record.facility_name || record.facilityName || record.health_center || record.healthCenter || ''),
         // Remarks: for outside, always use the cleaned main remarks (no labeled parts)
@@ -803,7 +815,7 @@ const fetchVaccinationRecords = async () => {
       if (isOutside) {
         if (parsedRemarks.manufacturer) base.manufacturer = parsedRemarks.manufacturer
         if (parsedRemarks.lot) base.lotNumber = parsedRemarks.lot
-        base.administeredByDisplay = parsedRemarks.administeredBy || base.administeredBy || ''
+        base.administeredByDisplay = parsedRemarks.administeredBy || base.administeredByDisplay || ''
       }
 
       return base
@@ -889,8 +901,14 @@ const actuallySaveAllRecords = async (approver) => {
         remarks: remarks,
       }
       // Attach approver if provided (backend may ignore if not supported)
+      const toNumericOrNull = (v) => {
+        if (v === null || v === undefined || v === '') return null
+        const n = parseInt(v, 10)
+        return Number.isFinite(n) ? n : null
+      }
+
       if (approver?.user_id) {
-        updateData.approved_by = approver.user_id
+        updateData.approved_by = toNumericOrNull(approver.user_id)
       }
       // Only include inventory_id when changed (to avoid unnecessary writes)
       // For outside records, do NOT update inventory_id even if selected locally
@@ -902,10 +920,16 @@ const actuallySaveAllRecords = async (approver) => {
         updateData.facility_name = dose.facilityName || null
       }
 
-      // Note: administered_by, facility_name, and site_of_administration are readonly and should not be updated
-
+      // Include administered_by (required for updates)
       if (isOutside) {
+        updateData.administered_by = null
+      } else {
+        // Ensure we send only numeric ID, never a name string
+        updateData.administered_by = toNumericOrNull(dose.administeredBy)
       }
+
+      // Note: facility_name and site_of_administration are readonly and should not be updated
+
       const putRes = await api.put(`/immunizations/${dose.id}`, updateData)
       // After successful update, sync local state inventoryId if changed
       if (invChanged) {

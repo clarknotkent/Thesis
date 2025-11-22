@@ -81,35 +81,51 @@ export async function warmParentPortalCache() {
 export async function warmHealthWorkerCache() {
   console.log('🔥 Warming cache for health worker routes...')
   
-  const hwRoutes = [
-    '/src/views/healthworker/Dashboard.vue',
-    '/src/views/healthworker/Patients.vue',
-    '/src/views/healthworker/PatientDetails.vue',
-    '/src/views/healthworker/patients/AddPatient.vue'
+  // Import the actual lazy-loading functions used by the router
+  const routeImports = [
+    // Main health worker views - these match the router's lazy imports
+    () => import('@/views/healthworker/dashboard/Dashboard.vue'),
+    () => import('@/views/healthworker/patients/PatientRecords.vue'),
+    () => import('@/views/healthworker/PatientDetails.vue'),
+    () => import('@/views/healthworker/patients/AddPatient.vue'),
+    () => import('@/views/healthworker/patients/PatientRecords.vue'),
+    () => import('@/views/healthworker/patients/EditVaccinationRecord.vue'),
+    () => import('@/views/healthworker/patients/EditVisit.vue'),
+    () => import('@/views/healthworker/patients/VaccineRecordDetails.vue'),
+    () => import('@/views/healthworker/patients/VisitSummary.vue')
   ]
   
-  const fetchPromises = hwRoutes.map(async (route) => {
-    try {
-      const response = await fetch(route)
-      if (response.ok) {
-        console.log(`✅ Cached: ${route}`)
-        return { route, success: true }
+  console.log(`📦 Pre-loading ${routeImports.length} health worker route components...`)
+  
+  const results = await Promise.allSettled(
+    routeImports.map(async (importFn, index) => {
+      try {
+        await importFn()
+        return { index, success: true }
+      } catch (error) {
+        return { index, success: false, error: error.message }
       }
-      return { route, success: false }
-    } catch (error) {
-      return { route, success: false, error }
-    }
-  })
+    })
+  )
   
-  const results = await Promise.allSettled(fetchPromises)
-  const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+  const successful = results.filter(r => 
+    r.status === 'fulfilled' && r.value.success
+  ).length
   
-  console.log(`🔥 Cache warming complete: ${successful}/${hwRoutes.length} routes cached`)
+  const failed = results.filter(r => 
+    r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
+  )
+  
+  console.log(`✅ Successfully pre-loaded: ${successful}/${routeImports.length} health worker route components`)
+  
+  if (failed.length > 0) {
+    console.log(`⚠️ ${failed.length} health worker components couldn't be pre-loaded - will cache on first navigation`)
+  }
   
   return {
-    total: hwRoutes.length,
+    total: routeImports.length,
     successful,
-    failed: hwRoutes.length - successful
+    failed: failed.length
   }
 }
 

@@ -30,7 +30,17 @@
         <h6 class="mb-0 text-primary">
           <i class="bi bi-list-check me-2" />Vaccination Records
         </h6>
-        <span class="badge bg-info">{{ vaccinations.length }} Record(s)</span>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge bg-info">{{ vaccinations.length }} Record(s)</span>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            :disabled="loading"
+            @click="refreshHistory"
+          >
+            <i class="bi bi-arrow-clockwise me-1" />
+            {{ loading ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -184,11 +194,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 
 const props = defineProps({
   patientId: {
@@ -345,34 +356,43 @@ const deriveFacility = (v) => {
 const fetchVaccinationHistory = async () => {
   try {
     loading.value = true
-    
-    // Always try offline cache first, regardless of online status
+
+    // Offline-first: check dedicated immunizations table (prefetched at login)
+    try {
+      const offlineRows = await adminDB.immunizations.where('patient_id').equals(String(props.patientId)).toArray()
+      if (offlineRows && offlineRows.length) {
+        vaccinations.value = offlineRows
+        console.log('✅ Loaded vaccination history from immunizations table:', offlineRows.length, 'records')
+        return
+      }
+    } catch (e) {
+      console.warn('⚠️ Immunizations table lookup failed:', e.message)
+    }
+
+    // Secondary offline legacy cache (embedded patient record)
     try {
       const patientData = await fetchPatientById(props.patientId)
-      if (patientData && patientData.vaccinationHistory && Array.isArray(patientData.vaccinationHistory) && patientData.vaccinationHistory.length > 0) {
+      if (patientData && Array.isArray(patientData.vaccinationHistory) && patientData.vaccinationHistory.length) {
         vaccinations.value = patientData.vaccinationHistory
-        console.log('✅ Loaded vaccination history from cache:', patientData.vaccinationHistory.length, 'records')
+        console.log('✅ Loaded vaccination history from embedded patient cache:', patientData.vaccinationHistory.length, 'records')
         return
       }
     } catch (cacheError) {
-      console.warn('⚠️ Cache lookup failed:', cacheError.message)
+      console.warn('⚠️ Embedded cache lookup failed:', cacheError.message)
     }
 
-    // If cache is empty or failed, try API (only if we think we're online)
+    // Online path (only if not offline)
     if (!isOffline.value) {
       const response = await api.get(`/patients/${props.patientId}`)
       const patientData = response.data.data || response.data
-      
-      // Extract vaccination history from patient data
       let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || patientData.immunizationHistory || []
 
-      // If patient payload doesn't include history, fallback to dedicated endpoint
-      if (!Array.isArray(vax) || vax.length === 0) {
+      if (!Array.isArray(vax) || !vax.length) {
+        // Dedicated endpoint fallback
         try {
           const vaccRes = await api.get('/immunizations', { params: { patient_id: props.patientId, limit: 200 } })
           vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
         } catch (e) {
-          // ignore, keep empty
           vax = []
         }
       }
@@ -380,39 +400,41 @@ const fetchVaccinationHistory = async () => {
       vaccinations.value = Array.isArray(vax) ? vax : []
       console.log('📥 Loaded vaccination history from API:', vaccinations.value.length, 'records')
     } else {
-      // We're offline and cache was empty
       vaccinations.value = []
-      console.log('📴 Offline and no cached vaccination history available')
+      console.log('📴 Offline; no vaccination history cached for patient')
     }
   } catch (error) {
     console.error('Error fetching vaccination history:', error)
-    
-    // If API call failed, try cache one more time as fallback
     if (error.code === 'ERR_NETWORK' || error.code === 'ERR_INTERNET_DISCONNECTED') {
       try {
-        console.log('🌐 Network error, trying cache as fallback...')
+        console.log('🌐 Network error, retrying embedded cache...')
         const patientData = await fetchPatientById(props.patientId)
-        if (patientData && patientData.vaccinationHistory) {
-          vaccinations.value = Array.isArray(patientData.vaccinationHistory) ? patientData.vaccinationHistory : []
-          console.log('✅ Recovered vaccination history from cache after network error')
+        if (patientData && Array.isArray(patientData.vaccinationHistory)) {
+          vaccinations.value = patientData.vaccinationHistory
+          console.log('✅ Recovered vaccination history from embedded patient cache after network error')
           return
         }
       } catch (cacheError) {
         console.warn('⚠️ Cache fallback also failed:', cacheError.message)
       }
     }
-    
-    addToast({
-      title: 'Error',
-      message: 'Failed to load vaccination history',
-      type: 'error'
-    })
+    addToast({ title: 'Error', message: 'Failed to load vaccination history', type: 'error' })
   } finally {
     loading.value = false
   }
 }
 
+const refreshHistory = async () => {
+  await fetchVaccinationHistory()
+  addToast({ title: 'Refreshed', message: 'Vaccination history updated', type: 'success' })
+}
+
 onMounted(() => {
+  fetchVaccinationHistory()
+})
+
+// Automatically refresh when component becomes active (e.g., after editing a visit)
+onActivated(() => {
   fetchVaccinationHistory()
 })
 </script>

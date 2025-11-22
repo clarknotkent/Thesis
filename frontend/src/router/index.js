@@ -1,4 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
+// Eager imports for offline-ready critical admin views
+import ViewInventory from '@/views/admin/inventory/ViewInventory.vue'
+import ViewSchedule from '@/views/admin/inventory/ViewSchedule.vue'
+import ViewPatient from '@/views/admin/patients/ViewPatient.vue' // Eager load to allow offline patient view
+import VaccineDetails from '@/views/admin/patients/VaccineDetails.vue' // Eager load for offline vaccine details
+import VisitSummaryPage from '@/views/admin/patients/VisitSummaryPage.vue' // Eager load for offline visit summary
 import { isAuthenticated, getRole } from '@/services/auth'
 import api from '@/services/api'
 import NotFound from '@/views/NotFound.vue'
@@ -44,13 +50,16 @@ import HealthWorkerMenu from '@/views/healthworker/menu/Menu.vue'
 import HealthWorkerProfile from '@/views/healthworker/profile/Profile.vue'
 import HealthWorkerSettings from '@/views/healthworker/settings/Settings.vue'
 
+// QR Scanner - statically imported for offline availability
+import QRScanner from '@/views/healthworker/tools/QRScanner.vue'
+
 // Parent Views (Pages)
 import ParentHome from '@/views/parent/ParentHome.vue'
 // Parent Features
 import ChildInfo from '@/features/parent/schedule/ChildInfo.vue'
 import VaccinationSchedule from '@/features/parent/schedule/VaccinationSchedule.vue'
 // Neutral QR route that redirects to role-specific patient details
-const PatientRoute = () => import('@/views/PatientRoute.vue')
+import PatientRoute from '@/views/PatientRoute.vue'
 
 const routes = [
   {
@@ -144,7 +153,8 @@ const routes = [
   {
     path: '/admin/patients/view/:id',
     name: 'ViewPatient',
-    component: () => import('@/views/admin/patients/ViewPatient.vue'),
+    // Eager-loaded for reliable offline access after first app load
+    component: ViewPatient,
     meta: {
       title: 'View Patient - ImmunizeMe',
       requiresAuth: true,
@@ -169,7 +179,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/visits/:visitId',
     name: 'AdminVisitSummary',
-    component: () => import('@/views/admin/patients/VisitSummaryPage.vue'),
+    component: VisitSummaryPage,
     meta: {
       title: 'Visit Summary - ImmunizeMe',
       requiresAuth: true,
@@ -219,7 +229,7 @@ const routes = [
   {
     path: '/admin/patients/:patientId/vaccine-details',
     name: 'VaccineDetails',
-    component: () => import('@/views/admin/patients/VaccineDetails.vue'),
+    component: VaccineDetails,
     meta: {
       title: 'Vaccine Details - ImmunizeMe',
       requiresAuth: true,
@@ -286,14 +296,16 @@ const routes = [
       role: 'admin'
     }
   },
+  // Eager-load critical inventory view for reliable offline access
   {
     path: '/admin/vaccines/view/:id',
     name: 'ViewInventory',
-    component: () => import('@/views/admin/inventory/ViewInventory.vue'),
+    component: ViewInventory,
     meta: {
       title: 'View Inventory - ImmunizeMe',
       requiresAuth: true,
-      role: 'admin'
+      role: 'admin',
+      offlineReady: true
     }
   },
   {
@@ -316,14 +328,16 @@ const routes = [
       role: 'admin'
     }
   },
+  // Eager-load vaccine schedule view for offline access
   {
     path: '/admin/vaccines/schedules/view/:id',
     name: 'ViewSchedule',
-    component: () => import('@/views/admin/inventory/ViewSchedule.vue'),
+    component: ViewSchedule,
     meta: {
       title: 'View Schedule - ImmunizeMe',
       requiresAuth: true,
-      role: 'admin'
+      role: 'admin',
+      offlineReady: true
     }
   },
   {
@@ -702,7 +716,7 @@ const routes = [
   {
     path: '/healthworker/qr',
     name: 'HealthWorkerQRScanner',
-    component: () => import('@/views/healthworker/tools/QRScanner.vue'),
+    component: QRScanner,
     meta: {
       title: 'Scan QR - ImmunizeMe',
       requiresAuth: true,
@@ -1115,6 +1129,11 @@ router.onError((error) => {
       if (import.meta.env.DEV) {
         console.warn('⚠️ Failed to load route component - likely offline')
         console.log('💡 This route needs to be visited while online first to be cached')
+        console.log('   Solutions:')
+        console.log('   1. Visit the route while online to cache it')
+        console.log('   2. Run window.__warmHealthWorkerCache() to cache health worker components')
+        console.log('   3. Run window.__warmAdminCache() to cache admin components')
+        console.log('   4. Run window.__warmCache() to cache parent components')
       }
     }
     

@@ -192,6 +192,8 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 
 const route = useRoute()
 const router = useRouter()
@@ -256,54 +258,94 @@ const deriveFacility = (v) => {
   )
 }
 
+const { isOffline, fetchPatientById } = useOfflineAdmin()
+
 const fetchVaccineDetails = async () => {
   try {
     loading.value = true
-    
-    // Fetch patient data
-    const response = await api.get(`/patients/${patientId.value}`)
-    const patientData = response.data.data || response.data
-    
+
+    let patientData
+
+    if (isOffline.value) {
+      // Offline: use cached patient data
+      const offlineRes = await fetchPatientById(patientId.value)
+      patientData = offlineRes.data || offlineRes
+    } else {
+      // Online: fetch from API
+      const response = await api.get(`/patients/${patientId.value}`)
+      patientData = response.data.data || response.data
+    }
+
     // Set patient name
     patientName.value = `${patientData.firstname || ''} ${patientData.middlename || ''} ${patientData.surname || ''}`.trim()
-    
-    // Extract vaccination history
-    let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || patientData.immunizationHistory || []
 
-    // Fallback to dedicated endpoint if needed
-    if (!Array.isArray(vax) || vax.length === 0) {
+    // Get vaccination history (already merged in offline path)
+    let vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || []
+
+    // If online and no embedded history, fetch immunizations
+    if (!isOffline.value && (!Array.isArray(vax) || vax.length === 0)) {
       try {
-        const vaccRes = await api.get('/immunizations', { params: { patient_id: patientId.value, limit: 200 } })
-        vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
-      } catch (e) {
+        // Try patient-specific endpoint first
+        const vaccRes = await api.get(`/patients/${patientId.value}/immunizations`)
+        vax = vaccRes.data?.data || vaccRes.data || []
+        console.log('✅ Loaded immunizations from /patients/:id/immunizations:', vax.length)
+      } catch (err) {
+        console.warn('Patient immunizations endpoint failed, trying bulk endpoint:', err)
+        try {
+          // Fallback to bulk endpoint
+          const vaccRes = await api.get('/immunizations', { params: { patient_id: patientId.value, limit: 200 } })
+          vax = vaccRes.data?.data || vaccRes.data?.items || vaccRes.data || []
+          console.log('✅ Loaded immunizations from /immunizations:', vax.length)
+        } catch {
+          vax = []
+        }
+      }
+    }
+    
+    // If still empty and offline, try fetching from IndexedDB
+    if ((!Array.isArray(vax) || vax.length === 0) && isOffline.value) {
+      try {
+        const offlineImm = await adminDB.immunizations
+          .where('patient_id')
+          .equals(String(patientId.value)) // Ensure string type
+          .toArray()
+        vax = offlineImm || []
+        console.log('✅ Loaded immunizations from offline DB:', vax.length)
+      } catch (offlineErr) {
+        console.warn('Failed to load immunizations from offline DB:', offlineErr)
         vax = []
       }
     }
 
-    // Filter for the specific vaccine
+    // Filter for this vaccine antigen name
     const filteredVaccinations = Array.isArray(vax) ? vax.filter(v => {
       const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
       return vName === vaccineName.value
     }) : []
 
-    // Fetch inventory data to get batch numbers
+    // Build inventory batch map (offline or online)
     const inventoryMap = {}
-    try {
-      const inventoryResponse = await api.get('/vaccines/inventory')
-      const inventoryItems = inventoryResponse.data?.data || inventoryResponse.data || []
-      
-      // Create a map of inventory_id to batch/lot number
-      if (Array.isArray(inventoryItems)) {
-        inventoryItems.forEach(item => {
-          const id = item.inventory_id || item.id
-          const batchNo = item.lot_number || item.batch_number || item.lotNumber || item.batchNumber
-          if (id && batchNo) {
-            inventoryMap[id] = batchNo
-          }
-        })
+    if (isOffline.value) {
+      const allInventory = await adminDB.inventory.toArray()
+      allInventory.forEach(item => {
+        const id = item.inventory_id || item.id
+        const batchNo = item.lot_number || item.batch_number
+        if (id && batchNo) inventoryMap[id] = batchNo
+      })
+    } else {
+      try {
+        const inventoryResponse = await api.get('/vaccines/inventory')
+        const inventoryItems = inventoryResponse.data?.data || inventoryResponse.data || []
+        if (Array.isArray(inventoryItems)) {
+          inventoryItems.forEach(item => {
+            const id = item.inventory_id || item.id
+            const batchNo = item.lot_number || item.batch_number || item.lotNumber || item.batchNumber
+            if (id && batchNo) inventoryMap[id] = batchNo
+          })
+        }
+      } catch (e) {
+        console.error('Error fetching inventory for batch numbers:', e)
       }
-    } catch (e) {
-      console.error('Error fetching inventory for batch numbers:', e)
     }
 
     // Process doses
@@ -311,23 +353,29 @@ const fetchVaccineDetails = async () => {
       if (!diseasePrevented.value || diseasePrevented.value === '—') {
         diseasePrevented.value = vaccination.disease_prevented || '—'
       }
-      
-      // Get batch number from inventory using inventory_id
+
       const inventoryId = vaccination.inventory_id || vaccination.inventoryId
       let batchNumber = '—'
       
-      if (inventoryId && inventoryMap[inventoryId]) {
-        batchNumber = inventoryMap[inventoryId]
-      } else {
-        // Fallback to direct batch number field if available
-        batchNumber = vaccination.batch_number || vaccination.batchNumber || vaccination.lot_number || vaccination.lotNumber || '—'
+      // First try batch_number/lot_number directly from immunization record (prefetched data has this)
+      batchNumber = vaccination.batch_number || vaccination.lot_number || vaccination.batchNumber || vaccination.lotNumber
+      
+      // If not found and we have inventoryId, try looking up from inventory map
+      if (!batchNumber || batchNumber === '—') {
+        if (inventoryId && inventoryMap[inventoryId]) {
+          batchNumber = inventoryMap[inventoryId]
+        }
       }
       
+      if (!batchNumber || batchNumber === '—') {
+        batchNumber = '—'
+      }
+
       return {
         doseNumber: vaccination.dose_number || vaccination.doseNumber || vaccination.dose || '—',
         administeredDate: vaccination.administered_date || vaccination.date_administered || vaccination.dateAdministered,
         ageAtAdministration: vaccination.age_at_administration || vaccination.ageAtAdministration || '—',
-        batchNumber: batchNumber,
+        batchNumber,
         administeredBy: vaccination.administered_by_name || vaccination.administeredBy || vaccination.health_worker_name || 'Taken Outside',
         site: deriveSite(vaccination),
         facility: deriveFacility(vaccination),
@@ -335,14 +383,9 @@ const fetchVaccineDetails = async () => {
         remarks: vaccination.remarks || vaccination.notes || '—'
       }
     })
-
   } catch (error) {
     console.error('Error fetching vaccine details:', error)
-    addToast({
-      title: 'Error',
-      message: 'Failed to load vaccine details',
-      type: 'error'
-    })
+    addToast({ title: 'Error', message: 'Failed to load vaccine details', type: 'error' })
   } finally {
     loading.value = false
   }

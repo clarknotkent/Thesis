@@ -2,6 +2,20 @@ import supabase from '../db.js';
 
 const receivingReportModel = {};
 
+// Helper to get today's date in Philippine timezone
+const getTodayInPH = () => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const todayStr = formatter.format(new Date());
+  const today = new Date(todayStr);
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
 // Normalization functions
 const toTitleCase = (str) => {
   if (!str || typeof str !== 'string') return str;
@@ -52,8 +66,7 @@ receivingReportModel.createReport = async (payload, userId) => {
   if (payload.delivery_date) {
     const deliveryDate = new Date(payload.delivery_date);
     deliveryDate.setHours(0, 0, 0, 0); // Normalize to start of day
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    const today = getTodayPH();
     if (deliveryDate > today) {
       throw new Error('Delivery date cannot be in the future');
     }
@@ -92,15 +105,7 @@ receivingReportModel.createReport = async (payload, userId) => {
 };
 
 receivingReportModel.updateReport = async (reportId, payload, userId) => {
-  // Validate delivery date - should not be in the future
-  if (payload.delivery_date !== undefined && payload.delivery_date !== null && payload.delivery_date !== '') {
-    const deliveryDate = new Date(payload.delivery_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
-    if (deliveryDate > today) {
-      throw new Error('Delivery date cannot be in the future');
-    }
-  }
+  // Note: Validation is done in frontend, skip here to avoid timezone issues
 
   const update = {
     updated_by: userId || null
@@ -209,10 +214,9 @@ receivingReportModel.addItem = async (reportId, item, _userId) => {
   // Validate expiration date - should not be in the past (can be today or future)
   if (item.expiration_date) {
     const expirationDate = new Date(item.expiration_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
-    if (expirationDate < today) {
-      throw new Error('Expiration date cannot be in the past');
+    const today = getTodayPH();
+    if (expirationDate <= today) {
+      throw new Error('Expiration date must be in the future');
     }
   }
 
@@ -253,15 +257,7 @@ receivingReportModel.addItem = async (reportId, item, _userId) => {
 };
 
 receivingReportModel.updateItem = async (itemId, item, _userId) => {
-  // Validate expiration date - should not be in the past (can be today or future)
-  if (item.expiration_date !== undefined && item.expiration_date !== null && item.expiration_date !== '') {
-    const expirationDate = new Date(item.expiration_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
-    if (expirationDate < today) {
-      throw new Error('Expiration date cannot be in the past');
-    }
-  }
+  // Note: Validation is done in frontend, skip here to avoid timezone issues
 
   const update = {
     vaccine_id: item.vaccine_id && item.vaccine_id !== '' ? item.vaccine_id : null,

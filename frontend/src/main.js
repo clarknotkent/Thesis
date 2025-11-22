@@ -138,10 +138,10 @@ try {
           return warmParentPortalCache()
         }
         
-        // Expose admin cache warming function for manual testing
-        window.__warmAdminCache = async () => {
-          const { warmAdminCache } = await import('@/utils/cacheWarmer')
-          return warmAdminCache()
+        // Expose health worker cache warming function for manual testing
+        window.__warmHealthWorkerCache = async () => {
+          const { warmHealthWorkerCache } = await import('@/utils/cacheWarmer')
+          return warmHealthWorkerCache()
         }
         
         // Auto-warm cache for parent routes when online
@@ -159,22 +159,22 @@ try {
           }, 2000) // Wait 2 seconds after app load
         }
         
-        // Auto-warm cache for admin routes when online and user is admin
+        // Auto-warm cache for health worker routes when online and user is health worker
         if (navigator.onLine) {
-          // Check if user is admin and warm admin cache
+          // Check if user is health worker and warm health worker cache
           setTimeout(async () => {
             try {
               const userRole = localStorage.getItem('userRole')
-              if (userRole === 'admin') {
-                console.log('🔥 Auto-warming admin portal cache...')
-                const { warmAdminCache } = await import('@/utils/cacheWarmer')
-                const result = await warmAdminCache()
-                console.log(`✅ Admin cache warming complete: ${result.successful}/${result.total} components cached`)
+              if (userRole === 'healthworker' || userRole === 'health_staff' || userRole === 'healthstaff') {
+                console.log('🔥 Auto-warming health worker portal cache...')
+                const { warmHealthWorkerCache } = await import('@/utils/cacheWarmer')
+                const result = await warmHealthWorkerCache()
+                console.log(`✅ Health worker cache warming complete: ${result.successful}/${result.total} components cached`)
               }
             } catch (error) {
-              console.warn('⚠️ Admin cache warming failed:', error.message)
+              console.warn('⚠️ Health worker cache warming failed:', error.message)
             }
-          }, 3000) // Wait 3 seconds after app load (after parent cache)
+          }, 2500) // Wait 2.5 seconds after app load (between parent and admin)
         }
         
         // Expose cache status checker
@@ -274,6 +274,7 @@ try {
         console.log('   - window.__checkCacheStatus() - View cached resources')
         console.log('   - window.__warmCache() - Warm parent portal cache')
         console.log('   - window.__warmAdminCache() - Warm admin portal cache')
+        console.log('   - window.__warmHealthWorkerCache() - Warm health worker portal cache')
         console.log('   - window.__startIdlePrefetch() - Start parent idle prefetcher')
         console.log('   - window.__startAdminIdlePrefetch() - Start admin idle prefetcher')
         console.log('   - window.__stopIdlePrefetch() - Stop idle prefetcher')

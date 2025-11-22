@@ -140,7 +140,9 @@ const site = computed(() => {
 })
 
 const facility = computed(() => {
-  return props.vaccination.facility || 
+  return props.vaccination.facility_name ||
+         props.vaccination.facilityName ||
+         props.vaccination.facility || 
          props.vaccination.health_center || 
          props.vaccination.healthCenter || 
          '—'

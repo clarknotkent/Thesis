@@ -143,9 +143,12 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
-import api from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { formatPHDate } from '@/utils/dateUtils'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+
+// Offline-aware helpers
+const { fetchInventoryById, fetchInventoryTransactions, isOffline } = useOfflineAdmin()
 
 const route = useRoute()
 const router = useRouter()
@@ -154,6 +157,7 @@ const { addToast } = useToast()
 const inventoryData = ref(null)
 const history = ref([])
 const loading = ref(true)
+const offlineBannerShown = ref(false)
 
 const goBack = () => {
   router.back()
@@ -161,60 +165,41 @@ const goBack = () => {
 
 onMounted(async () => {
   await Promise.all([fetchInventoryData(), fetchHistory()])
+  if (isOffline.value && !offlineBannerShown.value) {
+    addToast({ title: 'Offline', message: 'Showing cached transaction history', type: 'warning' })
+    offlineBannerShown.value = true
+  }
 })
 
 const fetchInventoryData = async () => {
   try {
     const id = route.params.id
-    const response = await api.get(`/vaccines/inventory/${id}`)
-    const data = response.data.data || response.data
-    
-    // Backend returns nested vaccinemaster object
-    const vaccine = data.vaccinemaster || {}
-    
+    const inv = await fetchInventoryById(id)
+    const data = inv?.data || inv || {}
+    const vaccine = data.vaccinemaster || data.vaccine || {}
     inventoryData.value = {
-      vaccineName: vaccine.antigen_name || vaccine.brand_name || data.vaccine_name
+      vaccineName: vaccine.antigen_name || vaccine.brand_name || data.vaccine_name || data.antigen_name || 'Unknown Vaccine'
     }
   } catch (error) {
     console.error('Error fetching inventory data:', error)
-  addToast({ title: 'Error', message: 'Error loading inventory data', type: 'error' })
+    addToast({ title: 'Error', message: 'Error loading inventory data', type: 'error' })
   }
 }
 
 const fetchHistory = async () => {
   try {
     const id = route.params.id
-    const response = await api.get(`/vaccines/transactions`, {
-      params: { inventory_id: id, limit: 100 }
-    })
-    
-    // Handle different response structures
-    let transactions = []
-    if (response.data.data && Array.isArray(response.data.data)) {
-      transactions = response.data.data
-    } else if (response.data.transactions && Array.isArray(response.data.transactions)) {
-      transactions = response.data.transactions
-    } else if (Array.isArray(response.data)) {
-      transactions = response.data
-    } else if (response.data.data && response.data.data.transactions) {
-      transactions = response.data.data.transactions || []
-    }
-    
+    const resp = await fetchInventoryTransactions({ inventory_id: id, limit: 100 })
+    const source = resp?.data?.data || resp?.data || resp || []
+    const transactions = Array.isArray(source) ? source : (source.transactions || [])
+
     history.value = transactions.map(item => {
       const type = (item.transaction_type || item.type || '').toUpperCase()
-      const rawQty = Number(
-        item.quantity_delta ?? item.quantity ?? item.quantity_change ?? item.quantityChange ?? 0
-      )
-      // Determine sign based on type; ISSUE/OUTBOUND/EXPIRED and similar are negative
-      const negativeTypes = ['ISSUE', 'OUTBOUND', 'EXPIRED', 'USE', 'DISPENSE', 'STOCK_OUT']
+      const rawQty = Number(item.quantity_delta ?? item.quantity ?? item.quantity_change ?? item.quantityChange ?? 0)
+      const negativeTypes = ['ISSUE', 'OUTBOUND', 'EXPIRED', 'USE', 'DISPENSE', 'STOCK_OUT', 'RETURN']
       const signedQty = negativeTypes.includes(type) ? -Math.abs(rawQty) : Math.abs(rawQty)
-      const after = Number(
-        item.balance_after ?? item.quantity_after ?? item.quantityAfter ?? NaN
-      )
-      const before = Number.isFinite(after) && Number.isFinite(signedQty)
-        ? after - signedQty
-        : null
-
+      const after = Number(item.balance_after ?? item.quantity_after ?? item.quantityAfter ?? NaN)
+      const before = Number.isFinite(after) && Number.isFinite(signedQty) ? after - signedQty : null
       return {
         id: item.transaction_id || item.id,
         timestamp: item.created_at || item.date || item.timestamp,
@@ -226,9 +211,14 @@ const fetchHistory = async () => {
         note: item.remarks || item.note || item.notes || item.description || null
       }
     })
+
+    // If offline limit the history to most recent 50
+    if (isOffline.value && history.value.length > 50) {
+      history.value = history.value.slice(0, 50)
+    }
   } catch (error) {
     console.error('Error fetching history:', error)
-  addToast({ title: 'Error', message: 'Error loading transaction history', type: 'error' })
+    addToast({ title: 'Error', message: 'Error loading transaction history', type: 'error' })
   } finally {
     loading.value = false
   }

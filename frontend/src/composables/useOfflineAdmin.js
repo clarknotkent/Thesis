@@ -214,6 +214,7 @@ export function useOfflineAdmin() {
             full_name: [patient.firstname, patient.middlename, patient.surname].filter(Boolean).join(' ').trim(),
             surname: patient.surname || '',
             firstname: patient.firstname || '',
+            middlename: patient.middlename || '',
             date_of_birth: patient.date_of_birth,
             sex: patient.sex,
             address: patient.address,
@@ -307,7 +308,8 @@ export function useOfflineAdmin() {
 
       // Get additional data from cache - filter in memory to avoid index issues
       const allBirthHistory = await adminDB.birthhistory.toArray()
-      let birthHistory = allBirthHistory.find(b => b.patient_id === patientId)
+      // Match by normalized string to avoid type mismatch (string route param vs numeric PK)
+      let birthHistory = allBirthHistory.find(b => String(b.patient_id) === String(patientId))
 
       // If birth history not in cache, try to fetch it from API and cache it
       if (!birthHistory && !isOffline.value) {
@@ -343,7 +345,7 @@ export function useOfflineAdmin() {
 
       const allImmunizations = await adminDB.immunizations.toArray()
       let immunizations = allImmunizations.filter(i => 
-        i.patient_id === patientId && i.is_deleted !== true
+        String(i.patient_id) === String(patientId) && i.is_deleted !== true
       )
 
       // If no immunizations in cache, try to fetch them from API and cache them
@@ -379,7 +381,7 @@ export function useOfflineAdmin() {
 
       const allSchedules = await adminDB.patientschedule.toArray()
       let schedules = allSchedules.filter(s => 
-        s.patient_id === patientId && s.is_deleted !== true
+        String(s.patient_id) === String(patientId) && s.is_deleted !== true
       )
 
       // If no schedules in cache, try to fetch them from API and cache them
@@ -413,14 +415,17 @@ export function useOfflineAdmin() {
       // Transform patient data to include guardian information and merge birth history
       const transformedPatient = {
         ...patient,
-        // Add guardian information in the format expected by components
+        middlename: patient.middlename || patient.middle_name || '',
+        // Family number derivation from guardian if missing
+        family_number: patient.family_number || (guardian?.family_number) || patient.familyNumber || '',
         guardian_firstname: guardian?.firstname || '',
         guardian_middlename: guardian?.middlename || '',
         guardian_surname: guardian?.surname || '',
         guardian_contact_number: guardian?.contact_number || patient.mother_contact_number || patient.father_contact_number || '',
         guardian: guardian ? {
           full_name: guardian.full_name,
-          contact_number: guardian.contact_number
+          contact_number: guardian.contact_number,
+          family_number: guardian.family_number || guardian.familyNumber || ''
         } : null
       }
 
@@ -535,21 +540,44 @@ export function useOfflineAdmin() {
   const fetchInventoryById = async (inventoryId) => {
     const apiCall = () => api.get(`/vaccines/inventory/${inventoryId}`)
     const cacheQuery = async () => {
-      const inventory = await adminDB.inventory.get(inventoryId)
-      if (!inventory) return null
+      // Try direct primary key lookup (id)
+      let inventory = await adminDB.inventory.get(inventoryId)
 
-      // Get vaccine details
-      const vaccine = await adminDB.vaccines.get(inventory.vaccine_id)
-
-      return {
-        data: {
-          ...inventory,
-          vaccine: vaccine || null
+      // If not found and inventoryId is string, try numeric conversion
+      if (!inventory && typeof inventoryId === 'string') {
+        const numericId = parseInt(inventoryId, 10)
+        if (!isNaN(numericId)) {
+          inventory = await adminDB.inventory.get(numericId)
         }
       }
+
+      // If still not found and inventoryId is number, try string form
+      if (!inventory && typeof inventoryId === 'number') {
+        inventory = await adminDB.inventory.get(inventoryId.toString())
+      }
+
+      // If still not found, try secondary index inventory_id
+      if (!inventory) {
+        inventory = await adminDB.inventory.where('inventory_id').equals(inventoryId).first()
+      }
+      if (!inventory && typeof inventoryId === 'string') {
+        const numericId = parseInt(inventoryId, 10)
+        if (!isNaN(numericId)) {
+          inventory = await adminDB.inventory.where('inventory_id').equals(numericId).first()
+        }
+      }
+
+      if (!inventory) return null
+
+      const vaccine = inventory.vaccine_id ? await adminDB.vaccines.get(inventory.vaccine_id) : null
+      return { data: { ...inventory, vaccine: vaccine || null } }
     }
 
     const result = await fetchWithOfflineFallback(apiCall, cacheQuery)
+    // Normalize empty array fallback to null
+    if (Array.isArray(result.data) && result.data.length === 0) {
+      return { data: null }
+    }
     return result.data
   }
 
@@ -559,17 +587,52 @@ export function useOfflineAdmin() {
   const fetchScheduleById = async (scheduleId) => {
     const apiCall = () => api.get(`/vaccines/schedules/${scheduleId}`)
     const cacheQuery = async () => {
-      const schedule = await adminDB.schedules.get(scheduleId)
-      if (!schedule) return null
-
-      // Get vaccine details
-      const vaccine = await adminDB.vaccines.get(schedule.vaccine_id)
-
-      return {
-        data: {
-          ...schedule,
-          vaccine: vaccine || null
+      try {
+        // Locate master schedule
+        let schedule = await adminDB.schedules.get(scheduleId)
+        if (!schedule && typeof scheduleId === 'string') {
+          const numericId = parseInt(scheduleId, 10)
+          if (!isNaN(numericId)) schedule = await adminDB.schedules.get(numericId)
         }
+        if (!schedule) {
+          // Try by master id
+          schedule = await adminDB.schedules.where('schedule_master_id').equals(scheduleId).first()
+        }
+        if (!schedule) {
+          console.warn('[Offline] Schedule not found for id:', scheduleId)
+          return null
+        }
+
+        const masterId = schedule.schedule_master_id || schedule.schedule_id || scheduleId
+        // Fetch doses from dedicated table
+        let doseRows = await adminDB.schedule_doses.where('schedule_master_id').equals(masterId).toArray()
+        doseRows = doseRows.sort((a,b)=> (a.dose_number||0)-(b.dose_number||0))
+
+        const schedule_doses = doseRows.map(d => ({
+          dose_number: d.dose_number,
+          due_after_days: d.due_after_days ?? '-',
+          min_interval_days: d.min_interval_days ?? '-',
+          max_interval_days: d.max_interval_days ?? '-',
+          min_interval_other_vax: d.min_interval_other_vax ?? '-',
+          requires_previous: d.requires_previous ?? false,
+          skippable: d.skippable ?? false,
+          grace_period_days: d.grace_period_days ?? '-',
+          absolute_latest_days: d.absolute_latest_days ?? '-',
+          notes: d.notes || ''
+        }))
+
+        const vaccine = schedule.vaccine_id ? await adminDB.vaccines.get(schedule.vaccine_id) : null
+
+        return {
+          data: {
+            ...schedule,
+            vaccine: vaccine || null,
+            schedule_doses
+          }
+        }
+      } catch (err) {
+        console.warn('[Offline] cacheQuery for schedule failed:', err)
+        return null
       }
     }
 
@@ -625,20 +688,17 @@ export function useOfflineAdmin() {
    * Fetch inventory transactions with offline support
    */
   const fetchInventoryTransactions = async (params = {}) => {
-    const apiCall = () => api.get('/vaccines/inventory/transactions', { params })
+    const apiCall = () => api.get('/vaccines/transactions', { params })
     const cacheQuery = async () => {
-      let query = adminDB.transactions.orderBy('created_at').reverse()
-
+      // Load all ordered by created_at then filter
+      let all = await adminDB.transactions.orderBy('created_at').reverse().toArray()
       if (params.inventory_id) {
-        query = query.and(t => t.inventory_id === params.inventory_id)
+        const invIdStr = String(params.inventory_id)
+        all = all.filter(t => String(t.inventory_id) === invIdStr)
       }
-
       if (params.transaction_type) {
-        query = query.and(t => t.transaction_type === params.transaction_type)
+        all = all.filter(t => t.transaction_type === params.transaction_type)
       }
-
-      // Simple pagination simulation
-      const all = await query.toArray()
       const limit = params.limit || 20
       const offset = ((params.page || 1) - 1) * limit
       return all.slice(offset, offset + limit)

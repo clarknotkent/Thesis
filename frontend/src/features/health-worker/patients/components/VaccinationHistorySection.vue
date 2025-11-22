@@ -55,9 +55,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { adminDB } from '@/services/offline/adminOfflineDB'
+import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import api from '@/services/api'
+
+const { isOffline } = useOfflineAdmin()
 
 const props = defineProps({
+  patientId: {
+    type: [String, Number],
+    required: true
+  },
   vaccinationHistory: {
     type: Array,
     default: () => []
@@ -71,9 +80,74 @@ const props = defineProps({
 const emit = defineEmits(['toggle'])
 
 const isExpanded = ref(props.initialExpanded)
+const localVaccinationHistory = ref([])
+const loading = ref(false)
+
+const effectiveHistory = computed(() => {
+  // Use local history if loaded, otherwise use prop
+  return localVaccinationHistory.value.length > 0 ? localVaccinationHistory.value : (props.vaccinationHistory || [])
+})
 
 const hasHistory = computed(() => {
-  return props.vaccinationHistory && props.vaccinationHistory.length > 0
+  return effectiveHistory.value && effectiveHistory.value.length > 0
+})
+
+const fetchVaccinationHistory = async () => {
+  if (!props.patientId) return
+  
+  try {
+    loading.value = true
+    
+    // Try offline first
+    if (isOffline.value || true) { // Always try offline first for faster load
+      const offlineRecords = await adminDB.immunizations
+        .where('patient_id')
+        .equals(String(props.patientId)) // Ensure string type
+        .toArray()
+      
+      if (offlineRecords && offlineRecords.length > 0) {
+        localVaccinationHistory.value = offlineRecords.map(r => ({
+          id: r.immunization_id,
+          vaccineName: r.antigen_name || r.vaccine_antigen_name || r.vaccine_name || 'Unknown Vaccine',
+          dateAdministered: r.administered_date,
+          dose_number: r.dose_number,
+          doseNumber: r.dose_number
+        }))
+        console.log('✅ Loaded vaccination history from offline DB:', localVaccinationHistory.value.length)
+        return
+      }
+    }
+    
+    // Fallback to online if offline failed or empty
+    if (!isOffline.value) {
+      try {
+        const response = await api.get(`/patients/${props.patientId}/immunizations`)
+        const records = response.data?.data || response.data || []
+        localVaccinationHistory.value = records.map(r => ({
+          id: r.immunization_id || r.id,
+          vaccineName: r.antigen_name || r.vaccine_antigen_name || r.vaccine_name || 'Unknown Vaccine',
+          dateAdministered: r.administered_date,
+          dose_number: r.dose_number,
+          doseNumber: r.dose_number
+        }))
+        console.log('✅ Loaded vaccination history from API:', localVaccinationHistory.value.length)
+      } catch (err) {
+        console.warn('Failed to fetch vaccination history online:', err)
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching vaccination history:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchVaccinationHistory()
+})
+
+watch(() => props.patientId, () => {
+  fetchVaccinationHistory()
 })
 
 // Canonical order list for consistent display (aligned with Philippine EPI schedule - vaccines given together grouped)
@@ -100,8 +174,8 @@ const getOrderIndex = (name) => {
 
 // Sorted vaccination history by canonical vaccine order
 const sortedVaccinationHistory = computed(() => {
-  if (!props.vaccinationHistory) return []
-  return [...props.vaccinationHistory].sort((a, b) => {
+  if (!effectiveHistory.value) return []
+  return [...effectiveHistory.value].sort((a, b) => {
     const nameA = a.vaccineName || a.vaccine_antigen_name || a.antigen_name || a.antigenName || 'Unknown Vaccine'
     const nameB = b.vaccineName || b.vaccine_antigen_name || b.antigen_name || b.antigenName || 'Unknown Vaccine'
     const orderA = getOrderIndex(nameA)

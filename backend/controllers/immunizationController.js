@@ -188,7 +188,7 @@ const createImmunizationRecord = async (req, res) => {
     const payload = { ...req.body };
 
     // Sanitize bigint fields: convert empty strings to null
-    const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id'];
+    const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id', 'approved_by'];
     for (const field of bigintFields) {
       if (payload[field] === '') {
         payload[field] = null;
@@ -331,7 +331,7 @@ const updateImmunizationRecord = async (req, res) => {
     const payload = Object.assign({}, req.body);
 
     // Sanitize bigint fields: convert empty strings to null
-    const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id'];
+    const bigintFields = ['administered_by', 'created_by', 'updated_by', 'vital_id', 'visit_id', 'approved_by'];
     for (const field of bigintFields) {
       if (payload[field] === '') {
         payload[field] = null;
@@ -344,6 +344,13 @@ const updateImmunizationRecord = async (req, res) => {
     let oldRow = null;
     try { oldRow = await immunizationModel.getImmunizationById(req.params.id, supabase); } catch(_) {}
     if (!payload.administered_by && actorId) payload.administered_by = null;
+    // Auto-stamp approved_at if approved_by provided and old row not already approved by same user or missing timestamp
+    try {
+      if (payload.approved_by && (!oldRow || oldRow.approved_by !== payload.approved_by || !oldRow.approved_at)) {
+        if (!payload.approved_at) payload.approved_at = new Date().toISOString();
+      }
+    } catch(_) {}
+
     const updatedImmunization = await immunizationModel.updateImmunization(req.params.id, payload, supabase);
     if (!updatedImmunization) return res.status(404).json({ success:false, message: 'Immunization not found' });
     try {

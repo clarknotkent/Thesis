@@ -211,7 +211,9 @@ const getFacility = (dose) => {
   const isOutside = dose.outside || dose.immunization_outside || dose.is_outside
   if (isOutside) return 'Outside'
   
-  return dose.immunization_facility_name || 
+  return dose.facility_name ||
+         dose.facilityName ||
+         dose.immunization_facility_name || 
          dose.health_center || 
          dose.facility || 
          '—'
@@ -242,19 +244,39 @@ const fetchVaccineDetails = async () => {
       return
     }
 
-    // If online, try API first
-    if (isOnline.value) {
-      try {
+    // Fetch patient name first (works online and offline)
+    try {
+      if (isOnline.value) {
         const patientResponse = await api.get(`/patients/${patientId}`)
         const patientData = patientResponse.data?.data || patientResponse.data
         patientName.value = `${patientData.firstname || ''} ${patientData.middlename || ''} ${patientData.surname || ''}`.trim()
+      } else {
+        if (!db.isOpen()) await db.open()
+        const cachedPatient = await db.patients.get(Number(patientId))
+        if (cachedPatient) {
+          patientName.value = cachedPatient.full_name || `${cachedPatient.firstname || ''} ${cachedPatient.middlename || ''} ${cachedPatient.surname || ''}`.trim()
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch patient name:', err)
+      patientName.value = '—'
+    }
 
-        const vax = patientData.vaccinationHistory || patientData.vaccination_history || patientData.immunizations || []
-        const vaccineRecords = Array.isArray(vax) ? vax.filter(v => {
-          const vName = v.vaccine_antigen_name || v.vaccineName || v.antigen_name || v.antigenName || ''
+    // Fetch immunizations directly (not from patient object)
+    if (isOnline.value) {
+      try {
+        // Fetch immunizations for this patient
+        const immResponse = await api.get(`/patients/${patientId}/immunizations`)
+        const immunizations = immResponse.data?.data || immResponse.data || []
+        
+        // Filter for this vaccine
+        const vaccineRecords = Array.isArray(immunizations) ? immunizations.filter(v => {
+          const vName = v.vaccine_antigen_name || v.antigen_name || v.vaccineName || v.antigenName || ''
           return vName === vaccine
         }) : []
+        
         allDoses.value = vaccineRecords
+        console.log(`✅ Loaded ${vaccineRecords.length} doses for ${vaccine} from API`)
         return
       } catch (apiErr) {
         console.warn('API failed, falling back to offline cache:', apiErr)
@@ -266,12 +288,6 @@ const fetchVaccineDetails = async () => {
     try {
       if (!db.isOpen()) {
         await db.open()
-      }
-      const cachedPatient = await db.patients.get(Number(patientId))
-      if (cachedPatient) {
-        patientName.value = cachedPatient.full_name || `${cachedPatient.firstname || ''} ${cachedPatient.middlename || ''} ${cachedPatient.surname || ''}`.trim()
-      } else {
-        patientName.value = '—'
       }
 
       const immunizations = await db.immunizations
@@ -285,6 +301,7 @@ const fetchVaccineDetails = async () => {
       }) : []
 
       allDoses.value = vaccineRecords
+      console.log(`✅ Loaded ${vaccineRecords.length} doses for ${vaccine} from offline DB`)
     } catch (cacheErr) {
       console.error('Offline cache read failed:', cacheErr)
       allDoses.value = []

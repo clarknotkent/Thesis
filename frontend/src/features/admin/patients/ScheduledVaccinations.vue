@@ -1,5 +1,17 @@
 <template>
   <div class="scheduled-vaccinations">
+    <!-- Refresh Button -->
+    <div class="mb-3 d-flex justify-content-end">
+      <button
+        class="btn btn-sm btn-outline-primary"
+        :disabled="loading"
+        @click="refreshSchedules"
+      >
+        <i class="bi bi-arrow-clockwise me-1" />
+        {{ loading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+    </div>
+
     <!-- Demo Mode Toggle -->
     <div class="demo-mode-banner mb-3">
       <div class="d-flex align-items-center justify-content-between">
@@ -242,12 +254,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import api from '@/services/api'
 import DateInput from '@/components/ui/form/DateInput.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
+import { adminDB } from '@/services/offline/adminOfflineDB'
 
 const { addToast } = useToast()
 const { confirm } = useConfirm()
@@ -655,67 +668,79 @@ const fetchSchedules = async () => {
   try {
     loading.value = true
 
-    // Always try offline cache first, regardless of online status
+    // Offline-first: dedicated patientschedule table (prefetched at login)
+    try {
+      const offlineRows = await adminDB.patientschedule
+        .where('patient_id')
+        .equals(String(props.patientId)) // Ensure string type
+        .toArray()
+      
+      if (offlineRows && offlineRows.length) {
+        schedules.value = offlineRows
+        console.log('✅ Loaded scheduled vaccinations from patientschedule table:', offlineRows.length, 'rows')
+        return
+      }
+    } catch (e) {
+      console.warn('⚠️ patientschedule table lookup failed:', e.message)
+    }
+
+    // Secondary offline legacy embedded patient cache
     try {
       const patientData = await fetchPatientById(props.patientId)
-      if (patientData && patientData.nextScheduledVaccinations && Array.isArray(patientData.nextScheduledVaccinations) && patientData.nextScheduledVaccinations.length > 0) {
+      if (patientData && Array.isArray(patientData.nextScheduledVaccinations) && patientData.nextScheduledVaccinations.length) {
         schedules.value = patientData.nextScheduledVaccinations
-        console.log('✅ Loaded scheduled vaccinations from cache:', patientData.nextScheduledVaccinations.length, 'schedules')
+        console.log('✅ Loaded scheduled vaccinations from embedded patient cache:', patientData.nextScheduledVaccinations.length, 'schedules')
         return
       }
     } catch (cacheError) {
-      console.warn('⚠️ Cache lookup failed:', cacheError.message)
+      console.warn('⚠️ Embedded cache lookup failed:', cacheError.message)
     }
 
-    // If cache is empty or failed, try API (only if we think we're online)
+    // Online path
     if (!isOffline.value) {
       const response = await api.get(`/patients/${props.patientId}`)
-
       const pd = response.data?.data || response.data || {}
-      // Try different possible field names for scheduled vaccinations
       let sched = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.scheduledVaccinations || pd.schedules || []
-
-      // Some APIs wrap in an object
-      if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) {
-        // Common wrappers: { items: [...] } or { data: [...] }
-        sched = sched.items || sched.data || []
-      }
-
-      // Fallback: query a dedicated endpoint if exists (optional)
+      if (!Array.isArray(sched) && typeof sched === 'object' && sched !== null) sched = sched.items || sched.data || []
       if (!Array.isArray(sched)) sched = []
       schedules.value = sched
-      
       console.log('📅 [ScheduledVaccinations] Loaded from API:', schedules.value.length, 'schedules')
     } else {
-      // We're offline and cache was empty
       schedules.value = []
-      console.log('📴 Offline and no cached scheduled vaccinations available')
+      console.log('📴 Offline; no scheduled vaccinations cached for patient')
     }
   } catch (err) {
     console.error('Error fetching scheduled vaccinations:', err)
-    
-    // If API call failed, try cache one more time as fallback
     if (err.code === 'ERR_NETWORK' || err.code === 'ERR_INTERNET_DISCONNECTED') {
       try {
-        console.log('🌐 Network error, trying cache as fallback...')
+        console.log('🌐 Network error, retrying embedded cache...')
         const patientData = await fetchPatientById(props.patientId)
-        if (patientData && patientData.nextScheduledVaccinations) {
-          schedules.value = Array.isArray(patientData.nextScheduledVaccinations) ? patientData.nextScheduledVaccinations : []
-          console.log('✅ Recovered scheduled vaccinations from cache after network error')
+        if (patientData && Array.isArray(patientData.nextScheduledVaccinations)) {
+          schedules.value = patientData.nextScheduledVaccinations
+          console.log('✅ Recovered scheduled vaccinations from embedded patient cache after network error')
           return
         }
       } catch (cacheError) {
         console.warn('⚠️ Cache fallback also failed:', cacheError.message)
       }
     }
-    
     schedules.value = []
   } finally {
     loading.value = false
   }
 }
 
+const refreshSchedules = async () => {
+  await fetchSchedules()
+  addToast({ title: 'Refreshed', message: 'Scheduled vaccinations updated', type: 'success' })
+}
+
 onMounted(() => {
+  fetchSchedules()
+})
+
+// Automatically refresh when component becomes active (e.g., after editing a visit)
+onActivated(() => {
   fetchSchedules()
 })
 

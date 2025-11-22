@@ -504,9 +504,71 @@ export function usePatientDetails(patientId) {
    */
   const fetchMedicalHistory = async (id = patientId) => {
     try {
+      // OFFLINE-FIRST: Check if offline and load from cache
+      if (!effectiveOnline.value) {
+        if (!db.isOpen()) {
+          await db.open()
+        }
+        const cachedVisits = await db.visits.where('patient_id').equals(Number(id)).toArray()
+        
+        // Enrich each visit with immunizations from cache
+        const enrichedVisits = await Promise.all(cachedVisits.map(async (visit) => {
+          if (!visit.visit_id) {
+            return { ...visit, immunizations: [] }
+          }
+          const visitImms = await db.immunizations.where('visit_id').equals(visit.visit_id).toArray()
+          return {
+            ...visit,
+            service_rendered: visit.service_rendered || visit.visit_type || 'General Checkup',
+            immunizations: visitImms.map(imm => ({
+              id: imm.immunization_id,
+              vaccineName: imm.antigen_name || imm.vaccine_antigen_name || 'Unknown',
+              antigen_name: imm.antigen_name || imm.vaccine_antigen_name,
+              dose_number: imm.dose_number,
+              administered_date: imm.administered_date
+            }))
+          }
+        }))
+        
+        medicalHistory.value = enrichedVisits
+        console.log('✅ Loaded medical history from offline cache:', enrichedVisits.length, 'visits')
+        console.log('Sample visit:', enrichedVisits[0])
+        return
+      }
+
+      // ONLINE: Fetch from API
       const response = await api.get(`/visits?patient_id=${id}`)
       const data = response.data
-      medicalHistory.value = data.items || data.data || []
+      const visits = data.items || data.data || []
+      
+      // Fetch immunizations for each visit to populate the immunizations array
+      const enrichedVisits = await Promise.all(visits.map(async (visit) => {
+        try {
+          if (!visit.visit_id) {
+            return { ...visit, service_rendered: visit.service_rendered || visit.visit_type || 'General Checkup', immunizations: [] }
+          }
+          const immResponse = await api.get(`/immunizations?visit_id=${visit.visit_id}`)
+          const immunizations = immResponse.data?.data || immResponse.data || []
+          return {
+            ...visit,
+            service_rendered: visit.service_rendered || visit.visit_type || 'General Checkup',
+            immunizations: immunizations.map(imm => ({
+              id: imm.immunization_id || imm.id,
+              vaccineName: imm.antigen_name || imm.vaccine_antigen_name || imm.vaccine_name || 'Unknown',
+              antigen_name: imm.antigen_name || imm.vaccine_antigen_name,
+              dose_number: imm.dose_number || imm.doseNumber,
+              administered_date: imm.administered_date || imm.administeredDate
+            }))
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch immunizations for visit ${visit.visit_id}:`, err)
+          return { ...visit, service_rendered: visit.service_rendered || visit.visit_type || 'General Checkup', immunizations: [] }
+        }
+      }))
+      
+      medicalHistory.value = enrichedVisits
+      console.log('✅ Loaded medical history from API:', enrichedVisits.length, 'visits')
+      console.log('Sample visit:', enrichedVisits[0])
     } catch (error) {
       console.error('Error fetching medical history:', error)
       medicalHistory.value = []
