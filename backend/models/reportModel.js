@@ -146,23 +146,30 @@ const reportModel = {
       const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`;
 
       // Get target population (children eligible for vaccination)
+      // Exclude deleted and inactive patients
       const { data: targetPopulation, error: targetError } = await supabase
         .from('patients')
-        .select('patient_id, sex, date_of_birth')
+        .select('patient_id, sex, date_of_birth, status')
         .gte('date_of_birth', `${year - 2}-01-01`) // Children born in last 2 years
-        .lte('date_of_birth', endDate);
+        .lte('date_of_birth', endDate)
+        .or('is_deleted.is.null,is_deleted.eq.false'); // Exclude deleted patients
 
       if (targetError) throw targetError;
 
-      const targetCount = targetPopulation?.length || 0;
-      const maleTarget = targetPopulation?.filter(p => p.sex === 'Male').length || 0;
-      const femaleTarget = targetPopulation?.filter(p => p.sex === 'Female').length || 0;
+      // Filter out inactive patients (status can be NULL for active patients)
+      const activePopulation = (targetPopulation || []).filter(p => 
+        p.status !== 'Inactive' && p.status !== 'inactive'
+      );
+
+      const targetCount = activePopulation.length || 0;
+      const maleTarget = activePopulation.filter(p => p.sex === 'Male').length || 0;
+      const femaleTarget = activePopulation.filter(p => p.sex === 'Female').length || 0;
 
       // Fetch vaccinations from the denormalized view which uses administered_date and dose_number
       // Build base query from denormalized view
       let vacQuery = supabase
         .from('immunizationhistory_view')
-        .select('immunization_id, patient_id, vaccine_id, dose_number, administered_date, patient_sex, patient_date_of_birth, vaccine_antigen_name, immunization_outside, immunization_is_deleted')
+        .select('immunization_id, patient_id, vaccine_id, dose_number, administered_date, patient_sex, patient_date_of_birth, vaccine_antigen_name, immunization_outside, immunization_is_deleted, patient_is_deleted, patient_status')
         .gte('administered_date', startDate)
         .lte('administered_date', endDate);
 
@@ -179,6 +186,14 @@ const reportModel = {
       const { data: vaccinations, error: vacError } = await vacQuery;
 
       if (vacError) throw vacError;
+
+      // Filter out immunizations from deleted/inactive patients
+      // (in case the view doesn't support filtering these fields directly)
+      const filteredVaccinations = (vaccinations || []).filter(vac => {
+        const isPatientDeleted = vac.patient_is_deleted === true || vac.patient_is_deleted === 1 || vac.patient_is_deleted === 'true';
+        const isPatientInactive = vac.patient_status === 'Inactive' || vac.patient_status === 'inactive';
+        return !isPatientDeleted && !isPatientInactive;
+      });
 
       // Initialize vaccine data structure
       const vaccines = {
@@ -221,7 +236,7 @@ const reportModel = {
       };
 
       // Process vaccinations
-      (vaccinations || []).forEach(vac => {
+      (filteredVaccinations || []).forEach(vac => {
         const isMale = (vac.patient_sex === 'Male');
         const antigenName = vac.vaccine_antigen_name || '';
         const NAME = antigenName.toUpperCase();

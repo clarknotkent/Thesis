@@ -374,14 +374,17 @@ const selectedMonthName = computed(() => {
 const generateReport = async () => {
   try {
     loading.value = true
+    console.log(`📊 Generating report for ${filters.value.month}/${filters.value.year}`)
     
     // Try online first
     if (!isOffline.value) {
       try {
+        console.log('📊 Attempting online report generation...')
         const response = await api.get('/reports/monthly-immunization', {
           params: { month: filters.value.month, year: filters.value.year }
         })
         reportData.value = response.data.data
+        console.log('📊 Online report data received:', reportData.value)
 
         // Augment FIC/CIC from patient tags restricted to selected month/year (based on last immunization date)
         await augmentFicCicFromPatientTags(filters.value.month, filters.value.year)
@@ -393,28 +396,27 @@ const generateReport = async () => {
     }
 
     // Fallback to offline generation
-    console.log('📊 Generating report from cached data')
+    console.log('📊 Generating report from AdminOfflineDB cached data')
     const offlineResult = await generateMonthlyReport(filters.value.month, filters.value.year)
+    console.log('📊 Offline result:', offlineResult)
     
     if (offlineResult.success) {
-      // Transform offline data to match expected format
-      const report = offlineResult.data.report || []
-      const transformedData = {
-        vaccines: {},
-        totalVaccinated: offlineResult.data.totalVaccinated || 0
+      // Use the vaccines structure directly from offline data
+      reportData.value = {
+        vaccines: offlineResult.data.vaccines || {},
+        totalVaccinated: offlineResult.data.totalVaccinated || 0,
+        // Initialize FIC/CIC with zeros (will be updated by augment function)
+        fullyImmunizedCount: 0,
+        fullyImmunizedMale: 0,
+        fullyImmunizedFemale: 0,
+        fullyImmunizedCoverage: 0,
+        completelyImmunizedCount: 0,
+        completelyImmunizedMale: 0,
+        completelyImmunizedFemale: 0,
+        completelyImmunizedCoverage: 0
       }
 
-      // Transform vaccine data
-      report.forEach(item => {
-        transformedData.vaccines[item.vaccine] = {
-          male: item.male || 0,
-          female: item.female || 0,
-          total: item.total || 0,
-          coverage: 0 // Coverage calculation would need population data
-        }
-      })
-
-      reportData.value = transformedData
+      console.log('📊 Transformed report data:', reportData.value)
 
       // Try to augment FIC/CIC if we have patient data
       try {
@@ -470,15 +472,32 @@ const exportReport = () => {
 }
 
 const getVaccineData = (vaccineName, dose = null) => {
-  if (!reportData.value || !reportData.value.vaccines) return { male: 0, female: 0, total: 0, coverage: 0 }
+  if (!reportData.value || !reportData.value.vaccines) {
+    return { male: 0, female: 0, total: 0, coverage: 0 }
+  }
+  
   const vaccineData = reportData.value.vaccines[vaccineName]
-  if (!vaccineData) return { male: 0, female: 0, total: 0, coverage: 0 }
+  
+  if (!vaccineData) {
+    return { male: 0, female: 0, total: 0, coverage: 0 }
+  }
+  
+  // If dose is specified and vaccine has dose array
   if (dose !== null && Array.isArray(vaccineData)) {
     const doseData = vaccineData.find(d => d.dose === dose)
-    return doseData || { male: 0, female: 0, total: 0, coverage: 0 }
+    if (!doseData) {
+      return { male: 0, female: 0, total: 0, coverage: 0 }
+    }
+    return doseData
   }
-  if (!Array.isArray(vaccineData)) return vaccineData
-  return { male: 0, female: 0, total: 0, coverage: 0 }
+  
+  // If no dose specified but data is array, return empty
+  if (Array.isArray(vaccineData)) {
+    return { male: 0, female: 0, total: 0, coverage: 0 }
+  }
+  
+  // Return single dose vaccine data
+  return vaccineData
 }
 
 const getCustomData = (key) => {
@@ -499,6 +518,7 @@ const formatDate = (date) => formatPHDate(date)
 // Build ordered list of vaccine rows to render
 const vaccinesToRender = computed(() => {
   if (!reportData.value) return []
+  
   return [
     { label: 'BCG', data: () => getVaccineData('BCG') },
     { label: 'Hepatitis B 1 (HepB1)', data: () => getVaccineData('HepB', 1) },
@@ -587,15 +607,31 @@ async function fetchAllPatientsForTags() {
     if (result.fromCache) {
       // Data is from cache, extract patients array
       console.log('📊 Fetching patients from cache for FIC/CIC calculation')
-      const patients = result.data?.data?.patients || []
-      console.log(`📊 Found ${patients.length} patients in cache for FIC/CIC calculation`)
+      const allPatients = result.data?.data?.patients || []
+      // Filter out deleted and inactive patients
+      const patients = allPatients.filter(p => 
+        p.is_deleted !== true && 
+        p.is_deleted !== 1 && 
+        p.is_deleted !== 'true' &&
+        p.status !== 'Inactive' &&
+        p.status !== 'inactive'
+      )
+      console.log(`📊 Found ${patients.length} active patients in cache for FIC/CIC calculation`)
       return Array.isArray(patients) ? patients : []
     } else {
       // Data is from API, extract patients array
       console.log('📊 Fetching patients from API for FIC/CIC calculation')
       const payload = result.data?.data || result.data || {}
-      const patients = payload.patients || payload.items || payload || []
-      console.log(`📊 Found ${patients.length} patients from API for FIC/CIC calculation`)
+      const allPatients = payload.patients || payload.items || payload || []
+      // Filter out deleted and inactive patients
+      const patients = allPatients.filter(p => 
+        p.is_deleted !== true && 
+        p.is_deleted !== 1 && 
+        p.is_deleted !== 'true' &&
+        p.status !== 'Inactive' &&
+        p.status !== 'inactive'
+      )
+      console.log(`📊 Found ${patients.length} active patients from API for FIC/CIC calculation`)
       return Array.isArray(patients) ? patients : []
     }
   } catch (error) {
@@ -633,14 +669,18 @@ async function fetchLastImmunization(patientId) {
   // Fallback to cache
   try {
     const allImmunizations = await adminDB.immunizations.toArray()
+    // Convert both to numbers for comparison (handle both string and number IDs)
+    const patientIdNum = Number(patientId)
     const patientImmunizations = allImmunizations
-      .filter(i => i.patient_id === patientId && i.is_deleted !== true)
+      .filter(i => Number(i.patient_id) === patientIdNum && i.is_deleted !== true)
       .sort((a, b) => new Date(b.administered_date) - new Date(a.administered_date))
 
+    console.log(`📊 Found ${patientImmunizations.length} immunizations for patient ${patientId}`)
     if (patientImmunizations.length === 0) return null
 
     const last = patientImmunizations[0]
     const raw = last.administered_date || last.date_administered || last.dateAdministered
+    console.log(`📊 Last immunization date raw value:`, raw)
     return parseAdminDate(raw)
   } catch (cacheError) {
     console.error('Cache query failed for immunizations:', cacheError)

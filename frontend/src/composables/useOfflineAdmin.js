@@ -118,6 +118,23 @@ export function useOfflineAdmin() {
         const allGuardians = await adminDB.guardians.toArray()
         const guardianMap = new Map(allGuardians.map(g => [g.guardian_id, g]))
         
+        // Get all immunizations to calculate last vaccination date
+        const allImmunizations = await adminDB.immunizations.toArray()
+        
+        // Create a map of patient_id -> most recent vaccination date
+        const lastVaccinationMap = new Map()
+        allImmunizations.forEach(imm => {
+          const patientId = Number(imm.patient_id)
+          const adminDate = imm.administered_date
+          
+          if (adminDate) {
+            const currentDate = lastVaccinationMap.get(patientId)
+            if (!currentDate || new Date(adminDate) > new Date(currentDate)) {
+              lastVaccinationMap.set(patientId, adminDate)
+            }
+          }
+        })
+        
         // Filter out deleted patients (handle various representations of false)
         let activePatients = allPatients.filter(p => {
           const isDeleted = p.is_deleted
@@ -129,6 +146,7 @@ export function useOfflineAdmin() {
         // Join patients with guardians and transform to expected format
         activePatients = activePatients.map(patient => {
           const guardian = patient.guardian_id ? guardianMap.get(patient.guardian_id) : null
+          const lastVaccinationDate = lastVaccinationMap.get(Number(patient.patient_id))
           
           return {
             ...patient,
@@ -140,7 +158,9 @@ export function useOfflineAdmin() {
             guardian: guardian ? {
               full_name: guardian.full_name,
               contact_number: guardian.contact_number
-            } : null
+            } : null,
+            // Add last vaccination date
+            last_vaccination_date: lastVaccinationDate || null
           }
         })
 
@@ -865,6 +885,8 @@ export function useOfflineAdmin() {
    */
   const generateMonthlyReport = async (month, year) => {
     try {
+      console.log(`📊 Generating monthly report from AdminOfflineDB for ${month}/${year}`)
+      
       // Get data from cache - filter in memory to avoid index issues
       const allImmunizations = await adminDB.immunizations.toArray()
       const immunizations = allImmunizations.filter(i => 
@@ -874,41 +896,197 @@ export function useOfflineAdmin() {
         return date.getMonth() + 1 === month && date.getFullYear() === year
       })
 
-      const patients = await adminDB.patients.toArray()
+      console.log(`📊 Found ${immunizations.length} immunizations in cache for ${month}/${year}`)
+
+      const allPatients = await adminDB.patients.toArray()
+      // Filter out deleted and inactive patients
+      const patients = allPatients.filter(p => 
+        p.is_deleted !== true && 
+        p.is_deleted !== 1 && 
+        p.is_deleted !== 'true' &&
+        p.status !== 'Inactive' &&
+        p.status !== 'inactive'
+      )
+      
       const vaccines = await adminDB.vaccines.toArray()
 
-      // Group by vaccine and gender
-      const report = {}
+      console.log(`📊 Found ${patients.length} active patients and ${vaccines.length} vaccines in cache`)
 
+      // Initialize vaccine structure matching backend API format
+      const vaccineData = {
+        BCG: { male: 0, female: 0, total: 0, coverage: 0 },
+        HepB: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 3, male: 0, female: 0, total: 0, coverage: 0 }
+        ],
+        Pentavalent: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 3, male: 0, female: 0, total: 0, coverage: 0 }
+        ],
+        OPV: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 3, male: 0, female: 0, total: 0, coverage: 0 }
+        ],
+        IPV: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 3, male: 0, female: 0, total: 0, coverage: 0 }
+        ],
+        PCV: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 3, male: 0, female: 0, total: 0, coverage: 0 }
+        ],
+        MMR: [
+          { dose: 1, male: 0, female: 0, total: 0, coverage: 0 },
+          { dose: 2, male: 0, female: 0, total: 0, coverage: 0 }
+        ]
+      }
+
+      // Process immunizations
       immunizations.forEach(imm => {
-        const patient = patients.find(p => p.patient_id === imm.patient_id)
-        const vaccine = vaccines.find(v => v.vaccine_id === imm.vaccine_id)
+        // Convert to numbers for comparison (handle both string and number IDs)
+        const patientIdNum = Number(imm.patient_id)
+        const vaccineIdNum = Number(imm.vaccine_id)
+        
+        const patient = patients.find(p => Number(p.patient_id) === patientIdNum)
+        const vaccine = vaccines.find(v => Number(v.vaccine_id) === vaccineIdNum)
 
-        if (!patient || !vaccine) return
-
-        const key = vaccine.antigen_name || vaccine.vaccine_id
-        if (!report[key]) {
-          report[key] = { male: 0, female: 0, total: 0 }
+        if (!patient || !vaccine) {
+          return // Skip if patient or vaccine not found
         }
 
-        if (patient.sex?.toLowerCase() === 'male') {
-          report[key].male++
-        } else if (patient.sex?.toLowerCase() === 'female') {
-          report[key].female++
+        const isMale = patient.sex?.toLowerCase() === 'male' || patient.sex?.toLowerCase() === 'm'
+        const isFemale = patient.sex?.toLowerCase() === 'female' || patient.sex?.toLowerCase() === 'f'
+        
+        const antigenName = vaccine.antigen_name || vaccine.vaccine_name || ''
+        const NAME = antigenName.toUpperCase()
+        const NORMAL = NAME.replace(/[^A-Z0-9]/g, '')
+        
+        // Parse dose number
+        const rawDose = imm.dose_number ?? imm.dose_ordinal ?? imm.dose ?? 1
+        const parsed = typeof rawDose === 'string' ? parseInt(rawDose.replace(/[^0-9]/g, ''), 10) : Number(rawDose)
+        const dose = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+        
+        // Helper to clamp dose to valid array index
+        const clampDoseIndex = (d, len) => {
+          const n = Number.isFinite(d) ? d : 1
+          const clampedDose = Math.min(Math.max(n, 1), len)
+          return clampedDose - 1 // convert to 0-based index
         }
-        report[key].total++
+
+        // Map to standardized vaccine keys (matching backend logic)
+        if (NAME.includes('BCG')) {
+          vaccineData.BCG.total++
+          if (isMale) vaccineData.BCG.male++
+          else if (isFemale) vaccineData.BCG.female++
+        } else if (NAME.includes('HEPATITIS B') || NAME.includes('HEPB')) {
+          const idx = clampDoseIndex(dose, vaccineData.HepB.length)
+          if (vaccineData.HepB[idx]) {
+            vaccineData.HepB[idx].total++
+            if (isMale) vaccineData.HepB[idx].male++
+            else if (isFemale) vaccineData.HepB[idx].female++
+          }
+        } else if (
+          NAME.includes('PENTA') ||
+          NAME.includes('PENTAVALENT') ||
+          NAME.includes('DPT-HEPB-HIB') ||
+          NAME.includes('DPT-HIB-HEPB') ||
+          NAME.includes('DTP') ||
+          NAME.includes('DTAP') ||
+          NORMAL.includes('DPTHEPBHIB') ||
+          NORMAL.includes('DPTHIBHEPB') ||
+          NORMAL.includes('5IN1') ||
+          ((/DPT|DTP|DTAP|DTWP|DTPW/).test(NORMAL) && NORMAL.includes('HEPB') && NORMAL.includes('HIB'))
+        ) {
+          const idx = clampDoseIndex(dose, vaccineData.Pentavalent.length)
+          if (vaccineData.Pentavalent[idx]) {
+            vaccineData.Pentavalent[idx].total++
+            if (isMale) vaccineData.Pentavalent[idx].male++
+            else if (isFemale) vaccineData.Pentavalent[idx].female++
+          }
+        } else if (NAME.includes('OPV') || NAME.includes('ORAL POLIO')) {
+          const idx = clampDoseIndex(dose, vaccineData.OPV.length)
+          if (vaccineData.OPV[idx]) {
+            vaccineData.OPV[idx].total++
+            if (isMale) vaccineData.OPV[idx].male++
+            else if (isFemale) vaccineData.OPV[idx].female++
+          }
+        } else if (NAME.includes('IPV') || NAME.includes('INACTIVATED POLIO')) {
+          const idx = clampDoseIndex(dose, vaccineData.IPV.length)
+          if (vaccineData.IPV[idx]) {
+            vaccineData.IPV[idx].total++
+            if (isMale) vaccineData.IPV[idx].male++
+            else if (isFemale) vaccineData.IPV[idx].female++
+          }
+        } else if (NAME.includes('PCV') || NAME.includes('PNEUMOCOCCAL')) {
+          const idx = clampDoseIndex(dose, vaccineData.PCV.length)
+          if (vaccineData.PCV[idx]) {
+            vaccineData.PCV[idx].total++
+            if (isMale) vaccineData.PCV[idx].male++
+            else if (isFemale) vaccineData.PCV[idx].female++
+          }
+        } else if (
+          NAME.includes('MMR') ||
+          NAME.includes('MEASLES') ||
+          NAME.includes('MCV') ||
+          NAME.includes(' MR') || NAME.startsWith('MR')
+        ) {
+          const idx = clampDoseIndex(dose, vaccineData.MMR.length)
+          if (vaccineData.MMR[idx]) {
+            vaccineData.MMR[idx].total++
+            if (isMale) vaccineData.MMR[idx].male++
+            else if (isFemale) vaccineData.MMR[idx].female++
+          }
+        }
       })
+
+      console.log('📊 Vaccine data structure:', vaccineData)
+
+      // Calculate target population and coverage
+      // Target: children born in last 2 years who are eligible for vaccination
+      const endDate = new Date(year, month, 0) // Last day of the month
+      const targetStartDate = new Date(year - 2, 0, 1) // 2 years before
+      
+      const targetPopulation = patients.filter(p => {
+        if (!p.date_of_birth) return false
+        const dob = new Date(p.date_of_birth)
+        return dob >= targetStartDate && dob <= endDate
+      })
+
+      const targetCount = targetPopulation.length || 0
+      console.log(`📊 Target population: ${targetCount} children born between ${targetStartDate.toLocaleDateString()} and ${endDate.toLocaleDateString()}`)
+
+      // Calculate coverage percentages
+      if (targetCount > 0) {
+        vaccineData.BCG.coverage = Math.round((vaccineData.BCG.total / targetCount) * 100)
+        
+        Object.keys(vaccineData).forEach(vn => {
+          if (Array.isArray(vaccineData[vn])) {
+            vaccineData[vn].forEach(d => {
+              d.coverage = Math.round((d.total / targetCount) * 100)
+            })
+          }
+        })
+      }
+
+      console.log('📊 Coverage calculated for target population:', targetCount)
 
       return {
         success: true,
         data: {
           month,
           year,
-          report: Object.entries(report).map(([vaccine, counts]) => ({
+          vaccines: vaccineData,
+          targetCount,
+          totalVaccinated: immunizations.length,
+          report: Object.entries(vaccineData).map(([vaccine, counts]) => ({
             vaccine,
             ...counts
-          })),
-          totalVaccinated: immunizations.length
+          }))
         }
       }
     } catch (error) {

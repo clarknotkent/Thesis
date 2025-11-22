@@ -10,6 +10,175 @@ All notable changes to the Immunization Management System will be documented in 
 
 ## [system-prototype-v4] - 2025-11-23
 
+### 📊 Monthly Immunization Reports - Data Accuracy & Coverage Fixes (November 23, 2025)
+
+**Complete offline/online report parity with accurate patient filtering and coverage calculations.**
+
+Fixed critical data accuracy issues in monthly immunization reports for both online and offline modes. Reports now correctly exclude deleted/inactive patients and display coverage percentages based on target population.
+
+### ✨ Added
+
+**Offline Mode Enhancements:**
+- **Target Population Calculation** - Calculates eligible children (born in last 2 years before report month)
+- **Coverage Percentage Calculation** - Computes `(doses given / target population) * 100` for all vaccines
+- **Last Vaccination Date** - Patient list now shows most recent vaccination date in offline mode
+- **Console Debugging** - Added comprehensive logging for target population and coverage calculations
+
+**Online Mode Improvements:**
+- **Patient Status Field** - Added `status` field to patient query for proper inactive filtering
+- **Patient Deletion Fields** - Added `patient_is_deleted` and `patient_status` to immunization view query
+- **Post-Query Filtering** - Server-side filtering of immunizations from deleted/inactive patients
+
+### 🔄 Changed
+
+**Backend Report Model (reportModel.js):**
+- **Target Population Query** (lines 148-157):
+  - Added `.or('is_deleted.is.null,is_deleted.eq.false')` to exclude deleted patients
+  - Added `status` field to SELECT query
+  - Post-query filter: `p.status !== 'Inactive' && p.status !== 'inactive'`
+  - Prevents `.neq('status', 'Inactive')` from excluding NULL values (active patients)
+
+- **Immunization Query** (lines 164-190):
+  - Added `patient_is_deleted` and `patient_status` to SELECT fields
+  - Post-query filter removes immunizations from deleted/inactive patients
+  - Changed from `vaccinations` array to `filteredVaccinations` array for processing
+
+**Frontend Offline Report (useOfflineAdmin.js):**
+- **generateMonthlyReport()** (lines 1047-1091):
+  - Added target population calculation (children born in last 2 years)
+  - Added coverage percentage loop for BCG and all multi-dose vaccines
+  - Returns `targetCount` in response data for frontend display
+  - Comprehensive console logging for debugging
+
+- **fetchPatients()** (lines 110-165):
+  - Added immunizations table query to get all vaccination records
+  - Created `lastVaccinationMap` with most recent vaccination date per patient
+  - Added `last_vaccination_date` field to each patient record
+  - Handles type conversion with `Number(patient.patient_id)`
+
+### 🐛 Fixed
+
+**Critical Data Issues:**
+1. **Online Reports Including Deleted Patients**:
+   - **Issue**: Reports counted vaccinations from patients with `is_deleted = true`
+   - **Fix**: Added `.or()` filter to exclude deleted patients from target population
+   - **Impact**: Report counts now match active patient population
+
+2. **Online Reports Including Inactive Patients**:
+   - **Issue**: Reports counted patients with `status = 'Inactive'`
+   - **Fix**: Post-query filter removes inactive patients (handles NULL values correctly)
+   - **Impact**: Reports only show active patients
+
+3. **Coverage Always 0%**:
+   - **Issue**: Offline mode never calculated coverage percentages
+   - **Fix**: Added target population calculation and coverage loop
+   - **Impact**: Both online and offline modes show accurate coverage percentages
+
+4. **Last Vaccination Not Displayed**:
+   - **Issue**: Patient list showed "No records" for Last Vaccination column
+   - **Fix**: Added immunization query to `fetchPatients()` with date aggregation
+   - **Impact**: Last vaccination dates now display correctly in offline patient list
+
+**Type Safety:**
+- All patient_id comparisons use `Number()` conversion for consistency
+- Handles string vs number type mismatches in IndexedDB queries
+- Prevents lookup failures caused by type differences
+
+### 📚 Files Modified
+
+**Backend (1 file):**
+- `backend/models/reportModel.js`:
+  - Lines 148-157: Target population query with deleted/inactive filters
+  - Lines 164-190: Immunization query with patient status fields and post-filtering
+  - Line 235: Changed to use `filteredVaccinations` instead of `vaccinations`
+
+**Frontend (1 file):**
+- `frontend/src/composables/useOfflineAdmin.js`:
+  - Lines 110-165: Enhanced `fetchPatients()` with last vaccination date calculation
+  - Lines 1047-1091: Added target population and coverage calculations to `generateMonthlyReport()`
+
+### ✅ Outcomes
+
+**Data Accuracy:**
+- ✅ Reports exclude deleted patients (`is_deleted = true`)
+- ✅ Reports exclude inactive patients (`status = 'Inactive'`)
+- ✅ Coverage percentages display correctly (0-100%)
+- ✅ Last vaccination dates show in patient list
+
+**Online/Offline Parity:**
+- ✅ Offline reports match online report logic
+- ✅ Both modes use same 2-year eligibility window
+- ✅ Both modes filter deleted and inactive patients
+- ✅ Both modes calculate coverage with same formula
+
+**User Experience:**
+- ✅ Clear console logs for debugging target population
+- ✅ Coverage percentages provide meaningful insights
+- ✅ Patient list shows vaccination status at a glance
+- ✅ Reports reflect true active patient population
+
+### 🎯 Technical Implementation
+
+**Target Population Logic:**
+```javascript
+// Offline (useOfflineAdmin.js)
+const endDate = new Date(year, month, 0) // Last day of month
+const targetStartDate = new Date(year - 2, 0, 1) // 2 years before
+const targetPopulation = patients.filter(p => {
+  if (!p.date_of_birth) return false
+  const dob = new Date(p.date_of_birth)
+  return dob >= targetStartDate && dob <= endDate
+})
+
+// Online (reportModel.js)
+.gte('date_of_birth', `${year - 2}-01-01`)
+.lte('date_of_birth', endDate)
+.or('is_deleted.is.null,is_deleted.eq.false')
+```
+
+**Patient Status Filtering:**
+```javascript
+// Post-query filter (handles NULL values)
+const activePopulation = (targetPopulation || []).filter(p => 
+  p.status !== 'Inactive' && p.status !== 'inactive'
+)
+```
+
+**Coverage Calculation:**
+```javascript
+if (targetCount > 0) {
+  vaccineData.BCG.coverage = Math.round((vaccineData.BCG.total / targetCount) * 100)
+  
+  Object.keys(vaccineData).forEach(vn => {
+    if (Array.isArray(vaccineData[vn])) {
+      vaccineData[vn].forEach(d => {
+        d.coverage = Math.round((d.total / targetCount) * 100)
+      })
+    }
+  })
+}
+```
+
+**Last Vaccination Aggregation:**
+```javascript
+const lastVaccinationMap = new Map()
+allImmunizations.forEach(imm => {
+  const patientId = Number(imm.patient_id)
+  const adminDate = imm.administered_date
+  
+  if (adminDate) {
+    const currentDate = lastVaccinationMap.get(patientId)
+    if (!currentDate || new Date(adminDate) > new Date(currentDate)) {
+      lastVaccinationMap.set(patientId, adminDate)
+    }
+  }
+})
+```
+
+---
+
+## [system-prototype-v4] - 2025-11-23
+
 ### 🔔 Web Push Notifications System (November 23, 2025 - Latest Update)
 
 **Complete browser push notification system for real-time user updates.**

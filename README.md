@@ -2,7 +2,7 @@
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 4.14  
+> **📌 Current Status:** Active Development - Version 4.15  
 > **Last Updated:** November 23, 2025  
 > **Branch:** system-prototype-v4  
 >
@@ -42,19 +42,43 @@ The Immunization Management System is designed to digitize and streamline the im
 - **SMS Notifications**: Automated reminders and updates via PhilSMS integration
 - **Web Push Notifications**: Real-time browser notifications even when app is closed
 - **Password Recovery**: SMS-based password reset with secure code verification
-- **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs
+- **Reporting and Analytics**: Dashboard insights, coverage reports, and activity logs with accurate data filtering
 - **Multi-User Access**: Role-based portals for administrators, health workers, and parents
 - **Progressive Web App**: Service worker enabled for enhanced user experience
+- **Offline Mode**: Complete offline functionality for admin and health worker portals
 
 ### Project Status
 
 - Repository: https://github.com/clarknotkent/Thesis
 - Current Branch: **system-prototype-v4**
-- Version: 4.14 (November 23, 2025)
+- Version: 4.15 (November 23, 2025)
 
 ---
 
 ## What's New
+
+### 📊 Monthly Immunization Reports - Data Accuracy & Coverage (November 23, 2025)
+
+Complete offline/online report parity with accurate patient filtering and coverage calculations.
+
+**Key Improvements:**
+- **Target Population Calculation**: Eligible children (born in last 2 years) automatically calculated
+- **Coverage Percentages**: All vaccines show accurate coverage (doses / target population × 100)
+- **Patient Filtering**: Excludes deleted patients (`is_deleted = true`) and inactive patients (`status = 'Inactive'`)
+- **Last Vaccination Display**: Patient list shows most recent vaccination date in offline mode
+- **Online/Offline Parity**: Both modes use identical filtering and calculation logic
+
+**Data Accuracy Fixes:**
+- Reports no longer include deleted or inactive patients
+- Coverage percentages display correctly (previously always 0%)
+- Last vaccination dates populate in patient list offline mode
+- Target population calculation matches online API logic
+
+**Technical Details:**
+- Backend: Post-query filtering handles NULL status values (active patients)
+- Frontend: Target population calculated from cached patient DOB data
+- Type Safety: All patient_id comparisons use Number() conversion
+- Console Logging: Comprehensive debugging for target population tracking
 
 ### 🔔 Web Push Notifications (November 23, 2025)
 
