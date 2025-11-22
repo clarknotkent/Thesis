@@ -416,6 +416,7 @@ export function useOfflineAdmin() {
               patient_id: patientId,
               vaccine_id: schedule.vaccine_id,
               scheduled_date: schedule.scheduled_date || schedule.scheduledDate,
+              time_slot: schedule.time_slot || schedule.timeSlot || null,
               status: schedule.status,
               dose_number: schedule.dose_number || schedule.doseNumber,
               notes: schedule.notes,

@@ -940,6 +940,7 @@ const performRestore = async () => {
 const getRoleBadgeClass = (role) => {
   const r = (role || '').toLowerCase().replace(/[-\s]+/g,'_')
   if (r === 'admin') return 'role-admin'
+  if (r === 'super_admin' || r === 'superadmin') return 'role-superadmin'
   if (r === 'parent' || r === 'guardian') return 'role-parent'
   if (r === 'health_worker' || r === 'healthstaff' || r === 'health_staff') return 'role-healthstaff'
   return 'role-healthstaff'
@@ -947,6 +948,8 @@ const getRoleBadgeClass = (role) => {
 
 const getRoleDisplayName = (role) => {
   switch (role) {
+    case 'super_admin': return 'Super Admin'
+    case 'superadmin': return 'Super Admin'
     case 'health_worker': return 'Health Worker'
     case 'parent': return 'Guardian'
     case 'admin': return 'Admin'
@@ -1043,5 +1046,17 @@ const isAdminRole = (role) => {
 
 .btn-group .btn:last-child {
   margin-right: 0;
+}
+
+/* Role Badge Styling */
+.role-badge {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+}
+
+.role-superadmin {
+  background-color: #000000 !important;
+  color: white !important;
 }
 </style>

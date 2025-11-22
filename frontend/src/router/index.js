@@ -5,6 +5,7 @@ import ViewSchedule from '@/views/admin/inventory/ViewSchedule.vue'
 import ViewPatient from '@/views/admin/patients/ViewPatient.vue' // Eager load to allow offline patient view
 import VaccineDetails from '@/views/admin/patients/VaccineDetails.vue' // Eager load for offline vaccine details
 import VisitSummaryPage from '@/views/admin/patients/VisitSummaryPage.vue' // Eager load for offline visit summary
+import SchedulingCalendar from '@/views/admin/SchedulingCalendar.vue' // Eager load for offline calendar access
 import { isAuthenticated, getRole } from '@/services/auth'
 import api from '@/services/api'
 import NotFound from '@/views/NotFound.vue'
@@ -399,6 +400,17 @@ const routes = [
     }
   },
   {
+    path: '/admin/scheduling-calendar',
+    name: 'SchedulingCalendar',
+    component: SchedulingCalendar,
+    meta: {
+      title: 'Scheduling Calendar - ImmunizeMe',
+      requiresAuth: true,
+      role: 'admin',
+      offlineAvailable: true
+    }
+  },
+  {
     path: '/admin/reports/receiving/new',
     name: 'ReceivingReportNew',
     component: ReceivingReportPage,
@@ -568,7 +580,8 @@ const routes = [
     meta: {
       title: 'Health Staff Dashboard - ImmunizeMe',
       requiresAuth: true,
-  role: 'healthstaff'
+      role: 'healthstaff',
+      offlineAvailable: true
     }
   },
   {
@@ -938,7 +951,7 @@ router.beforeEach(async (to, from, next) => {
     '/admin/activity'
   ]
   
-  if (role === 'admin' && offlineRestrictedRoutes.some(route => to.path.startsWith(route))) {
+  if ((role === 'admin' || role === 'superadmin') && offlineRestrictedRoutes.some(route => to.path.startsWith(route))) {
     try {
       const online = navigator.onLine
       if (!online) {
@@ -954,6 +967,7 @@ router.beforeEach(async (to, from, next) => {
   const normalizeRole = (r) => {
     const s = (r || '').toLowerCase()
     if (['healthworker','health-worker','health_worker','health staff','health_staff'].includes(s)) return 'healthstaff'
+    if (['superadmin','super_admin','super admin'].includes(s)) return 'admin'
     return s
   }
   const normalizedRole = normalizeRole(role)
@@ -965,7 +979,7 @@ router.beforeEach(async (to, from, next) => {
   
   if (effectiveRequired && effectiveRole && effectiveRole !== effectiveRequired) {
     // Redirect to role-appropriate dashboard
-    if (role === 'admin') return next('/admin/dashboard')
+    if (role === 'admin' || role === 'superadmin') return next('/admin/dashboard')
     if (normalizedRole === 'healthstaff') return next('/healthworker/dashboard')
     if (role === 'parent' || role === 'guardian') return next('/parent/home')
   }
@@ -1019,7 +1033,7 @@ router.beforeEach(async (to, from, next) => {
 
   // For health staff and admin, ensure immunization record belongs to the patient in URL before entering edit routes
   try {
-    const isStaff = normalizedRole === 'healthstaff' || normalizedRole === 'admin'
+    const isStaff = normalizedRole === 'healthstaff' || normalizedRole === 'admin' || role === 'superadmin'
     // Both admin and healthworker use the same route name 'EditVaccinationRecord' in this app
     if (isStaff && to.name === 'EditVaccinationRecord') {
       const patientId = to.params?.patientId
@@ -1090,7 +1104,7 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     // Admin edit stock: ensure inventory item exists
-    if (normalizedRole === 'admin' && to.name === 'EditStock') {
+    if ((normalizedRole === 'admin' || role === 'superadmin') && to.name === 'EditStock') {
       const stockId = to.params?.id
       if (stockId) {
         try {
@@ -1105,7 +1119,7 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     // Admin receiving report view: ensure report exists
-    if (normalizedRole === 'admin' && to.name === 'ReceivingReportView') {
+    if ((normalizedRole === 'admin' || role === 'superadmin') && to.name === 'ReceivingReportView') {
       const reportId = to.params?.id
       if (reportId) {
         try {

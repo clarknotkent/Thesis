@@ -38,6 +38,7 @@ import receivingReportRoutes from './routes/receivingReportRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import faqRoutes from './routes/faqRoutes.js';
 import qrRoutes from './routes/qrRoutes.js';
+import capacityRoutes from './routes/capacityRoutes.js';
 // Start background workers
 import * as smsScheduler from './services/smsScheduler.js';
 
@@ -64,6 +65,7 @@ app.use('/api/receiving-reports', receivingReportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/qr', qrRoutes); // public + protected QR endpoints
+app.use('/api/capacity', capacityRoutes);
 // Alias route for vaccination-records (used by frontend)
 app.use('/api/vaccination-records', immunizationRoutes);
 

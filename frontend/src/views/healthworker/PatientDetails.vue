@@ -383,12 +383,49 @@
             />
           </div>
           <div class="modal-body">
-            <label class="form-label">Scheduled date</label>
-            <input
-              v-model="editScheduledDate"
-              type="date"
-              class="form-control"
-            >
+            <div class="mb-3">
+              <label class="form-label">Scheduled date</label>
+              <input
+                v-model="editScheduledDate"
+                type="date"
+                class="form-control"
+              >
+            </div>
+            <div>
+              <label class="form-label">Time Slot</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input
+                    id="timeSlotAM"
+                    v-model="editTimeSlot"
+                    class="form-check-input"
+                    type="radio"
+                    value="AM"
+                  >
+                  <label
+                    class="form-check-label"
+                    for="timeSlotAM"
+                  >
+                    AM (Morning)
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    id="timeSlotPM"
+                    v-model="editTimeSlot"
+                    class="form-check-input"
+                    type="radio"
+                    value="PM"
+                  >
+                  <label
+                    class="form-check-label"
+                    for="timeSlotPM"
+                  >
+                    PM (Afternoon)
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button
@@ -577,6 +614,7 @@ const navigateToVisitSummary = (visitId) => {
 const showEditModal = ref(false)
 const editTarget = ref(null)
 const editScheduledDate = ref('')
+const editTimeSlot = ref('AM')
 
 const showCalendarModal = ref(false)
 const calendarTarget = ref(null)
@@ -595,6 +633,8 @@ const onScheduledSelect = (vaccine) => {
     editTarget.value = vaccine
     // prefer existing scheduled_date if present
     editScheduledDate.value = vaccine.scheduled_date ? vaccine.scheduled_date.split('T')[0] : ''
+    // Set time slot from vaccine data or default to AM
+    editTimeSlot.value = vaccine.time_slot || 'AM'
     showEditModal.value = true
   } else {
     // show calendar/read-only view for completed schedules
@@ -607,6 +647,7 @@ const closeEditModal = () => {
   showEditModal.value = false
   editTarget.value = null
   editScheduledDate.value = ''
+  editTimeSlot.value = 'AM'
 }
 
 // Follow admin manual-reschedule flow (confirm + RPC that enforces rules)
@@ -620,11 +661,17 @@ const saveScheduleEdit = async () => {
     addToast({ title: 'Error', message: 'Please select a valid date.', type: 'error' })
     return
   }
+  
+  if (!editTimeSlot.value) {
+    addToast({ title: 'Error', message: 'Please select a time slot (AM or PM).', type: 'error' })
+    return
+  }
 
   try {
+    const timeSlotText = editTimeSlot.value === 'AM' ? 'Morning' : 'Afternoon'
     await confirm({
       title: 'Confirm Reschedule',
-      message: `This will reschedule this vaccination to ${formatDate(editScheduledDate.value)}. Related vaccinations in the schedule may also be adjusted. Do you want to proceed?`,
+      message: `This will reschedule this vaccination to ${formatDate(editScheduledDate.value)} (${timeSlotText}). Related vaccinations in the schedule may also be adjusted. Do you want to proceed?`,
       variant: 'warning',
       confirmText: 'Yes, Reschedule',
       cancelText: 'Cancel'
@@ -633,7 +680,8 @@ const saveScheduleEdit = async () => {
     // Use rescheduleVaccination from composable
     await rescheduleVaccination(
       editTarget.value.patient_schedule_id || editTarget.value.schedule_id,
-      editScheduledDate.value
+      editScheduledDate.value,
+      editTimeSlot.value
     )
 
     addToast({ title: 'Success', message: 'Vaccination rescheduled successfully.', type: 'success' })

@@ -7,16 +7,18 @@ const toTitleCase = (str) => {
   return str.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
 };
 
-// Map any incoming variant to DB-enforced tokens: 'Admin','HealthStaff','Guardian'
+// Map any incoming variant to DB-enforced tokens: 'Admin','SuperAdmin','HealthStaff','Guardian'
 const mapIncomingRoleToStored = (role) => {
   const r = (role || '').trim().toLowerCase();
   if (!r) return null;
   if (['admin','administrator','system admin'].includes(r)) return 'Admin';
+  if (['super_admin','superadmin','super admin'].includes(r)) return 'SuperAdmin';
   if (['health worker','health_worker','healthworker','health-worker','hw','healthworkers','health workers','health-workers','healthworker(s)','health staff','health_staff','healthstaff','health-staff','hs','healthstaffs','health staffs','health-staffs','healthstaff(s)'].includes(r) || /^health[-_ ]?(workers?|staffs?)$/.test(r)) return 'HealthStaff';
   if (['guardian','parent','guardian-parent'].includes(r)) return 'Guardian';
   return role; // let constraint reject invalid token
 };
 const toDisplayRole = (stored) => {
+  if (stored === 'SuperAdmin') return 'super_admin';
   if (stored === 'HealthStaff') return 'Health Staff';
   if (stored === 'Guardian') return 'Parent';
   return stored;
@@ -57,6 +59,15 @@ const userModel = {
       let query = supabase
         .from('users_with_uuid')
         .select('user_id, username, email, role, hs_type, firstname, middlename, surname, last_login, contact_number, employee_id, professional_license_no, is_deleted, supabase_uuid, created_by, updated_by', { count: 'exact' });
+
+      // Hide super_admin users from everyone except other super_admins
+      const requestingUserRole = filters.requesting_user_role || '';
+      const isSuperAdmin = requestingUserRole.toLowerCase().replace(/[^a-z0-9]/g, '') === 'superadmin';
+      
+      if (!isSuperAdmin) {
+        // Exclude SuperAdmin users from results for everyone except super admins
+        query = query.neq('role', 'SuperAdmin');
+      }
 
       // Apply filters
       if (filters.search) {

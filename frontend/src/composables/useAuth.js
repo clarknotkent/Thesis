@@ -58,9 +58,9 @@ export const useAuth = () => {
     } else {
       console.log('ℹ️ Admin/Staff offline uses StaffOfflineDB (on-demand caching)')
       
-      // For admin users, prefetch admin data immediately on login
-      if (normalizedRole === 'admin') {
-        console.log('👑 Admin login - prefetching admin data for offline mode')
+      // For admin/superadmin users, prefetch admin data immediately on login
+      if (normalizedRole === 'admin' || role === 'superadmin') {
+        console.log('👑 Admin/SuperAdmin login - prefetching admin data for offline mode')
         try {
           // Ensure AdminOfflineDB exists (recreate if deleted during previous logout)
           const { initAdminOfflineDB } = await import('@/services/offline/adminOfflineDB')

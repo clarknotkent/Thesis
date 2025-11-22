@@ -22,6 +22,15 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields: email, password, role' });
     }
 
+    // Prevent regular admins from creating super_admin users
+    const requestingUserRole = req.user?.role || '';
+    const normalizedRequestingRole = requestingUserRole.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedTargetRole = (userData.role || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    if (normalizedTargetRole === 'superadmin' && normalizedRequestingRole !== 'superadmin') {
+      return res.status(403).json({ message: 'Only super admins can create super admin accounts' });
+    }
+
     // 1) Create Supabase Auth user (email/password)
     const admin = getAuthAdmin();
     // ...existing code...
@@ -110,6 +119,17 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     const before = await userModel.getUserById(id);
+    
+    // Prevent regular admins from modifying super_admin users
+    const requestingUserRole = req.user?.role || '';
+    const normalizedRequestingRole = requestingUserRole.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const targetRole = (before?.role || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const newRole = (updateData?.role || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    if ((targetRole === 'superadmin' || newRole === 'superadmin') && normalizedRequestingRole !== 'superadmin') {
+      return res.status(403).json({ message: 'Only super admins can modify super admin accounts' });
+    }
+    
     const actorId = req.user?.user_id || null;
     console.debug('[users:updateUser] before:', JSON.stringify(before || {}));
     console.debug('[users:updateUser] incoming updateData:', JSON.stringify(updateData || {}));
@@ -177,6 +197,17 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Prevent regular admins from deleting super_admin users
+    const before = await userModel.getUserById(id);
+    const requestingUserRole = req.user?.role || '';
+    const normalizedRequestingRole = requestingUserRole.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const targetRole = (before?.role || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    if (targetRole === 'superadmin' && normalizedRequestingRole !== 'superadmin') {
+      return res.status(403).json({ message: 'Only super admins can delete super admin accounts' });
+    }
+    
     const actorId = req.user?.user_id || null;
     const success = await userModel.deleteUser(id, actorId);
 
@@ -219,8 +250,12 @@ const deleteUser = async (req, res) => {
 const listUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', role = '', status = '' } = req.query;
+    
+    // Pass requesting user's role to filter super_admins appropriately
+    const requestingUserRole = req.user?.role || '';
+    
     const { users, totalCount, totalPages } = await userModel.getAllUsers(
-      { search, role, status },
+      { search, role, status, requesting_user_role: requestingUserRole },
       parseInt(page),
       parseInt(limit)
     );
