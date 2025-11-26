@@ -76,7 +76,7 @@ const capacityModel = {
   updateCapacityLimits: async (date, amCapacity, pmCapacity, userId = null, client) => {
     try {
       const supabase = withClient(client);
-      
+
       // First ensure the config exists
       await capacityModel.getCapacityForDate(date, client);
 
@@ -107,7 +107,7 @@ const capacityModel = {
   updateCapacityNotes: async (date, notes, userId = null, client) => {
     try {
       const supabase = withClient(client);
-      
+
       // First ensure the config exists
       await capacityModel.getCapacityForDate(date, client);
 
@@ -155,20 +155,19 @@ const capacityModel = {
    */
   findNextAvailableSlot: async (startDate, maxDaysAhead = 90, client) => {
     try {
-      const supabase = withClient(client);
       const start = new Date(startDate);
-      
+
       for (let i = 0; i < maxDaysAhead; i++) {
         const checkDate = new Date(start);
         checkDate.setDate(start.getDate() + i);
         const dateStr = checkDate.toISOString().split('T')[0];
-        
+
         const slot = await capacityModel.getAvailableSlot(dateStr, client);
         if (slot) {
           return { date: dateStr, slot };
         }
       }
-      
+
       // If no slot found, return the start date with AM as fallback
       return { date: startDate, slot: 'AM' };
     } catch (error) {
@@ -274,7 +273,7 @@ const capacityModel = {
   getCapacityStats: async (startDate, endDate, client) => {
     try {
       const capacities = await capacityModel.getCapacityRange(startDate, endDate, client);
-      
+
       let totalCapacity = 0;
       let totalBooked = 0;
       let fullDays = 0;
@@ -283,7 +282,7 @@ const capacityModel = {
       capacities.forEach(day => {
         const dayCapacity = day.am_capacity + day.pm_capacity;
         const dayBooked = day.am_booked + day.pm_booked;
-        
+
         totalCapacity += dayCapacity;
         totalBooked += dayBooked;
 

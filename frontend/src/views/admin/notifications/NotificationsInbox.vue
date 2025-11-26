@@ -28,7 +28,10 @@
           </h1>
           <p class="text-muted mb-0">
             View and manage your notifications
-            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+            <span
+              v-if="isOffline"
+              class="badge bg-warning text-dark ms-2"
+            >
               <i class="bi bi-wifi-off me-1" />Offline Mode
             </span>
           </p>
@@ -686,7 +689,7 @@ export default {
 .section-header { background: #f8f9fa; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
 .notification-item { border-bottom: 1px solid #f1f1f1; }
 .notification-item.unread { background: #fdfdfd; border-left: 3px solid #3b82f6; }
-.text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-clamp: 2; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
 .avatar-inapp { background: #3b82f6; }
 .avatar-email { background: #0ea5e9; }

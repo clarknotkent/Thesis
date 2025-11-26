@@ -98,7 +98,7 @@ router.get('/:id/vitals', authenticateRequest, authorizePatientReadAccess, getVi
 router.put('/:id/vitals', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker','health_staff']), updateVitals);
 
 // GET /api/patients/:id/immunizations - List immunizations for a patient (vaccination history)
-router.get('/:id/immunizations', authenticateRequest, authorizePatientReadAccess, async (req, res) => {
+router.get('/:id/immunizations', authenticateRequest, authorizePatientReadAccess, (req, res) => {
   try {
     req.query.patient_id = req.params.id; // Inject patient_id for controller filter
     return listImmunizations(req, res);

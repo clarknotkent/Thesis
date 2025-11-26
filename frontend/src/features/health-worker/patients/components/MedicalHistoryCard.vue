@@ -102,10 +102,22 @@
             Vitals Recorded
           </div>
           <div class="vitals-preview">
-            <span v-if="vitals.weight" class="vital-chip">Weight: {{ vitals.weight }} kg</span>
-            <span v-if="vitals.height || vitals.height_length" class="vital-chip">Height: {{ vitals.height || vitals.height_length }} cm</span>
-            <span v-if="vitals.temperature" class="vital-chip">Temp: {{ vitals.temperature }}°C</span>
-            <span v-if="vitals.muac" class="vital-chip">MUAC: {{ vitals.muac }} cm</span>
+            <span
+              v-if="vitals.weight"
+              class="vital-chip"
+            >Weight: {{ vitals.weight }} kg</span>
+            <span
+              v-if="vitals.height || vitals.height_length"
+              class="vital-chip"
+            >Height: {{ vitals.height || vitals.height_length }} cm</span>
+            <span
+              v-if="vitals.temperature"
+              class="vital-chip"
+            >Temp: {{ vitals.temperature }}°C</span>
+            <span
+              v-if="vitals.muac"
+              class="vital-chip"
+            >MUAC: {{ vitals.muac }} cm</span>
           </div>
         </div>
 
@@ -125,9 +137,15 @@
               class="imm-chip"
             >
               {{ imm.vaccineName || imm.antigen_name || 'Unknown' }}
-              <span v-if="imm.dose_number" class="dose-num">Dose {{ imm.dose_number }}</span>
+              <span
+                v-if="imm.dose_number"
+                class="dose-num"
+              >Dose {{ imm.dose_number }}</span>
             </div>
-            <div v-if="immunizations.length > 3" class="more-chip">
+            <div
+              v-if="immunizations.length > 3"
+              class="more-chip"
+            >
               +{{ immunizations.length - 3 }} more
             </div>
           </div>

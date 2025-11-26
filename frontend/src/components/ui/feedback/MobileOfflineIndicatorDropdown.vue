@@ -57,7 +57,6 @@ const {
   isOnline,
   manualOffline,
   connectionStatus,
-  toggleManualOffline,
 } = useOffline()
 
 const statusIcon = computed(() => {

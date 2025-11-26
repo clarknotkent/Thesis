@@ -63,7 +63,6 @@ const userModel = {
       // Hide super_admin users from everyone except other super_admins
       const requestingUserRole = filters.requesting_user_role || '';
       const isSuperAdmin = requestingUserRole.toLowerCase().replace(/[^a-z0-9]/g, '') === 'superadmin';
-      
       if (!isSuperAdmin) {
         // Exclude SuperAdmin users from results for everyone except super admins
         query = query.neq('role', 'SuperAdmin');

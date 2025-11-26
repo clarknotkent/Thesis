@@ -349,18 +349,6 @@ const isFormValid = computed(() => {
   })
 })
 
-const getUniqueAdministrators = () => {
-  const administrators = new Set()
-  
-  doseRecords.value.forEach(dose => {
-    if (dose.administeredByDisplay) {
-      administrators.add(dose.administeredByDisplay)
-    }
-  })
-  
-  return administrators.size > 0 ? Array.from(administrators).join(', ') : 'Not specified'
-}
-
 const goBack = () => {
   router.push({ 
     name: 'ViewPatient', 

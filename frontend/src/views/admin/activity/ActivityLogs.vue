@@ -28,7 +28,10 @@
           </h1>
           <p class="text-muted mb-0">
             Monitor system activity and user actions
-            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+            <span
+              v-if="isOffline"
+              class="badge bg-warning text-dark ms-2"
+            >
               <i class="bi bi-wifi-off me-1" />Offline Mode
             </span>
           </p>
@@ -171,14 +174,20 @@
               class="col-md-3"
             >
               <label class="form-label">From Date:</label>
-              <DateInput v-model="filters.fromDate" :disabled="isOffline" />
+              <DateInput
+                v-model="filters.fromDate"
+                :disabled="isOffline"
+              />
             </div>
             <div
               v-if="filters.dateRange === 'custom'"
               class="col-md-3"
             >
               <label class="form-label">To Date:</label>
-              <DateInput v-model="filters.toDate" :disabled="isOffline" />
+              <DateInput
+                v-model="filters.toDate"
+                :disabled="isOffline"
+              />
             </div>
           </div>
         </div>

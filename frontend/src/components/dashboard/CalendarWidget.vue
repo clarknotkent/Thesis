@@ -162,7 +162,7 @@ async function loadWeekPreview() {
     
     const capacities = await getCapacityRange(start, end)
     
-    weekDays.value = capacities.map((cap, index) => {
+    weekDays.value = capacities.map((cap, _index) => {
       const date = new Date(cap.date)
       const totalCapacity = cap.am_capacity + cap.pm_capacity
       const totalBooked = cap.am_booked + cap.pm_booked

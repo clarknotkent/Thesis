@@ -49,7 +49,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { notificationAPI, conversationAPI } from '@/services/api'
+import { conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 import { useOnlineStatus } from '@/composables/useOnlineStatus'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -107,15 +107,15 @@ const fetchCounts = async () => {
 onMounted(() => {
   if (isOnline.value) {
     fetchCounts()
-    // Start polling from notification store
-    notificationStore.startPolling(30000)
+    // Start polling from notification store every 2 minutes
+    notificationStore.startPolling(120000)
     
-    // Poll for messages every 15s
+    // Poll for messages every 1 minute
     pollInterval = setInterval(() => {
       if (isOnline.value) {
         fetchCounts()
       }
-    }, 15000)
+    }, 60000)
   }
 })
 
@@ -134,7 +134,7 @@ watch(isOnline, (newOnline) => {
   } else {
     // Fetch counts when coming back online
     fetchCounts()
-    notificationStore.startPolling(30000)
+    notificationStore.startPolling(120000)
   }
 })
 

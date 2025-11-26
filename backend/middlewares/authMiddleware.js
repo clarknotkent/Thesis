@@ -49,11 +49,11 @@ const normalizeRole = (r) => {
 const authorizeRole = (roles) => (req, res, next) => {
   const allowed = (roles || []).map(r => normalizeRole(r));
   const current = normalizeRole((req.user && req.user.role) || '');
-  
+
   // Super admins have all admin permissions
   const isSuperAdmin = current === 'superadmin';
   const hasAdminPrivilege = allowed.includes('admin') && isSuperAdmin;
-  
+
   const ok = allowed.includes(current) || hasAdminPrivilege;
   if (!ok) {
     console.warn('[auth] forbidden role', { required: allowed, got: current, userId: req.user && (req.user.user_id || req.user.id) });

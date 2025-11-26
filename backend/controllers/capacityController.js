@@ -10,27 +10,27 @@ export const getCapacityForDate = async (req, res) => {
   try {
     const { date } = req.params;
     const supabase = getSupabaseForRequest(req);
-    
+
     // Validate date format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     const capacity = await capacityModel.getCapacityForDate(date, supabase);
-    
+
     res.json({
       success: true,
       data: capacity
     });
   } catch (error) {
     console.error('[capacityController.getCapacityForDate] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch capacity', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch capacity',
+      error: error.message
     });
   }
 };
@@ -43,39 +43,37 @@ export const getCapacityRange = async (req, res) => {
   try {
     const { start, end } = req.query;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!start || !end) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Start and end dates are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Start and end dates are required'
       });
     }
 
     // Validate date formats
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     const capacities = await capacityModel.getCapacityRange(start, end, supabase);
-    
+
     res.json({
       success: true,
       data: capacities
     });
   } catch (error) {
     console.error('[capacityController.getCapacityRange] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch capacity range', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch capacity range',
+      error: error.message
     });
   }
-};
-
-/**
+};/**
  * PUT /api/capacity/limits
  * Update capacity limits for a specific date
  */
@@ -86,29 +84,29 @@ export const updateCapacityLimits = async (req, res) => {
     const userId = getActorId(req);
 
     if (!date || amCapacity === undefined || pmCapacity === undefined) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Date, amCapacity, and pmCapacity are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Date, amCapacity, and pmCapacity are required'
       });
     }
 
     // Validate capacities are positive integers
-    if (!Number.isInteger(amCapacity) || !Number.isInteger(pmCapacity) || 
+    if (!Number.isInteger(amCapacity) || !Number.isInteger(pmCapacity) ||
         amCapacity < 0 || pmCapacity < 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Capacities must be non-negative integers' 
+      return res.status(400).json({
+        success: false,
+        message: 'Capacities must be non-negative integers'
       });
     }
 
     const updated = await capacityModel.updateCapacityLimits(
-      date, 
-      amCapacity, 
-      pmCapacity, 
+      date,
+      amCapacity,
+      pmCapacity,
       userId,
       supabase
     );
-    
+
     res.json({
       success: true,
       message: 'Capacity limits updated successfully',
@@ -116,10 +114,10 @@ export const updateCapacityLimits = async (req, res) => {
     });
   } catch (error) {
     console.error('[capacityController.updateCapacityLimits] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to update capacity limits', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update capacity limits',
+      error: error.message
     });
   }
 };
@@ -135,19 +133,19 @@ export const updateCapacityNotes = async (req, res) => {
     const userId = getActorId(req);
 
     if (!date) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Date is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required'
       });
     }
 
     const updated = await capacityModel.updateCapacityNotes(
-      date, 
-      notes || null, 
+      date,
+      notes || null,
       userId,
       supabase
     );
-    
+
     res.json({
       success: true,
       message: 'Notes updated successfully',
@@ -155,10 +153,10 @@ export const updateCapacityNotes = async (req, res) => {
     });
   } catch (error) {
     console.error('[capacityController.updateCapacityNotes] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to update notes', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update notes',
+      error: error.message
     });
   }
 };
@@ -171,26 +169,26 @@ export const getAvailableSlot = async (req, res) => {
   try {
     const { date } = req.params;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     const slot = await capacityModel.getAvailableSlot(date, supabase);
-    
+
     res.json({
       success: true,
       data: { date, slot }
     });
   } catch (error) {
     console.error('[capacityController.getAvailableSlot] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to get available slot', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get available slot',
+      error: error.message
     });
   }
 };
@@ -203,33 +201,33 @@ export const findNextAvailable = async (req, res) => {
   try {
     const { start } = req.query;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!start) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Start date is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Start date is required'
       });
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     const nextAvailable = await capacityModel.findNextAvailableSlot(start, 90, supabase);
-    
+
     res.json({
       success: true,
       data: nextAvailable
     });
   } catch (error) {
     console.error('[capacityController.findNextAvailable] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to find next available slot', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to find next available slot',
+      error: error.message
     });
   }
 };
@@ -242,27 +240,27 @@ export const getScheduledPatients = async (req, res) => {
   try {
     const { date, slot } = req.params;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     if (slot && !['AM', 'PM'].includes(slot.toUpperCase())) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Slot must be either AM or PM' 
+      return res.status(400).json({
+        success: false,
+        message: 'Slot must be either AM or PM'
       });
     }
 
     const patients = await capacityModel.getScheduledPatients(
-      date, 
-      slot ? slot.toUpperCase() : null, 
+      date,
+      slot ? slot.toUpperCase() : null,
       supabase
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -274,10 +272,10 @@ export const getScheduledPatients = async (req, res) => {
     });
   } catch (error) {
     console.error('[capacityController.getScheduledPatients] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch scheduled patients', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch scheduled patients',
+      error: error.message
     });
   }
 };
@@ -290,17 +288,17 @@ export const recalculateCapacity = async (req, res) => {
   try {
     const { date } = req.params;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     await capacityModel.recalculateCapacity(date, supabase);
     const updated = await capacityModel.getCapacityForDate(date, supabase);
-    
+
     res.json({
       success: true,
       message: 'Capacity recalculated successfully',
@@ -308,10 +306,10 @@ export const recalculateCapacity = async (req, res) => {
     });
   } catch (error) {
     console.error('[capacityController.recalculateCapacity] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to recalculate capacity', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to recalculate capacity',
+      error: error.message
     });
   }
 };
@@ -324,23 +322,23 @@ export const getCapacityStats = async (req, res) => {
   try {
     const { start, end } = req.query;
     const supabase = getSupabaseForRequest(req);
-    
+
     if (!start || !end) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Start and end dates are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Start and end dates are required'
       });
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid date format. Use YYYY-MM-DD' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
       });
     }
 
     const stats = await capacityModel.getCapacityStats(start, end, supabase);
-    
+
     res.json({
       success: true,
       data: {
@@ -350,10 +348,10 @@ export const getCapacityStats = async (req, res) => {
     });
   } catch (error) {
     console.error('[capacityController.getCapacityStats] error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to get capacity statistics', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get capacity statistics',
+      error: error.message
     });
   }
 };

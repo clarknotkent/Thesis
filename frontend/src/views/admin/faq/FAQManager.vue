@@ -28,7 +28,10 @@
           </h1>
           <p class="text-muted mb-0">
             Create, edit and manage frequently asked questions
-            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+            <span
+              v-if="isOffline"
+              class="badge bg-warning text-dark ms-2"
+            >
               <i class="bi bi-wifi-off me-1" />Offline Mode
             </span>
           </p>

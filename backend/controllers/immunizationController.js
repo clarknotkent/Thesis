@@ -505,18 +505,18 @@ const manualReschedulePatientSchedule = async (req, res) => {
 
     if (!demo) {
       // Normal mode: actually update the database
-      const updatePayload = { 
-        scheduled_date: p_new_scheduled_date, 
-        updated_by: p_user_id || req.user?.user_id || null, 
-        force_override: !!force_override, 
-        cascade: !!cascade 
+      const updatePayload = {
+        scheduled_date: p_new_scheduled_date,
+        updated_by: p_user_id || req.user?.user_id || null,
+        force_override: !!force_override,
+        cascade: !!cascade
       };
-      
+
       // Add time_slot to payload if provided
       if (p_time_slot !== undefined) {
         updatePayload.time_slot = p_time_slot || null;
       }
-      
+
       result = await immunizationModel.updatePatientSchedule(
         p_patient_schedule_id,
         updatePayload,
@@ -537,11 +537,11 @@ const manualReschedulePatientSchedule = async (req, res) => {
       console.info('[manualReschedule][DEMO] Simulating reschedule without database changes');
       result = { warning: 'Demo mode - no database changes made' };
       // Create a simulated updated row
-      updatedRow = { 
-        ...beforeRow, 
-        scheduled_date: p_new_scheduled_date, 
+      updatedRow = {
+        ...beforeRow,
+        scheduled_date: p_new_scheduled_date,
         time_slot: p_time_slot || null,
-        status: 'rescheduled' 
+        status: 'rescheduled'
       };
     }
 

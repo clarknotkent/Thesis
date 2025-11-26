@@ -76,7 +76,7 @@
                   class="form-control"
                   :disabled="isReadOnly"
                   required
-                />
+                >
               </div>
               <div class="col-md-6">
                 <label class="form-label">Delivered By *</label>

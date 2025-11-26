@@ -29,7 +29,10 @@
           </h1>
           <p class="text-muted mb-0 small">
             Admin messaging center
-            <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+            <span
+              v-if="isOffline"
+              class="badge bg-warning text-dark ms-2"
+            >
               <i class="bi bi-wifi-off me-1" />Offline Mode
             </span>
           </p>
@@ -60,7 +63,10 @@
       <div class="chat-container">
         <div class="row g-0 h-100">
           <!-- Conversations Sidebar -->
-          <div class="col-lg-4 col-md-5 border-end d-flex flex-column h-100" style="width: 380px;">
+          <div
+            class="col-lg-4 col-md-5 border-end d-flex flex-column h-100"
+            style="width: 380px;"
+          >
             <ConversationsList
               v-model:search-query="searchQuery"
               :conversations="filteredConversations"
@@ -70,7 +76,10 @@
           </div>
 
           <!-- Chat Area -->
-          <div class="col-lg-8 col-md-7 d-flex flex-column h-100" style="width: calc(100% - 380px);">
+          <div
+            class="col-lg-8 col-md-7 d-flex flex-column h-100"
+            style="width: calc(100% - 380px);"
+          >
             <!-- Empty State -->
             <div
               v-if="!selectedConversation"

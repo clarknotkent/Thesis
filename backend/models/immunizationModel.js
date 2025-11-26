@@ -291,7 +291,7 @@ const createImmunization = async (immunizationData, client) => {
         }
       } else {
         console.log('[createImmunization] Post-insert RPC recalc_patient_schedule_enhanced succeeded');
-        
+
         // After recalc, assign time slots to any new schedules (non-blocking)
         setImmediate(async () => {
           try {
@@ -550,7 +550,7 @@ const getAllImmunizations = async (filters = {}, client) => {
 // Schedule immunization (insert into patientschedule)
 const scheduleImmunization = async (scheduleData, client) => {
   const supabase = withClient(client);
-  
+
   // Auto-assign time slot if scheduled_date provided but no time_slot
   if (scheduleData.scheduled_date && !scheduleData.time_slot) {
     try {
@@ -571,7 +571,7 @@ const scheduleImmunization = async (scheduleData, client) => {
       // Continue without slot assignment
     }
   }
-  
+
   const { data, error } = await supabase
     .from('patientschedule')
     .insert([scheduleData])
@@ -679,23 +679,23 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
       p_cascade: !!updateData.cascade,
     });
     if (rpcErr) throw rpcErr;
-    
+
     // After RPC cascade, update time slots for all affected schedules
     try {
       if (Array.isArray(res) && res.length > 0) {
         console.log(`[updatePatientSchedule] Processing ${res.length} schedules for time slot assignment`);
-        
+
         for (const schedule of res) {
           const schedId = schedule.out_patient_schedule_id ?? schedule.patient_schedule_id;
           const schedDate = schedule.out_scheduled_date ?? schedule.scheduled_date;
-          
+
           if (!schedId) {
             console.warn('[updatePatientSchedule] Skipping schedule with no ID:', schedule);
             continue;
           }
-          
+
           let slotToAssign = null;
-          
+
           // If user specified a time_slot, use it for ALL schedules (main + cascaded)
           if (patch.time_slot !== undefined) {
             slotToAssign = patch.time_slot;
@@ -707,17 +707,17 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
               console.log(`[updatePatientSchedule] Auto-assigned slot ${slotToAssign || 'NULL'} for schedule ${schedId} on ${schedDate}`);
             }
           }
-          
+
           // Apply the slot to all affected schedules
           if (slotToAssign !== null || patch.time_slot !== undefined) {
             const { error: updateErr } = await supabase
               .from('patientschedule')
-              .update({ 
+              .update({
                 time_slot: slotToAssign,
-                updated_at: new Date().toISOString() 
+                updated_at: new Date().toISOString()
               })
               .eq('patient_schedule_id', schedId);
-            
+
             if (updateErr) {
               console.error(`[updatePatientSchedule] Failed to update slot for schedule ${schedId}:`, updateErr);
             } else {
@@ -729,7 +729,7 @@ const updatePatientSchedule = async (patientScheduleId, updateData, client) => {
     } catch (cascadeSlotErr) {
       console.warn('[updatePatientSchedule] Failed to assign slots to cascaded schedules:', cascadeSlotErr?.message);
     }
-    
+
     // Return the main row (current id) if found, else first; include warning if present
     const normalizeId = (r) => (r?.out_patient_schedule_id ?? r?.patient_schedule_id);
     const main = Array.isArray(res) ? (res.find(r => normalizeId(r) === patientScheduleId) || res[0]) : res;

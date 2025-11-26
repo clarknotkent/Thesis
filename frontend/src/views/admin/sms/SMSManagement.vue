@@ -27,7 +27,10 @@
         </h2>
         <p class="text-muted mb-0">
           Manage vaccination reminder messages and auto-send settings
-          <span v-if="isOffline" class="badge bg-warning text-dark ms-2">
+          <span
+            v-if="isOffline"
+            class="badge bg-warning text-dark ms-2"
+          >
             <i class="bi bi-wifi-off me-1" />Offline Mode
           </span>
         </p>

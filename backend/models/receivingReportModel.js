@@ -3,7 +3,7 @@ import supabase from '../db.js';
 const receivingReportModel = {};
 
 // Helper to get today's date in Philippine timezone
-const getTodayInPH = () => {
+const _getTodayInPH = () => {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila',
     year: 'numeric',

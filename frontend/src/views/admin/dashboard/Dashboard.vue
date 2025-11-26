@@ -281,7 +281,7 @@ import AppPagination from '@/components/ui/base/AppPagination.vue'
 import api from '@/services/api'
 import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 
-const { isOffline, isCaching, fetchDashboardMetrics } = useOfflineAdmin()
+const { isOffline, _isCaching, fetchDashboardMetrics } = useOfflineAdmin()
 const stats = ref({
   vaccinationsToday: 0,
   totalPatients: 0,
