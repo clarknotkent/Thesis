@@ -7,7 +7,7 @@ import {
   deleteNotification,
   broadcastNotifications
 } from '../models/notificationModel.js';
-import { sendPushNotification, sendPushToMultiple } from '../utils/webPush.js';
+import { sendPushToMultiple } from '../utils/webPush.js';
 import supabase from '../db.js';
 
 // Helper to send standardized error

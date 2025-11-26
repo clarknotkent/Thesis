@@ -1523,7 +1523,7 @@ const patientModel = {
   assignTimeSlotsToSchedules: async (patientId, client) => {
     try {
       const supabase = withClient(client);
-      
+
       // Get all schedules for this patient that don't have time slots assigned
       const { data: schedules, error: schedErr } = await supabase
         .from('patientschedule')
@@ -1537,40 +1537,40 @@ const patientModel = {
       if (!schedules || schedules.length === 0) return { assigned: 0 };
 
       let assignedCount = 0;
-      
+
       for (const schedule of schedules) {
         // Skip if already has a time slot
         if (schedule.time_slot) continue;
-        
+
         try {
           // Get available slot for this date
           const availableSlot = await capacityModel.getAvailableSlot(schedule.scheduled_date, supabase);
-          
+
           if (availableSlot) {
             // Assign the slot
             await supabase
               .from('patientschedule')
-              .update({ 
+              .update({
                 time_slot: availableSlot,
                 updated_at: new Date().toISOString()
               })
               .eq('patient_schedule_id', schedule.patient_schedule_id);
-            
+
             assignedCount++;
             console.log(`[assignTimeSlotsToSchedules] Assigned ${availableSlot} to schedule ${schedule.patient_schedule_id} on ${schedule.scheduled_date}`);
           } else {
             // Both slots full - find next available day
             const nextAvailable = await capacityModel.findNextAvailableSlot(schedule.scheduled_date, 90, supabase);
-            
+
             await supabase
               .from('patientschedule')
-              .update({ 
+              .update({
                 scheduled_date: nextAvailable.date,
                 time_slot: nextAvailable.slot,
                 updated_at: new Date().toISOString()
               })
               .eq('patient_schedule_id', schedule.patient_schedule_id);
-            
+
             assignedCount++;
             console.log(`[assignTimeSlotsToSchedules] Moved schedule ${schedule.patient_schedule_id} from ${schedule.scheduled_date} to ${nextAvailable.date} ${nextAvailable.slot} due to capacity`);
           }

@@ -36,8 +36,12 @@
                   <div class="capacity-card am">
                     <i class="bi bi-sunrise" />
                     <div class="capacity-info">
-                      <div class="capacity-label">Morning</div>
-                      <div class="capacity-value">{{ day.amBooked }}/{{ day.amCapacity }}</div>
+                      <div class="capacity-label">
+                        Morning
+                      </div>
+                      <div class="capacity-value">
+                        {{ day.amBooked }}/{{ day.amCapacity }}
+                      </div>
                       <div class="progress mt-2">
                         <div
                           class="progress-bar bg-warning"
@@ -51,8 +55,12 @@
                   <div class="capacity-card pm">
                     <i class="bi bi-sunset" />
                     <div class="capacity-info">
-                      <div class="capacity-label">Afternoon</div>
-                      <div class="capacity-value">{{ day.pmBooked }}/{{ day.pmCapacity }}</div>
+                      <div class="capacity-label">
+                        Afternoon
+                      </div>
+                      <div class="capacity-value">
+                        {{ day.pmBooked }}/{{ day.pmCapacity }}
+                      </div>
                       <div class="progress mt-2">
                         <div
                           class="progress-bar bg-info"

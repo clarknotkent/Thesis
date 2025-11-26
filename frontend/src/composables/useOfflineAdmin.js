@@ -1,10 +1,8 @@
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { adminDB } from '@/services/offline/adminOfflineDB'
-import { useToast } from '@/composables/useToast'
 
 export function useOfflineAdmin() {
-  const { addToast } = useToast()
   const isOffline = ref(false)
   const isConnectivityTested = ref(false)
   const isCaching = ref(false)

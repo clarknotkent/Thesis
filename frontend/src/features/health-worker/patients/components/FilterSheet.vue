@@ -25,6 +25,34 @@
 
           <!-- Filter Content -->
           <div class="filter-content">
+            <!-- Sort By -->
+            <div class="filter-section">
+              <label class="filter-label">Sort By</label>
+              <select
+                v-model="filters.sortBy"
+                class="filter-select"
+              >
+                <option value="name_asc">
+                  Name (A-Z)
+                </option>
+                <option value="name_desc">
+                  Name (Z-A)
+                </option>
+                <option value="age_asc">
+                  Age (Youngest First)
+                </option>
+                <option value="age_desc">
+                  Age (Oldest First)
+                </option>
+                <option value="date_asc">
+                  Date Registered (Oldest)
+                </option>
+                <option value="date_desc">
+                  Date Registered (Newest)
+                </option>
+              </select>
+            </div>
+
             <!-- Gender Filter -->
             <div class="filter-section">
               <label class="filter-label">Gender</label>
@@ -166,6 +194,7 @@ const props = defineProps({
 const emit = defineEmits(['update:show', 'update:modelValue', 'apply'])
 
 const filters = ref({
+  sortBy: 'name_asc',
   gender: '',
   statuses: []
 })
@@ -183,6 +212,7 @@ const close = () => {
 
 const clearFilters = () => {
   filters.value = {
+    sortBy: 'name_asc',
     gender: '',
     statuses: []
   }

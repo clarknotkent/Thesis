@@ -647,9 +647,9 @@ const requestPasswordReset = async (req, res) => {
     if (!users || users.length === 0) {
       console.log('[requestPasswordReset] No user found with identifier:', identifier);
       // Don't reveal whether user exists for security
-      return res.status(200).json({ 
-        success: true, 
-        message: 'If an account exists with that information, a reset code has been sent.' 
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with that information, a reset code has been sent.'
       });
     }
 
@@ -660,9 +660,9 @@ const requestPasswordReset = async (req, res) => {
     if (!user.contact_number) {
       console.log('[requestPasswordReset] User has no contact number:', user.username);
       // Don't reveal this for security, but log it
-      return res.status(200).json({ 
-        success: true, 
-        message: 'If an account exists with that information, a reset code has been sent.' 
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with that information, a reset code has been sent.'
       });
     }
 
@@ -687,16 +687,16 @@ const requestPasswordReset = async (req, res) => {
 
     if (!smsResult.success) {
       console.error('[requestPasswordReset] SMS sending failed:', smsResult.error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to send reset code. Please check your phone number.' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send reset code. Please check your phone number.'
       });
     }
 
     console.log('[requestPasswordReset] Reset code sent successfully to:', phoneNumber);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: 'Reset code sent to your registered phone number.',
       phoneHint: phoneNumber.slice(0, 6) + '****' + phoneNumber.slice(-2) // Show partial number
     });
@@ -708,7 +708,7 @@ const requestPasswordReset = async (req, res) => {
 };
 
 // Verify reset code
-const verifyResetCode = async (req, res) => {
+const verifyResetCode = (req, res) => {
   try {
     const { identifier, code } = req.body;
 
@@ -731,9 +731,9 @@ const verifyResetCode = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid reset code' });
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: 'Code verified successfully' 
+    res.status(200).json({
+      success: true,
+      message: 'Code verified successfully'
     });
 
   } catch (error) {
@@ -806,9 +806,9 @@ const resetPasswordWithCode = async (req, res) => {
 
     console.log('[resetPasswordWithCode] Password reset successfully for user:', resetData.userId);
 
-    res.status(200).json({ 
-      success: true, 
-      message: 'Password reset successfully. You can now login with your new password.' 
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.'
     });
 
   } catch (error) {

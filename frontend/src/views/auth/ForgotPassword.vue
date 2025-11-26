@@ -148,10 +148,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 import axios from 'axios'
-
-const router = useRouter()
 
 // Form data
 const form = reactive({

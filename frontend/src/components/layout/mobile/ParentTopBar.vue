@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { notificationAPI, conversationAPI } from '@/services/api'
+import { conversationAPI } from '@/services/api'
 import MobileOfflineIndicatorDropdown from '@/components/ui/feedback/MobileOfflineIndicatorDropdown.vue'
 import { useOffline } from '@/composables/useOffline'
 import { db } from '@/utils/db'
@@ -142,10 +142,10 @@ onMounted(() => {
   fetchCounts()
   
   if (effectiveOnline.value) {
-    notificationStore.startPolling(30000)
+    notificationStore.startPolling(120000)
   }
   
-  pollInterval = setInterval(fetchCounts, 15000)
+  pollInterval = setInterval(fetchCounts, 60000)
 })
 
 // Watch notification store unread count

@@ -3,7 +3,6 @@
     :show-controls="false"
   >
     <div class="page-content-wrapper">
-      
       <h5 class="mb-3 text-small align-items-center d-flex">
         <i class="bi bi-gear fs-1 text-primary me-2" />
         Settings

@@ -331,7 +331,7 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
       const timeCfg = getReminderTime('Asia/Manila');
       const greetingTime = (timeCfg.hour >= 6 && timeCfg.hour < 18) ? 'Good Day' : 'Good Evening';
       const scheduledDateLong = moment.tz(triggerSched.scheduled_date, 'Asia/Manila').format('MMMM DD, YYYY');
-      
+
       // Get time slot from any schedule on this day (they should all have the same slot)
       const timeSlot = allSchedsOnDay.find(s => s.time_slot)?.time_slot || '';
       const timeSlotDisplay = timeSlot ? ` (${timeSlot === 'AM' ? 'Morning' : 'Afternoon'})` : '';

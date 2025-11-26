@@ -126,6 +126,7 @@ const patients = ref([])
 const guardians = ref([])
 const showFilterSheet = ref(false)
 const activeFilters = ref({
+  sortBy: 'name_asc',
   ageRanges: [],
   gender: '',
   statuses: [],
@@ -201,6 +202,58 @@ const form = ref({
 })
 
 // Methods
+const applySorting = (patientsList) => {
+  const sorted = [...patientsList]
+  const sortBy = activeFilters.value.sortBy || 'name_asc'
+
+  switch (sortBy) {
+    case 'name_asc':
+      sorted.sort((a, b) => {
+        const nameA = a.full_name || a.childInfo?.name || ''
+        const nameB = b.full_name || b.childInfo?.name || ''
+        return nameA.localeCompare(nameB)
+      })
+      break
+    case 'name_desc':
+      sorted.sort((a, b) => {
+        const nameA = a.full_name || a.childInfo?.name || ''
+        const nameB = b.full_name || b.childInfo?.name || ''
+        return nameB.localeCompare(nameA)
+      })
+      break
+    case 'age_asc':
+      sorted.sort((a, b) => {
+        const ageA = a.age_months || 0
+        const ageB = b.age_months || 0
+        return ageA - ageB
+      })
+      break
+    case 'age_desc':
+      sorted.sort((a, b) => {
+        const ageA = a.age_months || 0
+        const ageB = b.age_months || 0
+        return ageB - ageA
+      })
+      break
+    case 'date_asc':
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.date_registered || a.dateRegistered || 0)
+        const dateB = new Date(b.date_registered || b.dateRegistered || 0)
+        return dateA - dateB
+      })
+      break
+    case 'date_desc':
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.date_registered || a.dateRegistered || 0)
+        const dateB = new Date(b.date_registered || b.dateRegistered || 0)
+        return dateB - dateA
+      })
+      break
+  }
+
+  return sorted
+}
+
 const toggleFilters = () => {
   showFilterSheet.value = !showFilterSheet.value
 }
@@ -287,8 +340,8 @@ const fetchPatients = async () => {
           )
         }
 
-        // Sort by name (simplified)
-        cachedPatients.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+        // Apply sorting
+        cachedPatients = applySorting(cachedPatients)
 
         // Apply pagination
         const start = (currentPage.value - 1) * itemsPerPage.value
@@ -526,7 +579,7 @@ const fetchPatients = async () => {
     }
 
     // Now assign the enriched patients to the reactive variable (only once)
-    patients.value = mappedPatients
+    patients.value = applySorting(mappedPatients)
 
     // Force reactivity update
     await nextTick()

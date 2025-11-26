@@ -157,7 +157,7 @@ const reportModel = {
       if (targetError) throw targetError;
 
       // Filter out inactive patients (status can be NULL for active patients)
-      const activePopulation = (targetPopulation || []).filter(p => 
+      const activePopulation = (targetPopulation || []).filter(p =>
         p.status !== 'Inactive' && p.status !== 'inactive'
       );
 

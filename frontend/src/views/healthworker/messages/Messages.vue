@@ -466,7 +466,7 @@ const startPolling = () => {
         console.error('Polling error:', error)
       }
     }
-  }, 3000) // Poll every 3 seconds
+  }, 10000) // Poll every 10 seconds
 }
 
 const stopPolling = () => {
