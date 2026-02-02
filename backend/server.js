@@ -85,11 +85,17 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  // Initialize background scheduler after server starts
-  try {
-    smsScheduler.start();
-  } catch (e) {
-    console.error('Failed to start SMS scheduler:', e);
+  // Initialize background scheduler after server starts (only if enabled)
+  const cronEnabled = String(process.env.SMS_CRON_ENABLED || 'true').toLowerCase() === 'true';
+  if (cronEnabled) {
+    try {
+      console.log('Starting SMS scheduler...');
+      smsScheduler.start();
+    } catch (e) {
+      console.error('Failed to start SMS scheduler:', e);
+    }
+  } else {
+    console.log('SMS scheduler is DISABLED (SMS_CRON_ENABLED=false)');
   }
 });
 

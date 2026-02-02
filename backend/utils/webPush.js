@@ -76,7 +76,6 @@ export async function sendPushNotification(subscription, payload, options = {}) 
       options
     );
 
-    console.log('✅ Push notification sent successfully');
     return { success: true, result };
   } catch (error) {
     console.error('❌ Failed to send push notification:', error);
@@ -84,7 +83,6 @@ export async function sendPushNotification(subscription, payload, options = {}) 
     // Handle specific errors
     if (error.statusCode === 410 || error.statusCode === 404) {
       // Subscription expired or not found
-      console.log('⚠️ Subscription expired, should be removed from database');
       return { success: false, expired: true, error: error.message };
     }
 

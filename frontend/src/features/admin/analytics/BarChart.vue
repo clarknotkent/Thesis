@@ -154,16 +154,16 @@ const minRightPad = 20
 const topPad = 24
 
 // Label wrapping and sizing
-const lineHeight = 14
-const baseBottomPad = 32
-const extraBottomPerLine = 14
-const maxLabelCharsPerLine = 10
+const lineHeight = 16
+const baseBottomPad = 60
+const extraBottomPerLine = 16
+const maxLabelCharsPerLine = 14
 const maxLabelLines = 3
 
 // Dynamic font sizes
 const fontSizeTicks = computed(() => 10)
 const fontSizeValue = computed(() => 10)
-const fontSizeLabel = computed(() => 10)
+const fontSizeLabel = computed(() => 11)
 
 const resizeObserver = ref(null)
 
@@ -299,11 +299,14 @@ onBeforeUnmount(() => {
 .svg-bar-chart {
   width: 100%;
   box-sizing: border-box;
+  overflow: visible;
+  position: relative;
 }
 .chart-svg {
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
 }
 .bar-rect {
   transform-origin: center bottom;

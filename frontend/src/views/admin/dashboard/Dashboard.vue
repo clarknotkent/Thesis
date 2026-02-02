@@ -159,10 +159,10 @@
                 </h6>
                 <small class="text-muted">Across all records</small>
               </div>
-              <div class="card-body">
+              <div class="card-body chart-container">
                 <BarChart 
                   :data="vaccineChartData" 
-                  :height="320"
+                  :height="360"
                   :colors="['#0d6efd', '#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14']"
                 />
               </div>
@@ -530,5 +530,12 @@ onMounted(() => {
 .dashboard-disabled a {
   pointer-events: none !important;
   cursor: not-allowed !important;
+}
+
+/* Chart Container */
+.chart-container {
+  min-height: 380px;
+  overflow: visible;
+  padding: 1.5rem;
 }
 </style>

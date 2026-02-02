@@ -638,7 +638,7 @@ onMounted(() => {
   padding: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: #1976d2;
   color: white;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -665,7 +665,7 @@ onMounted(() => {
 .calendar-day:not(.other-month):hover {
   background: #f9fafb;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-color: #22c55e;
+  border-color: #1976d2;
 }
 
 .calendar-day.other-month {
@@ -689,13 +689,13 @@ onMounted(() => {
 }
 
 .calendar-day.today {
-  background: #ecfdf5;
-  border: 3px solid #00a000;
+  background: #e3f2fd;
+  border: 3px solid #1976d2;
   font-weight: 600;
 }
 
 .calendar-day.available:not(.today) {
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid #1976d2;
 }
 
 .calendar-day.limited:not(.today) {
@@ -754,7 +754,7 @@ onMounted(() => {
 }
 
 .capacity-bar.available {
-  background: #22c55e;
+  background: #1976d2;
 }
 
 .capacity-bar.limited {
@@ -785,7 +785,7 @@ onMounted(() => {
 }
 
 .legend-dot.available {
-  background: #22c55e;
+  background: #1976d2;
 }
 
 .legend-dot.limited {
@@ -797,7 +797,7 @@ onMounted(() => {
 }
 
 .legend-dot.today {
-  background: #22c55e;
+  background: #1976d2;
 }
 
 @media (max-width: 768px) {
