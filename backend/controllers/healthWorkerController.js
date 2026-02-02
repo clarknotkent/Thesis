@@ -10,9 +10,6 @@ const listHealthWorkers = async (req, res) => {
     // Set a high limit to ensure we get all health workers (no pagination for this endpoint)
     const result = await userModel.getAllUsers(filters, 1, 1000);
     const healthWorkers = result.users || [];
-    console.log('[healthWorkerController.listHealthWorkers] filters:', filters, 'result.users count:', healthWorkers.length);
-    console.log('[healthWorkerController.listHealthWorkers] health staff types:', [...new Set(healthWorkers.map(hw => hw.hs_type))]);
-    console.log('[healthWorkerController.listHealthWorkers] first health staff:', healthWorkers[0]);
     res.json({
       success: true,
       data: {

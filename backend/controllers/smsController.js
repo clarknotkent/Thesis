@@ -36,15 +36,11 @@ const sendSMSNotification = async (req, res) => {
         });
       }
 
-      console.log('[DEBUG] Template from DB:', JSON.stringify(templateRow.template));
-
       // Replace variables in template
       finalMessage = smsService.replaceTemplateVariables(
         templateRow.template,
         variables || {}
       );
-
-      console.log('[DEBUG] After variable replacement:', JSON.stringify(finalMessage));
     }
 
     if (!phoneNumber || !finalMessage) {
@@ -345,8 +341,6 @@ const updateSMSTemplate = async (req, res) => {
     const { name, template, trigger_type, is_active } = req.body;
     const actorId = req.user && (req.user.user_id || req.user.id) || null;
 
-    console.log('updateSMSTemplate called with:', { id, name, template: JSON.stringify(template), trigger_type, is_active });
-
     // Validate required fields
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Template name is required' });
@@ -361,7 +355,6 @@ const updateSMSTemplate = async (req, res) => {
     // Validate trigger_type
     const allowedTriggers = new Set(['1-week','3-days','1-day','0-day','manual']);
     const normalizedTriggerType = String(trigger_type).trim();
-    console.log('Validating trigger_type:', { original: trigger_type, normalized: normalizedTriggerType, allowed: Array.from(allowedTriggers) });
     if (!allowedTriggers.has(normalizedTriggerType)) {
       return res.status(400).json({
         success: false,
@@ -378,7 +371,6 @@ const updateSMSTemplate = async (req, res) => {
       updated_by: actorId,
       updated_at: new Date().toISOString()
     };
-    console.log('Updating template with data:', updateData);
 
     const { data, error } = await supabase
       .from('sms_templates')
@@ -392,10 +384,8 @@ const updateSMSTemplate = async (req, res) => {
       throw error;
     }
     if (!data) {
-      console.log('Template not found or deleted');
       return res.status(404).json({ success: false, message: 'Template not found or already deleted' });
     }
-    console.log('Template updated successfully:', data);
     res.json({ success: true, message: 'Template updated successfully', data });
   } catch (error) {
     console.error('Error updating SMS template:', error);
@@ -535,8 +525,6 @@ const bulkToggleAutoSend = async (req, res) => {
   try {
     const { guardianIds, auto_send_enabled } = req.body;
 
-    console.log('bulkToggleAutoSend received:', { guardianIds, auto_send_enabled, type: typeof auto_send_enabled });
-
     if (!Array.isArray(guardianIds) || guardianIds.length === 0) {
       return res.status(400).json({ success: false, message: 'Guardian IDs array is required' });
     }
@@ -557,7 +545,6 @@ const bulkToggleAutoSend = async (req, res) => {
     }
 
     const validIds = (activeGuardians || []).map(g => g.guardian_id);
-    console.log('Valid guardian IDs:', validIds);
 
     if (validIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No active guardians found for provided IDs' });
@@ -567,8 +554,6 @@ const bulkToggleAutoSend = async (req, res) => {
       guardian_id: Number(id),
       auto_send_enabled: Boolean(auto_send_enabled)
     }));
-
-    console.log('Upserting payload:', payload);
 
     // Use upsert with ignoreDuplicates:false (default) to update existing records
     const { data, error } = await supabase
@@ -583,8 +568,6 @@ const bulkToggleAutoSend = async (req, res) => {
       console.error('Supabase upsert error:', error);
       throw error;
     }
-
-    console.log('Bulk toggle successful:', data);
 
     res.json({
       success: true,
