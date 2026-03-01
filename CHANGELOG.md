@@ -1,8 +1,61 @@
-﻿# Changelog — Immunization Management System v1
+﻿# Changelog — Immunization Management System
 
-Version 1 technical reference. This file documents all key systems, architectural decisions, and features for Version 1 of the Immunization Management System.
+All notable changes to this project are documented in this file.
+This project adheres to [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`) and the [Keep a Changelog](https://keepachangelog.com/) format.
 
-> **Branch:** `master` — This is the deployment-ready branch. It contains the stable, production-intended version of the system.
+> **Branch:** `system-prototype-v1` — This is the **active development branch**. All changes, features, fixes, and experiments are tracked here first before being promoted to a stable release branch.
+
+---
+
+## [Unreleased]
+
+Changes staged in `system-prototype-v1` that have not yet been assigned a version tag.
+
+---
+
+## [1.0.0] — 2026-03-01
+
+> **Initial full-system release.** This version represents the complete, working prototype of the Immunization Management System as developed for the academic thesis. It establishes the entire codebase — architecture, features, database structure, and all user-facing functionality.
+
+### Added — Core System
+- Full-stack application scaffolded with Vue 3 (Vite) frontend and Node.js (Express) backend
+- Native ES Modules (`import`/`export`) across all 86+ backend files — zero CommonJS
+- Supabase (PostgreSQL) as the database layer with Row-Level Security
+- JWT-based authentication with access and refresh tokens
+- Role-Based Access Control (RBAC): `SuperAdmin`, `Admin`, `HealthWorker`, `Parent/Guardian`
+
+### Added — Features
+- **Patient Management** — full CRUD, QR code identification, patient stats
+- **Immunization Records** — recording, updating, and patient-linked history
+- **Vaccine Inventory** — stock tracking, receiving reports, ledger system
+- **Scheduling** — AM/PM slot support, rescheduling UX, capacity settings
+- **Visits & Vitals** — visit logging and vitals tracking per patient
+- **Deworming & Vitamin A** — dedicated recording modules
+- **Reporting & Analytics** — monthly coverage reports, dashboard statistics, Chart.js visualizations
+- **Notifications** — in-app, browser push (Web Push / VAPID), and SMS reminders via PhilSMS API
+- **Conversations & Messaging** — internal messaging between roles
+- **FAQ Management** — admin-managed FAQ entries
+- **Activity Logging** — system-wide audit trail for all key actions
+- **Progressive Web App (PWA)** — offline support via Workbox + IndexedDB (Dexie.js), installable on Android, iOS, and Desktop
+- **QR Code Login** — QR-based patient identification flow
+
+### Added — Architecture & Infrastructure
+- Backend MVC pattern with separate controllers, models, routes, services, and utils
+- Frontend feature-based folder structure with Composition API composables
+- ESLint 9.x flat config on both frontend and backend
+- SQL migrations (versioned, in `backend/migrations/`)
+- Railway deployment configuration (`railway.json`, `railway.toml`)
+- Comprehensive `docs/` folder — 44+ organized documentation files
+
+### Added — Security
+- bcrypt/Argon2 password hashing
+- Helmet.js security headers
+- CORS configuration
+- Input validation and SQL injection prevention via parameterized queries
+
+---
+
+<!-- Version History below is preserved as the original technical reference -->
 
 ---
 

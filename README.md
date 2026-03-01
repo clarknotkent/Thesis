@@ -1,10 +1,10 @@
-# Immunization Management System
+# Immunization Management System — system-prototype-v1
 
 A comprehensive web-based system for managing immunization records, vaccine inventory, and patient care workflows for barangay health centers in the Philippines.
 
-> **📌 Current Status:** Active Development - Version 1  
-> **Branch:** `master` — deployment-ready branch (stable, production-intended)
-> **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for complete update history.
+> **📌 Branch:** `system-prototype-v1` — This is the **active development branch**. All ongoing development, new features, bug fixes, experiments, and incremental changes are committed here first.
+> **⚠️ Note:** This branch may be unstable at any given time. It is not intended for production use.
+> **Latest Updates:** See [CHANGELOG.md](CHANGELOG.md) for the complete version history.
 
 ---
 
@@ -615,10 +615,10 @@ This is an academic thesis project. Contributions and inquiries are welcome:
 
 ### How to Contribute
 
-1. **Create a feature branch from master**
+1. **Branch off from `system-prototype-v1`** — All development starts here
 ```bash
-git checkout master
-git pull origin master
+git checkout system-prototype-v1
+git pull origin system-prototype-v1
 git checkout -b feature/your-feature-name
 ```
 
@@ -654,7 +654,7 @@ git commit -m "feat: Add new feature description"
 ### Contact Information
 
 - **Repository**: https://github.com/clarknotkent/Thesis
-- **Branch**: master
+- **Branch**: `system-prototype-v1` (development)
 - **Issues**: Use GitHub Issues for bug reports and feature requests
 
 ### Documentation Resources
@@ -675,8 +675,8 @@ git commit -m "feat: Add new feature description"
 ---
 
 **Project**: Immunization Management System  
-**Version**: 1  
-**Maintained by**: Clark Kent (clarknotkent), JapethDee and RobertBite15  
+**Version**: 1.0.0
+**Branch**: `system-prototype-v1` (development)
 **License**: Academic Thesis Project
 
 **For complete update history, see [CHANGELOG.md](CHANGELOG.md)**
