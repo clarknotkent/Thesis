@@ -33,6 +33,7 @@ import AdminChat from '@/views/admin/chat/AdminChat.vue'
 
 // Health Worker Views
 import HealthWorkerDashboard from '@/views/healthworker/dashboard/Dashboard.vue'
+import HealthWorkerCalendar from '@/views/healthworker/dashboard/CalendarPage.vue'
 import HealthWorkerPatients from '@/views/healthworker/patients/PatientRecords.vue'
 import AddPatient from '@/views/healthworker/patients/AddPatient.vue'
 import PatientDetail from '@/views/healthworker/PatientDetails.vue'
@@ -582,6 +583,16 @@ const routes = [
       requiresAuth: true,
       role: 'healthstaff',
       offlineAvailable: true
+    }
+  },
+  {
+    path: '/healthworker/calendar',
+    name: 'HealthWorkerCalendar',
+    component: HealthWorkerCalendar,
+    meta: {
+      title: 'Vaccination Calendar - ImmunizeMe',
+      requiresAuth: true,
+      role: 'healthstaff'
     }
   },
   {

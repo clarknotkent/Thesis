@@ -597,6 +597,25 @@ chore:    Maintenance
 
 ---
 
+### Changed — Health Worker Dashboard Redesign (2026-03-06)
+- Replaced 2x2 card grid with a new search bar (with QR scan and add record buttons)
+- Added a large card for "Today's Appointments" with total count badge and first 3 appointments of the day
+- Added a weekly calendar (Mon–Fri) below appointments card, with navigation and calendar button
+- Calendar button now navigates to a new full calendar page (placeholder)
+- Improved offline support for dashboard statistics and appointments
+- Updated routing to include `/healthworker/calendar` page
+
+### Added — New Components
+- `TodaysAppointmentsCard.vue`: Card showing today's appointments and total count
+- `WeeklyCalendarWidget.vue`: Mon–Fri calendar widget with navigation and calendar button
+- `CalendarPage.vue`: Placeholder for full calendar view
+
+### Fixed
+- Dashboard build and integration verified
+- All new features and UI changes are fully responsive and offline-ready
+
+---
+
 **Project:** Immunization Management System  
 **Version:** 1  
 **Branch:** master  
