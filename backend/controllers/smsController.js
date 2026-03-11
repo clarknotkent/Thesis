@@ -220,8 +220,85 @@ const getSMSHistory = async (req, res) => {
   }
 };
 
-const configureSMSSettings = (req, res) => {
-  res.json({ success: true, message: 'SMS settings management not implemented' });
+// Helper: ensure sms_global_settings row exists (id=1)
+const ensureGlobalSettingsRow = async () => {
+  const { data } = await supabase
+    .from('sms_global_settings')
+    .select('id')
+    .eq('id', 1)
+    .maybeSingle();
+  if (!data) {
+    await supabase
+      .from('sms_global_settings')
+      .insert({ id: 1, master_enabled: false, default_send_time: '08:00', max_per_day: 50 });
+  }
+};
+
+// GET global SMS settings (admin only)
+const getGlobalSMSSettings = async (req, res) => {
+  try {
+    await ensureGlobalSettingsRow();
+    const { data, error } = await supabase
+      .from('sms_global_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching global SMS settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch SMS settings', error: error.message });
+  }
+};
+
+// PUT global SMS settings (admin only)
+const configureSMSSettings = async (req, res) => {
+  try {
+    const { master_enabled, default_send_time, max_per_day } = req.body;
+    const actorId = (req.user && req.user.uuid) || null;
+
+    if (typeof master_enabled !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'master_enabled must be a boolean' });
+    }
+
+    await ensureGlobalSettingsRow();
+
+    const updatePayload = {
+      master_enabled,
+      updated_by: actorId,
+      updated_at: new Date().toISOString(),
+    };
+    if (default_send_time) updatePayload.default_send_time = default_send_time;
+    if (max_per_day != null) updatePayload.max_per_day = Number(max_per_day);
+
+    const { data, error } = await supabase
+      .from('sms_global_settings')
+      .upsert({ id: 1, ...updatePayload })
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Activity log
+    try {
+      await logActivity({
+        action_type: master_enabled ? ACTIVITY.SMS_TEMPLATE?.ENABLE || 'sms_settings_update' : ACTIVITY.SMS_TEMPLATE?.DISABLE || 'sms_settings_update',
+        description: `SMS master switch ${master_enabled ? 'enabled' : 'disabled'}`,
+        user_id: actorId,
+        entity_type: 'sms_global_settings',
+        entity_id: 1,
+        new_value: { master_enabled, default_send_time: data.default_send_time, max_per_day: data.max_per_day },
+      });
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      message: `SMS master switch ${master_enabled ? 'enabled' : 'disabled'} successfully`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error updating global SMS settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to update SMS settings', error: error.message });
+  }
 };
 
 const getSMSDeliveryStatus = async (req, res) => {
@@ -686,6 +763,7 @@ const runScheduledNow = async (req, res) => {
 export { sendSMSNotification,
   sendReminderNotifications,
   getSMSHistory,
+  getGlobalSMSSettings,
   configureSMSSettings,
   getSMSDeliveryStatus,
   sendBulkSMS,

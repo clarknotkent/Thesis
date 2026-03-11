@@ -23,35 +23,25 @@
     <div v-else>
       <!-- Today's Capacity Summary -->
       <div class="capacity-summary">
-        <div class="slot-summary am">
+        <div class="slot-summary daily">
           <div class="slot-header">
-            <i class="bi bi-sunrise" />
-            <span>Morning (AM)</span>
+            <i class="bi bi-calendar-range" />
+            <span>Today's Schedule</span>
           </div>
           <div class="slot-stats">
-            <span class="count">{{ todayCapacity.am_booked }}/{{ todayCapacity.am_capacity }}</span>
+            <span class="count">{{ todayCapacity.total_booked || 0 }}/{{ todayCapacity.daily_capacity || 27 }}</span>
             <div class="progress">
               <div
-                class="progress-bar bg-warning"
-                :style="{ width: amUtilization + '%' }"
+                class="progress-bar"
+                :class="dailyProgressClass"
+                :style="{ width: dailyUtilization + '%' }"
               />
             </div>
           </div>
-        </div>
-
-        <div class="slot-summary pm">
-          <div class="slot-header">
-            <i class="bi bi-sunset" />
-            <span>Afternoon (PM)</span>
-          </div>
-          <div class="slot-stats">
-            <span class="count">{{ todayCapacity.pm_booked }}/{{ todayCapacity.pm_capacity }}</span>
-            <div class="progress">
-              <div
-                class="progress-bar bg-info"
-                :style="{ width: pmUtilization + '%' }"
-              />
-            </div>
+          <div class="slot-details mt-2">
+            <small class="text-muted">
+              Buffer: {{ todayCapacity.buffer_slots ?? 1 }} slot reserved for reschedules
+            </small>
           </div>
         </div>
       </div>
@@ -77,7 +67,10 @@
             v-for="day in weekDays"
             :key="day.date"
             class="week-day"
-            :class="{ 'today': day.isToday, 'full': day.isFull }"
+            :class="[
+              { 'today': day.isToday },
+              day.heatmapClass
+            ]"
           >
             <div class="day-name">
               {{ day.dayName }}
@@ -106,23 +99,24 @@ const { getCapacityForDate, getCapacityRange } = useCapacity()
 const loading = ref(false)
 const today = new Date().toISOString().split('T')[0]
 const todayCapacity = ref({
-  am_capacity: 25,
-  pm_capacity: 25,
-  am_booked: 0,
-  pm_booked: 0
+  daily_capacity: 27,
+  total_booked: 0,
+  buffer_slots: 1,
+  bookable_capacity: 26
 })
 const weekDays = ref([])
 
-const amUtilization = computed(() => {
-  return todayCapacity.value.am_capacity > 0 
-    ? (todayCapacity.value.am_booked / todayCapacity.value.am_capacity) * 100 
-    : 0
+const dailyUtilization = computed(() => {
+  const cap = todayCapacity.value.daily_capacity || 27
+  return cap > 0 ? (todayCapacity.value.total_booked / cap) * 100 : 0
 })
 
-const pmUtilization = computed(() => {
-  return todayCapacity.value.pm_capacity > 0 
-    ? (todayCapacity.value.pm_booked / todayCapacity.value.pm_capacity) * 100 
-    : 0
+const dailyProgressClass = computed(() => {
+  const pct = dailyUtilization.value
+  if (pct >= 100) return 'bg-danger'
+  if (pct >= 80) return 'bg-warning'
+  if (pct >= 50) return 'bg-info'
+  return 'bg-success'
 })
 
 function formatDate(dateStr) {
@@ -164,8 +158,18 @@ async function loadWeekPreview() {
     
     weekDays.value = capacities.map((cap, _index) => {
       const date = new Date(cap.date)
-      const totalCapacity = cap.am_capacity + cap.pm_capacity
-      const totalBooked = cap.am_booked + cap.pm_booked
+      const totalCapacity = cap.daily_capacity || 27
+      const totalBooked = cap.total_booked ?? (cap.am_booked + cap.pm_booked) ?? 0
+      
+      // Heatmap class logic
+      let heatmapClass = 'heatmap-empty'
+      if (totalCapacity > 0 && totalBooked > 0) {
+        const pct = (totalBooked / totalCapacity) * 100
+        if (pct >= 100) heatmapClass = 'heatmap-full'
+        else if (pct >= 80) heatmapClass = 'heatmap-high'
+        else if (pct >= 50) heatmapClass = 'heatmap-moderate'
+        else heatmapClass = 'heatmap-low'
+      }
       
       return {
         date: cap.date,
@@ -174,7 +178,8 @@ async function loadWeekPreview() {
         totalCapacity,
         totalBooked,
         isFull: totalBooked >= totalCapacity,
-        isToday: cap.date === today
+        isToday: cap.date === today,
+        heatmapClass
       }
     })
   } catch (error) {
@@ -218,12 +223,9 @@ onMounted(() => {
   background: #f8f9fa;
 }
 
-.slot-summary.am {
-  border-left: 4px solid #ffc107;
-}
-
-.slot-summary.pm {
-  border-left: 4px solid #0dcaf0;
+.slot-summary.daily {
+  border-left: 4px solid #1976d2;
+  grid-column: span 2;
 }
 
 .slot-header {
@@ -291,8 +293,24 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.week-day.full {
-  background: #f8d7da;
+.week-day.heatmap-empty {
+  background: #f8f9fa;
+}
+
+.week-day.heatmap-low {
+  background: #e8f5e9;
+}
+
+.week-day.heatmap-moderate {
+  background: #fff8e1;
+}
+
+.week-day.heatmap-high {
+  background: #fbe9e7;
+}
+
+.week-day.heatmap-full {
+  background: #ffebee;
 }
 
 .week-day:hover {

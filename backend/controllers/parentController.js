@@ -176,7 +176,7 @@ const getChildDetails = async (req, res) => {
       .select('*')
       .eq('patient_id', childId)
       .eq('is_deleted', false)
-      .single();
+      .maybeSingle();
 
     // Get recent vaccinations (for summary)
     const { data: recentVaccinations } = await supabase

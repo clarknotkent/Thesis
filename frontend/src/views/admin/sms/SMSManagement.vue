@@ -48,7 +48,7 @@
                     Total Sent
                   </div>
                   <div class="h4 mb-0 fw-bold text-gray-800">
-                    1,247
+                    {{ smsStats.sent_count }}
                   </div>
                 </div>
                 <div class="col-auto">
@@ -72,7 +72,7 @@
                     Pending
                   </div>
                   <div class="h4 mb-0 fw-bold text-gray-800">
-                    23
+                    {{ smsStats.pending_count }}
                   </div>
                 </div>
                 <div class="col-auto">
@@ -96,7 +96,7 @@
                     Failed
                   </div>
                   <div class="h4 mb-0 fw-bold text-gray-800">
-                    5
+                    {{ smsStats.failed_count }}
                   </div>
                 </div>
                 <div class="col-auto">
@@ -211,19 +211,44 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/desktop/AdminLayout.vue'
 import MessageLogs from '@/features/admin/sms/components/MessageLogs.vue'
 import MessageTemplates from '@/features/admin/sms/components/MessageTemplates.vue'
 import AutoSendSettings from '@/features/admin/sms/components/AutoSendSettings.vue'
 import { useOfflineAdmin } from '@/composables/useOfflineAdmin'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
 
 // State
 const activeTab = ref('logs')
 const autoSendEnabled = ref(false)
+const smsStats = ref({
+  sent_count: 0,
+  pending_count: 0,
+  failed_count: 0,
+  total_count: 0
+})
 const { isOffline } = useOfflineAdmin()
 const { addToast } = useToast()
+
+const fetchDashboardData = async () => {
+  try {
+    // Fetch SMS statistics
+    const statsRes = await api.get('/sms/statistics')
+    const s = statsRes.data?.data?.sms || {}
+    smsStats.value.sent_count = s.sent_count || 0
+    smsStats.value.pending_count = s.pending_count || 0
+    smsStats.value.failed_count = s.failed_count || 0
+    smsStats.value.total_count = s.total_count || 0
+
+    // Fetch global SMS settings for auto-send card
+    const settingsRes = await api.get('/sms/settings')
+    autoSendEnabled.value = Boolean(settingsRes.data?.data?.master_enabled)
+  } catch (err) {
+    console.error('Failed to load SMS dashboard data:', err)
+  }
+}
 
 // NOTE: SMS management data is managed through child components
 // - SMSLogs component handles log fetching and display
@@ -237,6 +262,12 @@ const showOfflineToast = () => {
     type: 'warning'
   })
 }
+
+onMounted(() => {
+  if (!isOffline.value) {
+    fetchDashboardData()
+  }
+})
 </script>
 
 <style scoped>

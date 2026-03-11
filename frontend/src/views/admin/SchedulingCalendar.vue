@@ -159,13 +159,11 @@
                   'other-month': day.isOtherMonth,
                   'today': day.isToday,
                   'weekend': day.isWeekend,
-                  'available': day.utilizationPercent < 80 && !day.isOtherMonth,
-                  'limited': day.utilizationPercent >= 80 && day.utilizationPercent < 100 && !day.isOtherMonth,
-                  'full': day.utilizationPercent >= 100 && !day.isOtherMonth,
                   'past': day.isPast && !day.isToday
-                }
+                },
+                !day.isOtherMonth ? getHeatmapClass(day.totalBooked, day.dailyCapacity) : ''
               ]"
-              @click="!day.isOtherMonth && openDayDetails(day)"
+              @click="!day.isOtherMonth && !day.isWeekend && openDayDetails(day)"
             >
               <div class="day-number">
                 {{ day.dayNumber }}
@@ -183,25 +181,13 @@
               >
                 <div class="capacity-row">
                   <div class="capacity-item">
-                    <i class="bi bi-sunrise-fill text-warning" />
-                    <span>{{ day.amBooked }}/{{ day.amCapacity }}</span>
+                    <i class="bi bi-people-fill" :class="getHeatmapTextClass(day.totalBooked, day.dailyCapacity)" />
+                    <span>{{ day.totalBooked }}/{{ day.dailyCapacity }}</span>
                   </div>
                   <div
                     class="capacity-bar"
-                    :class="getProgressClass(day.amBooked, day.amCapacity)"
-                    :style="{ width: getSlotPercentage(day.amBooked, day.amCapacity) + '%' }"
-                  />
-                </div>
-                
-                <div class="capacity-row">
-                  <div class="capacity-item">
-                    <i class="bi bi-sunset-fill text-info" />
-                    <span>{{ day.pmBooked }}/{{ day.pmCapacity }}</span>
-                  </div>
-                  <div
-                    class="capacity-bar"
-                    :class="getProgressClass(day.pmBooked, day.pmCapacity)"
-                    :style="{ width: getSlotPercentage(day.pmBooked, day.pmCapacity) + '%' }"
+                    :class="getHeatmapBarClass(day.totalBooked, day.dailyCapacity)"
+                    :style="{ width: getSlotPercentage(day.totalBooked, day.dailyCapacity) + '%' }"
                   />
                 </div>
               </div>
@@ -211,15 +197,23 @@
           <!-- Legend -->
           <div class="calendar-legend mt-2">
             <small class="text-muted me-3">
-              <span class="legend-dot available" />
-              Available
+              <span class="legend-dot heatmap-empty" />
+              Empty
             </small>
             <small class="text-muted me-3">
-              <span class="legend-dot limited" />
-              Limited
+              <span class="legend-dot heatmap-low" />
+              Low
             </small>
             <small class="text-muted me-3">
-              <span class="legend-dot full" />
+              <span class="legend-dot heatmap-moderate" />
+              Moderate
+            </small>
+            <small class="text-muted me-3">
+              <span class="legend-dot heatmap-high" />
+              High
+            </small>
+            <small class="text-muted me-3">
+              <span class="legend-dot heatmap-full" />
               Full
             </small>
             <small class="text-muted">
@@ -269,7 +263,7 @@ const currentMonthYear = computed(() => {
 
 const monthStats = computed(() => {
   const currentMonth = calendarDays.value.filter(d => !d.isOtherMonth)
-  const totalCapacity = currentMonth.reduce((sum, d) => sum + d.totalCapacity, 0)
+  const totalCapacity = currentMonth.reduce((sum, d) => sum + d.dailyCapacity, 0)
   const totalBooked = currentMonth.reduce((sum, d) => sum + d.totalBooked, 0)
   const utilizationRate = totalCapacity > 0 ? Math.round((totalBooked / totalCapacity) * 100) : 0
   
@@ -329,17 +323,18 @@ function createDayObject(date, isOtherMonth) {
   const dateStr = `${year}-${month}-${day}`
   
   const capacity = capacityData.value.find(c => c.date === dateStr) || {
-    am_capacity: 25,
-    pm_capacity: 25,
-    am_booked: 0,
-    pm_booked: 0,
+    daily_capacity: 27,
+    total_booked: 0,
+    buffer_slots: 1,
+    bookable_capacity: 26,
     notes: null,
-    patients: [] // Include empty patients array if no capacity data
+    blocks: [],
+    patients: []
   }
   
-  const totalCapacity = capacity.am_capacity + capacity.pm_capacity
-  const totalBooked = capacity.am_booked + capacity.pm_booked
-  const utilizationPercent = totalCapacity > 0 ? (totalBooked / totalCapacity) * 100 : 0
+  const dailyCapacity = capacity.daily_capacity || 27
+  const totalBooked = capacity.total_booked ?? (capacity.am_booked + capacity.pm_booked) ?? 0
+  const utilizationPercent = dailyCapacity > 0 ? (totalBooked / dailyCapacity) * 100 : 0
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -356,15 +351,15 @@ function createDayObject(date, isOtherMonth) {
     isToday: checkDate.getTime() === today.getTime(),
     isPast: checkDate < today,
     isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-    amCapacity: capacity.am_capacity,
-    pmCapacity: capacity.pm_capacity,
-    amBooked: capacity.am_booked,
-    pmBooked: capacity.pm_booked,
+    dailyCapacity,
+    totalBooked,
+    bufferSlots: capacity.buffer_slots ?? 1,
+    bookableCapacity: capacity.bookable_capacity ?? (dailyCapacity - 1),
+    blocks: capacity.blocks || [],
     notes: capacity.notes,
-    patients: capacity.patients || [], // Include patients array for modal
+    patients: capacity.patients || [],
     utilizationPercent,
-    totalCapacity,
-    totalBooked
+    totalCapacity: dailyCapacity
   }
 }
 
@@ -372,11 +367,31 @@ function getSlotPercentage(booked, capacity) {
   return capacity > 0 ? Math.min((booked / capacity) * 100, 100) : 0
 }
 
-function getProgressClass(booked, capacity) {
-  const percent = getSlotPercentage(booked, capacity)
-  if (percent >= 100) return 'full'
-  if (percent >= 80) return 'limited'
-  return 'available'
+function getHeatmapClass(totalBooked, capacity) {
+  if (!capacity || capacity <= 0 || totalBooked <= 0) return 'heatmap-empty'
+  const pct = (totalBooked / capacity) * 100
+  if (pct >= 100) return 'heatmap-full'
+  if (pct >= 80) return 'heatmap-high'
+  if (pct >= 50) return 'heatmap-moderate'
+  return 'heatmap-low'
+}
+
+function getHeatmapBarClass(totalBooked, capacity) {
+  if (!capacity || capacity <= 0 || totalBooked <= 0) return 'bar-empty'
+  const pct = (totalBooked / capacity) * 100
+  if (pct >= 100) return 'bar-full'
+  if (pct >= 80) return 'bar-high'
+  if (pct >= 50) return 'bar-moderate'
+  return 'bar-low'
+}
+
+function getHeatmapTextClass(totalBooked, capacity) {
+  if (!capacity || capacity <= 0 || totalBooked <= 0) return 'text-muted'
+  const pct = (totalBooked / capacity) * 100
+  if (pct >= 100) return 'text-danger'
+  if (pct >= 80) return 'text-warning'
+  if (pct >= 50) return 'text-primary'
+  return 'text-success'
 }
 
 async function loadCapacityFromOffline(startDate, endDate) {
@@ -429,21 +444,18 @@ async function loadCapacityFromOffline(startDate, endDate) {
       if (!capacityByDate[date]) {
         capacityByDate[date] = {
           date,
-          am_capacity: 25,
-          pm_capacity: 25,
-          am_booked: 0,
-          pm_booked: 0,
+          daily_capacity: 27,
+          total_booked: 0,
+          buffer_slots: 1,
+          bookable_capacity: 26,
           notes: null,
-          patients: [] // Store patient details for day modal
+          blocks: [],
+          patients: []
         }
       }
       
-      // Count by time slot
-      if (schedule.time_slot === 'AM') {
-        capacityByDate[date].am_booked++
-      } else if (schedule.time_slot === 'PM') {
-        capacityByDate[date].pm_booked++
-      }
+      // Count total booked
+      capacityByDate[date].total_booked++
       
       // Get patient details from map
       const patient = patientMap[schedule.patient_id] || {}
@@ -681,7 +693,24 @@ onMounted(() => {
 }
 
 .calendar-day.weekend:not(.other-month) {
-  background: #fffaf0;
+  background: repeating-linear-gradient(
+    -45deg,
+    #f5f5f5,
+    #f5f5f5 4px,
+    #eeeeee 4px,
+    #eeeeee 8px
+  );
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.calendar-day.weekend .day-number {
+  color: #bdbdbd;
+}
+
+.calendar-day.weekend .day-content {
+  display: none;
 }
 
 .calendar-day.past:not(.today) {
@@ -694,17 +723,29 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.calendar-day.available:not(.today) {
-  border-left: 3px solid #1976d2;
+/* Heatmap color levels */
+.calendar-day.heatmap-empty:not(.today) {
+  border-left: 3px solid #e0e0e0;
 }
 
-.calendar-day.limited:not(.today) {
-  border-left: 3px solid #f59e0b;
+.calendar-day.heatmap-low:not(.today) {
+  border-left: 3px solid #4caf50;
+  background: #f1f8e9;
 }
 
-.calendar-day.full:not(.today) {
-  border-left: 3px solid #ef4444;
-  background: #fef2f2;
+.calendar-day.heatmap-moderate:not(.today) {
+  border-left: 3px solid #ff9800;
+  background: #fff8e1;
+}
+
+.calendar-day.heatmap-high:not(.today) {
+  border-left: 3px solid #f44336;
+  background: #fbe9e7;
+}
+
+.calendar-day.heatmap-full:not(.today) {
+  border-left: 3px solid #b71c1c;
+  background: #ffebee;
 }
 
 /* Day Number */
@@ -753,16 +794,24 @@ onMounted(() => {
   opacity: 0.3;
 }
 
-.capacity-bar.available {
-  background: #1976d2;
+.capacity-bar.bar-empty {
+  background: #e0e0e0;
 }
 
-.capacity-bar.limited {
-  background: #f59e0b;
+.capacity-bar.bar-low {
+  background: #4caf50;
 }
 
-.capacity-bar.full {
-  background: #ef4444;
+.capacity-bar.bar-moderate {
+  background: #ff9800;
+}
+
+.capacity-bar.bar-high {
+  background: #f44336;
+}
+
+.capacity-bar.bar-full {
+  background: #b71c1c;
 }
 
 /* Legend */
@@ -784,16 +833,24 @@ onMounted(() => {
   margin-right: 0.25rem;
 }
 
-.legend-dot.available {
-  background: #1976d2;
+.legend-dot.heatmap-empty {
+  background: #e0e0e0;
 }
 
-.legend-dot.limited {
-  background: #f59e0b;
+.legend-dot.heatmap-low {
+  background: #4caf50;
 }
 
-.legend-dot.full {
-  background: #ef4444;
+.legend-dot.heatmap-moderate {
+  background: #ff9800;
+}
+
+.legend-dot.heatmap-high {
+  background: #f44336;
+}
+
+.legend-dot.heatmap-full {
+  background: #b71c1c;
 }
 
 .legend-dot.today {

@@ -381,6 +381,7 @@
                   v-model="guardian.auto_send_enabled"
                   class="form-check-input"
                   type="checkbox"
+                  :disabled="!globalSettings.enabled"
                   @change="toggleGuardianAutoSend(guardian)"
                 >
                 <label
@@ -724,16 +725,35 @@ const paginatedGuardians = computed(() => {
 })
 
 // Methods
-const toggleGlobalAutoSend = () => {
-  if (globalSettings.value.enabled) {
-    addToast({ message: 'Global auto-send enabled. Configure individual guardians below.', type: 'success' })
-  } else {
-    addToast({ message: 'Global auto-send disabled. All automated messages stopped.', type: 'warning' })
+const toggleGlobalAutoSend = async () => {
+  try {
+    const { data } = await api.put('/sms/settings', {
+      master_enabled: globalSettings.value.enabled,
+      default_send_time: globalSettings.value.default_time,
+      max_per_day: globalSettings.value.max_per_day,
+    })
+    if (data?.success) {
+      addToast({
+        message: globalSettings.value.enabled
+          ? 'SMS master switch enabled. The scheduler will now process pending messages.'
+          : 'SMS master switch disabled. All automated SMS sending is paused.',
+        type: globalSettings.value.enabled ? 'success' : 'warning'
+      })
+    }
+    updateStats()
+  } catch (err) {
+    console.error('Failed to update global SMS settings', err)
+    globalSettings.value.enabled = !globalSettings.value.enabled // revert
+    addToast({ message: 'Failed to update SMS master switch', type: 'danger' })
   }
-  updateStats()
 }
 
 const toggleGuardianAutoSend = async (guardian) => {
+  if (!globalSettings.value.enabled) {
+    guardian.auto_send_enabled = !guardian.auto_send_enabled // revert
+    addToast({ message: 'Enable the SMS master switch first before toggling individual guardians', type: 'warning' })
+    return
+  }
   try {
     await api.put(`/sms/guardians/${guardian.id}`, { auto_send_enabled: guardian.auto_send_enabled })
     
@@ -870,6 +890,18 @@ const formatDateTime = (dateString) => {
   }
 }
 
+const fetchGlobalSettings = async () => {
+  try {
+    const { data } = await api.get('/sms/settings')
+    const s = data?.data || {}
+    globalSettings.value.enabled = Boolean(s.master_enabled)
+    globalSettings.value.default_time = s.default_send_time || '08:00'
+    globalSettings.value.max_per_day = s.max_per_day || 50
+  } catch (err) {
+    console.error('Failed to load global SMS settings', err)
+  }
+}
+
 const fetchGuardians = async () => {
   loading.value = true
   try {
@@ -889,6 +921,7 @@ const fetchGuardians = async () => {
 
 // Lifecycle
 onMounted(() => {
+  fetchGlobalSettings()
   fetchStats()
   fetchGuardians()
 })

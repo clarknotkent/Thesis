@@ -76,6 +76,18 @@ const props = defineProps({
   }
 })
 
+const TIME_BLOCK_SHORT_LABELS = {
+  '07:30': '7:30 AM',
+  '08:30': '8:30 AM',
+  '09:30': '9:30 AM',
+  '10:30': '10:30 AM',
+  '11:30': '11:30 AM',
+  '12:30': '12:30 PM',
+  '13:30': '1:30 PM',
+  '14:30': '2:30 PM',
+  '15:30': '3:30 PM'
+}
+
 const visibleAppointments = computed(() => {
   if (!props.appointments || props.appointments.length === 0) return []
 
@@ -83,23 +95,26 @@ const visibleAppointments = computed(() => {
 
   // Map appointments with display info
   const mapped = props.appointments.map(apt => {
-    const timeSlot = apt.timeSlot || apt.time_slot || 'AM'
-    const displayTime = timeSlot === 'AM' ? '7:45 AM' : '1:00 PM'
-    const isPast = timeSlot === 'AM' && now.getHours() >= 12
+    const timeSlot = apt.timeSlot || apt.time_slot || ''
+    const displayTime = TIME_BLOCK_SHORT_LABELS[timeSlot] || timeSlot || 'Scheduled'
+    // Parse hour from slot to determine if past
+    const slotHour = parseInt(timeSlot?.split(':')[0], 10) || 0
+    const isPast = slotHour > 0 && now.getHours() > slotHour
 
     return {
       ...apt,
       displayTime,
       isPast,
+      sortKey: timeSlot || '99:99',
       patientName: apt.patient?.name || 'Unknown',
       vaccineName: apt.vaccine?.name || 'Vaccination'
     }
   })
 
-  // Sort: upcoming first, then past
+  // Sort by time slot ascending, past ones last
   mapped.sort((a, b) => {
     if (a.isPast !== b.isPast) return a.isPast ? 1 : -1
-    return a.timeSlot === 'AM' ? -1 : 1
+    return a.sortKey.localeCompare(b.sortKey)
   })
 
   // Show first 3

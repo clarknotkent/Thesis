@@ -455,6 +455,12 @@ const manualReschedulePatientSchedule = async (req, res) => {
       return res.status(400).json({ message: 'patient_schedule_id and new_scheduled_date are required' });
     }
 
+    // Reject weekend dates
+    const targetDayOfWeek = new Date(p_new_scheduled_date + 'T00:00:00').getDay();
+    if (targetDayOfWeek === 0 || targetDayOfWeek === 6) {
+      return res.status(400).json({ message: 'Scheduling on weekends (Saturday/Sunday) is not allowed. Please select a weekday (Mon-Fri).' });
+    }
+
     // Fetch current row (for logging and to detect no-change)
     let beforeRow = null;
     try {

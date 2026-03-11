@@ -33,5 +33,8 @@
     "vaccination"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "overrides": {
+    "serialize-javascript": "^7.0.3"
+  }
 }

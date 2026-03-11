@@ -31,44 +31,52 @@
                 <i class="bi bi-pie-chart me-2" />
                 Capacity Overview
               </h6>
-              <div class="row g-3">
-                <div class="col-6">
-                  <div class="capacity-card am">
-                    <i class="bi bi-sunrise" />
-                    <div class="capacity-info">
-                      <div class="capacity-label">
-                        Morning
-                      </div>
-                      <div class="capacity-value">
-                        {{ day.amBooked }}/{{ day.amCapacity }}
-                      </div>
-                      <div class="progress mt-2">
-                        <div
-                          class="progress-bar bg-warning"
-                          :style="{ width: amUtilization + '%' }"
-                        />
-                      </div>
+              <div class="daily-utilization-card">
+                <div class="d-flex align-items-center gap-3">
+                  <i class="bi bi-calendar-check fs-3 text-primary" />
+                  <div class="flex-grow-1">
+                    <div class="capacity-label">
+                      Daily Utilization
                     </div>
+                    <div class="capacity-value">
+                      {{ day.totalBooked }}/{{ day.dailyCapacity || 27 }}
+                    </div>
+                    <div class="progress mt-2">
+                      <div
+                        class="progress-bar"
+                        :class="utilizationBarClass"
+                        :style="{ width: dailyUtilization + '%' }"
+                      />
+                    </div>
+                  </div>
+                  <div class="utilization-percent">
+                    {{ Math.round(dailyUtilization) }}%
                   </div>
                 </div>
-                <div class="col-6">
-                  <div class="capacity-card pm">
-                    <i class="bi bi-sunset" />
-                    <div class="capacity-info">
-                      <div class="capacity-label">
-                        Afternoon
-                      </div>
-                      <div class="capacity-value">
-                        {{ day.pmBooked }}/{{ day.pmCapacity }}
-                      </div>
-                      <div class="progress mt-2">
-                        <div
-                          class="progress-bar bg-info"
-                          :style="{ width: pmUtilization + '%' }"
-                        />
-                      </div>
-                    </div>
+              </div>
+            </div>
+
+            <!-- Time Block Breakdown -->
+            <div class="block-breakdown mb-4">
+              <h6 class="fw-bold mb-3">
+                <i class="bi bi-clock-history me-2" />
+                Time Block Breakdown
+              </h6>
+              <div class="block-list">
+                <div
+                  v-for="block in timeBlocks"
+                  :key="block.slot"
+                  class="block-item"
+                  :class="block.heatmapClass"
+                >
+                  <span class="block-time">{{ block.label }}</span>
+                  <div class="block-bar-container">
+                    <div
+                      class="block-bar"
+                      :style="{ width: block.percentage + '%' }"
+                    />
                   </div>
+                  <span class="block-count">{{ block.booked }}/{{ block.capacity }}</span>
                 </div>
               </div>
             </div>
@@ -85,21 +93,23 @@
                 <li class="nav-item">
                   <button
                     class="nav-link"
-                    :class="{ active: activeTab === 'AM' }"
-                    @click="activeTab = 'AM'"
+                    :class="{ active: activeTab === 'All' }"
+                    @click="activeTab = 'All'"
                   >
-                    <i class="bi bi-sunrise me-1" />
-                    AM ({{ day.amBooked }})
+                    All ({{ day.totalBooked || 0 }})
                   </button>
                 </li>
-                <li class="nav-item">
+                <li
+                  v-for="block in occupiedBlocks"
+                  :key="block.slot"
+                  class="nav-item"
+                >
                   <button
                     class="nav-link"
-                    :class="{ active: activeTab === 'PM' }"
-                    @click="activeTab = 'PM'"
+                    :class="{ active: activeTab === block.slot }"
+                    @click="activeTab = block.slot"
                   >
-                    <i class="bi bi-sunset me-1" />
-                    PM ({{ day.pmBooked }})
+                    {{ block.shortLabel }} ({{ block.booked }})
                   </button>
                 </li>
               </ul>
@@ -218,12 +228,71 @@ const loadingPatients = ref(false)
 const activeTab = ref('All')
 const patients = ref([])
 
-const amUtilization = computed(() => {
-  return props.day.amCapacity > 0 ? (props.day.amBooked / props.day.amCapacity) * 100 : 0
+const TIME_BLOCK_LABELS = {
+  '07:30': '7:30 – 8:30 AM',
+  '08:30': '8:30 – 9:30 AM',
+  '09:30': '9:30 – 10:30 AM',
+  '10:30': '10:30 – 11:30 AM',
+  '11:30': '11:30 AM – 12:30 PM',
+  '12:30': '12:30 – 1:30 PM',
+  '13:30': '1:30 – 2:30 PM',
+  '14:30': '2:30 – 3:30 PM',
+  '15:30': '3:30 – 4:30 PM'
+}
+
+const TIME_BLOCK_SHORT_LABELS = {
+  '07:30': '7:30 AM',
+  '08:30': '8:30 AM',
+  '09:30': '9:30 AM',
+  '10:30': '10:30 AM',
+  '11:30': '11:30 AM',
+  '12:30': '12:30 PM',
+  '13:30': '1:30 PM',
+  '14:30': '2:30 PM',
+  '15:30': '3:30 PM'
+}
+
+const ALL_SLOTS = ['07:30','08:30','09:30','10:30','11:30','12:30','13:30','14:30','15:30']
+const PATIENTS_PER_BLOCK = 3
+
+const dailyUtilization = computed(() => {
+  const cap = props.day.dailyCapacity || 27
+  return cap > 0 ? (props.day.totalBooked / cap) * 100 : 0
 })
 
-const pmUtilization = computed(() => {
-  return props.day.pmCapacity > 0 ? (props.day.pmBooked / props.day.pmCapacity) * 100 : 0
+const utilizationBarClass = computed(() => {
+  const pct = dailyUtilization.value
+  if (pct >= 100) return 'bg-danger'
+  if (pct >= 80) return 'bg-warning'
+  if (pct >= 50) return 'bg-info'
+  return 'bg-success'
+})
+
+const timeBlocks = computed(() => {
+  const blocks = props.day.blocks || []
+  return ALL_SLOTS.map(slot => {
+    const block = blocks.find(b => b.time_slot === slot)
+    const booked = block ? block.booked : 0
+    const capacity = PATIENTS_PER_BLOCK
+    const pct = (booked / capacity) * 100
+    let heatmapClass = 'block-empty'
+    if (pct >= 100) heatmapClass = 'block-full'
+    else if (pct >= 67) heatmapClass = 'block-high'
+    else if (pct > 0) heatmapClass = 'block-low'
+    return {
+      slot,
+      label: TIME_BLOCK_LABELS[slot],
+      shortLabel: TIME_BLOCK_SHORT_LABELS[slot],
+      booked,
+      capacity,
+      percentage: Math.min(pct, 100),
+      heatmapClass
+    }
+  })
+})
+
+const occupiedBlocks = computed(() => {
+  return timeBlocks.value.filter(b => b.booked > 0)
 })
 
 function formatDate(dateStr) {
@@ -307,31 +376,11 @@ watch(() => activeTab.value, () => {
   border-radius: 8px;
 }
 
-.capacity-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
+.daily-utilization-card {
+  padding: 1rem;
   background: white;
   border-radius: 8px;
-  border-left: 4px solid;
-}
-
-.capacity-card.am {
-  border-left-color: #ffc107;
-}
-
-.capacity-card.pm {
-  border-left-color: #0dcaf0;
-}
-
-.capacity-card i {
-  font-size: 1.5rem;
-  color: #6c757d;
-}
-
-.capacity-info {
-  flex: 1;
+  border: 1px solid #e9ecef;
 }
 
 .capacity-label {
@@ -344,6 +393,88 @@ watch(() => activeTab.value, () => {
   font-size: 1.25rem;
   font-weight: 600;
   color: #333;
+}
+
+.utilization-percent {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.block-breakdown {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.block-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e9ecef;
+}
+
+.block-item.block-full {
+  border-left: 3px solid #b71c1c;
+}
+
+.block-item.block-high {
+  border-left: 3px solid #f44336;
+}
+
+.block-item.block-low {
+  border-left: 3px solid #4caf50;
+}
+
+.block-item.block-empty {
+  border-left: 3px solid #e0e0e0;
+}
+
+.block-time {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #333;
+  min-width: 130px;
+}
+
+.block-bar-container {
+  flex: 1;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.block-bar {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.block-item.block-high .block-bar {
+  background: #f44336;
+}
+
+.block-item.block-full .block-bar {
+  background: #b71c1c;
+}
+
+.block-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  min-width: 30px;
+  text-align: right;
 }
 
 .patient-list-section {

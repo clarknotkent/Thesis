@@ -311,6 +311,24 @@
                   </div>
                 </div>
 
+                <!-- Quick Actions Section -->
+                <div class="info-section mb-3">
+                  <h6 class="section-title text-warning mb-3">
+                    <i class="bi bi-lightning me-2" />Quick Actions
+                  </h6>
+                  <button
+                    class="btn btn-outline-warning btn-sm w-100 mb-2"
+                    :disabled="isOffline || quickRescheduling"
+                    @click="openQuickReschedule"
+                  >
+                    <i class="bi bi-calendar-plus me-1" />
+                    {{ quickRescheduling ? 'Rescheduling...' : 'Quick Reschedule' }}
+                  </button>
+                  <small class="text-muted d-block">
+                    Auto-assigns the next earliest missed/overdue appointment to the next available slot.
+                  </small>
+                </div>
+
                 <!-- QR Code Section -->
                 <div class="text-center">
                   <h6 class="section-title text-info mb-3">
@@ -386,6 +404,7 @@ const lastVaccination = ref(null)
 const activeTab = ref('info')
 const isCaching = ref(false)
 const qrCanvas = ref(null)
+const quickRescheduling = ref(false)
 
 const patientId = computed(() => route.params.id)
 
@@ -433,6 +452,78 @@ const tagClass = computed(() => {
 
 const goBack = () => {
   router.back()
+}
+
+const openQuickReschedule = async () => {
+  quickRescheduling.value = true
+  try {
+    // 1. Fetch patient's schedules to find the next overdue/missed one
+    const response = await api.get(`/patients/${patientId.value}`)
+    const pd = response.data?.data || response.data || {}
+    const schedules = pd.nextScheduledVaccinations || pd.scheduled_vaccinations || pd.schedules || []
+    
+    if (!Array.isArray(schedules) || schedules.length === 0) {
+      addToast({ title: 'Info', message: 'No scheduled vaccinations to reschedule', type: 'info' })
+      return
+    }
+    
+    // Find the earliest overdue/missed schedule
+    const today = new Date().toISOString().split('T')[0]
+    const overdueSchedule = schedules
+      .filter(s => {
+        const status = (s.status || '').toLowerCase()
+        const date = s.scheduled_date || s.scheduledDate
+        return (status === 'overdue' || status === 'missed' || status === 'due' || status === 'scheduled') 
+          && date && date <= today
+          && !status.includes('completed') && !status.includes('administered')
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.scheduled_date || a.scheduledDate)
+        const dateB = new Date(b.scheduled_date || b.scheduledDate)
+        return dateA - dateB
+      })[0]
+    
+    if (!overdueSchedule) {
+      addToast({ title: 'Info', message: 'No overdue or missed appointments found to reschedule', type: 'info' })
+      return
+    }
+    
+    // 2. Find next available slot via the capacity API
+    const { findNextAvailable } = await import('@/composables/useCapacity.js').then(m => m.useCapacity())
+    const nextSlot = await findNextAvailable(today)
+    
+    if (!nextSlot || !nextSlot.date) {
+      addToast({ title: 'Error', message: 'No available slots found within the next 90 days', type: 'error' })
+      return
+    }
+    
+    // 3. Call manual-reschedule to move the appointment
+    const scheduleId = overdueSchedule.patient_schedule_id || overdueSchedule.patientScheduleId || overdueSchedule.schedule_id
+    const payload = {
+      p_patient_schedule_id: scheduleId,
+      p_new_scheduled_date: nextSlot.date,
+      p_time_slot: nextSlot.slot || null,
+      cascade: true,
+      debug: false
+    }
+    
+    await api.post('/immunizations/manual-reschedule', payload)
+    
+    const vaccineName = overdueSchedule.antigen_name || overdueSchedule.vaccine_name || 'Vaccine'
+    addToast({
+      title: 'Rescheduled',
+      message: `${vaccineName} moved to ${nextSlot.date} at ${nextSlot.slot || 'auto'}`,
+      type: 'success'
+    })
+    
+    // Switch to scheduled tab to show updated schedule
+    activeTab.value = 'scheduled'
+  } catch (err) {
+    console.error('Quick reschedule failed:', err)
+    addToast({ title: 'Error', message: err.response?.data?.message || 'Failed to reschedule', type: 'error' })
+  } finally {
+    quickRescheduling.value = false
+  }
 }
 
 const formatForInput = (dateString) => {

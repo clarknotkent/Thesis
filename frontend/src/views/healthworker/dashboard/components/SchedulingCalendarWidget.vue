@@ -86,13 +86,17 @@
         v-for="day in calendarDays"
         :key="day.dateKey"
         class="calendar-day"
-        :class="{
-          'other-month': day.isOtherMonth,
-          'today': day.isToday,
-          'has-bookings': day.totalBooked > 0,
-          'clickable': !day.isOtherMonth
-        }"
-        @click="openDayDetails(day)"
+        :class="[
+          {
+            'other-month': day.isOtherMonth,
+            'today': day.isToday,
+            'has-bookings': day.totalBooked > 0,
+            'clickable': !day.isOtherMonth && !day.isWeekend,
+            'weekend': day.isWeekend
+          },
+          !day.isOtherMonth && !day.isWeekend ? getHeatmapClass(day.totalBooked, day.dailyCapacity) : ''
+        ]"
+        @click="!day.isOtherMonth && !day.isWeekend && openDayDetails(day)"
       >
         <div class="day-number">
           {{ day.dayNumber }}
@@ -101,22 +105,7 @@
           v-if="!day.isOtherMonth && day.totalBooked > 0"
           class="day-bookings"
         >
-          <div class="booking-slots">
-            <span
-              v-if="day.amBooked > 0"
-              class="slot-badge am"
-            >
-              <i class="bi bi-sunrise" />
-              {{ day.amBooked }}
-            </span>
-            <span
-              v-if="day.pmBooked > 0"
-              class="slot-badge pm"
-            >
-              <i class="bi bi-sunset" />
-              {{ day.pmBooked }}
-            </span>
-          </div>
+          <span class="booking-count">{{ day.totalBooked }}</span>
         </div>
       </div>
     </div>
@@ -220,16 +209,16 @@ function createDayObject(date, isOtherMonth) {
   const dateStr = `${year}-${month}-${day}`
   
   const capacity = capacityData.value.find(c => c.date === dateStr) || {
-    am_capacity: 25,
-    pm_capacity: 25,
-    am_booked: 0,
-    pm_booked: 0,
+    daily_capacity: 27,
+    total_booked: 0,
+    buffer_slots: 1,
     notes: null,
+    blocks: [],
     patients: []
   }
   
-  const totalCapacity = capacity.am_capacity + capacity.pm_capacity
-  const totalBooked = capacity.am_booked + capacity.pm_booked
+  const dailyCapacity = capacity.daily_capacity || 27
+  const totalBooked = capacity.total_booked ?? 0
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -242,14 +231,14 @@ function createDayObject(date, isOtherMonth) {
     dayNumber: date.getDate(),
     isOtherMonth,
     isToday: checkDate.getTime() === today.getTime(),
-    amCapacity: capacity.am_capacity,
-    pmCapacity: capacity.pm_capacity,
-    amBooked: capacity.am_booked,
-    pmBooked: capacity.pm_booked,
+    isWeekend: date.getDay() === 0 || date.getDay() === 6,
+    dailyCapacity,
+    totalBooked,
+    bufferSlots: capacity.buffer_slots ?? 1,
+    blocks: capacity.blocks || [],
     notes: capacity.notes,
     patients: capacity.patients || [],
-    totalCapacity,
-    totalBooked
+    totalCapacity: dailyCapacity
   }
 }
 
@@ -300,20 +289,16 @@ async function loadCapacityFromOffline(startDate, endDate) {
       if (!capacityByDate[date]) {
         capacityByDate[date] = {
           date,
-          am_capacity: 25,
-          pm_capacity: 25,
-          am_booked: 0,
-          pm_booked: 0,
+          daily_capacity: 27,
+          total_booked: 0,
+          buffer_slots: 1,
           notes: null,
+          blocks: [],
           patients: []
         }
       }
       
-      if (schedule.time_slot === 'AM') {
-        capacityByDate[date].am_booked++
-      } else if (schedule.time_slot === 'PM') {
-        capacityByDate[date].pm_booked++
-      }
+      capacityByDate[date].total_booked++
       
       const patient = patientMap[schedule.patient_id] || {}
       
@@ -425,6 +410,15 @@ function openDayDetails(day) {
   if (day.isOtherMonth) return
   selectedDay.value = day
   showDayModal.value = true
+}
+
+function getHeatmapClass(totalBooked, capacity) {
+  if (!capacity || capacity <= 0 || totalBooked <= 0) return 'heatmap-empty'
+  const pct = (totalBooked / capacity) * 100
+  if (pct >= 100) return 'heatmap-full'
+  if (pct >= 80) return 'heatmap-high'
+  if (pct >= 50) return 'heatmap-moderate'
+  return 'heatmap-low'
 }
 
 function closeDayModal() {
@@ -610,6 +604,27 @@ onMounted(() => {
   background: #fafbfc;
 }
 
+.calendar-day.weekend:not(.other-month) {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f5f5f5,
+    #f5f5f5 4px,
+    #eeeeee 4px,
+    #eeeeee 8px
+  );
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.calendar-day.weekend .day-number {
+  color: #bdbdbd;
+}
+
+.calendar-day.weekend .day-bookings {
+  display: none;
+}
+
 .calendar-day.today {
   background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   border: 2px solid #22c55e;
@@ -624,6 +639,26 @@ onMounted(() => {
 
 .calendar-day.has-bookings {
   background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+}
+
+.calendar-day.heatmap-empty {
+  background: #fafbfc;
+}
+
+.calendar-day.heatmap-low {
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+}
+
+.calendar-day.heatmap-moderate {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+}
+
+.calendar-day.heatmap-high {
+  background: linear-gradient(135deg, #ffebee 0%, #ffffff 100%);
+}
+
+.calendar-day.heatmap-full {
+  background: linear-gradient(135deg, #ffcdd2 0%, #ffffff 100%);
 }
 
 .day-number {
@@ -642,41 +677,27 @@ onMounted(() => {
   margin-top: 0.375rem;
 }
 
-.booking-slots {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.booking-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
 }
 
-.slot-badge {
-  font-size: 0.7rem;
-  padding: 3px 6px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
+.calendar-day.heatmap-moderate .booking-count {
+  background: rgba(255, 152, 0, 0.15);
+  color: #e65100;
 }
 
-.slot-badge:hover {
-  transform: translateX(2px);
+.calendar-day.heatmap-high .booking-count {
+  background: rgba(244, 67, 54, 0.15);
+  color: #c62828;
 }
 
-.slot-badge.am {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffeb99 100%);
-  color: #856404;
-  border: 1px solid #ffc107;
-}
-
-.slot-badge.pm {
-  background: linear-gradient(135deg, #cfe2ff 0%, #9ec5fe 100%);
-  color: #084298;
-  border: 1px solid #0dcaf0;
-}
-
-.slot-badge i {
-  font-size: 0.65rem;
+.calendar-day.heatmap-full .booking-count {
+  background: rgba(183, 28, 28, 0.2);
+  color: #b71c1c;
 }
 </style>

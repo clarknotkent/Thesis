@@ -4,6 +4,7 @@ import { authenticateRequest, authorizeRole, checkUserMapping } from '../middlew
 import { sendSMSNotification,
   sendReminderNotifications,
   getSMSHistory,
+  getGlobalSMSSettings,
   configureSMSSettings,
   getSMSDeliveryStatus,
   sendBulkSMS,
@@ -26,6 +27,9 @@ router.post('/reminders', authenticateRequest, checkUserMapping, authorizeRole([
 
 // GET /api/sms/history - Get SMS history
 router.get('/history', authenticateRequest, checkUserMapping, authorizeRole(['admin','health_worker']), getSMSHistory);
+
+// GET /api/sms/settings - Get global SMS settings (admin only)
+router.get('/settings', authenticateRequest, checkUserMapping, authorizeRole(['admin']), getGlobalSMSSettings);
 
 // PUT /api/sms/settings - Configure SMS settings
 router.put('/settings', authenticateRequest, checkUserMapping, authorizeRole(['admin']), configureSMSSettings);

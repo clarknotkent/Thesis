@@ -174,14 +174,17 @@
                         class="form-select form-select-sm"
                       >
                         <option value="">
-                          Any Time
+                          Auto-assign
                         </option>
-                        <option value="AM">
-                          Morning (AM)
-                        </option>
-                        <option value="PM">
-                          Afternoon (PM)
-                        </option>
+                        <option value="07:30">7:30 – 8:30 AM</option>
+                        <option value="08:30">8:30 – 9:30 AM</option>
+                        <option value="09:30">9:30 – 10:30 AM</option>
+                        <option value="10:30">10:30 – 11:30 AM</option>
+                        <option value="11:30">11:30 AM – 12:30 PM</option>
+                        <option value="12:30">12:30 – 1:30 PM</option>
+                        <option value="13:30">1:30 – 2:30 PM</option>
+                        <option value="14:30">2:30 – 3:30 PM</option>
+                        <option value="15:30">3:30 – 4:30 PM</option>
                       </select>
                     </div>
                   </div>
@@ -214,7 +217,7 @@
                       class="badge bg-secondary ms-1"
                       style="font-size: 0.65rem;"
                     >
-                      {{ dose.timeSlot }}
+                      {{ formatTimeSlotLabel(dose.timeSlot) }}
                     </span>
                   </div>
                   <div
@@ -465,6 +468,18 @@ const saveEditNormalMode = async (group) => {
       return (!!newISO && newISO !== origISO) || slotChanged
     })
 
+  // Validate no weekend dates before sending to server
+  const weekendDose = changedQueue.find(d => {
+    const dt = new Date(formatDateForAPI(d.scheduledDate) + 'T00:00:00')
+    const dow = dt.getDay()
+    return dow === 0 || dow === 6
+  })
+  if (weekendDose) {
+    addToast('Scheduling on weekends is not allowed. Please select a weekday (Mon-Fri).', 'error')
+    saving.value = false
+    return
+  }
+
   // Process sequentially (dose 1 then 2 then 3), to respect server rule checks order
   let successCount = 0
   for (const dose of changedQueue) {
@@ -545,6 +560,17 @@ const saveEditDemoMode = async (group) => {
       const slotChanged = d.timeSlot !== d._originalSlot
       return (!!newISO && newISO !== origISO) || slotChanged
     })
+
+  // Validate no weekend dates in demo mode
+  const weekendDose = changedQueue.find(d => {
+    const dt = new Date(formatDateForAPI(d.scheduledDate) + 'T00:00:00')
+    const dow = dt.getDay()
+    return dow === 0 || dow === 6
+  })
+  if (weekendDose) {
+    addToast('Scheduling on weekends is not allowed. Please select a weekday (Mon-Fri).', 'error')
+    return
+  }
 
   let successCount = 0
   for (const dose of changedQueue) {
@@ -695,6 +721,22 @@ const formatStatus = (status) => {
   return status.split('_').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ')
+}
+
+const TIME_BLOCK_SHORT_LABELS = {
+  '07:30': '7:30 AM',
+  '08:30': '8:30 AM',
+  '09:30': '9:30 AM',
+  '10:30': '10:30 AM',
+  '11:30': '11:30 AM',
+  '12:30': '12:30 PM',
+  '13:30': '1:30 PM',
+  '14:30': '2:30 PM',
+  '15:30': '3:30 PM',
+}
+
+const formatTimeSlotLabel = (slot) => {
+  return TIME_BLOCK_SHORT_LABELS[slot] || slot
 }
 
 const fetchSchedules = async () => {

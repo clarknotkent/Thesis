@@ -47,6 +47,34 @@ async function fetchDueScheduled(limit = BATCH_LIMIT) {
 
 async function processDueScheduledSMS({ limit = BATCH_LIMIT } = {}) {
   const startedAt = new Date();
+
+  // Check master switch before processing
+  try {
+    const { data: gs } = await supabase
+      .from('sms_global_settings')
+      .select('master_enabled')
+      .eq('id', 1)
+      .maybeSingle();
+    if (!gs || !gs.master_enabled) {
+      return {
+        startedAt,
+        finishedAt: new Date(),
+        counts: { picked: 0, sent: 0, failed: 0 },
+        results: [],
+        skipped: 'master-disabled',
+      };
+    }
+  } catch (settingsErr) {
+    console.warn('[SMS Scheduler] Could not check master switch, skipping run:', settingsErr?.message || settingsErr);
+    return {
+      startedAt,
+      finishedAt: new Date(),
+      counts: { picked: 0, sent: 0, failed: 0 },
+      results: [],
+      skipped: 'master-check-failed',
+    };
+  }
+
   const due = await fetchDueScheduled(limit);
   if (due.length > 0) {
     console.log(`[SMS Scheduler] Found ${due.length} due scheduled sms_logs -> ${due.map(d => d.id).join(', ')}`);

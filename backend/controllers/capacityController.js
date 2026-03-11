@@ -1,6 +1,7 @@
 import capacityModel from '../models/capacityModel.js';
 import { getSupabaseForRequest } from '../utils/supabaseClient.js';
 import { getActorId } from '../utils/actor.js';
+import { TIME_BLOCKS, PATIENTS_PER_BLOCK, DAILY_CAPACITY } from '../constants/schedulingConfig.js';
 
 /**
  * GET /api/capacity/date/:date
@@ -75,42 +76,48 @@ export const getCapacityRange = async (req, res) => {
   }
 };/**
  * PUT /api/capacity/limits
- * Update capacity limits for a specific date
+ * Update capacity limits for a specific date.
+ * Accepts { date, dailyCapacity, bufferSlots } or legacy { date, amCapacity, pmCapacity }
  */
 export const updateCapacityLimits = async (req, res) => {
   try {
-    const { date, amCapacity, pmCapacity } = req.body;
+    const { date, dailyCapacity, bufferSlots, amCapacity, pmCapacity } = req.body;
     const supabase = getSupabaseForRequest(req);
     const userId = getActorId(req);
 
-    if (!date || amCapacity === undefined || pmCapacity === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'Date, amCapacity, and pmCapacity are required'
-      });
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'Date is required' });
     }
 
-    // Validate capacities are positive integers
-    if (!Number.isInteger(amCapacity) || !Number.isInteger(pmCapacity) ||
-        amCapacity < 0 || pmCapacity < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Capacities must be non-negative integers'
-      });
-    }
+    // Support legacy API: convert amCapacity+pmCapacity to dailyCapacity
+    const legacyCapacity = (amCapacity != null || pmCapacity != null) ? ((amCapacity ?? 0) + (pmCapacity ?? 0)) : null;
+    const effectiveCapacity = (dailyCapacity ?? legacyCapacity) || DAILY_CAPACITY;
+    const effectiveBuffer = bufferSlots ?? 1;
 
-    const updated = await capacityModel.updateCapacityLimits(
-      date,
-      amCapacity,
-      pmCapacity,
-      userId,
-      supabase
-    );
+    // Ensure config row exists
+    await capacityModel.getCapacityForDate(date, supabase);
+
+    const { data, error } = await supabase
+      .from('daily_capacity_config')
+      .update({
+        daily_capacity: effectiveCapacity,
+        buffer_slots: effectiveBuffer,
+        am_capacity: effectiveCapacity,
+        pm_capacity: 0,
+        updated_at: new Date().toISOString(),
+        updated_by: userId
+      })
+      .eq('date', date)
+      .eq('is_deleted', false)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     res.json({
       success: true,
       message: 'Capacity limits updated successfully',
-      data: updated
+      data
     });
   } catch (error) {
     console.error('[capacityController.updateCapacityLimits] error:', error);
@@ -234,7 +241,7 @@ export const findNextAvailable = async (req, res) => {
 
 /**
  * GET /api/capacity/patients/:date/:slot?
- * Get list of patients scheduled for a date (and optionally a specific slot)
+ * Get list of patients scheduled for a date (and optionally a specific time block)
  */
 export const getScheduledPatients = async (req, res) => {
   try {
@@ -248,16 +255,15 @@ export const getScheduledPatients = async (req, res) => {
       });
     }
 
-    if (slot && !['AM', 'PM'].includes(slot.toUpperCase())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Slot must be either AM or PM'
-      });
+    // Accept block times (e.g. '07:30'), legacy AM/PM, or nothing for ALL
+    let blockFilter = null;
+    if (slot && slot.toUpperCase() !== 'ALL') {
+      blockFilter = slot;
     }
 
     const patients = await capacityModel.getScheduledPatients(
       date,
-      slot ? slot.toUpperCase() : null,
+      blockFilter,
       supabase
     );
 
@@ -353,5 +359,110 @@ export const getCapacityStats = async (req, res) => {
       message: 'Failed to get capacity statistics',
       error: error.message
     });
+  }
+};
+
+/**
+ * GET /api/capacity/blocks/:date
+ * Get per-block counts for a specific date.
+ */
+export const getBlockCounts = async (req, res) => {
+  try {
+    const { date } = req.params;
+    const supabase = getSupabaseForRequest(req);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    const counts = await capacityModel.getBlockCounts(date, supabase);
+
+    res.json({
+      success: true,
+      data: {
+        date,
+        blocks: TIME_BLOCKS.map(b => ({
+          time: b,
+          booked: counts[b] || 0,
+          capacity: PATIENTS_PER_BLOCK
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('[capacityController.getBlockCounts] error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get block counts', error: error.message });
+  }
+};
+
+/**
+ * POST /api/capacity/quick-reschedule
+ * Quick reschedule: verifies target block has < 3 active appointments, then moves the schedule.
+ */
+export const quickReschedule = async (req, res) => {
+  try {
+    const { patientScheduleId, targetDate, targetBlock } = req.body;
+    const supabase = getSupabaseForRequest(req);
+    const userId = getActorId(req);
+
+    if (!patientScheduleId || !targetDate) {
+      return res.status(400).json({ success: false, message: 'patientScheduleId and targetDate are required' });
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      return res.status(400).json({ success: false, message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Validate operating day
+    const dayOfWeek = new Date(targetDate).getDay();
+    if (![1, 2, 3, 4, 5].includes(dayOfWeek)) {
+      return res.status(400).json({ success: false, message: 'Target date must be a weekday (Mon-Fri)' });
+    }
+
+    // Auto-select block if not provided
+    let block = targetBlock;
+    if (!block) {
+      const counts = await capacityModel.getBlockCounts(targetDate, supabase);
+      // For reschedules, allow using the buffer slot
+      const { findNextAvailableBlock: findBlock } = await import('../constants/schedulingConfig.js');
+      block = findBlock(counts, true); // isReschedule = true
+      if (!block) {
+        return res.status(409).json({ success: false, message: 'Target date is fully booked (no blocks available)' });
+      }
+    }
+
+    // Validate block has room (< 3)
+    const counts = await capacityModel.getBlockCounts(targetDate, supabase);
+    if ((counts[block] || 0) >= PATIENTS_PER_BLOCK) {
+      return res.status(409).json({
+        success: false,
+        message: `Time block ${block} already has ${PATIENTS_PER_BLOCK} patients. Choose a different block.`
+      });
+    }
+
+    // Perform the reschedule
+    const { data, error } = await supabase
+      .from('patientschedule')
+      .update({
+        scheduled_date: targetDate,
+        time_slot: block,
+        status: 'Rescheduled',
+        updated_at: new Date().toISOString(),
+        updated_by: userId
+      })
+      .eq('patient_schedule_id', patientScheduleId)
+      .eq('is_deleted', false)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: `Rescheduled to ${targetDate} block ${block}`,
+      data
+    });
+  } catch (error) {
+    console.error('[capacityController.quickReschedule] error:', error);
+    res.status(500).json({ success: false, message: 'Failed to quick-reschedule', error: error.message });
   }
 };

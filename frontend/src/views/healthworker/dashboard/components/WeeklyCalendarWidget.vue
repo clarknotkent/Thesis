@@ -66,6 +66,7 @@
         <div
           v-if="day.totalBooked > 0"
           class="day-dot"
+          :class="getDotClass(day.totalBooked, day.dailyCapacity)"
         />
       </div>
     </div>
@@ -120,8 +121,8 @@ const weekDays = computed(() => {
     const dateStr = formatDate(date)
 
     const capacity = capacityData.value.find(c => c.date === dateStr) || {
-      am_booked: 0,
-      pm_booked: 0
+      total_booked: 0,
+      daily_capacity: 27
     }
 
     days.push({
@@ -130,7 +131,8 @@ const weekDays = computed(() => {
       dayName: dayNames[i],
       dayNumber: date.getDate(),
       isToday: date.getTime() === today.getTime(),
-      totalBooked: capacity.am_booked + capacity.pm_booked
+      totalBooked: capacity.total_booked ?? 0,
+      dailyCapacity: capacity.daily_capacity || 27
     })
   }
   return days
@@ -151,13 +153,9 @@ async function loadCapacityFromOffline(start, end) {
     schedules.forEach(schedule => {
       const date = schedule.scheduled_date
       if (!capacityByDate[date]) {
-        capacityByDate[date] = { date, am_booked: 0, pm_booked: 0 }
+        capacityByDate[date] = { date, total_booked: 0, daily_capacity: 27 }
       }
-      if (schedule.time_slot === 'AM') {
-        capacityByDate[date].am_booked++
-      } else if (schedule.time_slot === 'PM') {
-        capacityByDate[date].pm_booked++
-      }
+      capacityByDate[date].total_booked++
     })
     return Object.values(capacityByDate)
   } catch {
@@ -205,6 +203,15 @@ function nextWeek() {
 
 function openFullCalendar() {
   router.push({ name: 'HealthWorkerCalendar' })
+}
+
+function getDotClass(totalBooked, capacity) {
+  if (!capacity || capacity <= 0 || totalBooked <= 0) return 'dot-empty'
+  const pct = (totalBooked / capacity) * 100
+  if (pct >= 100) return 'dot-full'
+  if (pct >= 80) return 'dot-high'
+  if (pct >= 50) return 'dot-moderate'
+  return 'dot-low'
 }
 
 onMounted(() => {
@@ -338,6 +345,22 @@ onMounted(() => {
   height: 6px;
   border-radius: 50%;
   background: #22c55e;
+}
+
+.day-dot.dot-low {
+  background: #4caf50;
+}
+
+.day-dot.dot-moderate {
+  background: #ff9800;
+}
+
+.day-dot.dot-high {
+  background: #f44336;
+}
+
+.day-dot.dot-full {
+  background: #b71c1c;
 }
 
 .week-day.today .day-dot {

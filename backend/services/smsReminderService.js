@@ -155,6 +155,21 @@ async function scheduleReminderLogsForPatientSchedule(patientScheduleId, client)
   const supabase = withClient(client);
   const OFFSETS = getReminderOffsets();
 
+  // Check global master switch - skip if disabled
+  try {
+    const { data: gs } = await supabase
+      .from('sms_global_settings')
+      .select('master_enabled')
+      .eq('id', 1)
+      .maybeSingle();
+    if (!gs || !gs.master_enabled) {
+      return { created: 0, skipped: 'master-disabled' };
+    }
+  } catch (settingsErr) {
+    console.warn('[scheduleReminder] Could not check master switch, skipping:', settingsErr?.message || settingsErr);
+    return { created: 0, skipped: 'master-check-failed' };
+  }
+
   // 1) Load the triggering schedule
   const { data: triggerSched, error: sErr } = await supabase
     .from('patientschedule')
@@ -449,6 +464,20 @@ async function sendRescheduleNotification(patientId, scheduleIds, client) {
   const supabase = withClient(client);
 
   try {
+    // Check global master switch - skip if disabled
+    try {
+      const { data: gs } = await supabase
+        .from('sms_global_settings')
+        .select('master_enabled')
+        .eq('id', 1)
+        .maybeSingle();
+      if (!gs || !gs.master_enabled) {
+        return { sent: 0, reason: 'master-disabled' };
+      }
+    } catch (_) {
+      return { sent: 0, reason: 'master-check-failed' };
+    }
+
     // Load patient info and phone
     const patient = await getPatientSmsInfo(patientId, supabase);
     const normalizedPhone = patient?.guardian_contact_number ? smsService.formatPhoneNumber(patient.guardian_contact_number) : null;

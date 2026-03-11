@@ -44,14 +44,14 @@ export function useCapacity() {
   /**
    * Update capacity limits for a date
    */
-  const updateCapacityLimits = async (date, amCapacity, pmCapacity, notes = null) => {
+  const updateCapacityLimits = async (date, dailyCapacity, bufferSlots = 1, notes = null) => {
     loading.value = true
     error.value = null
     try {
       const response = await api.put('/capacity/limits', {
         date,
-        amCapacity,
-        pmCapacity
+        dailyCapacity,
+        bufferSlots
       })
       
       // Update notes separately if provided

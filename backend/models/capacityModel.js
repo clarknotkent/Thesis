@@ -1,4 +1,13 @@
 import serviceSupabase from '../db.js';
+import {
+  TIME_BLOCKS,
+  PATIENTS_PER_BLOCK,
+  DAILY_CAPACITY,
+  BUFFER_SLOTS,
+  BOOKABLE_CAPACITY,
+  isOperatingDay,
+  findNextAvailableBlock
+} from '../constants/schedulingConfig.js';
 
 function withClient(client) {
   return client || serviceSupabase;
@@ -25,42 +34,77 @@ const capacityModel = {
   },
 
   /**
-   * Get capacity for a date range (for calendar view)
+   * Get capacity for a date range (for calendar view).
+   * Returns daily capacity + total booked + per-block breakdown.
    */
   getCapacityRange: async (startDate, endDate, client) => {
     try {
       const supabase = withClient(client);
-      const { data, error } = await supabase
+
+      // Fetch config rows
+      const { data: configs, error: cfgErr } = await supabase
         .from('daily_capacity_config')
         .select('*')
         .gte('date', startDate)
         .lte('date', endDate)
         .eq('is_deleted', false)
         .order('date', { ascending: true });
+      if (cfgErr) throw cfgErr;
 
-      if (error) throw error;
+      // Fetch all active schedules in range for block counts
+      const { data: schedules, error: schErr } = await supabase
+        .from('patientschedule')
+        .select('scheduled_date, time_slot')
+        .gte('scheduled_date', startDate)
+        .lte('scheduled_date', endDate)
+        .eq('is_deleted', false)
+        .not('status', 'in', '(Completed,Cancelled)');
+      if (schErr) throw schErr;
 
-      // Fill in missing dates with defaults
+      // Build per-date block counts
+      const dateBlockCounts = {};
+      const dateTotals = {};
+      (schedules || []).forEach(s => {
+        const d = s.scheduled_date;
+        if (!dateBlockCounts[d]) dateBlockCounts[d] = {};
+        if (!dateTotals[d]) dateTotals[d] = 0;
+        const block = s.time_slot || '07:30';
+        dateBlockCounts[d][block] = (dateBlockCounts[d][block] || 0) + 1;
+        dateTotals[d]++;
+      });
+
+      const existingDates = new Map((configs || []).map(d => [d.date, d]));
+
       const result = [];
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const existingDates = new Map(data.map(d => [d.date, d]));
 
       for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
         const dateStr = date.toISOString().split('T')[0];
-        if (existingDates.has(dateStr)) {
-          result.push(existingDates.get(dateStr));
-        } else {
-          // Create default entry
-          result.push({
-            date: dateStr,
-            am_capacity: 25,
-            pm_capacity: 25,
-            am_booked: 0,
-            pm_booked: 0,
-            notes: null
-          });
-        }
+        const cfg = existingDates.get(dateStr);
+        const totalBooked = dateTotals[dateStr] || 0;
+        const blockCounts = dateBlockCounts[dateStr] || {};
+        const capacity = cfg?.daily_capacity || DAILY_CAPACITY;
+        const buffer = cfg?.buffer_slots ?? BUFFER_SLOTS;
+
+        result.push({
+          date: dateStr,
+          daily_capacity: capacity,
+          total_booked: totalBooked,
+          buffer_slots: buffer,
+          bookable_capacity: capacity - buffer,
+          notes: cfg?.notes || null,
+          blocks: TIME_BLOCKS.map(b => ({
+            time: b,
+            booked: blockCounts[b] || 0,
+            capacity: PATIENTS_PER_BLOCK
+          })),
+          // Legacy fields for backward compatibility
+          am_capacity: capacity,
+          pm_capacity: 0,
+          am_booked: totalBooked,
+          pm_booked: 0
+        });
       }
 
       return result;
@@ -132,8 +176,8 @@ const capacityModel = {
   },
 
   /**
-   * Get available time slot for a specific date
-   * Returns 'AM', 'PM', or null if both full
+   * Get available time block for a specific date.
+   * Returns a block time string (e.g. '07:30') or null if full.
    */
   getAvailableSlot: async (date, client) => {
     try {
@@ -151,7 +195,36 @@ const capacityModel = {
   },
 
   /**
-   * Find next available date/slot starting from a given date
+   * Get block-level counts for a date (how many patients per block).
+   */
+  getBlockCounts: async (date, client) => {
+    try {
+      const supabase = withClient(client);
+      const { data, error } = await supabase
+        .from('patientschedule')
+        .select('time_slot')
+        .eq('scheduled_date', date)
+        .eq('is_deleted', false)
+        .not('status', 'in', '(Completed,Cancelled)');
+
+      if (error) throw error;
+
+      const counts = {};
+      TIME_BLOCKS.forEach(b => { counts[b] = 0; });
+      (data || []).forEach(s => {
+        const block = s.time_slot || '07:30';
+        counts[block] = (counts[block] || 0) + 1;
+      });
+      return counts;
+    } catch (error) {
+      console.error('Error getting block counts:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Find next available date/block starting from a given date.
+   * Skips weekends (non-operating days).
    */
   findNextAvailableSlot: async (startDate, maxDaysAhead = 90, client) => {
     try {
@@ -160,16 +233,21 @@ const capacityModel = {
       for (let i = 0; i < maxDaysAhead; i++) {
         const checkDate = new Date(start);
         checkDate.setDate(start.getDate() + i);
+
+        // Skip non-operating days (weekends)
+        if (!isOperatingDay(checkDate.getDay())) continue;
+
         const dateStr = checkDate.toISOString().split('T')[0];
 
-        const slot = await capacityModel.getAvailableSlot(dateStr, client);
-        if (slot) {
-          return { date: dateStr, slot };
+        const blockCounts = await capacityModel.getBlockCounts(dateStr, client);
+        const block = findNextAvailableBlock(blockCounts);
+        if (block) {
+          return { date: dateStr, slot: block };
         }
       }
 
-      // If no slot found, return the start date with AM as fallback
-      return { date: startDate, slot: 'AM' };
+      // Fallback
+      return { date: startDate, slot: '07:30' };
     } catch (error) {
       console.error('Error finding next available slot:', error);
       throw error;
@@ -177,9 +255,9 @@ const capacityModel = {
   },
 
   /**
-   * Get list of patients scheduled for a specific date and time slot
+   * Get list of patients scheduled for a specific date and optional time block.
    */
-  getScheduledPatients: async (date, timeSlot = null, client) => {
+  getScheduledPatients: async (date, timeBlock = null, client) => {
     try {
       const supabase = withClient(client);
       let query = supabase
@@ -210,19 +288,19 @@ const capacityModel = {
         .eq('is_deleted', false)
         .not('status', 'in', '(Completed,Cancelled)');
 
-      if (timeSlot) {
-        query = query.eq('time_slot', timeSlot);
+      if (timeBlock) {
+        query = query.eq('time_slot', timeBlock);
       }
 
       const { data, error } = await query.order('time_slot', { ascending: true });
 
       if (error) throw error;
 
-      // Format the data for easier consumption
       return (data || []).map(schedule => ({
         scheduleId: schedule.patient_schedule_id,
         scheduledDate: schedule.scheduled_date,
-        timeSlot: schedule.time_slot,
+        timeBlock: schedule.time_slot,
+        timeSlot: schedule.time_slot, // backward compat
         status: schedule.status,
         doseNumber: schedule.dose_number,
         vaccine: {
@@ -280,8 +358,8 @@ const capacityModel = {
       let nearFullDays = 0;
 
       capacities.forEach(day => {
-        const dayCapacity = day.am_capacity + day.pm_capacity;
-        const dayBooked = day.am_booked + day.pm_booked;
+        const dayCapacity = day.daily_capacity || DAILY_CAPACITY;
+        const dayBooked = day.total_booked || 0;
 
         totalCapacity += dayCapacity;
         totalBooked += dayBooked;

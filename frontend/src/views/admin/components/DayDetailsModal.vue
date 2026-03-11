@@ -34,31 +34,32 @@
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">
-                    <i class="bi bi-sunrise me-1" />
-                    AM Capacity
+                    <i class="bi bi-calendar-range me-1" />
+                    Daily Capacity
                   </label>
                   <input
-                    v-model.number="editedCapacity.amCapacity"
+                    v-model.number="editedCapacity.dailyCapacity"
                     type="number"
                     class="form-control"
                     min="0"
                     :disabled="!isEditing"
                   >
-                  <small class="text-muted">Current: {{ day.amBooked }} booked</small>
+                  <small class="text-muted">Current: {{ day.totalBooked }} booked</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">
-                    <i class="bi bi-sunset me-1" />
-                    PM Capacity
+                    <i class="bi bi-shield me-1" />
+                    Buffer Slots (Reschedules)
                   </label>
                   <input
-                    v-model.number="editedCapacity.pmCapacity"
+                    v-model.number="editedCapacity.bufferSlots"
                     type="number"
                     class="form-control"
                     min="0"
+                    max="5"
                     :disabled="!isEditing"
                   >
-                  <small class="text-muted">Current: {{ day.pmBooked }} booked</small>
+                  <small class="text-muted">Reserved for missed/rescheduled appointments</small>
                 </div>
                 <div class="col-12">
                   <label class="form-label">
@@ -112,53 +113,59 @@
             <div class="utilization-summary mb-4">
               <h6 class="fw-bold mb-3">
                 <i class="bi bi-graph-up me-2" />
-                Utilization
+                Daily Utilization
               </h6>
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <div class="stat-card am">
-                    <div class="stat-icon">
-                      <i class="bi bi-sunrise" />
-                    </div>
-                    <div class="stat-content">
-                      <div class="stat-label">
-                        AM Appointments
-                      </div>
-                      <div class="stat-value">
-                        {{ day.amBooked }} / {{ day.amCapacity }}
-                      </div>
-                      <div class="progress mt-2">
-                        <div
-                          class="progress-bar"
-                          :class="getProgressBarClass(amUtilization)"
-                          :style="{ width: amUtilization + '%' }"
-                        />
-                      </div>
-                      <small class="text-muted">{{ amUtilization.toFixed(0) }}% utilized</small>
-                    </div>
-                  </div>
+              <div class="stat-card daily">
+                <div class="stat-icon">
+                  <i class="bi bi-calendar-range" />
                 </div>
-                <div class="col-md-6">
-                  <div class="stat-card pm">
-                    <div class="stat-icon">
-                      <i class="bi bi-sunset" />
-                    </div>
-                    <div class="stat-content">
-                      <div class="stat-label">
-                        PM Appointments
-                      </div>
-                      <div class="stat-value">
-                        {{ day.pmBooked }} / {{ day.pmCapacity }}
-                      </div>
-                      <div class="progress mt-2">
-                        <div
-                          class="progress-bar"
-                          :class="getProgressBarClass(pmUtilization)"
-                          :style="{ width: pmUtilization + '%' }"
-                        />
-                      </div>
-                      <small class="text-muted">{{ pmUtilization.toFixed(0) }}% utilized</small>
-                    </div>
+                <div class="stat-content">
+                  <div class="stat-label">
+                    Total Appointments
+                  </div>
+                  <div class="stat-value">
+                    {{ day.totalBooked }} / {{ day.dailyCapacity || day.totalCapacity }}
+                  </div>
+                  <div class="progress mt-2">
+                    <div
+                      class="progress-bar"
+                      :class="getProgressBarClass(dailyUtilization)"
+                      :style="{ width: dailyUtilization + '%' }"
+                    />
+                  </div>
+                  <small class="text-muted">{{ dailyUtilization.toFixed(0) }}% utilized</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Time Block Breakdown -->
+            <div
+              v-if="day.blocks && day.blocks.length > 0"
+              class="block-breakdown mb-4"
+            >
+              <h6 class="fw-bold mb-3">
+                <i class="bi bi-clock me-2" />
+                Time Blocks (3 patients per block)
+              </h6>
+              <div class="block-list">
+                <div
+                  v-for="block in day.blocks"
+                  :key="block.time"
+                  class="block-item"
+                  :class="getBlockHeatmapClass(block.booked, block.capacity)"
+                  @click="selectTimeBlock(block.time)"
+                >
+                  <div class="block-time">
+                    {{ formatBlockLabel(block.time) }}
+                  </div>
+                  <div class="block-count">
+                    {{ block.booked }}/{{ block.capacity }}
+                  </div>
+                  <div class="block-bar">
+                    <div
+                      class="block-bar-fill"
+                      :style="{ width: (block.capacity > 0 ? (block.booked / block.capacity) * 100 : 0) + '%' }"
+                    />
                   </div>
                 </div>
               </div>
@@ -178,21 +185,24 @@
                 <li class="nav-item">
                   <button
                     class="nav-link"
-                    :class="{ active: activeTab === 'AM' }"
-                    @click="activeTab = 'AM'; loadPatients()"
+                    :class="{ active: activeTab === 'All' }"
+                    @click="activeTab = 'All'; loadPatients()"
                   >
-                    <i class="bi bi-sunrise me-1" />
-                    AM ({{ day.amBooked }})
+                    <i class="bi bi-list me-1" />
+                    All ({{ day.totalBooked }})
                   </button>
                 </li>
-                <li class="nav-item">
+                <li
+                  v-for="block in timeBlockTabs"
+                  :key="block.time"
+                  class="nav-item"
+                >
                   <button
                     class="nav-link"
-                    :class="{ active: activeTab === 'PM' }"
-                    @click="activeTab = 'PM'; loadPatients()"
+                    :class="{ active: activeTab === block.time }"
+                    @click="activeTab = block.time; loadPatients()"
                   >
-                    <i class="bi bi-sunset me-1" />
-                    PM ({{ day.pmBooked }})
+                    {{ block.shortLabel }} ({{ block.booked }})
                   </button>
                 </li>
               </ul>
@@ -288,6 +298,18 @@ import { ref, computed, watch } from 'vue'
 import { useCapacity } from '@/composables/useCapacity'
 import { useToast } from '@/composables/useToast'
 
+const TIME_BLOCK_LABELS = {
+  '07:30': '7:30 – 8:30 AM',
+  '08:30': '8:30 – 9:30 AM',
+  '09:30': '9:30 – 10:30 AM',
+  '10:30': '10:30 – 11:30 AM',
+  '11:30': '11:30 AM – 12:30 PM',
+  '12:30': '12:30 – 1:30 PM',
+  '13:30': '1:30 – 2:30 PM',
+  '14:30': '2:30 – 3:30 PM',
+  '15:30': '3:30 – 4:30 PM',
+}
+
 const props = defineProps({
   show: Boolean,
   day: {
@@ -304,22 +326,54 @@ const { addToast } = useToast()
 const isEditing = ref(false)
 const saving = ref(false)
 const loadingPatients = ref(false)
-const activeTab = ref('AM')
+const activeTab = ref('All')
 const patients = ref([])
 
 const editedCapacity = ref({
-  amCapacity: props.day.amCapacity,
-  pmCapacity: props.day.pmCapacity,
+  dailyCapacity: props.day.dailyCapacity || props.day.totalCapacity || 27,
+  bufferSlots: props.day.bufferSlots ?? 1,
   notes: props.day.notes
 })
 
-const amUtilization = computed(() => {
-  return props.day.amCapacity > 0 ? (props.day.amBooked / props.day.amCapacity) * 100 : 0
+const dailyUtilization = computed(() => {
+  const cap = props.day.dailyCapacity || props.day.totalCapacity || 27
+  return cap > 0 ? (props.day.totalBooked / cap) * 100 : 0
 })
 
-const pmUtilization = computed(() => {
-  return props.day.pmCapacity > 0 ? (props.day.pmBooked / props.day.pmCapacity) * 100 : 0
+const timeBlockTabs = computed(() => {
+  if (!props.day.blocks || props.day.blocks.length === 0) return []
+  return props.day.blocks
+    .filter(b => b.booked > 0)
+    .map(b => ({
+      time: b.time,
+      shortLabel: formatBlockShort(b.time),
+      booked: b.booked
+    }))
 })
+
+function formatBlockLabel(time) {
+  return TIME_BLOCK_LABELS[time] || time
+}
+
+function formatBlockShort(time) {
+  const hour = parseInt(time.split(':')[0])
+  const min = time.split(':')[1]
+  if (hour < 12) return `${hour}:${min}`
+  if (hour === 12) return `12:${min}`
+  return `${hour - 12}:${min}`
+}
+
+function getBlockHeatmapClass(booked, capacity) {
+  if (booked <= 0) return 'block-empty'
+  if (booked >= capacity) return 'block-full'
+  if (booked >= 2) return 'block-high'
+  return 'block-low'
+}
+
+function selectTimeBlock(time) {
+  activeTab.value = time
+  loadPatients()
+}
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -373,8 +427,8 @@ function calculateAge(dateOfBirth) {
 function startEditing() {
   isEditing.value = true
   editedCapacity.value = {
-    amCapacity: props.day.amCapacity,
-    pmCapacity: props.day.pmCapacity,
+    dailyCapacity: props.day.dailyCapacity || props.day.totalCapacity || 27,
+    bufferSlots: props.day.bufferSlots ?? 1,
     notes: props.day.notes
   }
 }
@@ -382,8 +436,8 @@ function startEditing() {
 function cancelEditing() {
   isEditing.value = false
   editedCapacity.value = {
-    amCapacity: props.day.amCapacity,
-    pmCapacity: props.day.pmCapacity,
+    dailyCapacity: props.day.dailyCapacity || props.day.totalCapacity || 27,
+    bufferSlots: props.day.bufferSlots ?? 1,
     notes: props.day.notes
   }
 }
@@ -393,8 +447,8 @@ async function saveCapacity() {
   try {
     await updateCapacityLimits(
       props.day.date,
-      editedCapacity.value.amCapacity,
-      editedCapacity.value.pmCapacity,
+      editedCapacity.value.dailyCapacity,
+      editedCapacity.value.bufferSlots,
       editedCapacity.value.notes
     )
     
@@ -412,16 +466,14 @@ async function saveCapacity() {
 async function loadPatients() {
   loadingPatients.value = true
   try {
-    // Try API first (online mode)
-    patients.value = await getScheduledPatients(props.day.date, activeTab.value)
+    const slot = activeTab.value === 'All' ? null : activeTab.value
+    patients.value = await getScheduledPatients(props.day.date, slot)
   } catch (error) {
-    // Fallback to offline data if API fails (network error, 503, 500, etc.)
+    // Fallback to offline data if API fails
     if (props.day.patients && Array.isArray(props.day.patients)) {
-      console.log('📦 Using offline patient data as fallback')
-      // Filter by active tab (AM/PM) - offline data uses 'timeSlot' property
       patients.value = props.day.patients.filter(p => {
         if (activeTab.value === 'All') return true
-        return p.timeSlot === activeTab.value
+        return (p.timeSlot || p.timeBlock) === activeTab.value
       })
     } else {
       addToast('Failed to load patient list', 'error')
@@ -434,11 +486,11 @@ async function loadPatients() {
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
+    activeTab.value = 'All'
     loadPatients()
   }
 })
 
-// Re-filter when tab changes
 watch(() => activeTab.value, () => {
   if (props.show) {
     loadPatients()
@@ -456,12 +508,8 @@ watch(() => activeTab.value, () => {
   border-left: 4px solid;
 }
 
-.stat-card.am {
-  border-left-color: #ffc107;
-}
-
-.stat-card.pm {
-  border-left-color: #0dcaf0;
+.stat-card.daily {
+  border-left-color: #1976d2;
 }
 
 .stat-icon {
@@ -485,6 +533,88 @@ watch(() => activeTab.value, () => {
   font-size: 1.5rem;
   font-weight: 600;
   color: #212529;
+}
+
+/* Time Block Breakdown */
+.block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.block-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #e9ecef;
+}
+
+.block-item:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.block-item.block-empty {
+  background: #f8f9fa;
+}
+
+.block-item.block-low {
+  background: #f1f8e9;
+  border-color: #c8e6c9;
+}
+
+.block-item.block-high {
+  background: #fff8e1;
+  border-color: #ffe082;
+}
+
+.block-item.block-full {
+  background: #ffebee;
+  border-color: #ef9a9a;
+}
+
+.block-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #495057;
+  min-width: 140px;
+}
+
+.block-count {
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 40px;
+  text-align: center;
+}
+
+.block-bar {
+  flex: 1;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.block-bar-fill {
+  height: 100%;
+  background: #1976d2;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.block-item.block-full .block-bar-fill {
+  background: #ef4444;
+}
+
+.block-item.block-high .block-bar-fill {
+  background: #ff9800;
+}
+
+.block-item.block-low .block-bar-fill {
+  background: #4caf50;
 }
 
 .patient-card {

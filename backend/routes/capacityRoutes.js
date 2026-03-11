@@ -86,4 +86,22 @@ router.get(
   capacityController.getCapacityStats
 );
 
+// Get per-block counts for a date
+router.get(
+  '/blocks/:date',
+  authenticateRequest,
+  checkUserMapping,
+  authorizeRole(['admin', 'health_worker', 'health_staff']),
+  capacityController.getBlockCounts
+);
+
+// Quick reschedule a patient schedule
+router.post(
+  '/quick-reschedule',
+  authenticateRequest,
+  checkUserMapping,
+  authorizeRole(['admin', 'health_worker']),
+  capacityController.quickReschedule
+);
+
 export default router;
